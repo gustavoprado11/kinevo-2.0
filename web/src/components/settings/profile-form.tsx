@@ -25,9 +25,9 @@ function SaveButton() {
         <button
             type="submit"
             disabled={pending}
-            className="w-full inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-violet-500 shadow-lg shadow-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white shadow-md shadow-violet-500/20 transition-all hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
-            {pending ? 'Salvando...' : 'Salvar alterações'}
+            {pending ? 'Salvando...' : 'Salvar'}
         </button>
     )
 }
@@ -71,15 +71,15 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
     const initials = getInitials(name || trainer.name)
 
     return (
-        <div className="rounded-2xl border border-k-border-primary bg-surface-card p-6 shadow-sm h-full flex flex-col">
-            {/* Header */}
-            <div className="mb-6 flex items-start justify-between">
+        <div className="flex h-full flex-col rounded-2xl border border-k-border-primary bg-surface-card p-6 shadow-sm">
+            {/* Header slim */}
+            <div className="mb-5 flex items-start justify-between">
                 <div>
-                    <h2 className="text-xl font-semibold text-k-text-primary">Perfil</h2>
-                    <p className="mt-1 text-sm text-k-text-tertiary">Dados públicos da sua conta.</p>
+                    <h2 className="text-lg font-semibold text-k-text-primary">Perfil</h2>
+                    <p className="text-xs text-k-text-tertiary">Dados públicos da sua conta.</p>
                 </div>
-                <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
-                    <User size={18} strokeWidth={1.5} />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                    <User size={16} strokeWidth={1.5} />
                 </div>
             </div>
 
@@ -100,27 +100,33 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                     setMessage({ type: 'success', text: result.message })
                     router.refresh()
                 }}
-                className="flex-1 flex flex-col justify-between"
+                className="flex flex-1 flex-col gap-4"
             >
-                <div className="space-y-6">
-                    <div className="flex flex-col items-center text-center">
-                        <div className="relative">
-                            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-k-border-primary bg-surface-inset ring-2 ring-violet-500/30">
-                                {avatarPreview ? (
-                                    <Image
-                                        src={avatarPreview}
-                                        alt="Avatar do treinador"
-                                        width={96}
-                                        height={96}
-                                        className="w-full h-full object-cover"
-                                        unoptimized
-                                    />
-                                ) : (
-                                    <span className="text-lg font-semibold text-k-text-tertiary">{initials}</span>
-                                )}
-                            </div>
-                        </div>
-
+                {/* Linha avatar + campos */}
+                <div className="flex items-start gap-5">
+                    <div className="flex flex-none flex-col items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleChooseAvatar}
+                            className="group relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-k-border-primary bg-surface-inset ring-2 ring-violet-500/30 transition-all hover:ring-violet-500/60"
+                            aria-label="Alterar foto"
+                        >
+                            {avatarPreview ? (
+                                <Image
+                                    src={avatarPreview}
+                                    alt="Avatar do treinador"
+                                    width={64}
+                                    height={64}
+                                    className="h-full w-full object-cover"
+                                    unoptimized
+                                />
+                            ) : (
+                                <span className="text-base font-semibold text-k-text-tertiary">{initials}</span>
+                            )}
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                                <Camera size={16} />
+                            </span>
+                        </button>
                         <input
                             ref={fileInputRef}
                             id="avatar"
@@ -130,20 +136,11 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                             onChange={handleFileChange}
                             className="hidden"
                         />
-                        <button
-                            type="button"
-                            onClick={handleChooseAvatar}
-                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-k-border-primary bg-glass-bg px-4 py-2 text-xs font-bold text-k-text-primary hover:bg-glass-bg-active transition-all"
-                        >
-                            <Camera size={14} />
-                            Alterar foto
-                        </button>
-                        <p className="mt-2 text-[10px] font-bold text-k-text-quaternary">PNG, JPG ou WEBP.</p>
                     </div>
 
-                    <div className="space-y-4 pt-1">
+                    <div className="flex-1 space-y-3 min-w-0">
                         <div>
-                            <label htmlFor="name" className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
+                            <label htmlFor="name" className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-k-text-tertiary">
                                 Nome
                             </label>
                             <input
@@ -154,13 +151,13 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                                 onChange={(e) => setName(e.target.value)}
                                 required
                                 minLength={2}
-                                className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-2 text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-violet-500/50 transition-all"
+                                className="w-full rounded-lg border border-k-border-subtle bg-glass-bg px-3 py-2 text-sm text-k-text-primary placeholder:text-k-text-quaternary transition-all focus:border-violet-500/50 focus:outline-none"
                                 placeholder="Seu nome"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="email" className="mb-1.5 block text-[11px] font-bold text-k-text-tertiary">
+                            <label htmlFor="email" className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-k-text-tertiary">
                                 Email
                             </label>
                             <input
@@ -168,24 +165,24 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                                 type="email"
                                 value={trainer.email}
                                 disabled
-                                className="w-full cursor-not-allowed rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-2 text-sm text-k-text-quaternary"
+                                className="w-full cursor-not-allowed rounded-lg border border-k-border-subtle bg-glass-bg px-3 py-2 text-sm text-k-text-quaternary"
                             />
                         </div>
                     </div>
-
-                    {message && (
-                        <div
-                            className={`rounded-xl border px-3 py-2 text-sm ${message.type === 'success'
-                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                                : 'border-red-500/30 bg-red-500/10 text-red-300'
-                                }`}
-                        >
-                            {message.text}
-                        </div>
-                    )}
                 </div>
 
-                <div className="border-t border-k-border-subtle pt-4 mt-8">
+                {message && (
+                    <div
+                        className={`rounded-lg border px-3 py-2 text-xs ${message.type === 'success'
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                            : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300'
+                            }`}
+                    >
+                        {message.text}
+                    </div>
+                )}
+
+                <div className="mt-auto flex justify-end pt-2">
                     <SaveButton />
                 </div>
             </form>

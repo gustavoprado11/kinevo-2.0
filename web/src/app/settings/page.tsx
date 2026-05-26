@@ -7,9 +7,13 @@ import { BillingSection } from '@/components/settings/billing-section'
 import { ProfileForm } from '@/components/settings/profile-form'
 import { ThemeSelector } from '@/components/settings/theme-selector'
 import { ReportsPreferencesSection } from '@/components/settings/reports-preferences-section'
+import { BrandingSection } from '@/components/settings/branding-section'
+import { EquipeSection } from '@/components/settings/equipe-section'
+import { SettingsSection } from '@/components/settings/settings-section'
+import { DeveloperLinkCard } from '@/components/settings/developer-link-card'
+import { getOrganizationContext } from '@/lib/studio/get-organization'
 
-import { ChevronRight, Bot } from 'lucide-react'
-import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -19,7 +23,7 @@ export default async function SettingsPage() {
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, name, email, avatar_url, theme, auto_publish_reports')
+        .select('id, name, email, avatar_url, theme, auto_publish_reports, brand_name, brand_color, brand_logo_url, brand_show_powered_by')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -115,9 +119,41 @@ export default async function SettingsPage() {
 
     const isActive = subscription?.status === 'trialing' || subscription?.status === 'active'
 
+    // Estúdio: dono/coach de academia é liberado pela assinatura da ACADEMIA,
+    // não pela solo. (Reusa o sistema atual; ver get-trainer.ts / org-access.)
+    const orgCtx = await getOrganizationContext()
     if (!isActive) {
-        redirect('/subscription/blocked')
+        if (!orgCtx) {
+            redirect('/subscription/blocked')
+        }
+        const orgStatus = orgCtx.organization.subscription_status
+        if (orgStatus !== 'active' && orgStatus !== 'trialing') {
+            redirect('/estudio/blocked')
+        }
     }
+
+    // Coaches da academia (para a aba Equipe)
+    let orgCoaches: { trainerId: string; role: string; name: string; email: string }[] = []
+    if (orgCtx) {
+        const { data: coachesRaw } = await supabase
+            .from('organization_members')
+            .select('trainer_id, role, trainer:trainers(id, name, email)')
+            .eq('organization_id', orgCtx.organization.id)
+            .eq('status', 'active')
+        orgCoaches = (coachesRaw ?? []).map((m: any) => {
+            const t = Array.isArray(m.trainer) ? m.trainer[0] : m.trainer
+            return {
+                trainerId: m.trainer_id as string,
+                role: m.role as string,
+                name: (t?.name ?? '—') as string,
+                email: (t?.email ?? '') as string,
+            }
+        })
+    }
+
+    // Numeração das seções: se a conta é de academia, "Organização" entra como
+    // 04 e "Assinatura" vira 05. Solo: pula direto p/ 04.
+    const assinaturaNumber = orgCtx ? '05' : '04'
 
     return (
         <AppLayout
@@ -126,42 +162,71 @@ export default async function SettingsPage() {
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme ?? undefined}
         >
-            <div className="mb-8">
-                <div className="mb-2 flex items-center gap-2 text-[10px] text-k-text-quaternary font-bold">
+            {/* ── Header: breadcrumb + título ── */}
+            <div className="mb-10 border-b border-k-border-primary pb-7">
+                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-k-text-quaternary">
                     <span>Painel</span>
                     <ChevronRight size={10} strokeWidth={3} />
-                    <span>Minha Conta</span>
+                    <span>Configurações</span>
                 </div>
-                <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-b from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-transparent">
-                    Minha Conta
+                <h1 className="bg-gradient-to-b from-[var(--gradient-text-from)] to-[var(--gradient-text-to)] bg-clip-text text-3xl font-bold tracking-tighter text-transparent">
+                    Configurações
                 </h1>
-                <p className="mt-1 text-sm text-k-text-tertiary">Gerencie seu perfil e assinatura.</p>
+                <p className="mt-1 max-w-xl text-sm text-k-text-tertiary">
+                    Sua conta, sua marca, suas preferências e sua assinatura.
+                </p>
             </div>
 
-
-
-            <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-                <div className="lg:col-span-1 space-y-6">
+            {/* ── 01 · Você ── */}
+            <SettingsSection number="01" title="Você" hint="Identidade pessoal na plataforma">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 items-stretch">
                     <ProfileForm trainer={trainer} />
+                    <DeveloperLinkCard />
+                </div>
+            </SettingsSection>
+
+            {/* ── 02 · Sua marca ── */}
+            <SettingsSection number="02" title={orgCtx ? 'Marca do estúdio' : 'Sua marca'} hint="Como o app do aluno se apresenta">
+                <BrandingSection
+                    isStudio={!!orgCtx}
+                    trainer={{
+                        name: trainer.name,
+                        brand_name: (trainer as { brand_name?: string | null }).brand_name ?? null,
+                        brand_color: (trainer as { brand_color?: string | null }).brand_color ?? null,
+                        brand_logo_url: (trainer as { brand_logo_url?: string | null }).brand_logo_url ?? null,
+                    }}
+                />
+            </SettingsSection>
+
+            {/* ── 03 · Preferências do app ── */}
+            <SettingsSection number="03" title="Preferências do app" hint="Como o sistema se comporta no dia a dia">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 items-stretch">
                     <ThemeSelector initialTheme={trainer.theme as 'light' | 'dark' | 'system' | null} />
                     <ReportsPreferencesSection initialAutoPublish={trainer.auto_publish_reports ?? false} />
-                    <Link
-                        href="/settings/api-keys"
-                        className="flex items-center gap-3 rounded-2xl border border-k-border-primary bg-surface-card p-4 shadow-sm hover:border-violet-500/30 transition-colors group"
-                    >
-                        <div className="rounded-xl bg-violet-500/10 p-2.5">
-                            <Bot size={18} className="text-violet-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-k-text-primary">Conectar com IA</p>
-                            <p className="text-xs text-k-text-quaternary">Claude.ai e ChatGPT</p>
-                        </div>
-                        <ChevronRight size={16} className="text-k-text-quaternary group-hover:text-violet-500 transition-colors" />
-                    </Link>
                 </div>
-                <div className="lg:col-span-2">
+            </SettingsSection>
+
+            {/* ── 04 · Organização (só estúdio) ── */}
+            {orgCtx && (
+                <SettingsSection number="04" title="Organização" hint="Equipe da academia">
+                    <EquipeSection
+                        organization={{
+                            id: orgCtx.organization.id,
+                            name: orgCtx.organization.name,
+                            visibility: orgCtx.organization.visibility,
+                        }}
+                        isManager={orgCtx.isManager}
+                        currentTrainerId={orgCtx.trainerId}
+                        coaches={orgCoaches}
+                    />
+                </SettingsSection>
+            )}
+
+            {/* ── 04/05 · Assinatura ── */}
+            {subscription && (
+                <SettingsSection number={assinaturaNumber} title="Assinatura" hint="Plano, cobrança e próxima fatura">
                     <BillingSection
-                        subscription={subscription!}
+                        subscription={subscription}
                         planName={planName}
                         planAmount={planAmount}
                         planCurrency={planCurrency}
@@ -170,8 +235,8 @@ export default async function SettingsPage() {
                         discountPercent={discountPercent}
                         discountAmountOff={discountAmountOff}
                     />
-                </div>
-            </div>
+                </SettingsSection>
+            )}
         </AppLayout>
     )
 }
