@@ -15,6 +15,7 @@ import { useMemo } from "react";
 import { useColorScheme } from "react-native";
 import { v2 } from "@kinevo/shared/tokens";
 import { useThemePreferenceStore, type ThemeMode } from "../stores/themePreferenceStore";
+import { useBrandStore } from "../stores/brandStore";
 
 const { colors, colorsDark } = v2;
 
@@ -29,7 +30,23 @@ function pickPalette(mode: ThemeMode, systemScheme: ReturnType<typeof useColorSc
 export function useV2Colors(): V2Palette {
     const mode = useThemePreferenceStore((s) => s.mode);
     const systemScheme = useColorScheme();
-    return useMemo(() => pickPalette(mode, systemScheme), [mode, systemScheme]);
+    const brand = useBrandStore((s) => s.brand);
+    return useMemo(() => {
+        const base = pickPalette(mode, systemScheme);
+        // Quando o coach do aluno tem marca custom, sobrescrevemos os tokens
+        // brand.* — componentes que usam `colors.brand.primary` ganham marca
+        // automaticamente (AchievementCard, sidebar, trainer-mode quando dual-role,
+        // etc.). Brand default Kinevo → palette base intacta (zero impacto).
+        if (!brand.isCustom) return base;
+        return {
+            ...base,
+            brand: {
+                primary: brand.color,
+                primaryLight: base.brand.primaryLight,
+                primaryDark: brand.dark,
+            },
+        } as unknown as V2Palette;
+    }, [mode, systemScheme, brand]);
 }
 
 export function useIsDark(): boolean {

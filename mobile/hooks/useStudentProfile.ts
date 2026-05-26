@@ -15,6 +15,12 @@ export interface StudentProfile {
         avatar_url: string | null;
         /** Handle do Instagram do trainer (sem @). Null = não cadastrado. */
         instagram_handle: string | null;
+        /** Marca do estúdio (white-label leve) — definida pelo personal no web. */
+        brand_color: string | null;
+        brand_logo_url: string | null;
+        brand_name: string | null;
+        brand_show_powered_by: boolean | null;
+        branding_enabled: boolean | null;
     } | null;
 }
 
@@ -30,7 +36,7 @@ export function useStudentProfile() {
         try {
             const { data, error }: { data: any; error: any } = await supabase
                 .from("students" as any)
-                .select("id, name, email, phone, avatar_url, status, coach_id, trainers:coach_id (name, avatar_url, instagram_handle)")
+                .select("id, name, email, phone, avatar_url, status, coach_id, trainers:coach_id (name, avatar_url, instagram_handle, brand_color, brand_logo_url, brand_name, brand_show_powered_by, branding_enabled)")
                 .eq("auth_user_id", user.id)
                 .maybeSingle();
 
@@ -49,6 +55,11 @@ export function useStudentProfile() {
                         name: data.trainers.name,
                         avatar_url: data.trainers.avatar_url,
                         instagram_handle: data.trainers.instagram_handle ?? null,
+                        brand_color: data.trainers.brand_color ?? null,
+                        brand_logo_url: data.trainers.brand_logo_url ?? null,
+                        brand_name: data.trainers.brand_name ?? null,
+                        brand_show_powered_by: data.trainers.brand_show_powered_by ?? null,
+                        branding_enabled: data.trainers.branding_enabled ?? null,
                     } : null
                 });
             }
