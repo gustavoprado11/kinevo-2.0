@@ -11,6 +11,8 @@ import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
 import { useTrainerChat, type ChatMessage } from '../../hooks/useTrainerChat';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { useBrand } from '../../stores/brandStore';
+import { toRgba } from '../../lib/brandColor';
 
 // ── Helpers ──
 
@@ -44,6 +46,7 @@ interface ChatViewProps {
 
 export function ChatView({ showBackButton = false }: ChatViewProps) {
     const colors = useV2Colors();
+    const brand = useBrand();
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
@@ -62,8 +65,9 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
     }, []);
 
     // When inline in a tab, add padding for the absolutely-positioned tab bar
-    // (50 + bottom inset) — but only when the keyboard is hidden.
-    const tabBarPadding = showBackButton ? 0 : (keyboardVisible ? 0 : 50 + insets.bottom);
+    // (V2 glass nav: 64pt altura + 8pt offset acima da safe area) — só quando
+    // o teclado está escondido (no iOS a nav some com o teclado).
+    const tabBarPadding = showBackButton ? 0 : (keyboardVisible ? 0 : 72 + insets.bottom);
 
     const {
         studentId,
@@ -230,7 +234,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         borderBottomLeftRadius: isStudent ? 18 : 6,
                         paddingHorizontal: 14,
                         paddingVertical: 10,
-                        backgroundColor: isStudent ? colors.purple[600] : colors.surface.card,
+                        backgroundColor: isStudent ? brand.color : colors.surface.card,
                         ...(isStudent ? {} : {
                             borderWidth: 1,
                             borderColor: colors.border.default,
@@ -342,10 +346,10 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                 ) : trainer ? (
                     <View style={{
                         width: 32, height: 32, borderRadius: 16,
-                        backgroundColor: colors.purple[100],
+                        backgroundColor: toRgba(brand.color, 0.16),
                         alignItems: 'center', justifyContent: 'center',
                     }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.purple[600] }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: brand.color }}>
                             {getInitials(trainer.name)}
                         </Text>
                     </View>
@@ -359,7 +363,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
             {/* Messages */}
             {isLoading ? (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <ActivityIndicator size="small" color={colors.purple[600]} />
+                    <ActivityIndicator size="small" color={brand.color} />
                 </View>
             ) : (
                 <FlatList
@@ -379,9 +383,9 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         hasMore ? (
                             <Pressable onPress={loadMore} style={{ alignItems: 'center', paddingVertical: 12 }}>
                                 {isLoadingMore ? (
-                                    <ActivityIndicator size="small" color={colors.purple[600]} />
+                                    <ActivityIndicator size="small" color={brand.color} />
                                 ) : (
-                                    <Text style={{ fontSize: 12, color: colors.purple[600], fontWeight: '600' }}>
+                                    <Text style={{ fontSize: 12, color: brand.color, fontWeight: '600' }}>
                                         Carregar anteriores
                                     </Text>
                                 )}
@@ -454,7 +458,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         disabled={!canSend}
                         style={{
                             width: 36, height: 36, borderRadius: 18,
-                            backgroundColor: canSend ? colors.purple[600] : colors.border.default,
+                            backgroundColor: canSend ? brand.color : colors.border.default,
                             alignItems: 'center', justifyContent: 'center',
                         }}
                     >

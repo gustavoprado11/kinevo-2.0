@@ -12,6 +12,9 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Platform } from 'react-native';
 import { toast } from '../../lib/toast';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
+import { useBrand } from '../../stores/brandStore';
+import { supabase } from '../../lib/supabase';
+import { isStravaConnected, syncStravaIncremental } from '../../lib/healthSync/stravaSync';
 import { InsightsCard } from '../../components/health/InsightsCard';
 import { ActivityWeekCard } from '../../components/strava/ActivityWeekCard';
 import { hrvMetricLabel } from '../../lib/hrv';
@@ -53,8 +56,10 @@ const GRID_GAP = 12;
 export default function HealthScreen() {
   const router = useRouter();
   const colors = useV2Colors();
+  const brand = useBrand();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const purpleAccent = colors.purple[400];
+  // "purpleAccent" agora segue a marca do coach (estúdio).
+  const purpleAccent = brand.color;
   // Largura fixa em dp pra cada card da grid 2x2. Calculada via
   // useWindowDimensions (deterministic, sem depender de measure-pass do
   // Pressable iOS que vinha colapsando os cards).
@@ -71,7 +76,15 @@ export default function HealthScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const res = await syncIncremental();
+      // Strava roda em paralelo + silencioso (falha não bloqueia HealthKit).
+      const stravaSync = (async () => {
+        try {
+          if (await isStravaConnected(supabase)) {
+            await syncStravaIncremental(supabase, 7);
+          }
+        } catch { /* silencioso */ }
+      })();
+      const [res] = await Promise.all([syncIncremental(), stravaSync]);
       if (!res.ok) {
         toast.error('Não foi possível atualizar agora', 'Tente novamente em alguns instantes.');
       }
@@ -93,7 +106,15 @@ export default function HealthScreen() {
       lastFocusSyncRef.current = now;
       void (async () => {
         try {
-          await syncIncremental();
+          // Strava em paralelo + silencioso — segue o mesmo debounce de 5min.
+          const stravaSync = (async () => {
+            try {
+              if (await isStravaConnected(supabase)) {
+                await syncStravaIncremental(supabase, 7);
+              }
+            } catch { /* silencioso */ }
+          })();
+          await Promise.all([syncIncremental(), stravaSync]);
           await Promise.all([refresh(), refreshInsights()]);
         } catch {
           // foco é best-effort; pull-to-refresh continua disponível
@@ -136,7 +157,7 @@ export default function HealthScreen() {
           </Text>
           <Pressable
             onPress={() => router.push('/profile/connections')}
-            style={styles.emptyCta}
+            style={[styles.emptyCta, { backgroundColor: brand.color }]}
           >
             <Text style={styles.emptyCtaText}>Configurar</Text>
           </Pressable>

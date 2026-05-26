@@ -6,26 +6,35 @@ import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { HealthInsight, InsightSeverity } from '@kinevo/shared/types/healthInsights';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
+import { useBrand } from '../../stores/brandStore';
+import { mix } from '../../lib/brandColor';
 
 export interface InsightsCardProps {
   insights: HealthInsight[];
 }
 
-const SEVERITY_COLOR: Record<InsightSeverity, string> = {
+// Cores semânticas: positive/caution permanecem fixas; neutral acompanha a
+// marca do coach (insight informativo = cor do estúdio).
+const STATIC_SEVERITY = {
   positive: '#22C55E',
   caution: '#F59E0B',
-  neutral: '#A78BFA',
-};
+} as const;
 
 export function InsightsCard({ insights }: InsightsCardProps) {
   const colors = useV2Colors();
+  const brand = useBrand();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const severityColor = (sev: InsightSeverity): string =>
+    sev === 'positive' ? STATIC_SEVERITY.positive
+      : sev === 'caution' ? STATIC_SEVERITY.caution
+        : mix(brand.color, '#FFFFFF', 0.30);
 
   if (insights.length === 0) return null;
 
   return (
     <LinearGradient
-      colors={['#1E1B4B', '#312E81']}
+      colors={['#18181B', brand.deep]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.card}
@@ -35,7 +44,7 @@ export function InsightsCard({ insights }: InsightsCardProps) {
         <View key={`${insight.rule}-${idx}`}>
           {idx > 0 && <View style={styles.divider} />}
           <View style={styles.row}>
-            <View style={[styles.severityDot, { backgroundColor: SEVERITY_COLOR[insight.severity] }]} />
+            <View style={[styles.severityDot, { backgroundColor: severityColor(insight.severity) }]} />
             <View style={styles.body}>
               <Text style={styles.emoji}>{insight.emoji}</Text>
               <RichText text={insight.text} />

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { useBrand } from '../../stores/brandStore';
 import { v2 } from '@kinevo/shared/tokens';
 
 interface AchievementCardProps {
@@ -18,8 +19,9 @@ interface AchievementCardProps {
 /** Card de conquista reutilizável (Home grid + tela de conquistas). */
 export function AchievementCard({ icon, title, subtitle, locked, gold, width }: AchievementCardProps) {
     const colors = useV2Colors();
+    const brand = useBrand();
     const Icon = icon;
-    const accent = gold ? '#F59E0B' : colors.brand.primary;
+    const accent = gold ? '#F59E0B' : brand.color;
 
     return (
         <View

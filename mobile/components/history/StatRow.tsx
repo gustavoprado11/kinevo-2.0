@@ -8,6 +8,8 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useV2Colors, useIsDark } from '../../hooks/useV2Colors';
+import { useBrand } from '../../stores/brandStore';
+import { mix, toRgba } from '../../lib/brandColor';
 
 export interface StatRowProps {
     icon: LucideIcon;
@@ -21,9 +23,10 @@ export interface StatRowProps {
 export function StatRow({ icon: Icon, label, sub, value, unit, last = false }: StatRowProps) {
     const colors = useV2Colors();
     const isDark = useIsDark();
+    const brand = useBrand();
 
-    const tileBg = isDark ? 'rgba(124,58,237,0.15)' : '#EDE9FE';
-    const iconColor = isDark ? '#C4B5FD' : '#7C3AED';
+    const tileBg = isDark ? toRgba(brand.color, 0.15) : toRgba(brand.color, 0.12);
+    const iconColor = isDark ? mix(brand.color, '#FFFFFF', 0.35) : brand.color;
     const hairline = isDark ? 'rgba(255,255,255,0.08)' : '#ECECF0';
 
     return (

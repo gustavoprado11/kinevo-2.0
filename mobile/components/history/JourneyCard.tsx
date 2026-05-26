@@ -13,6 +13,8 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Dumbbell, Clock, CheckCircle2 } from 'lucide-react-native';
 import { ANIM } from '../../lib/animations';
 import { useV2Colors, useIsDark } from '../../hooks/useV2Colors';
+import { useBrand } from '../../stores/brandStore';
+import { mix, toRgba } from '../../lib/brandColor';
 import { MiniBars } from './MiniBars';
 import { StatRow } from './StatRow';
 import {
@@ -25,6 +27,7 @@ import {
 export function JourneyCard({ data }: { data: JourneyData }) {
     const colors = useV2Colors();
     const isDark = useIsDark();
+    const brand = useBrand();
 
     const eyebrow = {
         fontSize: 12,
@@ -70,8 +73,8 @@ export function JourneyCard({ data }: { data: JourneyData }) {
         );
     }
 
-    const barActive = isDark ? '#A78BFA' : '#7C3AED';
-    const barEmpty = isDark ? 'rgba(255,255,255,0.08)' : '#EDE9FE';
+    const barActive = isDark ? mix(brand.color, '#FFFFFF', 0.30) : brand.color;
+    const barEmpty = isDark ? 'rgba(255,255,255,0.08)' : toRgba(brand.color, 0.12);
     const showStreak = data.streakDays > 0;
 
     return (

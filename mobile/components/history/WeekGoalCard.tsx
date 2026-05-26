@@ -12,6 +12,8 @@ import { View, Text } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { ANIM } from '../../lib/animations';
 import { GoalRing } from './GoalRing';
+import { useBrand } from '../../stores/brandStore';
+import { mix } from '../../lib/brandColor';
 import {
     getWeekNarrative,
     formatWeekRange,
@@ -28,6 +30,9 @@ const EYEBROW = {
 };
 
 export function WeekGoalCard({ data }: { data: WeekGoalData }) {
+    const brand = useBrand();
+    // Anel mais claro que a cor base (tonalidade clara sobre o fundo dark).
+    const ringColor = mix(brand.color, '#FFFFFF', 0.25);
     const narrative = getWeekNarrative({
         goal: data.goal,
         completed: data.completed,
@@ -68,6 +73,7 @@ export function WeekGoalCard({ data }: { data: WeekGoalData }) {
                 <GoalRing
                     value={data.completed}
                     max={data.goal}
+                    fillColor={ringColor}
                     accessibilityLabel={`${data.completed} de ${data.goal} treinos esta semana`}
                 >
                     <View style={{ alignItems: 'center' }}>

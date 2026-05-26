@@ -24,9 +24,12 @@ import { WorkoutList } from "../../components/home/WorkoutList";
 import { ReportReadyCard } from "../../components/home/ReportReadyCard";
 import { ExtraActivitiesBlock } from "../../components/strava/ExtraActivitiesBlock";
 import { useStravaDays } from "../../hooks/useStravaActivities";
+import { isStravaConnected, syncStravaIncremental } from "../../lib/healthSync/stravaSync";
+import { supabase } from "../../lib/supabase";
 import { ShareWorkoutModal } from "../../components/workout/ShareWorkoutModal";
 import { useLatestUnreadReport } from "../../hooks/useLatestUnreadReport";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { useBrand, useBrandStore } from "../../stores/brandStore";
 import { v2 } from "@kinevo/shared/tokens";
 import { Flame, Dumbbell, Star, Award } from "lucide-react-native";
 import { AchievementCard } from "../../components/achievements/AchievementCard";
@@ -43,12 +46,14 @@ const ENTER = ANIM.enter;
 
 export default function HomeScreen() {
     const colors = useV2Colors();
+    const brand = useBrand();
+    const setBrandFromCoach = useBrandStore((s) => s.setBrandFromCoach);
     const router = useRouter();
     const { user } = useAuth();
     const { profile, refreshProfile } = useStudentProfile();
     const { allowed, reason, isLoading: accessLoading, refresh: refreshAccess } = useStudentAccess();
     const { item: unreadReport, markOpened: markReportOpened } = useLatestUnreadReport();
-    const { days: stravaDays } = useStravaDays(35);
+    const { days: stravaDays, reload: reloadStravaDays } = useStravaDays(35);
 
     const {
         data: activeProgramData,
@@ -75,6 +80,12 @@ export default function HomeScreen() {
             refetch();
         }, [refreshProfile, refreshAccess, refetch])
     );
+
+    // Aplica a marca do estúdio (white-label leve) a partir do coach do aluno.
+    // Persiste em MMKV (via store) p/ aplicar instantâneo no próximo boot.
+    useEffect(() => {
+        setBrandFromCoach(profile?.coach ?? null);
+    }, [profile?.coach, setBrandFromCoach]);
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [refreshing, setRefreshing] = useState(false);
@@ -142,9 +153,20 @@ export default function HomeScreen() {
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await Promise.all([refetch(), refreshProfile(), refreshAccess()]);
+        // Strava roda em paralelo + silencioso (sem webhook, sem sync automático
+        // confiável fora do background task de 12h). Recarrega os "dias com
+        // atividade" do calendário ao final pra refletir corridas recém-sincadas.
+        const stravaSync = (async () => {
+            try {
+                if (await isStravaConnected(supabase)) {
+                    await syncStravaIncremental(supabase, 7);
+                    await reloadStravaDays();
+                }
+            } catch { /* silencioso */ }
+        })();
+        await Promise.all([refetch(), refreshProfile(), refreshAccess(), stravaSync]);
         setRefreshing(false);
-    }, [refetch, refreshProfile, refreshAccess]);
+    }, [refetch, refreshProfile, refreshAccess, reloadStravaDays]);
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -401,7 +423,7 @@ export default function HomeScreen() {
                 contentContainerStyle={{ paddingBottom: 100, paddingTop: 20 }}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8b5cf6" />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={brand.color} />
                 }
             >
                 {/* ── Header: Fade-In 300ms ── */}
@@ -410,10 +432,17 @@ export default function HomeScreen() {
                     className="flex-row justify-between items-center mb-6"
                 >
                     <View className="flex-row items-center gap-3">
-                        <Image
-                            source={require("../../assets/images/logo-icon.jpg")}
-                            style={{ width: 32, height: 32, borderRadius: 8 }}
-                        />
+                        {brand.enabled && brand.logoUrl ? (
+                            <Image
+                                source={{ uri: brand.logoUrl }}
+                                style={{ width: 32, height: 32, borderRadius: 8 }}
+                            />
+                        ) : (
+                            <Image
+                                source={require("../../assets/images/logo-icon.jpg")}
+                                style={{ width: 32, height: 32, borderRadius: 8 }}
+                            />
+                        )}
                         <View>
                             <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text.tertiary }}>
                                 {getGreeting()},
@@ -421,6 +450,11 @@ export default function HomeScreen() {
                             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text.primary }}>
                                 {displayName}
                             </Text>
+                            {brand.enabled && brand.name ? (
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: brand.color, marginTop: 2 }}>
+                                    {brand.name}
+                                </Text>
+                            ) : null}
                             <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 4 }}>
                                 {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                             </Text>
@@ -484,7 +518,7 @@ export default function HomeScreen() {
 
                 {isLoading && !programName ? (
                     <View className="py-20 items-center">
-                        <ActivityIndicator color="#7c3aed" />
+                        <ActivityIndicator color={brand.color} />
                         <Text style={{ color: colors.text.tertiary, marginTop: 16, fontWeight: '500' }}>Sincronizando...</Text>
                     </View>
                 ) : (
@@ -689,6 +723,7 @@ function AchievementsGrid({
 // aderência completa não estão expostos aqui → frase mais curta.
 function WeeklySummaryCard({ completed, target }: { completed: number; target: number }) {
     const colors = useV2Colors();
+    const brand = useBrand();
     if (completed === 0) return null;
     const adherence = target > 0 ? Math.round((completed / target) * 100) : 0;
     return (
@@ -723,7 +758,7 @@ function WeeklySummaryCard({ completed, target }: { completed: number; target: n
                         .{' '}
                     </>
                 ) : '. '}
-                <Text style={{ fontStyle: 'italic', color: '#7C3AED' }}>Continue assim</Text>
+                <Text style={{ fontStyle: 'italic', color: brand.color }}>Continue assim</Text>
             </Text>
         </View>
     );

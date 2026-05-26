@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import { ANIM } from "../../lib/animations";
 import type { PendingWorkout, WeeklyProgress } from "@kinevo/shared/utils/schedule-projection";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
+import { useBrand } from "../../stores/brandStore";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -116,6 +117,7 @@ export function ActionCard({
     onPress,
 }: ActionCardProps) {
     const colors = useV2Colors();
+    const brand = useBrand();
     const styles = makeStyles(colors);
     const [expanded, setExpanded] = useState(false);
     // ─── Non-today view: keep legacy behavior for past/future dates ───
@@ -294,13 +296,13 @@ export function ActionCard({
                     style={styles.heroShell}
                 >
                     <LinearGradient
-                        colors={['#18181B', '#27272A', '#3B0764', '#5B21B6']}
+                        colors={['#18181B', '#27272A', brand.deep, brand.dark]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={styles.heroGradient}
                     >
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <View style={styles.heroIconDark}>
+                            <View style={[styles.heroIconDark, { backgroundColor: brand.tint30 }]}>
                                 <Dumbbell size={20} color="#FFFFFF" strokeWidth={2.2} />
                             </View>
                             <View style={styles.heroBadge}>
@@ -323,8 +325,8 @@ export function ActionCard({
                                 accessibilityLabel={`Iniciar treino ${todayWorkout.name}`}
                                 style={styles.heroStartButton}
                             >
-                                <Play size={15} color="#4C1D95" fill="#4C1D95" />
-                                <Text style={styles.heroStartText}>Iniciar</Text>
+                                <Play size={15} color={brand.dark} fill={brand.dark} />
+                                <Text style={[styles.heroStartText, { color: brand.dark }]}>Iniciar</Text>
                             </PressableScale>
                         </View>
 
@@ -344,7 +346,7 @@ export function ActionCard({
                                         </View>
                                         {pct != null && (
                                             <View style={styles.bar}>
-                                                <View style={[styles.barFill, { flex: pct }]} />
+                                                <View style={[styles.barFill, { flex: pct, backgroundColor: brand.color }]} />
                                                 <View style={{ flex: 100 - pct }} />
                                             </View>
                                         )}

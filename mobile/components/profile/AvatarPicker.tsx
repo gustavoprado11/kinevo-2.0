@@ -2,6 +2,7 @@ import React from "react";
 import { View, Image, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { User, Camera } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
+import { useBrand } from "../../stores/brandStore";
 
 interface AvatarPickerProps {
     avatarUrl: string | null;
@@ -11,6 +12,7 @@ interface AvatarPickerProps {
 }
 
 export function AvatarPicker({ avatarUrl, isUploading, onPick, size = 80 }: AvatarPickerProps) {
+    const brand = useBrand();
     const borderRadius = size / 2;
     const badgeSize = 28;
 
@@ -103,12 +105,12 @@ export function AvatarPicker({ avatarUrl, isUploading, onPick, size = 80 }: Avat
                             width: badgeSize,
                             height: badgeSize,
                             borderRadius: badgeSize / 2,
-                            backgroundColor: "#7c3aed",
+                            backgroundColor: brand.color,
                             alignItems: "center",
                             justifyContent: "center",
                             borderWidth: 4,
                             borderColor: "#ffffff",
-                            shadowColor: '#7c3aed',
+                            shadowColor: brand.color,
                             shadowOffset: { width: 0, height: 2 },
                             shadowOpacity: 0.25,
                             shadowRadius: 4,

@@ -2,6 +2,8 @@ import React from "react";
 import { View, Text } from "react-native";
 import { Dumbbell, ChevronRight } from "lucide-react-native";
 import { PressableScale } from "./shared/PressableScale";
+import { useBrand } from "../stores/brandStore";
+import { toRgba } from "../lib/brandColor";
 
 interface WorkoutCardProps {
     title: string;
@@ -12,6 +14,7 @@ interface WorkoutCardProps {
 }
 
 export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0 }: WorkoutCardProps) {
+    const brand = useBrand();
     return (
         <PressableScale
             onPress={onPress}
@@ -44,13 +47,13 @@ export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0
                         height: 48,
                         width: 48,
                         borderRadius: 14,
-                        backgroundColor: '#f5f3ff',
+                        backgroundColor: toRgba(brand.color, 0.10),
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginRight: 16,
                     }}
                 >
-                    <Dumbbell size={22} color="#7c3aed" strokeWidth={1.5} />
+                    <Dumbbell size={22} color={brand.color} strokeWidth={1.5} />
                 </View>
 
                 {/* Content */}

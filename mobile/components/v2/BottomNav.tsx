@@ -36,6 +36,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { v2 } from '@kinevo/shared/tokens';
 import { useV2Colors, useIsDark } from '../../hooks/useV2Colors';
+import { useBrand } from '../../stores/brandStore';
+import { toRgba } from '../../lib/brandColor';
 
 const { spacing, radius, shadows } = v2;
 
@@ -103,6 +105,7 @@ function NavTabItem<K extends string>({
     onPress: () => void;
 }) {
     const colors = useV2Colors();
+    const brand = useBrand();
     const scale = useSharedValue(1);
     const activeProgress = useSharedValue(active ? 1 : 0);
 
@@ -140,7 +143,7 @@ function NavTabItem<K extends string>({
             >
                 <Animated.View style={[StyleSheet.absoluteFill, styles.tintedWrap, tintedStyle]}>
                     <LinearGradient
-                        colors={['rgba(237,233,254,0.6)', 'rgba(245,243,255,0.3)']}
+                        colors={[toRgba(brand.color, 0.22), toRgba(brand.color, 0.10)]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={StyleSheet.absoluteFill}
@@ -150,7 +153,7 @@ function NavTabItem<K extends string>({
                 <View style={styles.iconWrap}>
                     {React.isValidElement(tab.icon) && typeof tab.icon.type !== 'string'
                         ? React.cloneElement(tab.icon as React.ReactElement<{ color?: string; strokeWidth?: number }>, {
-                            color: active ? colors.purple[700] : colors.text.quaternary,
+                            color: active ? brand.color : colors.text.quaternary,
                             strokeWidth: active ? 2.4 : 2,
                         })
                         : tab.icon}
@@ -172,7 +175,7 @@ function NavTabItem<K extends string>({
                     style={{
                         fontFamily: active ? 'PlusJakartaSans_700Bold' : 'PlusJakartaSans_600SemiBold',
                         fontSize: 10,
-                        color: active ? colors.purple[700] : colors.text.quaternary,
+                        color: active ? brand.color : colors.text.quaternary,
                         marginTop: 2,
                     }}
                     numberOfLines={1}

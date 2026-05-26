@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
+import { useBrand } from '../../stores/brandStore';
 
 export interface SleepWeekChartProps {
   // 7 datapoints, em ordem cronológica (índice 0 = 6 dias atrás, 6 = hoje).
@@ -12,6 +13,7 @@ const BAR_MIN_HEIGHT = 4;
 
 export function SleepWeekChart({ data }: SleepWeekChartProps) {
   const colors = useV2Colors();
+  const brand = useBrand();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const max = Math.max(BAR_TARGET_MIN, ...data.map((d) => d.minutes ?? 0));
   return (
@@ -27,8 +29,11 @@ export function SleepWeekChart({ data }: SleepWeekChartProps) {
                 <View
                   style={[
                     styles.barFill,
-                    { height: `${Math.max(heightPct, BAR_MIN_HEIGHT)}%`, opacity: d.minutes != null ? 1 : 0.2 },
-                    isLast && styles.barLast,
+                    {
+                      height: `${Math.max(heightPct, BAR_MIN_HEIGHT)}%`,
+                      opacity: d.minutes != null ? 1 : 0.2,
+                      backgroundColor: brand.color,
+                    },
                   ]}
                 />
               </View>
@@ -82,12 +87,15 @@ function createStyles(c: V2Palette) {
       justifyContent: 'flex-end',
     },
     barFill: {
+      // Cor base só pra fallback; o real vem da marca via override inline
+      // (barColor / brand.color) no JSX do componente.
       width: '100%',
-      backgroundColor: '#6366F1', // sleep indigo (semantic — mantém)
+      backgroundColor: c.brand.primary,
       borderRadius: 4,
     },
     barLast: {
-      backgroundColor: c.purple[400],
+      // Mantido só p/ compat; override inline com brand.color no JSX.
+      backgroundColor: c.brand.primary,
     },
     dayLabel: {
       fontSize: 10,

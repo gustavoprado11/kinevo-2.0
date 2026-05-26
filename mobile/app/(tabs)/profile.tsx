@@ -14,6 +14,8 @@ import {
 } from "lucide-react-native";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { useBrand } from "../../stores/brandStore";
+import { toRgba } from "../../lib/brandColor";
 import { LinearGradient } from "expo-linear-gradient";
 import { v2 } from "@kinevo/shared/tokens";
 import { AdaptiveModal } from "../../components/shared/AdaptiveModal";
@@ -41,6 +43,7 @@ function appearanceIcon(mode: ThemeMode): typeof Sun {
 
 export default function ProfileScreen() {
     const colors = useV2Colors();
+    const brand = useBrand();
     const router = useRouter();
     const { user, signOut } = useAuth();
     const { profile, isUploading, updateAvatar } = useStudentProfile();
@@ -69,8 +72,8 @@ export default function ProfileScreen() {
             id: 'appearance',
             label: 'Aparência',
             Icon: Monitor,
-            iconColor: '#7c3aed',
-            iconBg: 'rgba(124, 58, 237, 0.12)',
+            iconColor: brand.color,
+            iconBg: toRgba(brand.color, 0.12),
             route: null as string | null,
         },
         {
@@ -93,8 +96,8 @@ export default function ProfileScreen() {
             id: 'support',
             label: 'Suporte',
             Icon: HelpCircle,
-            iconColor: '#7c3aed',
-            iconBg: 'rgba(124, 58, 237, 0.12)',
+            iconColor: brand.color,
+            iconBg: toRgba(brand.color, 0.12),
             route: '/profile/support',
         },
         {
@@ -156,7 +159,7 @@ export default function ProfileScreen() {
                         overflow: 'hidden',
                         borderWidth: 1,
                         borderColor: 'rgba(255,255,255,0.06)',
-                        shadowColor: '#7C3AED',
+                        shadowColor: brand.color,
                         shadowOffset: { width: 0, height: 12 },
                         shadowOpacity: 0.18,
                         shadowRadius: 24,
@@ -164,7 +167,7 @@ export default function ProfileScreen() {
                     }}
                 >
                     <LinearGradient
-                        colors={['#18181B', '#27272A', '#3B0764']}
+                        colors={['#18181B', '#27272A', brand.deep]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={{ padding: 20 }}
@@ -173,7 +176,7 @@ export default function ProfileScreen() {
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 18 }}>
                             <View
                                 style={{
-                                    shadowColor: '#A78BFA',
+                                    shadowColor: brand.color,
                                     shadowOffset: { width: 0, height: 0 },
                                     shadowOpacity: 0.45,
                                     shadowRadius: 14,
@@ -331,7 +334,7 @@ export default function ProfileScreen() {
                                 marginBottom: 24,
                                 borderRadius: 20,
                                 overflow: 'hidden',
-                                shadowColor: '#7c3aed',
+                                shadowColor: brand.color,
                                 shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: 0.12,
                                 shadowRadius: 12,
@@ -340,14 +343,14 @@ export default function ProfileScreen() {
                         >
                             <View
                                 style={{
-                                    backgroundColor: 'rgba(124, 58, 237, 0.10)',
+                                    backgroundColor: toRgba(brand.color, 0.10),
                                     flexDirection: "row",
                                     alignItems: "center",
                                     paddingVertical: 16,
                                     paddingHorizontal: 20,
                                     borderRadius: 20,
                                     borderWidth: 1,
-                                    borderColor: 'rgba(124, 58, 237, 0.18)',
+                                    borderColor: toRgba(brand.color, 0.18),
                                 }}
                             >
                                 <View
@@ -355,25 +358,25 @@ export default function ProfileScreen() {
                                         height: 32,
                                         width: 32,
                                         borderRadius: 8,
-                                        backgroundColor: "rgba(124, 58, 237, 0.16)",
+                                        backgroundColor: toRgba(brand.color, 0.16),
                                         alignItems: "center",
                                         justifyContent: "center",
                                         marginRight: 14,
                                     }}
                                 >
-                                    <Users size={16} color="#7c3aed" strokeWidth={2} />
+                                    <Users size={16} color={brand.color} strokeWidth={2} />
                                 </View>
                                 <Text
                                     style={{
                                         fontSize: 16,
                                         fontWeight: "600",
-                                        color: "#7c3aed",
+                                        color: brand.color,
                                         flex: 1,
                                     }}
                                 >
                                     Modo Treinador
                                 </Text>
-                                <ChevronRight size={16} color="#a78bfa" strokeWidth={1.5} />
+                                <ChevronRight size={16} color={brand.color} strokeWidth={1.5} />
                             </View>
                         </PressableScale>
                     </Animated.View>

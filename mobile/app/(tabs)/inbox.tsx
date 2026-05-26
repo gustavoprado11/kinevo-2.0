@@ -22,6 +22,7 @@ import { useStudentProfile } from "../../hooks/useStudentProfile";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { ChatView } from "../../components/chat/ChatView";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { useBrand } from "../../stores/brandStore";
 import { LinearGradient } from "expo-linear-gradient";
 
 // ── Helpers ──
@@ -503,6 +504,7 @@ function TrainerCardHero({
     avatarUrl: string | null;
     onPress: () => void;
 }) {
+    const brand = useBrand();
     const initials = name
         .split(' ')
         .map((p) => p[0])
@@ -524,7 +526,7 @@ function TrainerCardHero({
             }}
         >
             <LinearGradient
-                colors={['#18181B', '#27272A', '#3B0764']}
+                colors={['#18181B', '#27272A', brand.deep]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -543,7 +545,7 @@ function TrainerCardHero({
                         borderWidth: 2,
                         borderColor: 'rgba(255,255,255,0.9)',
                         overflow: 'hidden',
-                        backgroundColor: '#5B21B6',
+                        backgroundColor: brand.dark,
                         alignItems: 'center',
                         justifyContent: 'center',
                     }}

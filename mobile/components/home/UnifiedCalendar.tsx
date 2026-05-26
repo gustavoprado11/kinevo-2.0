@@ -20,6 +20,8 @@ import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react-nati
 import * as Haptics from "expo-haptics";
 import { ANIM } from "../../lib/animations";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { useBrand } from "../../stores/brandStore";
+import { toRgba } from "../../lib/brandColor";
 import {
     generateCalendarDays,
     getWeekRange,
@@ -99,6 +101,7 @@ function WeekRow({
     extraActivityDays?: Set<string>;
 }) {
     const colors = useV2Colors();
+    const brand = useBrand();
     const selectedKey = toDateKey(selectedDate);
 
     return (
@@ -124,7 +127,7 @@ function WeekRow({
                                 textTransform: "uppercase",
                                 marginBottom: 10,
                                 fontWeight: isSelected ? "600" : isToday ? "500" : "400",
-                                color: isSelected ? "#7c3aed" : colors.text.quaternary,
+                                color: isSelected ? brand.color : colors.text.quaternary,
                             }}
                         >
                             {DAY_NAMES[index]}
@@ -138,7 +141,7 @@ function WeekRow({
                                     borderRadius: 18,
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    backgroundColor: isSelected ? "#7c3aed" : "transparent",
+                                    backgroundColor: isSelected ? brand.color : "transparent",
                                 }}
                             >
                                 <Text
@@ -199,6 +202,7 @@ export function UnifiedCalendar({
     fetchRange,
     extraActivityDays,
 }: UnifiedCalendarProps) {
+    const brand = useBrand();
     const colors = useV2Colors();
     const { width: screenWidth } = useWindowDimensions();
     const CALENDAR_WIDTH = screenWidth - CALENDAR_PADDING;
@@ -402,10 +406,10 @@ export function UnifiedCalendar({
                                     paddingHorizontal: 8,
                                     paddingVertical: 2,
                                     borderRadius: 6,
-                                    backgroundColor: '#f5f3ff',
+                                    backgroundColor: toRgba(brand.color, 0.10),
                                 }}
                             >
-                                <Text style={{ fontSize: 9, fontWeight: "700", color: "#7c3aed", letterSpacing: 1.5, textTransform: "uppercase" }}>
+                                <Text style={{ fontSize: 9, fontWeight: "700", color: brand.color, letterSpacing: 1.5, textTransform: "uppercase" }}>
                                     Hoje
                                 </Text>
                             </TouchableOpacity>
@@ -527,9 +531,9 @@ export function UnifiedCalendar({
                                         borderRadius: 16,
                                         alignItems: "center",
                                         justifyContent: "center",
-                                        backgroundColor: isSelected ? "#7c3aed" : "transparent",
+                                        backgroundColor: isSelected ? brand.color : "transparent",
                                         borderWidth: isToday && !isSelected ? 1 : 0,
-                                        borderColor: "#7c3aed",
+                                        borderColor: brand.color,
                                     }}
                                 >
                                     <Text
@@ -539,7 +543,7 @@ export function UnifiedCalendar({
                                             color: isSelected
                                                 ? "#ffffff"
                                                 : isToday
-                                                    ? "#7c3aed"
+                                                    ? brand.color
                                                     : colors.text.secondary,
                                         }}
                                     >

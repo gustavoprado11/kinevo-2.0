@@ -4,6 +4,8 @@ import { Dumbbell, ChevronRight, Check, Minus } from "lucide-react-native";
 import { PressableScale } from "../shared/PressableScale";
 import type { WeeklyProgress } from "@kinevo/shared/utils/schedule-projection";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { useBrand } from "../../stores/brandStore";
+import { toRgba } from "../../lib/brandColor";
 
 interface WorkoutListProps {
     workouts: any[];
@@ -14,6 +16,7 @@ interface WorkoutListProps {
 
 export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCompletedIds }: WorkoutListProps) {
     const colors = useV2Colors();
+    const brand = useBrand();
     if (workouts.length === 0) return null;
 
     return (
@@ -74,7 +77,7 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                     borderRadius: 14,
                                     backgroundColor: isFullyDone
                                         ? 'rgba(16,185,129,0.14)'
-                                        : 'rgba(124,58,237,0.12)',
+                                        : toRgba(brand.color, 0.12),
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     marginRight: 16,
@@ -83,7 +86,7 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                 {isFullyDone ? (
                                     <Check size={22} color="#16a34a" strokeWidth={2} />
                                 ) : (
-                                    <Dumbbell size={22} color="#7c3aed" strokeWidth={1.5} />
+                                    <Dumbbell size={22} color={brand.color} strokeWidth={1.5} />
                                 )}
                             </View>
 
