@@ -9,6 +9,8 @@ import { ExerciseItem, ExerciseWithDetails } from './exercise-item'
 import { ExerciseFormModal } from './exercise-form-modal'
 import { MuscleGroupManagerModal } from './muscle-group-manager-modal'
 import { TrainerVideoModal, type TrainerVideoData } from './trainer-video-modal'
+import { ConciergeButton } from './concierge-button'
+import { ConciergeModal } from './concierge-modal'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { Button } from '@/components/ui/button'
 import { Plus, Search, Settings2, LayoutGrid, List, ChevronDown, Check } from 'lucide-react'
@@ -152,6 +154,7 @@ export function ExercisesClient({
     // Modal states
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isManagerOpen, setIsManagerOpen] = useState(false)
+    const [isConciergeOpen, setIsConciergeOpen] = useState(false)
     const [editingExercise, setEditingExercise] = useState<ExerciseWithDetails | null>(null)
     const [trainerVideosMap, setTrainerVideosMap] = useState<Record<string, TrainerVideoData>>(initialTrainerVideosMap)
     const [videoModalExercise, setVideoModalExercise] = useState<ExerciseWithDetails | null>(null)
@@ -309,14 +312,17 @@ export function ExercisesClient({
                         {deduplicatedExercises.length}
                     </span>
                 </div>
-                <Button
-                    data-onboarding="exercises-add-btn"
-                    onClick={handleCreate}
-                    className="gap-2 rounded-full bg-[#7C3AED] dark:bg-glass-bg dark:border dark:border-k-border-primary hover:bg-[#6D28D9] dark:hover:bg-glass-bg-active text-white dark:text-k-text-secondary px-5 py-2 text-sm font-medium transition-all"
-                >
-                    <Plus size={16} strokeWidth={2} />
-                    Criar exercício
-                </Button>
+                <div className="flex items-center gap-3">
+                    <ConciergeButton onClick={() => setIsConciergeOpen(true)} />
+                    <Button
+                        data-onboarding="exercises-add-btn"
+                        onClick={handleCreate}
+                        className="gap-2 rounded-full bg-[#7C3AED] dark:bg-glass-bg dark:border dark:border-k-border-primary hover:bg-[#6D28D9] dark:hover:bg-glass-bg-active text-white dark:text-k-text-secondary px-5 py-2 text-sm font-medium transition-all"
+                    >
+                        <Plus size={16} strokeWidth={2} />
+                        Criar exercício
+                    </Button>
+                </div>
             </div>
 
             <div className="space-y-4">
@@ -463,6 +469,13 @@ export function ExercisesClient({
 
             {/* Tour */}
             <TourRunner tourId="exercises" steps={TOUR_STEPS.exercises} autoStart />
+
+            {/* Concierge — pedido p/ a equipe montar a biblioteca em 24h */}
+            <ConciergeModal
+                open={isConciergeOpen}
+                source="biblioteca_button"
+                onClose={() => setIsConciergeOpen(false)}
+            />
         </AppLayout>
     )
 }
