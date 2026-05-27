@@ -2,11 +2,14 @@
 
 import { headers } from 'next/headers'
 import { createHash } from 'crypto'
-import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
+import { LEAD_SCHEMA, type LeadSchemaInput } from './lead-schema'
+
+// Re-export pra manter compat com qualquer import externo do schema.
+export { LEAD_SCHEMA } from './lead-schema'
 
 /**
  * Lead capture pública na landing /com/[slug].
@@ -25,18 +28,7 @@ import { sendTrainerPush } from '@/lib/push-notifications'
  *  inválido"; nem "rate limit hit" vs "lead duplicado".
  */
 
-const LEAD_SCHEMA = z.object({
-    slug: z.string().min(3).max(40),
-    name: z.string().trim().min(2).max(100),
-    email: z.string().trim().email().max(200),
-    whatsapp: z.string().trim().min(8).max(30),
-    goal: z.string().trim().max(50).nullable().optional(),
-    level: z.string().trim().max(50).nullable().optional(),
-    message: z.string().trim().max(1000).nullable().optional(),
-    hp: z.string().max(200).optional(), // honeypot: must be empty
-})
-
-export type SubmitTrainerLeadInput = z.infer<typeof LEAD_SCHEMA>
+export type SubmitTrainerLeadInput = LeadSchemaInput
 
 export type SubmitTrainerLeadResult =
     | { success: true }

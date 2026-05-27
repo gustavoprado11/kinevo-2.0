@@ -13,25 +13,11 @@ import {
     type FaqItem,
 } from '@/lib/landing/defaults'
 import { LeadForm } from './_components/LeadForm'
+import { mix, rgba } from '@/lib/landing/color'
 import './landing.css'
 
 /* ───────── ISR ───────── */
 export const revalidate = 60 // segundos
-
-/* ───────── Util de cor ───────── */
-function hexToRgb(hex: string): [number, number, number] {
-    const c = hex.replace('#', '')
-    return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)]
-}
-function mix(hex: string, target: string, t: number): string {
-    const a = hexToRgb(hex)
-    const b = hexToRgb(target)
-    return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join('')
-}
-function rgba(hex: string, alpha: number): string {
-    const [r, g, b] = hexToRgb(hex)
-    return `rgba(${r},${g},${b},${alpha})`
-}
 
 /* ───────── Tipos ───────── */
 interface TrainerRow {
@@ -551,9 +537,10 @@ export default async function TrainerLandingPage({
                                 <span>{studio}{cref ? ` · CREF ${cref}` : ''}</span>
                             </div>
                         </div>
-                        <a className="lt-powered" href="https://www.kinevoapp.com" target="_blank" rel="noopener noreferrer">
+                        <a className="lt-powered" href="https://www.kinevoapp.com" target="_blank" rel="noopener noreferrer" aria-label="Powered by Kinevo — abrir site">
                             powered by{' '}
-                            <span className="lt-k">K</span>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img className="lt-k" src="/logo-icon.png" alt="Kinevo" />
                             <b>Kinevo</b>
                         </a>
                     </div>
