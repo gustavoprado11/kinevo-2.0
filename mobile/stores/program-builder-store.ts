@@ -321,6 +321,15 @@ interface ProgramBuilderState {
         equipment: string | null;
         muscle_groups: { id: string; name: string }[];
     }) => void;
+    /** Substitui o exercício de um item mantendo prescrição (sets/reps/rest/scheme).
+     *  Atualiza só exercise_id, exercise_name, exercise_equipment e
+     *  exercise_muscle_groups. Usado pelo "Trocar exercício" no card. */
+    swapExercise: (workoutId: string, itemId: string, exercise: {
+        id: string;
+        name: string;
+        equipment: string | null;
+        muscle_groups: { id: string; name: string }[];
+    }) => void;
     updateItem: (workoutId: string, itemId: string, updates: Partial<Pick<WorkoutItem, 'sets' | 'reps' | 'rest_seconds' | 'notes' | 'set_scheme' | 'method_key' | 'rounds' | 'item_config'>>) => void;
     /** Replace per-set scheme + method + rounds on an item. Used by SetSchemeEditor.
      *  `rounds` defaults to 1 when omitted (linear method). */
@@ -1103,6 +1112,31 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     isDirty: true,
                 };
             }),
+
+            swapExercise: (workoutId, itemId, exercise) => set((state) => ({
+                draft: {
+                    ...state.draft,
+                    workouts: state.draft.workouts.map(w =>
+                        w.id === workoutId
+                            ? {
+                                ...w,
+                                items: w.items.map(item =>
+                                    item.id === itemId
+                                        ? {
+                                            ...item,
+                                            exercise_id: exercise.id,
+                                            exercise_name: exercise.name,
+                                            exercise_equipment: exercise.equipment,
+                                            exercise_muscle_groups: exercise.muscle_groups.map(mg => mg.name),
+                                        }
+                                        : item
+                                ),
+                            }
+                            : w
+                    ),
+                },
+                isDirty: true,
+            })),
 
             addNote: (workoutId, initialText) => set((state) => {
                 const workout = state.draft.workouts.find(w => w.id === workoutId);

@@ -20,6 +20,10 @@ interface WorkoutItemRowProps {
     onDelete: () => void;
     onDuplicate?: () => void;
     onEditSets?: () => void;
+    /** Caminho padrão de edição (séries / reps / descanso) — bottomsheet
+     *  rápido, sem entrar no editor de fases/métodos. Quando ausente, o
+     *  tap do card cai no comportamento legado (abrir avançado). */
+    onQuickEdit?: () => void;
     /** Toggle: chamado quando o trainer está em modo avançado e clica
      *  novamente em "Editar séries". Limpa set_scheme/method_key/rounds
      *  e re-popula os agregados via summarize. Quando ausente, o botão
@@ -102,6 +106,7 @@ export function WorkoutItemRow({
     onDelete,
     onDuplicate,
     onEditSets,
+    onQuickEdit,
     onExitAdvanced,
     onEditNote,
     onEditWarmup,
@@ -159,36 +164,39 @@ export function WorkoutItemRow({
     const totalReps = useMemo(() => estimateTotalReps(item), [item]);
     const minutes = useMemo(() => estimateMinutes(item), [item]);
 
-    /* Em modo avançado, o card inteiro vira tappable pra reabrir o sheet
-     * do set scheme — antes a única forma era pelo pill "Modo simples", que
-     * na verdade SAI do modo avançado e perde a prescrição. Fluxo agora:
-     *
-     * - Modo avançado: toque em qualquer área "neutra" do card → abre
-     *   editor do scheme (igual ao "Editar séries" no modo simples).
-     * - Botões filhos (drag, delete, pill "Modo simples") seguem capturando
-     *   seus próprios toques — Pressable não recebe quando um filho
-     *   touchable consome o evento primeiro.
-     * - Modo simples: card não é tappable (os inputs Sets/Reps já são a
-     *   affordance de edição). */
+    /* Card tap behavior:
+     * - Modo simples: abre o QuickEditSheet (séries / reps / descanso).
+     *   Default mais comum — ajuste rápido sem entrar nas fases.
+     * - Modo avançado: abre o SetSchemeEditor (preserva fluxo legado, já
+     *   que o trainer está em prescrição por fases).
+     * - Botões filhos (drag, "...", pills) consomem o evento primeiro. */
     const handleCardPress = () => {
         if (inSuperset) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
         if (advancedActive && onEditSets) {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onEditSets();
+            return;
+        }
+        if (onQuickEdit) {
+            onQuickEdit();
         }
     };
 
     const renderRightActions = () => (
         <View style={{ flexDirection: 'row', gap: 6, marginLeft: 8, marginBottom: 6 }}>
-            {onEditSets && (
+            {(onQuickEdit || onEditSets) && (
                 <TouchableOpacity
                     onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         swipeableRef.current?.close();
-                        onEditSets();
+                        // Swipe-quick action: simple mode → quick edit; advanced
+                        // mode → set scheme editor.
+                        if (advancedActive && onEditSets) onEditSets();
+                        else if (onQuickEdit) onQuickEdit();
+                        else onEditSets?.();
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel="Editar séries"
+                    accessibilityLabel="Editar exercício"
                     style={{
                         width: 64,
                         backgroundColor: colors.semantic.info.default,
@@ -532,7 +540,7 @@ export function WorkoutItemRow({
                             </Text>
                         )}
                     </View>
-                    {item.item_type === 'exercise' && onEditSets && (
+                    {item.item_type === 'exercise' && (onEditSets || onQuickEdit) && (
                         <TouchableOpacity
                             onPress={() => {
                                 if (inSuperset) return;
@@ -555,11 +563,12 @@ export function WorkoutItemRow({
                                     return;
                                 }
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                onEditSets?.();
+                                if (onQuickEdit) onQuickEdit();
+                                else onEditSets?.();
                             }}
                             disabled={inSuperset}
                             accessibilityRole="button"
-                            accessibilityLabel={advancedActive ? 'Voltar para modo simples' : 'Editar séries'}
+                            accessibilityLabel={advancedActive ? 'Voltar para modo simples' : 'Editar séries, reps e descanso'}
                             style={{ paddingVertical: 4, paddingHorizontal: 6, opacity: inSuperset ? 0.4 : 1 }}
                         >
                             <Text
@@ -571,7 +580,7 @@ export function WorkoutItemRow({
                                     letterSpacing: 0.5,
                                 }}
                             >
-                                {advancedActive ? 'Modo simples' : 'Editar séries'}
+                                {advancedActive ? 'Modo simples' : 'Editar'}
                             </Text>
                         </TouchableOpacity>
                     )}

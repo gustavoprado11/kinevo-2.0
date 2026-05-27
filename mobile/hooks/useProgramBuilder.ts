@@ -853,6 +853,7 @@ export function useProgramBuilder() {
         updateWorkoutFrequency: store.updateWorkoutFrequency,
         setCurrentWorkout: store.setCurrentWorkout,
         addExercise: store.addExercise,
+        swapExercise: store.swapExercise,
         updateItem: store.updateItem,
         removeItem: store.removeItem,
         duplicateItem: store.duplicateItem,

@@ -25,6 +25,7 @@ import { EmptyWorkoutState } from "@/components/trainer/program-builder/EmptyWor
 import { WorkoutItemRow } from "@/components/trainer/program-builder/WorkoutItemRow";
 import { SetSchemeEditor, type SetSchemeEditorResult } from "@/components/trainer/program-builder/SetSchemeEditor";
 import { ExercisePickerModal } from "@/components/trainer/program-builder/ExercisePickerModal";
+import { QuickEditSheet } from "@/components/trainer/program-builder/QuickEditSheet";
 import { AddBlockSheet } from "@/components/trainer/program-builder/AddBlockSheet";
 import { EditNoteSheet } from "@/components/trainer/program-builder/EditNoteSheet";
 import { EditWarmupSheet } from "@/components/trainer/program-builder/EditWarmupSheet";
@@ -68,6 +69,8 @@ export default function ProgramBuilderScreen() {
     const addCardio = useProgramBuilderStore((s) => s.addCardio);
     const clearSupersets = useProgramBuilderStore((s) => s.clearSupersets);
     const [setSchemeEditingItemId, setSetSchemeEditingItemId] = useState<string | null>(null);
+    const [quickEditingItemId, setQuickEditingItemId] = useState<string | null>(null);
+    const [swapTargetItemId, setSwapTargetItemId] = useState<string | null>(null);
     const [nameFocused, setNameFocused] = useState(false);
     const [descriptionFocused, setDescriptionFocused] = useState(false);
     const { data: studentDetail } = useStudentDetail(params.studentId ?? null);
@@ -89,6 +92,7 @@ export default function ProgramBuilderScreen() {
         updateWorkoutFrequency,
         setCurrentWorkout,
         addExercise,
+        swapExercise,
         updateItem,
         removeItem,
         duplicateItem,
@@ -401,6 +405,7 @@ export default function ProgramBuilderScreen() {
                     duplicateItem(currentWorkout.id, item.id);
                 }}
                 onEditSets={() => setSetSchemeEditingItemId(item.id)}
+                onQuickEdit={() => setQuickEditingItemId(item.id)}
                 onEditNote={() => setEditingNoteItemId(item.id)}
                 onEditWarmup={() => setEditingWarmupItemId(item.id)}
                 onEditCardio={() => setEditingCardioItemId(item.id)}
@@ -408,7 +413,11 @@ export default function ProgramBuilderScreen() {
                     openExerciseActionsMenu({
                         exerciseName: item.exercise_name,
                         onChoose: (choice) => {
-                            if (choice === 'edit_sets') {
+                            if (choice === 'quick_edit') {
+                                setQuickEditingItemId(item.id);
+                            } else if (choice === 'swap_exercise') {
+                                setSwapTargetItemId(item.id);
+                            } else if (choice === 'edit_sets') {
                                 setSetSchemeEditingItemId(item.id);
                             } else if (choice === 'duplicate') {
                                 duplicateItem(currentWorkout.id, item.id);
@@ -462,6 +471,11 @@ export default function ProgramBuilderScreen() {
         if (!setSchemeEditingItemId || !currentWorkout) return null;
         return currentWorkout.items.find((it) => it.id === setSchemeEditingItemId) ?? null;
     }, [setSchemeEditingItemId, currentWorkout]);
+
+    const quickEditingItem = useMemo(() => {
+        if (!quickEditingItemId || !currentWorkout) return null;
+        return currentWorkout.items.find((it) => it.id === quickEditingItemId) ?? null;
+    }, [quickEditingItemId, currentWorkout]);
 
     const handleSchemeSave = useCallback(
         (result: SetSchemeEditorResult) => {
@@ -811,6 +825,42 @@ export default function ProgramBuilderScreen() {
                             exerciseName={editingItem.exercise_name}
                             onSave={handleSchemeSave}
                             onClose={() => setSetSchemeEditingItemId(null)}
+                        />
+                    )}
+
+                    {/* Quick-edit (séries/reps/descanso) — default ao tocar no
+                     *  card e via "..." > "Editar". */}
+                    {quickEditingItem && currentWorkout && (
+                        <QuickEditSheet
+                            visible={!!quickEditingItemId}
+                            exerciseName={quickEditingItem.exercise_name}
+                            initial={{
+                                sets: quickEditingItem.sets ?? 3,
+                                reps: quickEditingItem.reps ?? '10',
+                                rest_seconds: quickEditingItem.rest_seconds ?? 60,
+                            }}
+                            onClose={() => setQuickEditingItemId(null)}
+                            onSave={(next) => {
+                                updateItem(currentWorkout.id, quickEditingItem.id, next);
+                            }}
+                            onOpenAdvanced={() => {
+                                setSetSchemeEditingItemId(quickEditingItem.id);
+                            }}
+                        />
+                    )}
+
+                    {/* Trocar exercício — reusa o ExercisePickerModal: ao
+                     *  selecionar, dispara swapExercise mantendo prescrição. */}
+                    {!isTablet && (
+                        <ExercisePickerModal
+                            visible={!!swapTargetItemId}
+                            onClose={() => setSwapTargetItemId(null)}
+                            onSelect={(exercise) => {
+                                if (!currentWorkout || !swapTargetItemId) return;
+                                swapExercise(currentWorkout.id, swapTargetItemId, exercise);
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
+                                setSwapTargetItemId(null);
+                            }}
                         />
                     )}
                 </>
