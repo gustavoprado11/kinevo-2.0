@@ -5,6 +5,8 @@ import { createHash } from 'crypto'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { insertTrainerNotification } from '@/lib/trainer-notifications'
+import { sendTrainerPush } from '@/lib/push-notifications'
 
 /**
  * Lead capture pública na landing /com/[slug].
@@ -124,7 +126,7 @@ export async function submitTrainerLead(
     }
 
     // 6. Insert.
-    const { error: insertError } = await supabaseAdmin
+    const { data: inserted, error: insertError } = await supabaseAdmin
         .from('trainer_leads')
         .insert({
             trainer_id: trainerId,
@@ -140,13 +142,47 @@ export async function submitTrainerLead(
             ip_hash: ipHash,
             user_agent: userAgent,
         } as never)
+        .select('id')
+        .single()
 
-    if (insertError) {
+    if (insertError || !inserted) {
         console.error('[submitTrainerLead] insert error:', insertError)
         return { success: false, message: 'Não foi possível enviar agora. Tente de novo em instantes.' }
     }
 
-    // TODO M3: enfileirar push notification + criar trainer_notifications row.
+    // 7. Notificar o trainer (push + in-app). Não bloqueia o sucesso do lead
+    //    se algum dos dois falhar — helpers são non-throwing.
+    const leadId = (inserted as { id: string }).id
+    const previewMessage = data.message
+        ? data.message.slice(0, 120)
+        : [data.goal && `Objetivo: ${data.goal}`, data.level && `Nível: ${data.level}`]
+            .filter(Boolean)
+            .join(' · ') || 'Sem mensagem.'
+
+    const notificationId = await insertTrainerNotification({
+        trainerId,
+        type: 'new_lead',
+        title: `Novo lead — ${data.name}`,
+        message: previewMessage,
+        category: 'leads',
+        metadata: {
+            leadId,
+            leadName: data.name,
+            leadEmail: data.email.toLowerCase(),
+            leadWhatsapp: data.whatsapp,
+            slug,
+        },
+    })
+
+    // Push em background — não awaita pra não atrasar a resposta ao lead.
+    void sendTrainerPush({
+        trainerId,
+        type: 'new_lead',
+        title: 'Novo lead chegou 🎯',
+        body: `${data.name} acabou de preencher sua landing.`,
+        data: { leadId, type: 'new_lead' },
+        notificationId: notificationId ?? undefined,
+    })
 
     return { success: true }
 }
