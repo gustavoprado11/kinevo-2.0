@@ -551,18 +551,19 @@ export default function WorkoutPlayerScreen() {
                 stopActivity();
 
                 // Calculate Stats for Shareable Card
-                // Only 'main' exercises count towards volume (or all if no functions set)
+                // Volume só filtra pra 'main' quando algum exercício foi marcado
+                // como 'main'. Treinos sem categorização (ou só com accessory)
+                // contam tudo — senão o volume aparece como 0 no card de share.
                 let totalVolume = 0;
                 let completedExercisesCount = 0;
-                const hasAnyFunction = exercises.some(ex => ex.exerciseFunction);
+                const hasMain = exercises.some(ex => ex.exerciseFunction === 'main');
 
                 exercises.forEach(ex => {
                     // Check if at least one set is completed
                     const hasCompletedSet = ex.setsData.some(s => s.completed);
                     if (hasCompletedSet) completedExercisesCount++;
 
-                    // Calculate volume only for 'main' exercises (or all if no functions defined)
-                    const countsForVolume = !hasAnyFunction || ex.exerciseFunction === 'main';
+                    const countsForVolume = !hasMain || ex.exerciseFunction === 'main';
                     if (countsForVolume) {
                         ex.setsData.forEach(s => {
                             if (s.completed) {

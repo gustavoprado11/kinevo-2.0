@@ -53,7 +53,11 @@ export async function loadSessionStats(sessionId: string): Promise<SessionStats>
         const exerciseAgg: Record<string, { name: string, sets: number, maxWeight: number, maxReps: number, order: number, exerciseId: string }> = {};
         let exerciseOrder = 0;
 
-        const hasAnyFunction = logs.some((log: any) => log.assigned_workout_items?.exercise_function);
+        // Volume conta toda set quando o treino não tem nenhum exercício marcado
+        // como 'main' (ex.: programa só com accessory ou sem categorização).
+        // Quando existe 'main', filtra pra só 'main' (separa volume principal
+        // de aquecimento/acessório, intent original).
+        const hasMain = logs.some((log: any) => log.assigned_workout_items?.exercise_function === 'main');
 
         logs.forEach((log: any) => {
             const weight = Number(log.weight) || 0;
@@ -62,7 +66,7 @@ export async function loadSessionStats(sessionId: string): Promise<SessionStats>
             const exerciseId = log.exercise_id as string;
             const exerciseFunction = log.assigned_workout_items?.exercise_function;
 
-            const countsForVolume = !hasAnyFunction || exerciseFunction === 'main';
+            const countsForVolume = !hasMain || exerciseFunction === 'main';
             if (countsForVolume) {
                 totalVolume += weight * reps;
             }
