@@ -147,7 +147,14 @@ export function KPICard({
                 <View style={[styles.iconBox, { backgroundColor: accentPair.bg }]}>
                     {icon}
                 </View>
-                <Text style={[styles.label, { color: colors.text.tertiary }]}>{label}</Text>
+                <Text
+                    style={[styles.label, { color: colors.text.tertiary }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                >
+                    {label}
+                </Text>
             </View>
 
             <View style={styles.valueRow}>
@@ -226,6 +233,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     label: {
+        flexShrink: 1,
         fontFamily: 'PlusJakartaSans_700Bold',
         fontSize: 11,
         letterSpacing: 1.1,
