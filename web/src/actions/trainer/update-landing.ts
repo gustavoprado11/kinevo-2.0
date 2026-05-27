@@ -1,8 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { LANDING_SCHEMA, emptyToNull, type UpdateLandingInput } from './landing-schema'
 
 /**
  * Update da landing pública do trainer (M4 — campos texto).
@@ -15,34 +15,16 @@ import { createClient } from '@/lib/supabase/server'
  *   preenchido" → renderiza fallback na landing pública).
  *   Arrays vazios também viram NULL pra evitar `[]` espúrio no DB
  *   (a leitura na landing já trata NULL com defaults).
+ *
+ *   Schema e helpers puros vivem em `./landing-schema.ts` — Next 16
+ *   exige que arquivos 'use server' exportem apenas funções async.
  */
 
-const ARRAY_MAX = 8
-
-// Exportado pra cobertura em testes (validação isolada do resto da action).
-export const LANDING_SCHEMA = z.object({
-    headline: z.string().trim().max(200).optional().nullable(),
-    subheadline: z.string().trim().max(280).optional().nullable(),
-    bio: z.string().trim().max(800).optional().nullable(),
-    city: z.string().trim().max(80).optional().nullable(),
-    cref: z.string().trim().max(40).optional().nullable(),
-    certifications: z.array(z.string().trim().min(1).max(80)).max(ARRAY_MAX).optional().nullable(),
-    specializations: z.array(z.string().trim().min(1).max(40)).max(ARRAY_MAX).optional().nullable(),
-    yearStarted: z.number().int().min(1970).max(new Date().getFullYear()).optional().nullable(),
-    priceLabel: z.string().trim().max(80).optional().nullable(),
-})
-
-export type UpdateLandingInput = z.infer<typeof LANDING_SCHEMA>
+export type { UpdateLandingInput } from './landing-schema'
 
 export interface UpdateLandingResult {
     success: boolean
     message?: string
-}
-
-export function emptyToNull(v: string | null | undefined): string | null {
-    if (v === null || v === undefined) return null
-    const trimmed = v.trim()
-    return trimmed.length === 0 ? null : trimmed
 }
 
 export async function updateTrainerLanding(input: UpdateLandingInput): Promise<UpdateLandingResult> {

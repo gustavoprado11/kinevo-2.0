@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { LANDING_SCHEMA, emptyToNull } from '../update-landing'
+import { LANDING_SCHEMA, emptyToNull } from '../landing-schema'
 
 describe('LANDING_SCHEMA', () => {
     it('aceita payload vazio (rascunho)', () => {
