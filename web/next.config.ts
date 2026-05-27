@@ -133,7 +133,10 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: lylksbtgrihzepbteest.supabase.co",
               "media-src 'self' blob: lylksbtgrihzepbteest.supabase.co",
               "connect-src 'self' https://lylksbtgrihzepbteest.supabase.co wss://lylksbtgrihzepbteest.supabase.co https://api.openai.com https://api.stripe.com https://m.stripe.com",
-              "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://checkout.stripe.com https://js.stripe.com https://hooks.stripe.com https://dashboard.stripe.com https://challenges.cloudflare.com",
+              // 'self' libera o preview iframe do editor /marketing/landing
+              // embedando a própria /com/[slug]. frame-ancestors abaixo continua
+              // restringindo quem pode nos embedar.
+              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://checkout.stripe.com https://js.stripe.com https://hooks.stripe.com https://dashboard.stripe.com https://challenges.cloudflare.com",
               "frame-ancestors 'self'",
               "object-src 'none'",
               "base-uri 'self'",
