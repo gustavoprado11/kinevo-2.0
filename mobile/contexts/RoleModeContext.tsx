@@ -10,6 +10,7 @@ import React, {
 import * as SecureStore from "expo-secure-store";
 import { useAuth } from "./AuthContext";
 import { supabase } from "../lib/supabase";
+import { useBrandStore } from "../stores/brandStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -31,6 +32,13 @@ interface TrainerProfile {
     modality_focus: TrainerModalityFocus | null;
     /** Publica automaticamente os relatórios de treino pros alunos. */
     auto_publish_reports: boolean;
+    /** Marca personalizada (white-label leve). Aplicada ao app inteiro
+     *  do trainer e ao app do aluno via brandStore. */
+    brand_color: string | null;
+    brand_logo_url: string | null;
+    brand_name: string | null;
+    brand_show_powered_by: boolean | null;
+    branding_enabled: boolean | null;
 }
 
 interface RoleModeContextType {
@@ -93,7 +101,7 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
             if (userIsTrainer) {
                 const { data: trainer }: { data: any } = await supabase
                     .from("trainers" as any)
-                    .select("id, name, email, avatar_url, instagram_handle, modality_focus, auto_publish_reports")
+                    .select("id, name, email, avatar_url, instagram_handle, modality_focus, auto_publish_reports, brand_color, brand_logo_url, brand_name, brand_show_powered_by, branding_enabled")
                     .eq("auth_user_id", currentUser.id)
                     .single();
 
@@ -108,6 +116,23 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
                         instagram_handle: trainer.instagram_handle ?? null,
                         modality_focus: (trainer.modality_focus as TrainerModalityFocus | null) ?? null,
                         auto_publish_reports: trainer.auto_publish_reports ?? false,
+                        brand_color: trainer.brand_color ?? null,
+                        brand_logo_url: trainer.brand_logo_url ?? null,
+                        brand_name: trainer.brand_name ?? null,
+                        brand_show_powered_by: trainer.brand_show_powered_by ?? null,
+                        branding_enabled: trainer.branding_enabled ?? null,
+                    });
+
+                    // Aplica a marca do próprio trainer no app — pinta tab bar,
+                    // CTAs e demais surfaces que consomem `colors.brand.*` via
+                    // useV2Colors. No modo aluno, a home sobrescreve com a
+                    // marca do coach (mesma store).
+                    useBrandStore.getState().setBrandFromCoach({
+                        brand_color: trainer.brand_color,
+                        brand_logo_url: trainer.brand_logo_url,
+                        brand_name: trainer.brand_name,
+                        brand_show_powered_by: trainer.brand_show_powered_by,
+                        branding_enabled: trainer.branding_enabled,
                     });
 
                     const { data: sub }: { data: any } = await supabase
@@ -162,6 +187,20 @@ export function RoleModeProvider({ children }: { children: ReactNode }) {
             cancelledRef.current = true;
         };
     }, [user, resolveRole]);
+
+    // Reaplica a marca do próprio trainer ao entrar no modo trainer — sem
+    // isso, alunos dual-role veriam a marca do coach (setada por
+    // app/(tabs)/home.tsx) "vazar" pra UI do trainer.
+    useEffect(() => {
+        if (role !== "trainer" || !trainerProfile) return;
+        useBrandStore.getState().setBrandFromCoach({
+            brand_color: trainerProfile.brand_color,
+            brand_logo_url: trainerProfile.brand_logo_url,
+            brand_name: trainerProfile.brand_name,
+            brand_show_powered_by: trainerProfile.brand_show_powered_by,
+            branding_enabled: trainerProfile.branding_enabled,
+        });
+    }, [role, trainerProfile]);
 
     const refreshRoleMode = useCallback(async () => {
         await resolveRole(user);

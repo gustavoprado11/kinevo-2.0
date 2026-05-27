@@ -27,6 +27,36 @@ export function darken(hex: string, t = 0.32): string {
     return mix(hex, '#000000', t);
 }
 
+export function lighten(hex: string, t: number): string {
+    return mix(hex, '#FFFFFF', t);
+}
+
+/**
+ * Deriva uma escala de 11 tons (50…950) a partir de uma cor base, mantendo
+ * as proporções da paleta v2 (purple). Tons claros são mix com branco;
+ * tons escuros são mix com preto.
+ *
+ * Usado pra reescalar `colors.purple[N]` quando há marca custom — todos os
+ * componentes que consomem `colors.purple[N]` ganham a marca automaticamente
+ * (zero churn) e preservam as relações visuais (claro fica claro, escuro
+ * fica escuro).
+ */
+export function deriveBrandScale(color: string): Record<50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950, string> {
+    return {
+        50: lighten(color, 0.94),
+        100: lighten(color, 0.87),
+        200: lighten(color, 0.74),
+        300: lighten(color, 0.58),
+        400: lighten(color, 0.36),
+        500: lighten(color, 0.16),
+        600: color,
+        700: darken(color, 0.14),
+        800: darken(color, 0.30),
+        900: darken(color, 0.46),
+        950: darken(color, 0.66),
+    };
+}
+
 export function toRgba(hex: string, alpha: number): string {
     const [r, g, b] = hexToRgb(hex);
     return `rgba(${r},${g},${b},${alpha})`;

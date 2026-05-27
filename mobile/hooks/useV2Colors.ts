@@ -16,6 +16,7 @@ import { useColorScheme } from "react-native";
 import { v2 } from "@kinevo/shared/tokens";
 import { useThemePreferenceStore, type ThemeMode } from "../stores/themePreferenceStore";
 import { useBrandStore } from "../stores/brandStore";
+import { deriveBrandScale } from "../lib/brandColor";
 
 const { colors, colorsDark } = v2;
 
@@ -38,11 +39,21 @@ export function useV2Colors(): V2Palette {
         // automaticamente (AchievementCard, sidebar, trainer-mode quando dual-role,
         // etc.). Brand default Kinevo → palette base intacta (zero impacto).
         if (!brand.isCustom) return base;
+        // Reescala a paleta `purple` inteira a partir da marca custom, pra
+        // que TODOS os componentes que consomem `colors.purple[N]` pintem na
+        // marca automaticamente (~80 ocorrências em ~15 arquivos do trainer
+        // + componentes v2 compartilhados). Sem isso, só os componentes que
+        // usam `colors.brand.*` reagem ao branding — surfaces como dashboard
+        // trainer, KButton, KCard, program-builder ficam roxas mesmo com
+        // marca trocada. Os tons claros (100/200) mantêm leveza, os escuros
+        // (700–950) mantêm profundidade, via mix com white/black.
+        const purple = deriveBrandScale(brand.color);
         return {
             ...base,
+            purple,
             brand: {
                 primary: brand.color,
-                primaryLight: base.brand.primaryLight,
+                primaryLight: purple[100],
                 primaryDark: brand.dark,
             },
         } as unknown as V2Palette;
