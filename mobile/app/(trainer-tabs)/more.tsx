@@ -10,6 +10,7 @@ import {
     ChevronRight,
     Crown,
     ExternalLink,
+    Inbox,
     Instagram,
     LogOut,
     MessageCircle,
@@ -22,6 +23,7 @@ import {
 import Animated, { FadeIn, FadeInUp, Easing } from "react-native-reanimated";
 import Constants from "expo-constants";
 import { useRoleMode } from "../../contexts/RoleModeContext";
+import { useTrainerLeads } from "../../hooks/useTrainerLeads";
 import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { supabase } from "../../lib/supabase";
@@ -141,6 +143,74 @@ function Divider() {
                 backgroundColor: colors.border.subtle,
                 marginHorizontal: spacing[4],
             }}
+        />
+    );
+}
+
+/**
+ * Linha "Leads" no menu — usa o hook pra mostrar contador de não-lidos
+ * como badge à direita. Realtime via subscribe em trainer_leads.
+ */
+function LeadsMenuRow() {
+    const router = useRouter();
+    const colors = useV2Colors();
+    const { unreadCount } = useTrainerLeads();
+    return (
+        <MenuRow
+            icon={
+                <IconBox bg={toRgba(colors.brand.primary, 0.12)}>
+                    <Inbox size={16} color={colors.brand.primary} strokeWidth={2.2} />
+                </IconBox>
+            }
+            label="Leads"
+            sub={
+                <Text
+                    style={{
+                        fontFamily: "PlusJakartaSans_500Medium",
+                        fontSize: 12,
+                        color: colors.text.tertiary,
+                    }}
+                >
+                    {unreadCount > 0
+                        ? `${unreadCount} ${unreadCount === 1 ? "novo lead" : "novos leads"}`
+                        : "Vindos da sua landing pública"}
+                </Text>
+            }
+            trailing={
+                unreadCount > 0 ? (
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                        }}
+                    >
+                        <View
+                            style={{
+                                minWidth: 22,
+                                height: 22,
+                                paddingHorizontal: 6,
+                                borderRadius: 11,
+                                backgroundColor: colors.brand.primary,
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    fontFamily: "PlusJakartaSans_700Bold",
+                                    fontSize: 11,
+                                    color: "#fff",
+                                }}
+                            >
+                                {unreadCount > 99 ? "99+" : unreadCount}
+                            </Text>
+                        </View>
+                        <ChevronRight size={16} color={colors.text.quaternary} />
+                    </View>
+                ) : undefined
+            }
+            onPress={() => router.push("/leads" as never)}
         />
     );
 }
@@ -382,8 +452,18 @@ export default function MoreScreen() {
                     </LinearGradient>
                 </Animated.View>
 
+                {/* Captação */}
+                <SectionLabel title="Captação" delay={100} />
+                <Animated.View
+                    entering={FadeInUp.delay(120).duration(300).easing(Easing.out(Easing.cubic))}
+                >
+                    <KCard style={{ padding: 0 }}>
+                        <LeadsMenuRow />
+                    </KCard>
+                </Animated.View>
+
                 {/* Comunicação */}
-                <SectionLabel title="Comunicação" delay={120} />
+                <SectionLabel title="Comunicação" delay={140} />
                 <Animated.View
                     entering={FadeInUp.delay(140).duration(300).easing(Easing.out(Easing.cubic))}
                 >
