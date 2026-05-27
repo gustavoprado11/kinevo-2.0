@@ -22,6 +22,7 @@ import { useStudentProfile } from "../../hooks/useStudentProfile";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { ChatView } from "../../components/chat/ChatView";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 import { useBrand } from "../../stores/brandStore";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -355,10 +356,10 @@ function UnreadWidget({ count }: { count: number }) {
         }}>
             <View>
                 <Text style={{ color: colors.text.quaternary, fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' }}>Não lidos</Text>
-                <Text style={{ color: '#7c3aed', fontSize: 32, fontWeight: '900', marginTop: 2 }}>{count}</Text>
+                <Text style={{ color: colors.brand.primary, fontSize: 32, fontWeight: '900', marginTop: 2 }}>{count}</Text>
             </View>
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(124,58,237,0.12)', alignItems: 'center', justifyContent: 'center' }}>
-                <InboxIcon size={20} color="#7c3aed" />
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: toRgba(colors.brand.primary, 0.12), alignItems: 'center', justifyContent: 'center' }}>
+                <InboxIcon size={20} color={colors.brand.primary} />
             </View>
         </Animated.View>
     );
@@ -409,7 +410,7 @@ function NotificationsTab() {
             contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 120 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
-                <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#7c3aed" />
+                <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={colors.brand.primary} />
             }
         >
             <UnreadWidget count={unreadCount} />

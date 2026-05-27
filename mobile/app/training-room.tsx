@@ -45,6 +45,7 @@ import { ExerciseVideoModal } from '../components/workout/ExerciseVideoModal';
 import { ExerciseSwapModal } from '../components/workout/ExerciseSwapModal';
 import { RestTimerOverlay } from '../components/workout/RestTimerOverlay';
 import { useV2Colors } from '../hooks/useV2Colors';
+import { toRgba } from '../lib/brandColor';
 
 // ---------------------------------------------------------------------------
 // Elapsed Timer Component
@@ -238,10 +239,10 @@ function StudentChip({
                         paddingRight: hasProgress ? 8 : 10,
                         borderRadius: R,
                         backgroundColor: isDragging
-                            ? 'rgba(124, 58, 237, 0.15)'
-                            : isActive ? 'rgba(124, 58, 237, 0.1)' : colors.surface.card,
+                            ? toRgba(colors.brand.primary, 0.15)
+                            : isActive ? toRgba(colors.brand.primary, 0.1) : colors.surface.card,
                         borderWidth: 1,
-                        borderColor: isActive ? 'rgba(124, 58, 237, 0.3)' : colors.border.default,
+                        borderColor: isActive ? toRgba(colors.brand.primary, 0.3) : colors.border.default,
                         shadowColor: isDragging ? '#000' : 'transparent',
                         shadowOffset: { width: 0, height: isDragging ? 4 : 0 },
                         shadowOpacity: isDragging ? 0.15 : 0,
@@ -260,12 +261,12 @@ function StudentChip({
                                 width: 28,
                                 height: 28,
                                 borderRadius: 14,
-                                backgroundColor: isActive ? 'rgba(124, 58, 237, 0.15)' : '#f1f5f9',
+                                backgroundColor: isActive ? toRgba(colors.brand.primary, 0.15) : '#f1f5f9',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}
                         >
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? '#7c3aed' : '#64748b' }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? colors.brand.primary : '#64748b' }}>
                                 {session.studentName.charAt(0).toUpperCase()}
                             </Text>
                         </View>
@@ -274,7 +275,7 @@ function StudentChip({
                         style={{
                             fontSize: 13,
                             fontWeight: '600',
-                            color: isActive ? '#7c3aed' : '#334155',
+                            color: isActive ? colors.brand.primary : '#334155',
                             maxWidth: 72,
                         }}
                         numberOfLines={1}
@@ -284,7 +285,7 @@ function StudentChip({
                     {hasProgress && (
                         <View
                             style={{
-                                backgroundColor: isActive ? 'rgba(124, 58, 237, 0.15)' : '#f1f5f9',
+                                backgroundColor: isActive ? toRgba(colors.brand.primary, 0.15) : '#f1f5f9',
                                 borderRadius: 8,
                                 paddingHorizontal: 5,
                                 paddingVertical: 1,
@@ -294,7 +295,7 @@ function StudentChip({
                                 style={{
                                     fontSize: 10,
                                     fontWeight: '700',
-                                    color: isActive ? '#7c3aed' : '#64748b',
+                                    color: isActive ? colors.brand.primary : '#64748b',
                                     fontVariant: ['tabular-nums'],
                                 }}
                             >
@@ -314,7 +315,7 @@ function StudentChip({
                         bottom: -1.5,
                         borderRadius: R + 1,
                         borderWidth: 2.5,
-                        borderColor: '#7c3aed',
+                        borderColor: colors.brand.primary,
                         opacity: pressOpacity,
                     }}
                 />
@@ -937,7 +938,7 @@ export default function TrainingRoomScreen() {
                             onPress={() => setIsPickerOpen(true)}
                             activeOpacity={0.7}
                             style={{
-                                backgroundColor: '#7c3aed',
+                                backgroundColor: colors.brand.primary,
                                 borderRadius: 14,
                                 paddingVertical: 14,
                                 paddingHorizontal: 24,
@@ -1103,7 +1104,7 @@ export default function TrainingRoomScreen() {
                                             activeOpacity={0.7}
                                             style={{
                                                 flex: 1,
-                                                backgroundColor: '#7c3aed',
+                                                backgroundColor: colors.brand.primary,
                                                 borderRadius: 12,
                                                 paddingVertical: 10,
                                                 flexDirection: 'row',

@@ -211,8 +211,8 @@ export default function StudentProfileScreen({
                             onPress={() => router.back()}
                             style={{ flexDirection: "row", alignItems: "center" }}
                         >
-                            <ChevronLeft size={22} color={colors.brand.primary} />
-                            <Text style={{ fontSize: 16, color: colors.brand.primary, marginLeft: 2 }}>Alunos</Text>
+                            <ChevronLeft size={22} color={v2c.brand.primary} />
+                            <Text style={{ fontSize: 16, color: v2c.brand.primary, marginLeft: 2 }}>Alunos</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -286,18 +286,18 @@ export default function StudentProfileScreen({
                     contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, gap: 8 }}
                 >
                     <ActionButton
-                        icon={<Dumbbell size={14} color={colors.text.inverse} />}
+                        icon={<Dumbbell size={14} color={"#FFFFFF"} />}
                         label="Sala de Treino"
                         primary
                         onPress={handleStartTrainingRoom}
                     />
                     <ActionButton
-                        icon={<Calendar size={14} color={colors.brand.primary} />}
+                        icon={<Calendar size={14} color={v2c.brand.primary} />}
                         label="Prescrever"
                         onPress={handleOpenBuilder}
                     />
                     <ActionButton
-                        icon={<MessageCircle size={14} color={colors.brand.primary} />}
+                        icon={<MessageCircle size={14} color={v2c.brand.primary} />}
                         label="Conversar"
                         onPress={() => router.push({ pathname: "/messages/[studentId]" as any, params: { studentId: id } })}
                     />
@@ -324,14 +324,14 @@ export default function StudentProfileScreen({
                                     paddingVertical: 12,
                                     alignItems: "center",
                                     borderBottomWidth: 2,
-                                    borderBottomColor: isActive ? colors.brand.primary : "transparent",
+                                    borderBottomColor: isActive ? v2c.brand.primary : "transparent",
                                 }}
                             >
                                 <Text
                                     style={{
                                         fontSize: 13,
                                         fontWeight: "600",
-                                        color: isActive ? colors.brand.primary : colors.text.tertiary,
+                                        color: isActive ? v2c.brand.primary : v2c.text.tertiary,
                                     }}
                                 >
                                     {labels[tab]}
@@ -407,6 +407,7 @@ function ActionButton({
     primary?: boolean;
     onPress: () => void;
 }) {
+    const v2c = useV2Colors();
     return (
         <TouchableOpacity
             onPress={onPress}
@@ -419,7 +420,7 @@ function ActionButton({
                 paddingHorizontal: 14,
                 paddingVertical: 10,
                 borderRadius: 12,
-                backgroundColor: primary ? colors.brand.primary : "#f3f0ff",
+                backgroundColor: primary ? v2c.brand.primary : v2c.brand.primaryLight,
                 gap: 6,
             }}
         >
@@ -428,7 +429,7 @@ function ActionButton({
                 style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    color: primary ? colors.text.inverse : colors.brand.primary,
+                    color: primary ? "#FFFFFF" : v2c.brand.primary,
                 }}
             >
                 {label}

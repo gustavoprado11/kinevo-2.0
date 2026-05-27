@@ -370,7 +370,7 @@ export default function FormsScreen() {
                         <RefreshControl
                             refreshing={isRefreshing}
                             onRefresh={handleRefresh}
-                            tintColor={colors.brand.primary}
+                            tintColor={dynColors.brand.primary}
                         />
                     }
                     renderItem={({ item }) => (
@@ -402,7 +402,7 @@ export default function FormsScreen() {
                         <RefreshControl
                             refreshing={isRefreshing}
                             onRefresh={handleRefresh}
-                            tintColor={colors.brand.primary}
+                            tintColor={dynColors.brand.primary}
                         />
                     }
                     renderItem={({ item }) => (
@@ -451,7 +451,7 @@ export default function FormsScreen() {
                         <RefreshControl
                             refreshing={isRefreshing}
                             onRefresh={handleRefresh}
-                            tintColor={colors.brand.primary}
+                            tintColor={dynColors.brand.primary}
                         />
                     }
                     renderItem={({ item }) => (
@@ -586,6 +586,7 @@ function AssessmentsList({
     onCreateNew: () => void;
     paddingBottom: number;
 }) {
+    const dynColors = useV2Colors();
     // Memoize the sections payload — passing a fresh array literal as
     // SectionList's `sections` prop on every render forces SectionList's
     // internal state machine to re-derive, which cascades into a max-update
@@ -640,7 +641,7 @@ function AssessmentsList({
                 gap: 8,
             }}
             refreshControl={
-                <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.brand.primary} />
+                <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={dynColors.brand.primary} />
             }
             renderSectionHeader={({ section }) => (
                 <View style={{ marginTop: 12, marginBottom: 4 }}>
