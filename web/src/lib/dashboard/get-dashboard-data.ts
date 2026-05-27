@@ -187,10 +187,19 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const prevWeekStart = new Date(weekRange.start.getTime() - 7 * 24 * 60 * 60 * 1000)
     const prevWeekEnd = new Date(weekRange.end.getTime() - 7 * 24 * 60 * 60 * 1000)
 
+    // Janela do mês corrente no fuso do treinador (alinha com card "Receita do mês"
+    // do Financeiro: web/src/app/financial/page.tsx).
+    const brYear = parseInt(today.toLocaleDateString('en-CA', { timeZone: TZ, year: 'numeric' }))
+    const brMonth = parseInt(today.toLocaleDateString('en-CA', { timeZone: TZ, month: '2-digit' }))
+    const startOfMonth = startOfDayInTZ(`${brYear}-${String(brMonth).padStart(2, '0')}-01`, TZ)
+    const nextMonthYear = brMonth === 12 ? brYear + 1 : brYear
+    const nextMonth = brMonth === 12 ? 1 : brMonth + 1
+    const startOfNextMonth = startOfDayInTZ(`${nextMonthYear}-${String(nextMonth).padStart(2, '0')}-01`, TZ)
+
     // 14 parallel queries
     const [
         studentsResult,
-        activeContractsResult,
+        monthlyRevenueResult,
         overdueContractsResult,
         expiredContractsResult,
         pendingFormsResult,
@@ -211,12 +220,16 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('coach_id', trainerId)
             .in('status', ['active', 'pending']),
 
-        // 2. Active contracts → MRR
+        // 2. Transações financeiras do mês → "Receita mensal"
+        // Mesma fórmula da página Financeiro: soma amount_gross de transações
+        // com status succeeded (Stripe) ou completed (Asaas) dentro do mês.
         supabaseAdmin
-            .from('student_contracts')
-            .select('amount')
-            .eq('trainer_id', trainerId)
-            .eq('status', 'active'),
+            .from('financial_transactions')
+            .select('amount_gross')
+            .eq('coach_id', trainerId)
+            .in('status', ['succeeded', 'completed'])
+            .gte('created_at', startOfMonth.toISOString())
+            .lt('created_at', startOfNextMonth.toISOString()),
 
         // 3. Overdue / pending contracts
         supabaseAdmin
@@ -373,8 +386,11 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         expectedSessionsThisWeek += uniqueDays.size
     }
 
-    // MRR
-    const mrr = (activeContractsResult.data ?? []).reduce((sum, c) => sum + (c.amount || 0), 0)
+    // Receita mensal (transações recebidas no mês corrente)
+    const mrr = (monthlyRevenueResult.data ?? []).reduce(
+        (sum, t) => sum + (Number(t.amount_gross) || 0),
+        0,
+    )
 
     // Aderência = % de sessões executadas vs planejadas na semana atual.
     // Fórmula canônica alinhada com mobile (RPC get_trainer_stats,
