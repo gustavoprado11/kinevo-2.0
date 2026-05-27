@@ -7,9 +7,8 @@ import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
 import { LEAD_SCHEMA, type LeadSchemaInput } from './lead-schema'
-
-// Re-export pra manter compat com qualquer import externo do schema.
-export { LEAD_SCHEMA } from './lead-schema'
+// LEAD_SCHEMA não pode ser re-exportado daqui — 'use server' só aceita
+// exportar funções async. Import direto de './lead-schema' onde precisar.
 
 /**
  * Lead capture pública na landing /com/[slug].
