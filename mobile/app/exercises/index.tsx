@@ -22,6 +22,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { ExerciseFormModal } from "../../components/trainer/exercises/ExerciseFormModal";
 import { MuscleGroupManagerModal } from "../../components/trainer/exercises/MuscleGroupManagerModal";
+import { ConciergeButton } from "../../components/concierge/ConciergeButton";
+import { ConciergeBottomSheet } from "../../components/concierge/ConciergeBottomSheet";
 import { useMuscleGroupCrud } from "../../hooks/useMuscleGroupCrud";
 import { toast } from "../../lib/toast";
 import { useV2Colors } from "../../hooks/useV2Colors";
@@ -151,6 +153,7 @@ export default function ExercisesListScreen() {
     const muscleGroupCrud = useMuscleGroupCrud();
     const [showFormModal, setShowFormModal] = useState(false);
     const [showMuscleGroupManager, setShowMuscleGroupManager] = useState(false);
+    const [showConcierge, setShowConcierge] = useState(false);
 
     const handleCreate = useCallback(async (data: Parameters<typeof createExercise>[0]) => {
         try {
@@ -218,24 +221,27 @@ export default function ExercisesListScreen() {
                     <Text style={{ flex: 1, fontSize: 20, fontWeight: "700", color: colors.text.primary }}>
                         Exercícios
                     </Text>
-                    <TouchableOpacity
-                        onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setShowMuscleGroupManager(true);
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel="Gerenciar grupos musculares"
-                        style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 10,
-                            backgroundColor: colors.purple[100],
-                            alignItems: "center",
-                            justifyContent: "center",
-                        }}
-                    >
-                        <Settings size={18} color={colors.purple[600]} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <ConciergeButton onPress={() => setShowConcierge(true)} />
+                        <TouchableOpacity
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setShowMuscleGroupManager(true);
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Gerenciar grupos musculares"
+                            style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 10,
+                                backgroundColor: colors.purple[100],
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Settings size={18} color={colors.purple[600]} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Search */}
@@ -404,6 +410,13 @@ export default function ExercisesListScreen() {
             <MuscleGroupManagerModal
                 visible={showMuscleGroupManager}
                 onClose={() => setShowMuscleGroupManager(false)}
+            />
+
+            {/* Concierge — pedido p/ a equipe montar a biblioteca em 24h */}
+            <ConciergeBottomSheet
+                visible={showConcierge}
+                source="biblioteca_mobile_button"
+                onClose={() => setShowConcierge(false)}
             />
         </>
     );

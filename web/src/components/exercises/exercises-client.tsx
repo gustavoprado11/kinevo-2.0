@@ -155,6 +155,7 @@ export function ExercisesClient({
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isManagerOpen, setIsManagerOpen] = useState(false)
     const [isConciergeOpen, setIsConciergeOpen] = useState(false)
+    const [conciergeSource, setConciergeSource] = useState<string>('biblioteca_button')
     const [editingExercise, setEditingExercise] = useState<ExerciseWithDetails | null>(null)
     const [trainerVideosMap, setTrainerVideosMap] = useState<Record<string, TrainerVideoData>>(initialTrainerVideosMap)
     const [videoModalExercise, setVideoModalExercise] = useState<ExerciseWithDetails | null>(null)
@@ -313,7 +314,7 @@ export function ExercisesClient({
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <ConciergeButton onClick={() => setIsConciergeOpen(true)} />
+                    <ConciergeButton onClick={() => { setConciergeSource('biblioteca_button'); setIsConciergeOpen(true) }} />
                     <Button
                         data-onboarding="exercises-add-btn"
                         onClick={handleCreate}
@@ -464,6 +465,11 @@ export function ExercisesClient({
                     exerciseName={videoModalExercise.name}
                     currentCustomVideo={trainerVideosMap[videoModalExercise.id] || null}
                     onSuccess={(video) => handleTrainerVideoChange(videoModalExercise.id, video)}
+                    onRequestConcierge={() => {
+                        setVideoModalExercise(null)
+                        setConciergeSource('exercise_empty')
+                        setIsConciergeOpen(true)
+                    }}
                 />
             )}
 
@@ -473,7 +479,7 @@ export function ExercisesClient({
             {/* Concierge — pedido p/ a equipe montar a biblioteca em 24h */}
             <ConciergeModal
                 open={isConciergeOpen}
-                source="biblioteca_button"
+                source={conciergeSource}
                 onClose={() => setIsConciergeOpen(false)}
             />
         </AppLayout>

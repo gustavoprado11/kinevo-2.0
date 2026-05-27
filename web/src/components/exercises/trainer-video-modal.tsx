@@ -23,6 +23,12 @@ interface TrainerVideoModalProps {
     exerciseName: string
     currentCustomVideo: TrainerVideoData | null
     onSuccess: (video: TrainerVideoData | null) => void
+    /**
+     * Disparado quando o trainer clica em "ou peça pra equipe montar" no
+     * estado vazio do upload. Quem orquestra (ExercisesClient) fecha esse
+     * modal e abre o ConciergeModal com source='exercise_empty'.
+     */
+    onRequestConcierge?: () => void
 }
 
 type TabMode = 'upload' | 'link'
@@ -30,6 +36,7 @@ type TabMode = 'upload' | 'link'
 export function TrainerVideoModal({
     isOpen,
     onClose,
+    onRequestConcierge,
     exerciseId,
     exerciseName,
     currentCustomVideo,
@@ -324,6 +331,18 @@ export function TrainerVideoModal({
                                         </div>
                                     )}
                                 </div>
+                            )}
+
+                            {/* Concierge — link sutil no estado vazio */}
+                            {!currentCustomVideo && !uploading && onRequestConcierge && (
+                                <button
+                                    type="button"
+                                    onClick={onRequestConcierge}
+                                    className="mx-auto flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+                                >
+                                    ou peça pra equipe montar
+                                    <span aria-hidden>→</span>
+                                </button>
                             )}
                         </div>
                     )}
