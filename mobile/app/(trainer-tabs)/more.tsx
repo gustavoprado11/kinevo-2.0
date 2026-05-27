@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
     ArrowLeftRight,
     Bell,
+    User,
     ChevronRight,
     Crown,
     ExternalLink,
@@ -28,6 +29,7 @@ import { WEB_URL } from "../../lib/config";
 import { v2 } from "@kinevo/shared/tokens";
 import { Avatar, KCard, KStatus, type KStatusType } from "../../components/v2";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 import { AdaptiveModal } from "../../components/shared/AdaptiveModal";
 import {
     useThemePreferenceStore,
@@ -388,8 +390,8 @@ export default function MoreScreen() {
                     <KCard style={{ padding: 0 }}>
                         <MenuRow
                             icon={
-                                <IconBox bg={colors.purple[100]}>
-                                    <Bell size={16} color={colors.purple[700]} strokeWidth={2.2} />
+                                <IconBox bg={toRgba(colors.brand.primary, 0.12)}>
+                                    <Bell size={16} color={colors.brand.primary} strokeWidth={2.2} />
                                 </IconBox>
                             }
                             label="Notificações"
@@ -406,8 +408,8 @@ export default function MoreScreen() {
                     <KCard style={{ padding: 0 }}>
                         <MenuRow
                             icon={
-                                <IconBox bg={colors.purple[100]}>
-                                    <UserCog size={16} color={colors.purple[700]} strokeWidth={2.2} />
+                                <IconBox bg={toRgba(colors.brand.primary, 0.12)}>
+                                    <UserCog size={16} color={colors.brand.primary} strokeWidth={2.2} />
                                 </IconBox>
                             }
                             label="Editar perfil"
@@ -442,8 +444,8 @@ export default function MoreScreen() {
                         <Divider />
                         <MenuRow
                             icon={
-                                <IconBox bg={colors.semantic.warning.bg}>
-                                    <Crown size={16} color={colors.semantic.warning.fg} strokeWidth={2.2} />
+                                <IconBox bg={'rgba(245, 158, 11, 0.12)'}>
+                                    <Crown size={16} color={colors.semantic.warning.default} strokeWidth={2.2} />
                                 </IconBox>
                             }
                             label="Assinatura Kinevo"
@@ -461,18 +463,8 @@ export default function MoreScreen() {
                         <Divider />
                         <MenuRow
                             icon={
-                                <IconBox bg={colors.semantic.success.bg}>
-                                    <ArrowLeftRight size={16} color={colors.semantic.success.fg} strokeWidth={2.2} />
-                                </IconBox>
-                            }
-                            label="Alternar para modo aluno"
-                            onPress={handleSwitchToStudent}
-                        />
-                        <Divider />
-                        <MenuRow
-                            icon={
-                                <IconBox bg={colors.purple[100]}>
-                                    <AppearanceIcon size={16} color={colors.purple[700]} strokeWidth={2.2} />
+                                <IconBox bg={toRgba(colors.brand.primary, 0.12)}>
+                                    <AppearanceIcon size={16} color={colors.brand.primary} strokeWidth={2.2} />
                                 </IconBox>
                             }
                             label="Aparência"
@@ -500,8 +492,8 @@ export default function MoreScreen() {
                     <KCard style={{ padding: 0 }}>
                         <MenuRow
                             icon={
-                                <IconBox bg={colors.semantic.success.bg}>
-                                    <MessageCircle size={16} color={colors.semantic.success.fg} strokeWidth={2.2} />
+                                <IconBox bg={'rgba(16, 185, 129, 0.14)'}>
+                                    <MessageCircle size={16} color={colors.semantic.success.default} strokeWidth={2.2} />
                                 </IconBox>
                             }
                             label="Ajuda via WhatsApp"
@@ -511,8 +503,8 @@ export default function MoreScreen() {
                         <Divider />
                         <MenuRow
                             icon={
-                                <IconBox bg={colors.semantic.danger.bg}>
-                                    <LogOut size={16} color={colors.semantic.danger.fg} strokeWidth={2.2} />
+                                <IconBox bg={'rgba(239, 68, 68, 0.12)'}>
+                                    <LogOut size={16} color={colors.semantic.danger.default} strokeWidth={2.2} />
                                 </IconBox>
                             }
                             label="Sair da conta"
@@ -521,6 +513,65 @@ export default function MoreScreen() {
                             trailing={null}
                         />
                     </KCard>
+                </Animated.View>
+
+                {/* Modo Aluno CTA — espelha o "Modo Treinador" do perfil do aluno
+                 *  (app/(tabs)/profile.tsx): mesma posição, mesma estética
+                 *  (tint da marca + ícone na cor da marca). */}
+                <Animated.View entering={FadeInUp.delay(300).duration(300).easing(Easing.out(Easing.cubic))}>
+                    <PressableScale
+                        onPress={handleSwitchToStudent}
+                        pressScale={0.97}
+                        style={{
+                            marginTop: spacing[5],
+                            marginBottom: spacing[3],
+                            borderRadius: 20,
+                            overflow: 'hidden',
+                            shadowColor: colors.brand.primary,
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.12,
+                            shadowRadius: 12,
+                            elevation: 4,
+                        }}
+                    >
+                        <View
+                            style={{
+                                backgroundColor: toRgba(colors.brand.primary, 0.10),
+                                flexDirection: "row",
+                                alignItems: "center",
+                                paddingVertical: 16,
+                                paddingHorizontal: 20,
+                                borderRadius: 20,
+                                borderWidth: 1,
+                                borderColor: toRgba(colors.brand.primary, 0.18),
+                            }}
+                        >
+                            <View
+                                style={{
+                                    height: 32,
+                                    width: 32,
+                                    borderRadius: 8,
+                                    backgroundColor: toRgba(colors.brand.primary, 0.16),
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    marginRight: 14,
+                                }}
+                            >
+                                <User size={16} color={colors.brand.primary} strokeWidth={2} />
+                            </View>
+                            <Text
+                                style={{
+                                    fontSize: 16,
+                                    fontWeight: "600",
+                                    color: colors.brand.primary,
+                                    flex: 1,
+                                }}
+                            >
+                                Modo Aluno
+                            </Text>
+                            <ChevronRight size={16} color={colors.brand.primary} strokeWidth={1.5} />
+                        </View>
+                    </PressableScale>
                 </Animated.View>
 
                 {/* Version (long-press em dev abre o DS Showcase) — preservado da Fase 1 */}
