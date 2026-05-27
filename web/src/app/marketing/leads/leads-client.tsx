@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { updateLeadStatus } from '@/actions/leads/update-lead-status'
+import { relativeTime, whatsappLink } from '@/lib/leads/format'
 
 export interface LeadRow {
     id: string
@@ -77,27 +78,6 @@ function statusBadge(status: LeadRow['status']) {
             {meta.label}
         </span>
     )
-}
-
-function relativeTime(iso: string) {
-    const then = new Date(iso).getTime()
-    const now = Date.now()
-    const diff = Math.max(0, now - then)
-    const m = Math.floor(diff / 60_000)
-    if (m < 1) return 'agora'
-    if (m < 60) return `há ${m} min`
-    const h = Math.floor(m / 60)
-    if (h < 24) return `há ${h}h`
-    const d = Math.floor(h / 24)
-    if (d < 7) return `há ${d}d`
-    return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-}
-
-function whatsappLink(whatsapp: string, firstName: string) {
-    const digits = whatsapp.replace(/\D/g, '')
-    const number = digits.length === 11 || digits.length === 10 ? `55${digits}` : digits
-    const greeting = `Oi ${firstName}, aqui é da landing — vi que você quer treinar comigo. Bora conversar?`
-    return `https://wa.me/${number}?text=${encodeURIComponent(greeting)}`
 }
 
 export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }: LeadsClientProps) {

@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
     LayoutDashboard, Users, Dumbbell, Calendar, CalendarDays, Wallet, FileText,
-    Activity, Inbox,
+    Activity, Megaphone,
     MessageSquarePlus, Headphones,
     LogOut, BookOpen, ChevronRight, ChevronLeft, Settings,
 } from 'lucide-react'
@@ -44,10 +44,11 @@ const navigation: NavItem[] = [
         onboardingId: 'sidebar-students',
     },
     {
-        name: 'Leads',
-        href: '/leads',
-        icon: Inbox,
-        onboardingId: 'sidebar-leads',
+        name: 'Marketing',
+        href: '/marketing',
+        icon: Megaphone,
+        onboardingId: 'sidebar-marketing',
+        extraActivePrefixes: ['/leads', '/landing'],
     },
     {
         name: 'Agenda',
