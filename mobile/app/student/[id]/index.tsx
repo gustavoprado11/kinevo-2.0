@@ -345,7 +345,7 @@ export default function StudentProfileScreen({
             {/* Tab content */}
             <View style={{ flex: 1 }}>
                 {activeTab === "overview" && <StudentOverviewTab data={data} />}
-                {activeTab === "programs" && <StudentProgramsTab data={data} />}
+                {activeTab === "programs" && <StudentProgramsTab data={data} onRefresh={refresh} />}
                 {activeTab === "forms" && (
                     <StudentFormsTab
                         data={data}

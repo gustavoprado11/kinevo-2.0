@@ -1,22 +1,134 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { Calendar, Sparkles, FileText, Pencil } from "lucide-react-native";
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActionSheetIOS, Platform } from "react-native";
+import { Calendar, Sparkles, FileText, Pencil, MoreHorizontal } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { supabase } from "../../../lib/supabase";
+import { toast } from "../../../lib/toast";
 import { getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
 import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface Props {
     data: StudentDetailData;
+    onRefresh?: () => Promise<void> | void;
 }
 
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-export function StudentProgramsTab({ data }: Props) {
+export function StudentProgramsTab({ data, onRefresh }: Props) {
     const colors = useV2Colors();
     const router = useRouter();
+    const [isMutating, setIsMutating] = useState(false);
+
+    const completeProgram = useCallback(async (programId: string, studentId: string) => {
+        if (isMutating) return;
+        setIsMutating(true);
+        try {
+            // Mesma fórmula do web (web/src/app/students/[id]/actions/complete-program.ts):
+            // marca como completed + carimba timestamp. Trigger no banco / RLS
+            // garantem ownership; o filtro por student_id é proteção em profundidade.
+            const { error } = await (supabase as any)
+                .from("assigned_programs")
+                .update({ status: "completed", completed_at: new Date().toISOString() })
+                .eq("id", programId)
+                .eq("student_id", studentId);
+            if (error) throw error;
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
+            toast.success("Programa concluído", "O aluno foi notificado e o programa foi movido pro histórico.");
+            await onRefresh?.();
+        } catch (err: any) {
+            if (__DEV__) console.error("[StudentProgramsTab] complete failed:", err);
+            toast.error("Erro ao concluir programa", err?.message ?? "Tente novamente em instantes.");
+        } finally {
+            setIsMutating(false);
+        }
+    }, [isMutating, onRefresh]);
+
+    const deleteProgram = useCallback(async (programId: string, studentId: string) => {
+        if (isMutating) return;
+        setIsMutating(true);
+        try {
+            const { error } = await (supabase as any)
+                .from("assigned_programs")
+                .delete()
+                .eq("id", programId)
+                .eq("student_id", studentId);
+            if (error) throw error;
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
+            toast.success("Programa excluído", "O programa e todos os treinos vinculados foram removidos.");
+            await onRefresh?.();
+        } catch (err: any) {
+            if (__DEV__) console.error("[StudentProgramsTab] delete failed:", err);
+            toast.error("Erro ao excluir programa", err?.message ?? "Tente novamente em instantes.");
+        } finally {
+            setIsMutating(false);
+        }
+    }, [isMutating, onRefresh]);
+
+    const openActiveProgramMenu = useCallback(() => {
+        if (!data.activeProgram) return;
+        const program = data.activeProgram;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { });
+
+        const confirmComplete = () =>
+            Alert.alert(
+                "Concluir programa",
+                "Este programa será movido pro histórico. O aluno não poderá mais executar treinos dele no app. Deseja continuar?",
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    { text: "Concluir", style: "default", onPress: () => completeProgram(program.id, data.student.id) },
+                ],
+            );
+
+        const confirmDelete = () =>
+            Alert.alert(
+                "Excluir programa",
+                `"${program.name}" e todos os treinos vinculados serão removidos. Esta ação não pode ser desfeita.`,
+                [
+                    { text: "Cancelar", style: "cancel" },
+                    { text: "Excluir", style: "destructive", onPress: () => deleteProgram(program.id, data.student.id) },
+                ],
+            );
+
+        if (Platform.OS === "ios") {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    title: program.name,
+                    options: ["Cancelar", "Editar", "Concluir programa", "Excluir programa"],
+                    cancelButtonIndex: 0,
+                    destructiveButtonIndex: 3,
+                },
+                (idx) => {
+                    if (idx === 1) {
+                        router.push({
+                            pathname: "/program-builder/edit/[assignedProgramId]",
+                            params: { assignedProgramId: program.id },
+                        } as any);
+                    } else if (idx === 2) {
+                        confirmComplete();
+                    } else if (idx === 3) {
+                        confirmDelete();
+                    }
+                },
+            );
+            return;
+        }
+
+        Alert.alert(program.name, undefined, [
+            { text: "Cancelar", style: "cancel" },
+            {
+                text: "Editar",
+                onPress: () =>
+                    router.push({
+                        pathname: "/program-builder/edit/[assignedProgramId]",
+                        params: { assignedProgramId: program.id },
+                    } as any),
+            },
+            { text: "Concluir programa", onPress: confirmComplete },
+            { text: "Excluir programa", style: "destructive", onPress: confirmDelete },
+        ], { cancelable: true });
+    }, [data.activeProgram, data.student.id, router, completeProgram, deleteProgram]);
 
     // Track which completed programs have reports
     const [reportMap, setReportMap] = useState<Record<string, string>>({});
@@ -104,6 +216,25 @@ export function StudentProgramsTab({ data }: Props) {
                                     <Text style={{ fontSize: 12, fontWeight: "700", color: "#6d28d9", letterSpacing: 0.1 }}>
                                         Editar
                                     </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={openActiveProgramMenu}
+                                    activeOpacity={0.85}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Mais opções do programa"
+                                    disabled={isMutating}
+                                    hitSlop={8}
+                                    style={{
+                                        width: 28,
+                                        height: 28,
+                                        borderRadius: 8,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: colors.surface.canvas,
+                                        opacity: isMutating ? 0.5 : 1,
+                                    }}
+                                >
+                                    <MoreHorizontal size={16} color={colors.text.secondary} />
                                 </TouchableOpacity>
                             </View>
                         </View>
