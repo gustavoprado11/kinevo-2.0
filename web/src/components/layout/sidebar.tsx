@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
     LayoutDashboard, Users, Dumbbell, Calendar, CalendarDays, Wallet, FileText,
-    Activity,
+    Activity, Inbox,
     MessageSquarePlus, Headphones,
     LogOut, BookOpen, ChevronRight, ChevronLeft, Settings,
 } from 'lucide-react'
@@ -42,6 +42,12 @@ const navigation: NavItem[] = [
         href: '/students',
         icon: Users,
         onboardingId: 'sidebar-students',
+    },
+    {
+        name: 'Leads',
+        href: '/leads',
+        icon: Inbox,
+        onboardingId: 'sidebar-leads',
     },
     {
         name: 'Agenda',
