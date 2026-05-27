@@ -8,6 +8,7 @@ import { ProfileForm } from '@/components/settings/profile-form'
 import { ThemeSelector } from '@/components/settings/theme-selector'
 import { ReportsPreferencesSection } from '@/components/settings/reports-preferences-section'
 import { BrandingSection } from '@/components/settings/branding-section'
+import { LandingSection } from '@/components/settings/landing-section'
 import { EquipeSection } from '@/components/settings/equipe-section'
 import { SettingsSection } from '@/components/settings/settings-section'
 import { DeveloperLinkCard } from '@/components/settings/developer-link-card'
@@ -23,7 +24,7 @@ export default async function SettingsPage() {
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, name, email, avatar_url, theme, auto_publish_reports, brand_name, brand_color, brand_logo_url, brand_show_powered_by')
+        .select('id, name, email, avatar_url, theme, auto_publish_reports, brand_name, brand_color, brand_logo_url, brand_show_powered_by, public_slug, landing_published')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -151,9 +152,10 @@ export default async function SettingsPage() {
         })
     }
 
-    // Numeração das seções: se a conta é de academia, "Organização" entra como
-    // 04 e "Assinatura" vira 05. Solo: pula direto p/ 04.
-    const assinaturaNumber = orgCtx ? '05' : '04'
+    // Numeração das seções: Landing pública entra como 03; preferências/org
+    // shift uma posição. Estúdio adiciona Organização antes de Assinatura.
+    const orgNumber = orgCtx ? '05' : null
+    const assinaturaNumber = orgCtx ? '06' : '05'
 
     return (
         <AppLayout
@@ -198,17 +200,26 @@ export default async function SettingsPage() {
                 />
             </SettingsSection>
 
-            {/* ── 03 · Preferências do app ── */}
-            <SettingsSection number="03" title="Preferências do app" hint="Como o sistema se comporta no dia a dia">
+            {/* ── 03 · Sua landing pública ── */}
+            <SettingsSection number="03" title="Sua landing pública" hint="URL que você compartilha pra captar novos alunos">
+                <LandingSection
+                    initialSlug={(trainer as { public_slug?: string | null }).public_slug ?? null}
+                    landingPublished={(trainer as { landing_published?: boolean | null }).landing_published ?? false}
+                    trainerName={trainer.name}
+                />
+            </SettingsSection>
+
+            {/* ── 04 · Preferências do app ── */}
+            <SettingsSection number="04" title="Preferências do app" hint="Como o sistema se comporta no dia a dia">
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 items-stretch">
                     <ThemeSelector initialTheme={trainer.theme as 'light' | 'dark' | 'system' | null} />
                     <ReportsPreferencesSection initialAutoPublish={trainer.auto_publish_reports ?? false} />
                 </div>
             </SettingsSection>
 
-            {/* ── 04 · Organização (só estúdio) ── */}
-            {orgCtx && (
-                <SettingsSection number="04" title="Organização" hint="Equipe da academia">
+            {/* ── 05 · Organização (só estúdio) ── */}
+            {orgCtx && orgNumber && (
+                <SettingsSection number={orgNumber} title="Organização" hint="Equipe da academia">
                     <EquipeSection
                         organization={{
                             id: orgCtx.organization.id,
