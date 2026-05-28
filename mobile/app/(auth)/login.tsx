@@ -1,179 +1,205 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
     Alert,
+    Keyboard,
     KeyboardAvoidingView,
     Platform,
-    ActivityIndicator,
-    TouchableWithoutFeedback,
-    Keyboard,
+    Pressable,
     StyleSheet,
-    Image,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { translateAuthError } from "../../lib/auth-errors";
 import { useResponsive } from "../../hooks/useResponsive";
-import { WelcomeRoleSheet } from "../../components/auth/WelcomeRoleSheet";
+import { useRotatingIndex } from "../../hooks/useRotatingIndex";
+import { useReduceMotion } from "../../components/workout/celebration/_shared/useReduceMotion";
+import { AmbientBlob } from "../../components/auth/AmbientBlob";
+import { EditorialHeader } from "../../components/auth/EditorialHeader";
+import { NeutralButton } from "../../components/auth/NeutralButton";
+import { TextField } from "../../components/auth/TextField";
+import { RoleChoiceSheet } from "../../components/auth/RoleChoiceSheet";
+import { FONT, useAuthTheme } from "../../components/auth/authTheme";
+import type { Phrase } from "../../components/auth/RotatingHeadline";
+
+const HEADLINES: Phrase[] = [
+    { lead: "Treine onde", accent: "estiver." },
+    { lead: "Sua evolução,", accent: "guiada." },
+    { lead: "Conectado", accent: "ao seu personal." },
+    { lead: "Do programa", accent: "ao pagamento." },
+];
+
+const DWELL_MS = 3500;
 
 export default function LoginScreen() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showWelcomeSheet, setShowWelcomeSheet] = useState(false);
-
-    // UI States for Focus interaction
-    const [isEmailFocused, setIsEmailFocused] = useState(false);
-    const [isPasswordFocused, setIsPasswordFocused] = useState(false);
-
+    const theme = useAuthTheme();
+    const reduceMotion = useReduceMotion();
     const { signIn } = useAuth();
     const router = useRouter();
     const { isTablet } = useResponsive();
 
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [keyboardOpen, setKeyboardOpen] = useState(false);
+    const [showRoleSheet, setShowRoleSheet] = useState(false);
+
+    const passwordRef = useRef<TextInput>(null);
+
+    useEffect(() => {
+        const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+        const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+        const showSub = Keyboard.addListener(showEvt, () => setKeyboardOpen(true));
+        const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardOpen(false));
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
+
+    const activeIndex = useRotatingIndex({
+        count: HEADLINES.length,
+        dwellMs: DWELL_MS,
+        paused: keyboardOpen,
+        reduceMotion,
+    });
+
     const handleSignIn = async () => {
         if (!email || !password) {
-            Alert.alert("Campos incompletos", "Por favor, preencha seu e-mail e senha para continuar.");
+            Alert.alert(
+                "Campos incompletos",
+                "Por favor, preencha seu e-mail e senha para continuar.",
+            );
             return;
         }
-
         setLoading(true);
         const { error } = await signIn(email, password);
         setLoading(false);
-
         if (error) {
             Alert.alert("Não foi possível entrar", translateAuthError(error.message));
         } else {
-            // Delega ao index.tsx (The Gate) a decisão: home ou verificação de e-mail
             router.replace("/");
         }
     };
 
-    const handleCreateAccount = () => {
-        setShowWelcomeSheet(true);
-    };
-
     return (
-        <SafeAreaView style={styles.safe}>
-            {/* Background glow blobs */}
-            <View style={styles.bgGlowTop} pointerEvents="none" />
-            <View style={styles.bgGlowBottom} pointerEvents="none" />
+        <SafeAreaView style={[styles.safe, { backgroundColor: theme.surface }]}>
+            <AmbientBlob theme={theme} position="top-left" />
 
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={[styles.container, isTablet && styles.containerTablet]}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.flex}
+            >
+                <View
+                    style={[
+                        styles.content,
+                        isTablet && styles.contentTablet,
+                    ]}
                 >
-                    {/* Logo + Hero */}
-                    <View style={styles.logoBlock}>
-                        <View style={styles.logoTile}>
-                            <Image
-                                source={require("../../assets/images/logo-icon.jpg")}
-                                style={styles.logoImage}
-                                resizeMode="cover"
+                    <EditorialHeader
+                        mode="login"
+                        eyebrow="BEM-VINDO DE VOLTA"
+                        theme={theme}
+                        reduceMotion={reduceMotion}
+                        phrases={HEADLINES}
+                        activeIndex={activeIndex}
+                        dwellMs={DWELL_MS}
+                        keyboardOpen={keyboardOpen}
+                    />
+
+                    <View style={styles.form}>
+                        <TextField
+                            icon={Mail}
+                            value={email}
+                            onChangeText={setEmail}
+                            placeholder="E-mail"
+                            theme={theme}
+                            keyboardType="email-address"
+                            autoComplete="email"
+                            returnKeyType="next"
+                            onSubmitEditing={() => passwordRef.current?.focus()}
+                        />
+
+                        <TextField
+                            ref={passwordRef}
+                            icon={Lock}
+                            value={password}
+                            onChangeText={setPassword}
+                            placeholder="Senha"
+                            theme={theme}
+                            secureTextEntry={!showPassword}
+                            autoComplete="password"
+                            returnKeyType="done"
+                            onSubmitEditing={handleSignIn}
+                            rightSlot={
+                                <Pressable
+                                    onPress={() => setShowPassword((v) => !v)}
+                                    hitSlop={12}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={
+                                        showPassword ? "Ocultar senha" : "Mostrar senha"
+                                    }
+                                >
+                                    {showPassword ? (
+                                        <EyeOff size={18} color={theme.fgTertiary} />
+                                    ) : (
+                                        <Eye size={18} color={theme.fgTertiary} />
+                                    )}
+                                </Pressable>
+                            }
+                        />
+
+                        <Pressable
+                            style={styles.forgotWrap}
+                            onPress={() => router.push("/(auth)/forgot-password")}
+                            accessibilityRole="link"
+                            accessibilityLabel="Esqueceu a senha?"
+                        >
+                            <Text style={[styles.forgot, { color: theme.fgSecondary }]}>
+                                Esqueceu a senha?
+                            </Text>
+                        </Pressable>
+
+                        <View style={styles.ctaWrap}>
+                            <NeutralButton
+                                label="Entrar"
+                                onPress={handleSignIn}
+                                theme={theme}
+                                loading={loading}
                             />
                         </View>
 
-                        <Text style={styles.heroTitle}>
-                            Treine com seu personal,{"\n"}do seu jeito.
-                        </Text>
-                        <Text style={styles.heroSub}>
-                            Acompanhe sua evolução. Em qualquer lugar.
-                        </Text>
-                    </View>
-
-                    {/* Email input */}
-                    <View style={[styles.field, isEmailFocused && styles.fieldFocused]}>
-                        <Mail size={18} color={isEmailFocused ? "#A78BFA" : "#71717A"} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="E-mail"
-                            placeholderTextColor="#71717A"
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                            value={email}
-                            onChangeText={setEmail}
-                            onFocus={() => setIsEmailFocused(true)}
-                            onBlur={() => setIsEmailFocused(false)}
-                        />
-                    </View>
-
-                    {/* Password input */}
-                    <View style={[styles.field, isPasswordFocused && styles.fieldFocused, { marginTop: 12 }]}>
-                        <Lock size={18} color={isPasswordFocused ? "#A78BFA" : "#71717A"} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Senha"
-                            placeholderTextColor="#71717A"
-                            secureTextEntry={!showPassword}
-                            value={password}
-                            onChangeText={setPassword}
-                            onFocus={() => setIsPasswordFocused(true)}
-                            onBlur={() => setIsPasswordFocused(false)}
-                        />
-                        <TouchableOpacity onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
-                            {showPassword ? (
-                                <EyeOff size={18} color="#71717A" />
-                            ) : (
-                                <Eye size={18} color="#71717A" />
-                            )}
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Esqueceu a senha */}
-                    <TouchableOpacity
-                        style={styles.forgotWrap}
-                        onPress={() => router.push("/(auth)/forgot-password")}
-                        accessibilityRole="button"
-                        accessibilityLabel="Esqueceu a senha"
-                    >
-                        <Text style={styles.forgot}>Esqueceu a senha?</Text>
-                    </TouchableOpacity>
-
-                    {/* CTA Entrar */}
-                    <TouchableOpacity onPress={handleSignIn} disabled={loading} activeOpacity={0.85}>
-                        <LinearGradient
-                            colors={["#7C3AED", "#A78BFA"]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={[styles.ctaPrimary, loading && styles.ctaPrimaryLoading]}
+                        <Pressable
+                            style={styles.createWrap}
+                            onPress={() => setShowRoleSheet(true)}
+                            accessibilityRole="link"
+                            accessibilityLabel="Criar conta"
                         >
-                            {loading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.ctaPrimaryText}>Entrar</Text>
-                            )}
-                        </LinearGradient>
-                    </TouchableOpacity>
-
-                    {/* Divider OU */}
-                    <View style={styles.dividerRow}>
-                        <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>OU</Text>
-                        <View style={styles.dividerLine} />
+                            <Text style={[styles.createText, { color: theme.fgSecondary }]}>
+                                Não tem conta?{" "}
+                                <Text style={{ color: theme.fgPrimary }}>Criar conta</Text>
+                            </Text>
+                        </Pressable>
                     </View>
 
-                    {/* CTA Cadastre-se */}
-                    <TouchableOpacity onPress={handleCreateAccount} style={styles.ctaSecondary} activeOpacity={0.8}>
-                        <Text style={styles.ctaSecondaryText}>Cadastre-se</Text>
-                    </TouchableOpacity>
+                    {!keyboardOpen && (
+                        <View style={styles.footer} pointerEvents="none">
+                            <Text style={[styles.footerText, { color: theme.fgTertiary }]}>
+                                KINEVO · SUA EVOLUÇÃO, GUIADA
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </KeyboardAvoidingView>
 
-                    {/* Footer */}
-                    <View style={styles.footer} pointerEvents="none">
-                        <Text style={styles.footerText}>Kinevo · Sua evolução, guiada.</Text>
-                    </View>
-                </KeyboardAvoidingView>
-            </TouchableWithoutFeedback>
-
-            <WelcomeRoleSheet
-                visible={showWelcomeSheet}
-                onClose={() => setShowWelcomeSheet(false)}
+            <RoleChoiceSheet
+                visible={showRoleSheet}
+                onClose={() => setShowRoleSheet(false)}
             />
         </SafeAreaView>
     );
@@ -182,170 +208,59 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     safe: {
         flex: 1,
-        backgroundColor: "#09090B",
     },
-    bgGlowTop: {
-        position: "absolute",
-        top: -200,
-        left: -100,
-        right: -100,
-        height: 500,
-        backgroundColor: "rgba(124,58,237,0.18)",
-        borderRadius: 9999,
-        opacity: 0.6,
-    },
-    bgGlowBottom: {
-        position: "absolute",
-        bottom: -150,
-        right: -100,
-        width: 360,
-        height: 360,
-        backgroundColor: "rgba(244,114,182,0.10)",
-        borderRadius: 9999,
-    },
-    container: {
+    flex: {
         flex: 1,
-        justifyContent: "center",
-        paddingHorizontal: 32,
     },
-    containerTablet: {
-        maxWidth: 440,
+    content: {
+        flex: 1,
+        paddingHorizontal: 24,
+        paddingTop: 32,
+        paddingBottom: 24,
+    },
+    contentTablet: {
+        maxWidth: 480,
         alignSelf: "center",
         width: "100%",
+        paddingHorizontal: 32,
     },
-    logoBlock: {
-        alignItems: "center",
-        marginBottom: 32,
-    },
-    logoTile: {
-        width: 76,
-        height: 76,
-        borderRadius: 20,
-        overflow: "hidden",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#3F1B91",
-        shadowColor: "#7C3AED",
-        shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.5,
-        shadowRadius: 40,
-        elevation: 20,
-        marginBottom: 24,
-    },
-    logoImage: {
-        width: "100%",
-        height: "100%",
-    },
-    heroTitle: {
-        fontSize: 26,
-        fontWeight: "900",
-        color: "#FAFAFA",
-        textAlign: "center",
-        letterSpacing: -0.78,
-        lineHeight: 28.6,
-        marginBottom: 6,
-    },
-    heroSub: {
-        fontSize: 14,
-        fontWeight: "500",
-        color: "#A1A1AA",
-        textAlign: "center",
-    },
-    field: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "rgba(255,255,255,0.04)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.08)",
-        borderRadius: 14,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        gap: 10,
-    },
-    fieldFocused: {
-        borderColor: "rgba(124,58,237,0.4)",
-        backgroundColor: "rgba(124,58,237,0.05)",
-    },
-    input: {
-        flex: 1,
-        fontSize: 14,
-        fontWeight: "500",
-        color: "#FAFAFA",
-        padding: 0,
+    form: {
+        marginTop: 40,
+        gap: 12,
     },
     forgotWrap: {
         alignSelf: "flex-end",
-        paddingTop: 8,
-        paddingHorizontal: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 2,
     },
     forgot: {
-        fontSize: 12,
-        fontWeight: "600",
-        color: "#C4B5FD",
-    },
-    ctaPrimary: {
-        marginTop: 20,
-        paddingVertical: 16,
-        borderRadius: 16,
-        alignItems: "center",
-        justifyContent: "center",
-        shadowColor: "#7C3AED",
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.5,
-        shadowRadius: 32,
-        elevation: 12,
-    },
-    ctaPrimaryLoading: {
-        opacity: 0.85,
-    },
-    ctaPrimaryText: {
-        fontSize: 15,
-        fontWeight: "700",
-        color: "#fff",
-        letterSpacing: 0.15,
-    },
-    dividerRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        marginVertical: 16,
-        paddingHorizontal: 4,
-    },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: "rgba(255,255,255,0.08)",
-    },
-    dividerText: {
-        fontSize: 10,
-        fontWeight: "700",
-        letterSpacing: 2,
-        color: "#71717A",
-    },
-    ctaSecondary: {
-        backgroundColor: "rgba(255,255,255,0.04)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.08)",
-        borderRadius: 16,
-        paddingVertical: 15,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    ctaSecondaryText: {
+        fontFamily: FONT.medium,
+        fontWeight: "500",
         fontSize: 14,
-        fontWeight: "700",
-        color: "#FAFAFA",
+    },
+    ctaWrap: {
+        marginTop: 12,
+    },
+    createWrap: {
+        alignSelf: "center",
+        paddingVertical: 10,
+    },
+    createText: {
+        fontFamily: FONT.medium,
+        fontWeight: "500",
+        fontSize: 14,
     },
     footer: {
         position: "absolute",
-        bottom: 20,
+        bottom: 16,
         left: 0,
         right: 0,
         alignItems: "center",
     },
     footerText: {
-        fontSize: 12,
+        fontFamily: FONT.medium,
         fontWeight: "500",
-        color: "#52525B",
+        fontSize: 11,
+        letterSpacing: 1,
     },
 });
