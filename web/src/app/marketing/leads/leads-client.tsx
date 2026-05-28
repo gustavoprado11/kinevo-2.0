@@ -12,6 +12,7 @@ import {
     Clock,
     Archive,
     UserPlus,
+    UserCheck,
     Sparkles,
     ChevronRight,
     X,
@@ -19,8 +20,11 @@ import {
     AlertCircle,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { updateLeadStatus } from '@/actions/leads/update-lead-status'
+import { convertLeadToStudent } from '@/actions/leads/convert-lead-to-student'
 import { relativeTime, whatsappLink } from '@/lib/leads/format'
+import { StudentAccessDialog } from '@/components/students'
 
 export interface LeadRow {
     id: string
@@ -34,6 +38,7 @@ export interface LeadRow {
     source: string | null
     source_slug: string | null
     created_at: string
+    converted_to_student_id: string | null
 }
 
 type FilterTab = 'all' | 'new' | 'contacted' | 'converted' | 'archived'
@@ -85,10 +90,16 @@ export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }:
     const [query, setQuery] = useState('')
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [optimistic, setOptimistic] = useState<Record<string, LeadRow['status']>>({})
+    const [convertedOptimistic, setConvertedOptimistic] = useState<Record<string, string>>({})
 
     const enriched: LeadRow[] = useMemo(() => {
-        return leads.map((l) => optimistic[l.id] ? { ...l, status: optimistic[l.id] } : l)
-    }, [leads, optimistic])
+        return leads.map((l) => {
+            const status = optimistic[l.id] ?? l.status
+            const convertedId = convertedOptimistic[l.id] ?? l.converted_to_student_id
+            if (status === l.status && convertedId === l.converted_to_student_id) return l
+            return { ...l, status, converted_to_student_id: convertedId }
+        })
+    }, [leads, optimistic, convertedOptimistic])
 
     const counts = useMemo(() => {
         const c = { all: enriched.length, new: 0, contacted: 0, converted: 0, archived: 0 }
@@ -124,6 +135,11 @@ export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }:
     const handleStatusChange = (id: string, status: LeadRow['status']) => {
         setOptimistic((prev) => ({ ...prev, [id]: status }))
         void updateLeadStatus(id, status)
+    }
+
+    const handleConverted = (id: string, studentId: string) => {
+        setOptimistic((prev) => ({ ...prev, [id]: 'converted' }))
+        setConvertedOptimistic((prev) => ({ ...prev, [id]: studentId }))
     }
 
     /* ── Empty states ── */
@@ -293,6 +309,7 @@ export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }:
                     lead={selected}
                     onClose={() => setSelectedId(null)}
                     onStatusChange={(s) => handleStatusChange(selected.id, s)}
+                    onConverted={(studentId) => handleConverted(selected.id, studentId)}
                 />
             )}
         </div>
@@ -304,13 +321,47 @@ function LeadDrawer({
     lead,
     onClose,
     onStatusChange,
+    onConverted,
 }: {
     lead: LeadRow
     onClose: () => void
     onStatusChange: (status: LeadRow['status']) => void
+    onConverted: (studentId: string) => void
 }) {
+    const router = useRouter()
     const [copiedField, setCopiedField] = useState<'email' | 'phone' | null>(null)
     const [isPending, startTransition] = useTransition()
+
+    /* Conversão */
+    const [showConvert, setShowConvert] = useState(false)
+    const [modality, setModality] = useState<'online' | 'presential'>('online')
+    const [converting, setConverting] = useState(false)
+    const [convertError, setConvertError] = useState<string | null>(null)
+    const [credentials, setCredentials] = useState<{
+        name: string; email: string; password: string; whatsapp: string | null
+    } | null>(null)
+
+    const isConverted = lead.status === 'converted' && !!lead.converted_to_student_id
+
+    const handleConvert = async () => {
+        setConvertError(null)
+        setConverting(true)
+        const result = await convertLeadToStudent(lead.id, { modality })
+        setConverting(false)
+        if (!result.success || !result.studentId) {
+            setConvertError(result.message ?? 'Falha ao converter.')
+            return
+        }
+        onConverted(result.studentId)
+        setShowConvert(false)
+        if (result.credentials && result.credentials.password) {
+            // Conta nova → mostra credenciais pro trainer repassar.
+            setCredentials(result.credentials)
+        } else {
+            // Vínculo a aluno existente → vai direto pro perfil.
+            router.push(`/students/${result.studentId}`)
+        }
+    }
 
     const copy = async (text: string, field: 'email' | 'phone') => {
         try {
@@ -428,26 +479,43 @@ function LeadDrawer({
                         </section>
                     )}
 
-                    {/* Status actions */}
+                    {/* Conversão */}
+                    <section className="space-y-2 pt-2">
+                        <h3 className="text-[10px] font-bold uppercase tracking-wide text-k-text-quaternary">Conversão</h3>
+                        {isConverted ? (
+                            <Link
+                                href={`/students/${lead.converted_to_student_id}`}
+                                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-bold text-emerald-700 dark:text-emerald-300 transition-colors hover:bg-emerald-500/20"
+                            >
+                                <UserCheck size={15} />
+                                Ver aluno
+                            </Link>
+                        ) : (
+                            <button
+                                onClick={() => { setShowConvert(true); setConvertError(null) }}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-500/20 transition-colors hover:bg-emerald-500"
+                            >
+                                <UserPlus size={15} />
+                                Converter em aluno
+                            </button>
+                        )}
+                        <p className="text-[11px] text-k-text-quaternary">
+                            {isConverted
+                                ? 'Lead já virou aluno. Vincule um contrato no perfil dele, se quiser.'
+                                : 'Cria o aluno como cortesia (sem contrato). Você vincula o plano depois.'}
+                        </p>
+                    </section>
+
+                    {/* Status secundário */}
                     <section className="space-y-2 pt-2">
                         <h3 className="text-[10px] font-bold uppercase tracking-wide text-k-text-quaternary">Status</h3>
-                        <div className="grid grid-cols-2 gap-2">
-                            <StatusButton
-                                active={lead.status === 'contacted'}
-                                disabled={isPending}
-                                onClick={() => startTransition(() => onStatusChange('contacted'))}
-                                icon={<MessageCircle size={13} />}
-                                label="Contatado"
-                            />
-                            <StatusButton
-                                active={lead.status === 'converted'}
-                                disabled={isPending}
-                                onClick={() => startTransition(() => onStatusChange('converted'))}
-                                icon={<UserPlus size={13} />}
-                                label="Virou aluno"
-                                tone="positive"
-                            />
-                        </div>
+                        <StatusButton
+                            active={lead.status === 'contacted'}
+                            disabled={isPending || isConverted}
+                            onClick={() => startTransition(() => onStatusChange('contacted'))}
+                            icon={<MessageCircle size={13} />}
+                            label="Marcar como contatado"
+                        />
                         <button
                             onClick={() => startTransition(() => onStatusChange('archived'))}
                             disabled={isPending || lead.status === 'archived'}
@@ -459,6 +527,79 @@ function LeadDrawer({
                     </section>
                 </div>
             </aside>
+
+            {/* Modal de confirmação da conversão */}
+            {showConvert && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !converting && setShowConvert(false)} />
+                    <div className="relative w-full max-w-sm rounded-2xl border border-k-border-primary bg-surface-card p-6 shadow-2xl">
+                        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/12 text-emerald-600 dark:text-emerald-400">
+                            <UserPlus size={20} />
+                        </div>
+                        <h3 className="text-lg font-bold text-k-text-primary">Converter em aluno</h3>
+                        <p className="mt-1 text-sm text-k-text-tertiary">
+                            <b className="text-k-text-secondary">{lead.name}</b> vai entrar como aluno cortesia.
+                            Uma conta é criada com o e-mail e WhatsApp do lead.
+                        </p>
+
+                        <div className="mt-4 space-y-1.5">
+                            <span className="block text-[11px] font-bold uppercase tracking-wide text-k-text-tertiary">
+                                Modalidade
+                            </span>
+                            <div className="grid grid-cols-2 gap-2">
+                                {(['online', 'presential'] as const).map((m) => (
+                                    <button
+                                        key={m}
+                                        onClick={() => setModality(m)}
+                                        className={
+                                            modality === m
+                                                ? 'rounded-xl bg-k-text-primary px-3 py-2 text-xs font-bold text-surface-card'
+                                                : 'rounded-xl border border-k-border-subtle bg-glass-bg px-3 py-2 text-xs font-semibold text-k-text-secondary hover:bg-glass-bg-active'
+                                        }
+                                    >
+                                        {m === 'online' ? 'Online' : 'Presencial'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {convertError && (
+                            <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">
+                                <AlertCircle size={14} className="mt-0.5 flex-none" />
+                                <span>{convertError}</span>
+                            </div>
+                        )}
+
+                        <div className="mt-5 flex items-center gap-2">
+                            <button
+                                onClick={handleConvert}
+                                disabled={converting}
+                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-500/20 transition-colors hover:bg-emerald-500 disabled:opacity-60"
+                            >
+                                {converting ? 'Criando…' : 'Criar aluno'}
+                            </button>
+                            <button
+                                onClick={() => setShowConvert(false)}
+                                disabled={converting}
+                                className="rounded-xl border border-k-border-subtle bg-surface-card px-4 py-2.5 text-sm font-semibold text-k-text-secondary transition-colors hover:bg-glass-bg-active disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Credenciais do aluno recém-criado */}
+            <StudentAccessDialog
+                isOpen={!!credentials}
+                onClose={() => {
+                    const id = lead.converted_to_student_id
+                    setCredentials(null)
+                    if (id) router.push(`/students/${id}`)
+                }}
+                studentData={credentials}
+            />
         </>
     )
 }

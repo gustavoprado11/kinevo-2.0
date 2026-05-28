@@ -19,7 +19,7 @@ export default async function MarketingLeadsPage() {
 
     const { data: leads } = await supabase
         .from('trainer_leads')
-        .select('id, name, email, whatsapp, goal, level, message, status, source, source_slug, created_at')
+        .select('id, name, email, whatsapp, goal, level, message, status, source, source_slug, created_at, converted_to_student_id')
         .eq('trainer_id', t.id)
         .order('created_at', { ascending: false })
         .limit(500)
