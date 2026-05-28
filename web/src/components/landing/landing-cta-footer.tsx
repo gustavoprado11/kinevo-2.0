@@ -13,7 +13,11 @@ const footerLinks = {
         { label: 'Preços', href: '#precos' },
     ],
     recursos: [
-        { label: 'Central de Ajuda', href: '#' },
+        {
+            label: 'Central de Ajuda',
+            href: 'https://wa.me/5531999064997?text=Ol%C3%A1!%20Preciso%20de%20ajuda%20com%20o%20Kinevo.',
+            external: true,
+        },
         { label: 'FAQ', href: '#faq' },
         { label: 'Status', href: '#' },
     ],
