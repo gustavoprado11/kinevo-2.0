@@ -17,6 +17,48 @@ import {
     RefreshCw,
 } from 'lucide-react'
 import { WatchMockup } from '@/components/landing/landing-apple-watch'
+import { IOS_APP_URL, ANDROID_APP_URL } from '@/lib/constants/app-links'
+
+/* Badges de download das lojas — usados no fim da seção "App do Aluno". */
+function StoreBadges() {
+    return (
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
+            <a
+                href={IOS_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Baixar na App Store"
+                className="inline-flex items-center gap-2.5 rounded-xl bg-[#1D1D1F] px-5 py-3 text-white transition-transform hover:-translate-y-0.5"
+            >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 shrink-0" aria-hidden="true">
+                    <path d="M17.05 12.04c-.03-2.6 2.13-3.85 2.22-3.91-1.21-1.77-3.1-2.01-3.77-2.04-1.6-.16-3.13.94-3.94.94-.81 0-2.07-.92-3.4-.9-1.75.03-3.36 1.02-4.26 2.58-1.82 3.16-.47 7.84 1.3 10.41.86 1.26 1.89 2.67 3.24 2.62 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.39.81 1.4-.02 2.29-1.28 3.15-2.55.99-1.46 1.4-2.87 1.42-2.95-.03-.01-2.72-1.04-2.75-4.12zM14.53 4.42c.72-.87 1.2-2.08 1.07-3.29-1.03.04-2.29.69-3.03 1.56-.66.77-1.24 2-1.09 3.18 1.15.09 2.33-.58 3.05-1.45z" />
+                </svg>
+                <span className="flex flex-col leading-none text-left">
+                    <span className="font-jakarta text-[10px] font-medium text-white/70">Baixar na</span>
+                    <span className="font-jakarta text-base font-bold">App Store</span>
+                </span>
+            </a>
+            <a
+                href={ANDROID_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Disponível no Google Play"
+                className="inline-flex items-center gap-2.5 rounded-xl bg-[#1D1D1F] px-5 py-3 text-white transition-transform hover:-translate-y-0.5"
+            >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 shrink-0" aria-hidden="true">
+                    <path d="M3.6 1.84c-.24.25-.38.64-.38 1.15v18.02c0 .51.14.9.39 1.15l.06.06L13.8 12.07v-.14L3.66 1.78l-.06.06z" opacity=".9" />
+                    <path d="M17.18 15.52l-3.38-3.38v-.14l3.38-3.38.08.04 4 2.27c1.14.65 1.14 1.71 0 2.36l-4 2.27-.08.04z" />
+                    <path d="M17.26 15.48l-3.46-3.46-10.2 10.2c.38.4 1 .45 1.71.05l11.95-6.79" opacity=".8" />
+                    <path d="M17.26 8.56L5.31 1.77c-.71-.4-1.33-.35-1.71.05l10.2 10.2 3.46-3.46z" opacity=".7" />
+                </svg>
+                <span className="flex flex-col leading-none text-left">
+                    <span className="font-jakarta text-[10px] font-medium text-white/70">Disponível no</span>
+                    <span className="font-jakarta text-base font-bold">Google Play</span>
+                </span>
+            </a>
+        </div>
+    )
+}
 
 /* ================================================================== */
 /*  Para o seu aluno                                                    */
@@ -256,6 +298,9 @@ export function LandingParaAluno() {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Download nas lojas */}
+                <StoreBadges />
             </div>
         </section>
     )
