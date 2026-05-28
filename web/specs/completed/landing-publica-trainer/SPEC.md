@@ -355,36 +355,52 @@ Quando lead é submetido:
 
 ## Plano de Build (marcos)
 
-**M1 — Foundation (DB + slugs)**
+> **STATUS: CONCLUÍDO (M1–M6) — 2026-05-28.** Entregue + em produção.
+> A implementação consolidou tudo num hub `/marketing` (Visão geral · Leads ·
+> Landing), não previsto no plano original. Desvios anotados por marco.
+
+**M1 — Foundation (DB + slugs)** ✅
 - Migrations 166 + 167 aplicadas via MCP.
 - `lib/landing/slug.ts` + tests.
 - Server action `updateSlug` + checker de disponibilidade.
-- Card em `/settings` (apenas slug + status, sem editor ainda).
+- Card em `/settings` (depois movido pro hub `/marketing/landing` no M6).
 
-**M2 — Landing pública mínima**
-- Rota `(public)/com/[slug]/page.tsx` renderizando o HTML do mock.
-- Server action `submitTrainerLead` com rate-limit + honeypot.
+**M2 — Landing pública mínima** ✅
+- Rota `(public)/com/[slug]/page.tsx` renderizando o mock (SELECT por colunas
+  explícitas, sem PII; ISR 60s; brand-aware via CSS vars).
+- Server action `submitTrainerLead` com rate-limit + honeypot + dedup soft.
 - Tabela `trainer_leads` recebendo inserts.
 
-**M3 — Notificação e gerenciamento**
+**M3 — Notificação e gerenciamento** ✅
 - `trainer_notifications` + push notification ao receber lead.
-- Página `/leads` (lista + detalhe).
-- Tela mobile (`mobile/(trainer-tabs)/leads.tsx`) + deep link da push.
+- Página de leads (lista + drawer + status + WhatsApp).
+- Tela mobile (`app/leads/index.tsx`, acessada via "Mais") + badge unread.
 
-**M4 — Editor da landing**
-- Página `/landing` com accordion de seções + preview iframe.
-- Auto-save incremental por seção.
-- Pre-flight checklist no publish.
+**M4 — Editor da landing** ✅
+- Página com form (cabeçalho/sobre/credenciais/especializações/plano) +
+  preview iframe (mobile/desktop), dirty tracking, ⌘S.
+- Desvio: salvar é manual (botão/⌘S), não auto-save incremental por seção.
+- Desvio: pre-flight checklist no publish ficou fora (não priorizado).
 
-**M5 — Conversão**
-- Botão "Converter em aluno" → `convertLeadToStudent`.
-- `from_lead_id` adicionado ao create-student.
-- Métrica básica de conversão visível em `/leads`.
+**M5 — Conversão** ✅
+- `convertLeadToStudent` (web + mobile): dedup por e-mail, cortesia via
+  `createStudent`/edge function, idempotente, `converted_to_student_id`.
+- Métrica de conversão visível na Visão geral do hub (KPIs).
 
-**M6 — Polish & launch**
-- E2E test: trainer cria slug → publica → lead submete → trainer recebe push → converte.
-- Documentação rápida pro trainer ("Como compartilhar sua landing").
-- Onboarding tour atualizado pra mencionar a landing.
+**M6 — Polish & launch** ✅
+- Onboarding: milestone "Publicar sua landing" no checklist do trainer.
+- Guia "Como divulgar" com QR code no hub.
+- Polish de microcópia/estados pós-consolidação.
+- Desvio: E2E Playwright fora (sem infra); cobertura por unit tests
+  (color, format, schemas) + build verde.
+
+**Extra — Hub `/marketing`** ✅
+- Consolidou Leads + Landing + Visão geral num só lugar; redirects de
+  `/leads` e `/landing`; item único na sidebar.
+
+**Bug corrigido no caminho:** migration 168 adicionou `'read'` ao CHECK de
+`trainer_leads.status` (o M3 marcava lead como 'read' ao abrir, mas o CHECK
+original não permitia — falha latente).
 
 ## Métricas de sucesso (pós-launch)
 
