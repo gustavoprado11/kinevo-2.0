@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { useV2Colors } from '../../hooks/useV2Colors';
 import { useBrand } from '../../stores/brandStore';
 import { v2 } from '@kinevo/shared/tokens';
+import { PressableScale } from '../shared/PressableScale';
 
 interface AchievementCardProps {
     icon: LucideIcon;
@@ -14,30 +15,19 @@ interface AchievementCardProps {
     gold?: boolean;
     /** Largura fixa (scroll horizontal). Sem valor → flex:1. */
     width?: number;
+    /** Torna o card tocável (ex.: abrir a tela de conquistas). */
+    onPress?: () => void;
 }
 
 /** Card de conquista reutilizável (Home grid + tela de conquistas). */
-export function AchievementCard({ icon, title, subtitle, locked, gold, width }: AchievementCardProps) {
+export function AchievementCard({ icon, title, subtitle, locked, gold, width, onPress }: AchievementCardProps) {
     const colors = useV2Colors();
     const brand = useBrand();
     const Icon = icon;
     const accent = gold ? '#F59E0B' : brand.color;
 
-    return (
-        <View
-            style={[
-                {
-                    backgroundColor: colors.surface.card,
-                    borderRadius: v2.radius.md,
-                    borderWidth: 1,
-                    borderColor: gold && !locked ? 'rgba(245,158,11,0.35)' : colors.border.default,
-                    padding: 12,
-                    gap: 6,
-                    opacity: locked ? 0.6 : 1,
-                },
-                width != null ? { width } : { flex: 1 },
-            ]}
-        >
+    const content = (
+        <>
             <Icon size={22} color={locked ? colors.text.tertiary : accent} strokeWidth={2} />
             <Text style={[styles.title, { color: colors.text.primary }]} numberOfLines={1}>
                 {title}
@@ -45,8 +35,36 @@ export function AchievementCard({ icon, title, subtitle, locked, gold, width }: 
             <Text style={[styles.subtitle, { color: colors.text.tertiary }]} numberOfLines={1}>
                 {subtitle}
             </Text>
-        </View>
+        </>
     );
+
+    const cardStyle = [
+        {
+            backgroundColor: colors.surface.card,
+            borderRadius: v2.radius.md,
+            borderWidth: 1,
+            borderColor: gold && !locked ? 'rgba(245,158,11,0.35)' : colors.border.default,
+            padding: 12,
+            gap: 6,
+            opacity: locked ? 0.6 : 1,
+        },
+        width != null ? { width } : { flex: 1 },
+    ];
+
+    if (onPress) {
+        return (
+            <PressableScale
+                onPress={onPress}
+                style={cardStyle}
+                accessibilityLabel={`${title}, ${subtitle}`}
+                accessibilityHint="Abre a tela de conquistas"
+            >
+                {content}
+            </PressableScale>
+        );
+    }
+
+    return <View style={cardStyle}>{content}</View>;
 }
 
 const styles = StyleSheet.create({

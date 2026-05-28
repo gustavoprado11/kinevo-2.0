@@ -31,18 +31,26 @@ import { useLatestUnreadReport } from "../../hooks/useLatestUnreadReport";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import { useBrand, useBrandStore } from "../../stores/brandStore";
 import { v2 } from "@kinevo/shared/tokens";
-import { Flame, Dumbbell, Star, Award } from "lucide-react-native";
+import { Flame, Dumbbell, Star, Award, ChevronRight } from "lucide-react-native";
 import { AchievementCard } from "../../components/achievements/AchievementCard";
-import { ReadinessCompactCard, ReadinessCompactSkeleton } from "../../components/health/ReadinessCompactCard";
-import { useReadinessToday } from "../../hooks/useReadinessToday";
-import { getReadinessRecommendation } from "../../lib/readiness";
-import { useHealthDashboard } from "../../hooks/useHealthDashboard";
-import { HealthPromotionalCard } from "../../components/health/HealthPromotionalCard";
-import { useWearableConnections } from "../../hooks/useWearableConnections";
-import { HealthOnboardingSheet } from "../../components/onboarding/HealthOnboardingSheet";
 
 // ─── Entering animation shorthand ───
 const ENTER = ANIM.enter;
+
+// Iniciais da marca pro placeholder do header (espelha web getInitials:
+// primeiras letras de cada palavra, máx. 2). "Gustavo Prado Personal
+// Trainer" → "GP".
+function brandInitials(name: string): string {
+    return (
+        name
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((p) => p[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2) || "K"
+    );
+}
 
 export default function HomeScreen() {
     const colors = useV2Colors();
@@ -437,6 +445,25 @@ export default function HomeScreen() {
                                 source={{ uri: brand.logoUrl }}
                                 style={{ width: 32, height: 32, borderRadius: 8 }}
                             />
+                        ) : brand.enabled && brand.name ? (
+                            // Marca personalizada sem logo enviada → iniciais num
+                            // quadrado com a cor da marca (espelha o placeholder do
+                            // web). Evita cair no logo Kinevo quando o personal já
+                            // tem identidade própria (nome/cor), só não subiu imagem.
+                            <View
+                                style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 8,
+                                    backgroundColor: brand.color,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.2 }}>
+                                    {brandInitials(brand.name)}
+                                </Text>
+                            </View>
                         ) : (
                             <Image
                                 source={require("../../assets/images/logo-icon.jpg")}
@@ -563,13 +590,6 @@ export default function HomeScreen() {
                             </Animated.View>
                         )}
 
-                        {/* ── Prontidão compacta: conecta a recuperação ao treino acima ── */}
-                        <Animated.View
-                            entering={FadeInUp.delay(130).duration(ENTER.duration).easing(ENTER.easing)}
-                        >
-                            <ReadinessCardSlot />
-                        </Animated.View>
-
                         {/* ── Achievements grid (sobe p/ acima da dobra) ── */}
                         {programName && (
                             <Animated.View
@@ -662,13 +682,15 @@ function AchievementsGrid({
     perfectWeeks: number;
 }) {
     const colors = useV2Colors();
+    const router = useRouter();
     // Marco arbitrário pra "rumo a": próximo múltiplo de 25 acima do atual.
     const milestoneTarget = Math.max(25, Math.ceil((totalCompletedThisProgram + 1) / 25) * 25);
     const CARD_W = 116;
+    const openAchievements = () => router.push('/profile/achievements');
 
     return (
         <View style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, paddingHorizontal: 2 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 2 }}>
                 <Text
                     style={{
                         fontFamily: 'PlusJakartaSans_700Bold',
@@ -680,6 +702,18 @@ function AchievementsGrid({
                 >
                     Suas conquistas
                 </Text>
+                <TouchableOpacity
+                    onPress={openAchievements}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Ver todas as conquistas"
+                >
+                    <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12, color: colors.text.secondary }}>
+                        Ver todas
+                    </Text>
+                    <ChevronRight size={14} color={colors.text.secondary} strokeWidth={2.5} />
+                </TouchableOpacity>
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}>
@@ -690,6 +724,7 @@ function AchievementsGrid({
                         subtitle="perfeitas"
                         gold
                         width={CARD_W}
+                        onPress={openAchievements}
                     />
                 )}
                 <AchievementCard
@@ -698,6 +733,7 @@ function AchievementsGrid({
                     subtitle={streak >= 2 ? 'consistente' : 'treine 2 sem.'}
                     locked={streak < 2}
                     width={CARD_W}
+                    onPress={openAchievements}
                 />
                 <AchievementCard
                     icon={Dumbbell}
@@ -705,6 +741,7 @@ function AchievementsGrid({
                     subtitle="neste programa"
                     locked={totalCompletedThisProgram === 0}
                     width={CARD_W}
+                    onPress={openAchievements}
                 />
                 <AchievementCard
                     icon={Star}
@@ -712,6 +749,7 @@ function AchievementsGrid({
                     subtitle="rumo a marco"
                     locked={totalCompletedThisProgram < milestoneTarget}
                     width={CARD_W}
+                    onPress={openAchievements}
                 />
             </ScrollView>
         </View>
@@ -764,48 +802,3 @@ function WeeklySummaryCard({ completed, target }: { completed: number; target: n
     );
 }
 
-// Fase 14a → 14c — Slot da Prontidão com 3 branches (agora versão compacta,
-// abaixo do herói de treino):
-//   1. Tem readiness → ReadinessCompactCard
-//   2. Sem readiness mas tem conexão ativa → Skeleton (sync rodando)
-//   3. Sem conexão ativa → HealthPromotionalCard (CTA reabre onboarding)
-function ReadinessCardSlot() {
-    const router = useRouter();
-    const { data: readiness, isLoading: readinessLoading } = useReadinessToday();
-    const { data: dashboard } = useHealthDashboard();
-    const { hasActive, isLoading: connLoading } = useWearableConnections();
-    const [showOnboarding, setShowOnboarding] = React.useState(false);
-
-    if (readiness) {
-        return (
-            <ReadinessCompactCard
-                result={readiness}
-                recommendation={getReadinessRecommendation(readiness)}
-                hrToday={dashboard?.hrRestingToday}
-                hrv={dashboard?.hrvToday}
-                onPress={() => router.push('/(tabs)/health' as never)}
-            />
-        );
-    }
-
-    // Carregando: mostra skeleton só se há conexão ativa (senão fica vazio)
-    if ((readinessLoading || connLoading) && hasActive) {
-        return <ReadinessCompactSkeleton />;
-    }
-
-    if (!hasActive) {
-        return (
-            <>
-                <HealthPromotionalCard onConnect={() => setShowOnboarding(true)} />
-                {showOnboarding && (
-                    <HealthOnboardingSheet
-                        visible={showOnboarding}
-                        onClose={() => setShowOnboarding(false)}
-                    />
-                )}
-            </>
-        );
-    }
-
-    return null;
-}

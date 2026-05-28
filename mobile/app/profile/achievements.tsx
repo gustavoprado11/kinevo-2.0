@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, ActivityIndicator, useWindowDimensions, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Award, Flame, Dumbbell, Star } from 'lucide-react-native';
+import { Award, Flame, Dumbbell, Star, Weight, Trophy, TrendingUp, Target } from 'lucide-react-native';
 import { AchievementCard } from '../../components/achievements/AchievementCard';
 import { useAchievements } from '../../hooks/useAchievements';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
@@ -16,6 +16,9 @@ export default function AchievementsScreen() {
     const { width } = useWindowDimensions();
     const cardW = (width - 16 * 2 - 12) / 2;
     const milestoneTarget = Math.max(25, Math.ceil((a.totalWorkouts + 1) / 25) * 25);
+    const volumeLabel = a.totalVolumeKg >= 1000
+        ? `${(a.totalVolumeKg / 1000).toFixed(1).replace('.', ',')} t`
+        : `${a.totalVolumeKg} kg`;
 
     return (
         <View style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
@@ -63,6 +66,34 @@ export default function AchievementsScreen() {
                             title={`${a.totalWorkouts}/${milestoneTarget}`}
                             subtitle="rumo ao próximo marco"
                             locked={a.totalWorkouts < milestoneTarget}
+                        />
+                        <AchievementCard
+                            icon={Weight}
+                            width={cardW}
+                            title={a.totalVolumeKg > 0 ? volumeLabel : 'Primeiro kg'}
+                            subtitle={a.totalVolumeKg > 0 ? 'levantados no total' : 'registre uma carga'}
+                            locked={a.totalVolumeKg === 0}
+                        />
+                        <AchievementCard
+                            icon={Trophy}
+                            width={cardW}
+                            title={a.programsCompleted > 0 ? `${a.programsCompleted} ${a.programsCompleted === 1 ? 'programa' : 'programas'}` : 'Primeiro programa'}
+                            subtitle={a.programsCompleted > 0 ? 'concluídos' : 'conclua um ciclo'}
+                            locked={a.programsCompleted === 0}
+                        />
+                        <AchievementCard
+                            icon={TrendingUp}
+                            width={cardW}
+                            title={a.bestWeekStreak >= 2 ? `${a.bestWeekStreak} semanas` : 'Recorde a bater'}
+                            subtitle={a.bestWeekStreak >= 2 ? 'melhor sequência' : 'treine 2 semanas'}
+                            locked={a.bestWeekStreak < 2}
+                        />
+                        <AchievementCard
+                            icon={Target}
+                            width={cardW}
+                            title={a.topMuscleGroup ?? 'Grupo favorito'}
+                            subtitle={a.topMuscleGroup ? `${a.topMuscleGroupSets} séries · mais treinado` : 'comece a treinar'}
+                            locked={!a.topMuscleGroup}
                         />
                     </View>
                 )}
