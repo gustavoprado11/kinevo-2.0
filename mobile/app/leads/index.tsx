@@ -7,6 +7,7 @@ import {
     Linking,
     RefreshControl,
     ActivityIndicator,
+    Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -16,17 +17,21 @@ import {
     MessageCircle,
     Archive,
     UserPlus,
+    UserCheck,
     Clock,
     Mail,
     Phone,
     X,
     AlertCircle,
     Sparkles,
+    Copy,
+    Check,
 } from "lucide-react-native";
 import Animated, { FadeIn, FadeInUp, Easing } from "react-native-reanimated";
 import { v2 } from "@kinevo/shared/tokens";
 import { useV2Colors } from "../../hooks/useV2Colors";
-import { useTrainerLeads, type TrainerLead, type LeadStatus } from "../../hooks/useTrainerLeads";
+import * as Haptics from "expo-haptics";
+import { useTrainerLeads, type TrainerLead, type LeadStatus, type ConvertLeadResult } from "../../hooks/useTrainerLeads";
 import { KCard, KSegmented, KButton } from "../../components/v2";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { AdaptiveModal } from "../../components/shared/AdaptiveModal";
@@ -66,10 +71,17 @@ function whatsappLink(whatsapp: string, firstName: string) {
 export default function LeadsScreen() {
     const router = useRouter();
     const colors = useV2Colors();
-    const { leads, loading, refetch, updateStatus } = useTrainerLeads();
+    const { leads, loading, refetch, updateStatus, convertLead } = useTrainerLeads();
     const [filter, setFilter] = useState<FilterKey>("all");
     const [refreshing, setRefreshing] = useState(false);
-    const [selected, setSelected] = useState<TrainerLead | null>(null);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [credentials, setCredentials] = useState<{
+        name: string; email: string; password: string; whatsapp: string | null;
+    } | null>(null);
+
+    // Deriva o lead selecionado da lista pra refletir updates (status/conversão)
+    // sem manter uma cópia desatualizada.
+    const selected = selectedId ? leads.find((l) => l.id === selectedId) ?? null : null;
 
     const counts = useMemo(() => {
         const c = { all: 0, new: 0, contacted: 0, converted: 0 };
@@ -101,7 +113,7 @@ export default function LeadsScreen() {
     };
 
     const onSelect = (lead: TrainerLead) => {
-        setSelected(lead);
+        setSelectedId(lead.id);
         if (lead.status === "new") void updateStatus(lead.id, "read");
     };
 
@@ -219,8 +231,8 @@ export default function LeadsScreen() {
 
             {/* Drawer / Modal de detalhe */}
             <AdaptiveModal
-                visible={!!selected}
-                onClose={() => setSelected(null)}
+                visible={!!selected && !credentials}
+                onClose={() => setSelectedId(null)}
                 title={selected?.name ?? ""}
             >
                 {selected && (
@@ -228,9 +240,36 @@ export default function LeadsScreen() {
                         lead={selected}
                         colors={colors}
                         onUpdateStatus={(s) => updateStatus(selected.id, s)}
-                        onClose={() => setSelected(null)}
+                        onConvert={(modality) => convertLead(selected, modality)}
+                        onConverted={(studentId, creds) => {
+                            if (creds && creds.password) {
+                                setCredentials(creds);
+                            } else {
+                                setSelectedId(null);
+                                router.push(`/student/${studentId}` as never);
+                            }
+                        }}
+                        onViewStudent={(studentId) => {
+                            setSelectedId(null);
+                            router.push(`/student/${studentId}` as never);
+                        }}
+                        onClose={() => setSelectedId(null)}
                     />
                 )}
+            </AdaptiveModal>
+
+            {/* Credenciais do aluno recém-criado */}
+            <AdaptiveModal
+                visible={!!credentials}
+                onClose={() => {
+                    const studentId = selected?.converted_to_student_id;
+                    setCredentials(null);
+                    setSelectedId(null);
+                    if (studentId) router.push(`/student/${studentId}` as never);
+                }}
+                title="Aluno criado"
+            >
+                {credentials && <CredentialsView credentials={credentials} colors={colors} />}
             </AdaptiveModal>
         </SafeAreaView>
     );
@@ -327,15 +366,44 @@ function LeadDetail({
     lead,
     colors,
     onUpdateStatus,
+    onConvert,
+    onConverted,
+    onViewStudent,
     onClose,
 }: {
     lead: TrainerLead;
     colors: ReturnType<typeof useV2Colors>;
     onUpdateStatus: (s: LeadStatus) => void;
+    onConvert: (modality: "online" | "presential") => Promise<ConvertLeadResult>;
+    onConverted: (studentId: string, credentials: ConvertLeadResult["credentials"]) => void;
+    onViewStudent: (studentId: string) => void;
     onClose: () => void;
 }) {
     const firstName = lead.name.split(" ")[0] ?? lead.name;
     const meta = STATUS_META(colors)[lead.status];
+
+    const [showConvert, setShowConvert] = useState(false);
+    const [modality, setModality] = useState<"online" | "presential">("online");
+    const [converting, setConverting] = useState(false);
+    const [convertError, setConvertError] = useState<string | null>(null);
+
+    const isConverted = lead.status === "converted" && !!lead.converted_to_student_id;
+
+    const handleConvert = async () => {
+        setConvertError(null);
+        setConverting(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        const result = await onConvert(modality);
+        setConverting(false);
+        if (!result.success || !result.studentId) {
+            setConvertError(result.error ?? "Não foi possível converter.");
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            return;
+        }
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setShowConvert(false);
+        onConverted(result.studentId, result.credentials);
+    };
 
     const openWhatsApp = () => {
         void Linking.openURL(whatsappLink(lead.whatsapp, firstName));
@@ -465,40 +533,94 @@ function LeadDetail({
                 </>
             )}
 
+            {/* Conversão */}
+            <SectionHeader colors={colors} title="Conversão" />
+            {isConverted ? (
+                <KButton
+                    label="Ver aluno"
+                    variant="primary"
+                    size="lg"
+                    onPress={() => lead.converted_to_student_id && onViewStudent(lead.converted_to_student_id)}
+                    leadingIcon={<UserCheck size={15} color="#fff" strokeWidth={2.4} />}
+                />
+            ) : showConvert ? (
+                <View style={{ gap: spacing[2] }}>
+                    <Text
+                        style={{
+                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontSize: 12.5,
+                            color: colors.text.tertiary,
+                            lineHeight: 18,
+                        }}
+                    >
+                        Cria {firstName} como aluno cortesia (sem contrato). Escolha a modalidade:
+                    </Text>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                        {(["online", "presential"] as const).map((m) => (
+                            <View key={m} style={{ flex: 1 }}>
+                                <KButton
+                                    label={m === "online" ? "Online" : "Presencial"}
+                                    variant={modality === m ? "primary" : "outline"}
+                                    size="md"
+                                    onPress={() => setModality(m)}
+                                />
+                            </View>
+                        ))}
+                    </View>
+                    {convertError && (
+                        <Text
+                            style={{
+                                fontFamily: "PlusJakartaSans_500Medium",
+                                fontSize: 12.5,
+                                color: colors.semantic.danger.default,
+                            }}
+                        >
+                            {convertError}
+                        </Text>
+                    )}
+                    <KButton
+                        label={converting ? "Criando…" : "Criar aluno"}
+                        variant="primary"
+                        size="lg"
+                        disabled={converting}
+                        onPress={handleConvert}
+                        leadingIcon={<UserPlus size={15} color="#fff" strokeWidth={2.4} />}
+                    />
+                    <KButton
+                        label="Cancelar"
+                        variant="ghost"
+                        size="md"
+                        disabled={converting}
+                        onPress={() => { setShowConvert(false); setConvertError(null); }}
+                    />
+                </View>
+            ) : (
+                <KButton
+                    label="Converter em aluno"
+                    variant="primary"
+                    size="lg"
+                    onPress={() => { setShowConvert(true); setConvertError(null); }}
+                    leadingIcon={<UserPlus size={15} color="#fff" strokeWidth={2.4} />}
+                />
+            )}
+
             {/* Status actions */}
             <SectionHeader colors={colors} title="Status" />
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: spacing[2] }}>
-                <View style={{ flex: 1 }}>
-                    <KButton
-                        label="Contatado"
-                        variant={lead.status === "contacted" ? "primary" : "outline"}
-                        size="md"
-                        onPress={() => onUpdateStatus("contacted")}
-                        leadingIcon={
-                            <MessageCircle
-                                size={13}
-                                color={lead.status === "contacted" ? "#fff" : colors.text.secondary}
-                                strokeWidth={2.4}
-                            />
-                        }
+            <KButton
+                label={lead.status === "contacted" ? "Contatado" : "Marcar como contatado"}
+                variant={lead.status === "contacted" ? "primary" : "outline"}
+                size="md"
+                disabled={isConverted}
+                onPress={() => onUpdateStatus("contacted")}
+                leadingIcon={
+                    <MessageCircle
+                        size={13}
+                        color={lead.status === "contacted" ? "#fff" : colors.text.secondary}
+                        strokeWidth={2.4}
                     />
-                </View>
-                <View style={{ flex: 1 }}>
-                    <KButton
-                        label="Virou aluno"
-                        variant={lead.status === "converted" ? "primary" : "outline"}
-                        size="md"
-                        onPress={() => onUpdateStatus("converted")}
-                        leadingIcon={
-                            <UserPlus
-                                size={13}
-                                color={lead.status === "converted" ? "#fff" : colors.text.secondary}
-                                strokeWidth={2.4}
-                            />
-                        }
-                    />
-                </View>
-            </View>
+                }
+            />
+            <View style={{ height: spacing[2] }} />
             <KButton
                 label={lead.status === "archived" ? "Arquivado" : "Arquivar"}
                 variant="ghost"
@@ -509,6 +631,128 @@ function LeadDetail({
                 }}
                 disabled={lead.status === "archived"}
                 leadingIcon={<Archive size={13} color={colors.text.tertiary} strokeWidth={2.2} />}
+            />
+        </View>
+    );
+}
+
+/* ───────── Credenciais do aluno criado ───────── */
+function CredentialsView({
+    credentials,
+    colors,
+}: {
+    credentials: { name: string; email: string; password: string; whatsapp: string | null };
+    colors: ReturnType<typeof useV2Colors>;
+}) {
+    const [copied, setCopied] = useState(false);
+
+    const message =
+        `Olá ${credentials.name}! 👋\n\nSuas credenciais de acesso ao Kinevo:\n\n` +
+        `📧 Email: ${credentials.email}\n🔑 Senha: ${credentials.password}\n\n` +
+        `Baixe o app e faça login para começar! 💪`;
+
+    const handleCopy = async () => {
+        try {
+            const Clipboard = require("expo-clipboard");
+            if (Clipboard?.setStringAsync) {
+                await Clipboard.setStringAsync(message);
+                setCopied(true);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                setTimeout(() => setCopied(false), 1800);
+            }
+        } catch { /* ignore */ }
+    };
+
+    const handleShare = () => {
+        Share.share({ message }).catch(() => {});
+    };
+
+    return (
+        <View style={{ paddingHorizontal: spacing[4], paddingBottom: spacing[6] }}>
+            <View
+                style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 16,
+                    backgroundColor: toRgba(colors.semantic.success.default, 0.14),
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: spacing[3],
+                }}
+            >
+                <UserCheck size={24} color={colors.semantic.success.default} strokeWidth={2} />
+            </View>
+            <Text
+                style={{
+                    fontFamily: "PlusJakartaSans_700Bold",
+                    fontSize: 18,
+                    color: colors.text.primary,
+                    marginBottom: spacing[1],
+                }}
+            >
+                {credentials.name} agora é seu aluno
+            </Text>
+            <Text
+                style={{
+                    fontFamily: "PlusJakartaSans_500Medium",
+                    fontSize: 13.5,
+                    color: colors.text.tertiary,
+                    lineHeight: 20,
+                    marginBottom: spacing[4],
+                }}
+            >
+                Compartilhe as credenciais pra ele entrar no app. A senha só aparece agora.
+            </Text>
+
+            <KCard style={{ padding: 0, marginBottom: spacing[4] }}>
+                <DetailRow
+                    colors={colors}
+                    icon={<Mail size={14} color={colors.text.tertiary} strokeWidth={2} />}
+                    value={credentials.email}
+                />
+                <Divider colors={colors} />
+                <View
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingHorizontal: spacing[4],
+                        paddingVertical: spacing[3],
+                        gap: spacing[3],
+                    }}
+                >
+                    <Text style={{ fontSize: 14 }}>🔑</Text>
+                    <Text
+                        style={{
+                            flex: 1,
+                            fontFamily: "PlusJakartaSans_700Bold",
+                            fontSize: 15,
+                            color: colors.text.primary,
+                            letterSpacing: 0.5,
+                        }}
+                    >
+                        {credentials.password}
+                    </Text>
+                </View>
+            </KCard>
+
+            <KButton
+                label={copied ? "Copiado!" : "Copiar credenciais"}
+                variant="primary"
+                size="lg"
+                onPress={handleCopy}
+                leadingIcon={
+                    copied
+                        ? <Check size={15} color="#fff" strokeWidth={2.6} />
+                        : <Copy size={15} color="#fff" strokeWidth={2.4} />
+                }
+            />
+            <View style={{ height: spacing[2] }} />
+            <KButton
+                label="Enviar pelo WhatsApp"
+                variant="outline"
+                size="md"
+                onPress={handleShare}
+                leadingIcon={<MessageCircle size={14} color={colors.text.secondary} strokeWidth={2.4} />}
             />
         </View>
     );
