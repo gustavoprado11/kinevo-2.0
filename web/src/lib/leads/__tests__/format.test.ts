@@ -67,8 +67,8 @@ describe('whatsappLink', () => {
 
     it('includes URL-encoded greeting with first name', () => {
         const url = whatsappLink('31999064997', 'Ana')
-        // "Oi Ana" precisa estar codificado no text=
-        expect(url).toMatch(/text=Oi%20Ana/)
+        // "Olá, Ana!" precisa estar codificado no text=
+        expect(url).toContain('text=Ol%C3%A1%2C%20Ana')
     })
 
     it('preserves names with accent', () => {

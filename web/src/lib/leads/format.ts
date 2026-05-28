@@ -41,7 +41,8 @@ export function whatsappLink(whatsapp: string, firstName: string): string {
     const digits = whatsapp.replace(/\D/g, '')
     const number = digits.length === 11 || digits.length === 10 ? `55${digits}` : digits
     const greeting =
-        `Oi ${firstName}, tudo bem? 👋 Vi que você se interessou em treinar comigo. ` +
+        `Olá, ${firstName}! Que legal que você se interessou em treinar comigo!\n\n` +
+        `Será um prazer poder colaborar com sua evolução nos treinos. ` +
         `Me conta um pouco do seu objetivo que eu te explico como funciona o acompanhamento. 💪`
     return `https://wa.me/${number}?text=${encodeURIComponent(greeting)}`
 }
