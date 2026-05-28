@@ -62,9 +62,13 @@ export async function updateTrainerLanding(input: UpdateLandingInput): Promise<U
         )
         : {}
 
-    /* Testimonials/FAQ: arrays vazios viram [] (default da coluna). */
+    /* Testimonials/FAQ/Plans: arrays vazios viram [] (default da coluna). */
     const testimonials = data.testimonials ?? []
     const faq = data.faq ?? []
+    const plans = (data.plans ?? []).map((p) => ({
+        ...p,
+        features: p.features.filter((f) => f.trim().length > 0),
+    }))
 
     const patch = {
         landing_headline: emptyToNull(data.headline ?? null),
@@ -79,6 +83,7 @@ export async function updateTrainerLanding(input: UpdateLandingInput): Promise<U
         landing_stats: stats,
         landing_testimonials: testimonials,
         landing_faq: faq,
+        landing_plans: plans,
     }
 
     const { error: updateError } = await supabase

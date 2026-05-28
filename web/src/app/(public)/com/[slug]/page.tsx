@@ -11,6 +11,7 @@ import {
     type LandingStats,
     type Testimonial,
     type FaqItem,
+    type LandingPlan,
 } from '@/lib/landing/defaults'
 import { LeadForm } from './_components/LeadForm'
 import { mix, rgba } from '@/lib/landing/color'
@@ -40,6 +41,7 @@ interface TrainerRow {
     landing_faq: FaqItem[] | null
     landing_price_label: string | null
     landing_hero_image_url: string | null
+    landing_plans: LandingPlan[] | null
     brand_color: string | null
     brand_logo_url: string | null
     brand_name: string | null
@@ -53,7 +55,7 @@ const PUBLIC_COLUMNS =
     'landing_headline, landing_subheadline, landing_bio, landing_city, ' +
     'landing_cref, landing_certifications, landing_specializations, ' +
     'landing_year_started, landing_stats, landing_testimonials, ' +
-    'landing_faq, landing_price_label, landing_hero_image_url, ' +
+    'landing_faq, landing_price_label, landing_hero_image_url, landing_plans, ' +
     'brand_color, brand_logo_url, brand_name'
 
 async function fetchTrainer(slug: string): Promise<TrainerRow | null> {
@@ -127,6 +129,7 @@ export default async function TrainerLandingPage({
     const testimonials = (trainer.landing_testimonials ?? []).slice(0, 6)
     const faq = (trainer.landing_faq && trainer.landing_faq.length > 0) ? trainer.landing_faq : DEFAULT_FAQ
     const priceLabel = trainer.landing_price_label
+    const plans = (trainer.landing_plans ?? []).filter((p) => p.name && p.price).slice(0, 4)
     const heroImage = trainer.landing_hero_image_url ?? trainer.avatar_url
     const initial = (trainer.brand_name ?? trainer.name).trim().charAt(0).toUpperCase() || 'K'
     const firstName = trainer.name.split(' ')[0] ?? trainer.name
@@ -516,6 +519,41 @@ export default async function TrainerLandingPage({
                 </div>
             </section>
 
+            {/* ─── PLANOS ─── */}
+            {plans.length > 0 && (
+                <section className="lt-plans" id="planos">
+                    <div className="lt-container">
+                        <div className="lt-section-eyebrow">Planos</div>
+                        <h2>Escolha como <em>quer treinar.</em></h2>
+                        <div className={`lt-plans-grid cols-${Math.min(plans.length, 4)}`}>
+                            {plans.map((p, i) => (
+                                <div key={i} className={p.highlight ? 'lt-plan highlight' : 'lt-plan'}>
+                                    {p.highlight && <span className="lt-plan-badge">Mais escolhido</span>}
+                                    <h3 className="lt-plan-name">{p.name}</h3>
+                                    <div className="lt-plan-price">
+                                        <b>{p.price}</b>
+                                        {p.period ? <span>{p.period}</span> : null}
+                                    </div>
+                                    {p.features.length > 0 && (
+                                        <ul className="lt-plan-features">
+                                            {p.features.map((f, j) => (
+                                                <li key={j}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="20 6 9 17 4 12" />
+                                                    </svg>
+                                                    {f}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                    <a href="#fale" className="lt-plan-cta">Quero esse</a>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
+
             {/* ─── FORM ─── */}
             <section className="lt-form-section" id="fale">
                 <div className="lt-container">
@@ -531,7 +569,7 @@ export default async function TrainerLandingPage({
                                 <div className="lbl">Resposta em</div>
                                 <div className="val">Até <em>24h</em></div>
                             </div>
-                            {priceLabel && (
+                            {plans.length === 0 && priceLabel && (
                                 <div className="lt-meta-block">
                                     <div className="lbl">Plano</div>
                                     <div className="val">{priceLabel}</div>

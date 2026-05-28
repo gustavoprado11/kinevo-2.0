@@ -16,6 +16,8 @@ import { z } from 'zod'
 const ARRAY_MAX = 8
 const TESTIMONIALS_MAX = 6
 const FAQ_MAX = 10
+const PLANS_MAX = 4
+const PLAN_FEATURES_MAX = 10
 
 const STATS_SCHEMA = z.object({
     students_count: z.number().int().min(0).max(100000).nullable().optional(),
@@ -36,6 +38,14 @@ const FAQ_ITEM_SCHEMA = z.object({
     answer: z.string().trim().min(1).max(800),
 })
 
+const PLAN_SCHEMA = z.object({
+    name: z.string().trim().min(1).max(60),
+    price: z.string().trim().min(1).max(40),
+    period: z.string().trim().max(20).nullable().optional(),
+    features: z.array(z.string().trim().min(1).max(120)).max(PLAN_FEATURES_MAX),
+    highlight: z.boolean().nullable().optional(),
+})
+
 export const LANDING_SCHEMA = z.object({
     headline: z.string().trim().max(200).optional().nullable(),
     subheadline: z.string().trim().max(280).optional().nullable(),
@@ -49,6 +59,7 @@ export const LANDING_SCHEMA = z.object({
     stats: STATS_SCHEMA.optional().nullable(),
     testimonials: z.array(TESTIMONIAL_SCHEMA).max(TESTIMONIALS_MAX).optional().nullable(),
     faq: z.array(FAQ_ITEM_SCHEMA).max(FAQ_MAX).optional().nullable(),
+    plans: z.array(PLAN_SCHEMA).max(PLANS_MAX).optional().nullable(),
 })
 
 export type UpdateLandingInput = z.infer<typeof LANDING_SCHEMA>

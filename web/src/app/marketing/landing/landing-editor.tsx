@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { updateTrainerLanding } from '@/actions/trainer/update-landing'
 import { updateLandingHero } from '@/actions/trainer/update-landing-hero'
-import type { LandingStats, Testimonial, FaqItem } from '@/lib/landing/defaults'
+import type { LandingStats, Testimonial, FaqItem, LandingPlan } from '@/lib/landing/defaults'
 
 export interface EditorTrainer {
     id: string
@@ -41,6 +41,7 @@ export interface EditorTrainer {
     landing_testimonials: Testimonial[] | null
     landing_faq: FaqItem[] | null
     landing_hero_image_url: string | null
+    landing_plans: LandingPlan[] | null
 }
 
 interface FormState {
@@ -59,6 +60,7 @@ interface FormState {
     reviewsCount: string
     testimonials: Testimonial[]
     faq: FaqItem[]
+    plans: LandingPlan[]
 }
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -90,11 +92,14 @@ function trainerToForm(t: EditorTrainer): FormState {
         reviewsCount: s.reviews_count != null ? String(s.reviews_count) : '',
         testimonials: t.landing_testimonials ?? [],
         faq: t.landing_faq ?? [],
+        plans: t.landing_plans ?? [],
     }
 }
 
 const TESTIMONIALS_MAX = 6
 const FAQ_MAX = 10
+const PLANS_MAX = 4
+const PLAN_FEATURES_MAX = 10
 
 export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
     const initial = trainerToForm(trainer)
@@ -160,6 +165,35 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
         patch('faq', form.faq.filter((_, i) => i !== idx))
     }
 
+    /* Planos */
+    const addPlan = () => {
+        if (form.plans.length >= PLANS_MAX) return
+        patch('plans', [...form.plans, { name: '', price: '', period: '', features: [''], highlight: false }])
+    }
+    const updatePlan = (idx: number, field: keyof LandingPlan, value: string | boolean) => {
+        patch('plans', form.plans.map((p, i) => i === idx ? { ...p, [field]: value } : p))
+    }
+    const removePlan = (idx: number) => {
+        patch('plans', form.plans.filter((_, i) => i !== idx))
+    }
+    const updatePlanFeature = (planIdx: number, featIdx: number, value: string) => {
+        patch('plans', form.plans.map((p, i) =>
+            i === planIdx ? { ...p, features: p.features.map((f, j) => j === featIdx ? value : f) } : p,
+        ))
+    }
+    const addPlanFeature = (planIdx: number) => {
+        patch('plans', form.plans.map((p, i) =>
+            i === planIdx && p.features.length < PLAN_FEATURES_MAX
+                ? { ...p, features: [...p.features, ''] }
+                : p,
+        ))
+    }
+    const removePlanFeature = (planIdx: number, featIdx: number) => {
+        patch('plans', form.plans.map((p, i) =>
+            i === planIdx ? { ...p, features: p.features.filter((_, j) => j !== featIdx) } : p,
+        ))
+    }
+
     /* Hero photo upload */
     const handleHeroFile = (file: File | undefined) => {
         if (!file) return
@@ -216,6 +250,17 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
             .map((f) => ({ question: f.question.trim(), answer: f.answer.trim() }))
             .filter((f) => f.question.length > 0 && f.answer.length > 0)
 
+        // Planos: descarta sem nome ou sem preço; limpa features vazias.
+        const plans = form.plans
+            .map((p) => ({
+                name: p.name.trim(),
+                price: p.price.trim(),
+                period: p.period?.trim() || null,
+                features: p.features.map((f) => f.trim()).filter((f) => f.length > 0),
+                highlight: !!p.highlight,
+            }))
+            .filter((p) => p.name.length > 0 && p.price.length > 0)
+
         startTransition(async () => {
             const result = await updateTrainerLanding({
                 headline: form.headline,
@@ -234,6 +279,7 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
                 },
                 testimonials,
                 faq,
+                plans,
             })
             if (!result.success) {
                 setErrorMsg(result.message ?? 'Falha ao salvar.')
@@ -582,9 +628,108 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
                         </div>
                     </Section>
 
-                    {/* Plano */}
-                    <Section title="Plano" subtitle="Como você descreve seu preço/oferta (opcional).">
-                        <Field label="Label de plano" hint="Texto livre — não é checkout.">
+                    {/* Planos */}
+                    <Section
+                        title="Planos"
+                        subtitle={`Cards de oferta na landing. Até ${PLANS_MAX}. Sem planos, mostramos só o resumo abaixo.`}
+                    >
+                        <div className="space-y-3">
+                            {form.plans.map((p, i) => (
+                                <div key={i} className="rounded-xl border border-k-border-subtle bg-glass-bg p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-bold uppercase tracking-wide text-k-text-tertiary">
+                                            Plano {i + 1}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => updatePlan(i, 'highlight', !p.highlight)}
+                                                className={
+                                                    p.highlight
+                                                        ? 'inline-flex items-center gap-1 rounded-md bg-violet-600 px-2 py-1 text-[10px] font-bold text-white'
+                                                        : 'inline-flex items-center gap-1 rounded-md border border-k-border-subtle bg-surface-card px-2 py-1 text-[10px] font-bold text-k-text-tertiary hover:bg-glass-bg-active'
+                                                }
+                                            >
+                                                {p.highlight ? <Check size={11} /> : null} Destaque
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => removePlan(i)}
+                                                className="rounded-lg p-1 text-k-text-quaternary hover:bg-glass-bg-active hover:text-red-500"
+                                                aria-label="Remover plano"
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <input
+                                        value={p.name}
+                                        onChange={(e) => updatePlan(i, 'name', e.target.value)}
+                                        placeholder="Nome do plano (ex: Acompanhamento full)"
+                                        maxLength={60}
+                                        className={inputCls}
+                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                            value={p.price}
+                                            onChange={(e) => updatePlan(i, 'price', e.target.value)}
+                                            placeholder="R$ 350"
+                                            maxLength={40}
+                                            className={inputCls}
+                                        />
+                                        <input
+                                            value={p.period ?? ''}
+                                            onChange={(e) => updatePlan(i, 'period', e.target.value)}
+                                            placeholder="/mês (opcional)"
+                                            maxLength={20}
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                    {/* Features */}
+                                    <div className="space-y-1.5">
+                                        {p.features.map((f, j) => (
+                                            <div key={j} className="flex items-center gap-2">
+                                                <input
+                                                    value={f}
+                                                    onChange={(e) => updatePlanFeature(i, j, e.target.value)}
+                                                    placeholder="O que inclui (ex: 3 treinos/semana)"
+                                                    maxLength={120}
+                                                    className={inputCls}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removePlanFeature(i, j)}
+                                                    className="flex-none rounded-lg p-1.5 text-k-text-quaternary hover:bg-glass-bg-active hover:text-red-500"
+                                                    aria-label="Remover item"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {p.features.length < PLAN_FEATURES_MAX && (
+                                            <button
+                                                type="button"
+                                                onClick={() => addPlanFeature(i)}
+                                                className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-700"
+                                            >
+                                                <Plus size={11} /> Item
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            {form.plans.length < PLANS_MAX && (
+                                <button
+                                    type="button"
+                                    onClick={addPlan}
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-k-border-primary bg-transparent px-3 py-2 text-xs font-bold text-k-text-secondary hover:bg-glass-bg-active"
+                                >
+                                    <Plus size={13} /> Adicionar plano
+                                </button>
+                            )}
+                        </div>
+
+                        <Field label="Resumo de preço" hint="Texto livre. Aparece quando não há planos em cards.">
                             <input
                                 value={form.priceLabel}
                                 onChange={(e) => patch('priceLabel', e.target.value)}

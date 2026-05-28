@@ -145,6 +145,51 @@ describe('LANDING_SCHEMA — conteúdo rico (Fase 1)', () => {
     })
 })
 
+describe('LANDING_SCHEMA — planos (Fase 2)', () => {
+    const plan = { name: 'Mensal', price: 'R$ 350', features: ['3 treinos/semana'] }
+
+    it('aceita plano mínimo (name + price + features)', () => {
+        const r = LANDING_SCHEMA.safeParse({ plans: [plan] })
+        expect(r.success).toBe(true)
+    })
+
+    it('aceita plano completo com period e highlight', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            plans: [{ ...plan, period: '/mês', highlight: true }],
+        })
+        expect(r.success).toBe(true)
+    })
+
+    it('aceita features vazio', () => {
+        const r = LANDING_SCHEMA.safeParse({ plans: [{ name: 'X', price: 'Y', features: [] }] })
+        expect(r.success).toBe(true)
+    })
+
+    it('rejeita plano sem nome', () => {
+        const r = LANDING_SCHEMA.safeParse({ plans: [{ name: '', price: 'R$ 1', features: [] }] })
+        expect(r.success).toBe(false)
+    })
+
+    it('rejeita plano sem preço', () => {
+        const r = LANDING_SCHEMA.safeParse({ plans: [{ name: 'X', price: '', features: [] }] })
+        expect(r.success).toBe(false)
+    })
+
+    it('rejeita mais de 4 planos', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            plans: Array.from({ length: 5 }, () => plan),
+        })
+        expect(r.success).toBe(false)
+    })
+
+    it('rejeita mais de 10 features num plano', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            plans: [{ name: 'X', price: 'Y', features: Array.from({ length: 11 }, () => 'f') }],
+        })
+        expect(r.success).toBe(false)
+    })
+})
+
 describe('emptyToNull', () => {
     it('retorna null pra undefined', () => {
         expect(emptyToNull(undefined)).toBeNull()

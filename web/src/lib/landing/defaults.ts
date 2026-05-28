@@ -85,3 +85,16 @@ export interface Testimonial {
     role?: string | null
     goal?: string | null
 }
+
+/** Plano vindo de landing_plans JSONB (Fase 2). */
+export interface LandingPlan {
+    name: string
+    /** Livre — "R$ 350", "Sob consulta", "12x R$ 90". */
+    price: string
+    /** Sufixo opcional — "/mês", "/trimestre". */
+    period?: string | null
+    /** O que inclui. */
+    features: string[]
+    /** Card em destaque (mais vendido). */
+    highlight?: boolean | null
+}
