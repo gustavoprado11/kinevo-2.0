@@ -60,6 +60,10 @@ export const LANDING_SCHEMA = z.object({
     testimonials: z.array(TESTIMONIAL_SCHEMA).max(TESTIMONIALS_MAX).optional().nullable(),
     faq: z.array(FAQ_ITEM_SCHEMA).max(FAQ_MAX).optional().nullable(),
     plans: z.array(PLAN_SCHEMA).max(PLANS_MAX).optional().nullable(),
+    // Visibilidade de seções: { credenciais, metodo, app, ... } → bool.
+    sections: z.record(z.enum([
+        'credenciais', 'metodo', 'app', 'depoimentos', 'processo', 'planos', 'faq',
+    ]), z.boolean()).optional().nullable(),
 })
 
 export type UpdateLandingInput = z.infer<typeof LANDING_SCHEMA>

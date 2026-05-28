@@ -84,6 +84,7 @@ export async function updateTrainerLanding(input: UpdateLandingInput): Promise<U
         landing_testimonials: testimonials,
         landing_faq: faq,
         landing_plans: plans,
+        landing_sections: data.sections ?? {},
     }
 
     const { error: updateError } = await supabase

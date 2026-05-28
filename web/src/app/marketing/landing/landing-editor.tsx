@@ -20,6 +20,12 @@ import {
 import { updateTrainerLanding } from '@/actions/trainer/update-landing'
 import { updateLandingHero } from '@/actions/trainer/update-landing-hero'
 import type { LandingStats, Testimonial, FaqItem, LandingPlan } from '@/lib/landing/defaults'
+import {
+    LANDING_SECTION_DEFS,
+    isSectionVisible,
+    type LandingSections,
+    type LandingSectionKey,
+} from '@/lib/landing/sections'
 
 export interface EditorTrainer {
     id: string
@@ -42,6 +48,7 @@ export interface EditorTrainer {
     landing_faq: FaqItem[] | null
     landing_hero_image_url: string | null
     landing_plans: LandingPlan[] | null
+    landing_sections: LandingSections | null
 }
 
 interface FormState {
@@ -61,6 +68,7 @@ interface FormState {
     testimonials: Testimonial[]
     faq: FaqItem[]
     plans: LandingPlan[]
+    sections: LandingSections
 }
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -93,6 +101,7 @@ function trainerToForm(t: EditorTrainer): FormState {
         testimonials: t.landing_testimonials ?? [],
         faq: t.landing_faq ?? [],
         plans: t.landing_plans ?? [],
+        sections: t.landing_sections ?? {},
     }
 }
 
@@ -194,6 +203,12 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
         ))
     }
 
+    /* Seções */
+    const toggleSection = (key: LandingSectionKey) => {
+        const visible = isSectionVisible(form.sections, key)
+        patch('sections', { ...form.sections, [key]: !visible })
+    }
+
     /* Hero photo upload */
     const handleHeroFile = (file: File | undefined) => {
         if (!file) return
@@ -280,6 +295,7 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
                 testimonials,
                 faq,
                 plans,
+                sections: form.sections,
             })
             if (!result.success) {
                 setErrorMsg(result.message ?? 'Falha ao salvar.')
@@ -329,6 +345,41 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
             <div className="grid gap-6 lg:grid-cols-[minmax(0,520px)_1fr]">
                 {/* ── COLUNA ESQ — FORM ── */}
                 <div className="space-y-5">
+                    {/* Seções visíveis */}
+                    <Section title="Seções visíveis" subtitle="Ligue/desligue blocos da landing. Topo e formulário são fixos.">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {LANDING_SECTION_DEFS.map((s) => {
+                                const visible = isSectionVisible(form.sections, s.key)
+                                return (
+                                    <button
+                                        key={s.key}
+                                        type="button"
+                                        onClick={() => toggleSection(s.key)}
+                                        className={
+                                            visible
+                                                ? 'flex items-center gap-3 rounded-xl border border-k-border-subtle bg-glass-bg px-3 py-2.5 text-left transition-colors hover:bg-glass-bg-active'
+                                                : 'flex items-center gap-3 rounded-xl border border-dashed border-k-border-subtle bg-transparent px-3 py-2.5 text-left opacity-60 transition-colors hover:opacity-100'
+                                        }
+                                    >
+                                        <span
+                                            className={
+                                                visible
+                                                    ? 'flex h-5 w-9 flex-none items-center rounded-full bg-violet-600 px-0.5 transition-colors'
+                                                    : 'flex h-5 w-9 flex-none items-center rounded-full bg-k-border-primary px-0.5 transition-colors'
+                                            }
+                                        >
+                                            <span className={`h-4 w-4 rounded-full bg-white transition-transform ${visible ? 'translate-x-4' : ''}`} />
+                                        </span>
+                                        <span className="min-w-0">
+                                            <span className="block text-xs font-bold text-k-text-primary">{s.label}</span>
+                                            <span className="block text-[11px] text-k-text-quaternary truncate">{s.description}</span>
+                                        </span>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </Section>
+
                     {/* Cabeçalho */}
                     <Section title="Cabeçalho" subtitle="O que o lead vê primeiro.">
                         <Field label="Headline" hint="Frase de impacto. Aparece grande no topo.">

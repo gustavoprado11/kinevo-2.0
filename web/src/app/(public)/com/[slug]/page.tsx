@@ -15,6 +15,7 @@ import {
 } from '@/lib/landing/defaults'
 import { LeadForm } from './_components/LeadForm'
 import { mix, rgba } from '@/lib/landing/color'
+import { isSectionVisible, type LandingSections } from '@/lib/landing/sections'
 import './landing.css'
 
 /* ───────── ISR ───────── */
@@ -42,6 +43,7 @@ interface TrainerRow {
     landing_price_label: string | null
     landing_hero_image_url: string | null
     landing_plans: LandingPlan[] | null
+    landing_sections: LandingSections | null
     brand_color: string | null
     brand_logo_url: string | null
     brand_name: string | null
@@ -55,7 +57,7 @@ const PUBLIC_COLUMNS =
     'landing_headline, landing_subheadline, landing_bio, landing_city, ' +
     'landing_cref, landing_certifications, landing_specializations, ' +
     'landing_year_started, landing_stats, landing_testimonials, ' +
-    'landing_faq, landing_price_label, landing_hero_image_url, landing_plans, ' +
+    'landing_faq, landing_price_label, landing_hero_image_url, landing_plans, landing_sections, ' +
     'brand_color, brand_logo_url, brand_name'
 
 async function fetchTrainer(slug: string): Promise<TrainerRow | null> {
@@ -130,6 +132,8 @@ export default async function TrainerLandingPage({
     const faq = (trainer.landing_faq && trainer.landing_faq.length > 0) ? trainer.landing_faq : DEFAULT_FAQ
     const priceLabel = trainer.landing_price_label
     const plans = (trainer.landing_plans ?? []).filter((p) => p.name && p.price).slice(0, 4)
+    const sections = trainer.landing_sections
+    const show = (key: Parameters<typeof isSectionVisible>[1]) => isSectionVisible(sections, key)
     const heroImage = trainer.landing_hero_image_url ?? trainer.avatar_url
     const initial = (trainer.brand_name ?? trainer.name).trim().charAt(0).toUpperCase() || 'K'
     const firstName = trainer.name.split(' ')[0] ?? trainer.name
@@ -242,7 +246,7 @@ export default async function TrainerLandingPage({
             </header>
 
             {/* ─── CREDENTIALS (renderiza só se houver) ─── */}
-            {(cref || certifications.length > 0) && (
+            {show('credenciais') && (cref || certifications.length > 0) && (
                 <section className="lt-credentials">
                     <div className="lt-container">
                         <div className="lt-credentials-row">
@@ -269,24 +273,27 @@ export default async function TrainerLandingPage({
             )}
 
             {/* ─── MÉTODO + ESPECIALIZAÇÕES ─── */}
-            <section className="lt-section">
-                <div className="lt-container">
-                    <div className="lt-section-eyebrow">O método</div>
-                    <h2>
-                        Treino não é o que <em>parece bonito.</em> É o que <em>faz sentido</em> pro seu corpo.
-                    </h2>
-                    <p className="lt-section-lede">
-                        Cada programa é desenhado a partir da sua história — anamnese, análise e objetivos reais. Sem treino-padrão de planilha.
-                    </p>
-                    <div className="lt-chips">
-                        {specializations.map((s, i) => (
-                            <span key={i} className="lt-chip">{s}</span>
-                        ))}
+            {show('metodo') && (
+                <section className="lt-section">
+                    <div className="lt-container">
+                        <div className="lt-section-eyebrow">O método</div>
+                        <h2>
+                            Treino não é o que <em>parece bonito.</em> É o que <em>faz sentido</em> pro seu corpo.
+                        </h2>
+                        <p className="lt-section-lede">
+                            Cada programa é desenhado a partir da sua história — anamnese, análise e objetivos reais. Sem treino-padrão de planilha.
+                        </p>
+                        <div className="lt-chips">
+                            {specializations.map((s, i) => (
+                                <span key={i} className="lt-chip">{s}</span>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* ─── APP VITRINE ─── */}
+            {show('app') && (
             <section className="lt-app-section" id="app">
                 <div className="lt-container">
                     <div className="lt-section-eyebrow">Tecnologia própria</div>
@@ -432,9 +439,10 @@ export default async function TrainerLandingPage({
                     <p className="lt-phones-caption">— iOS · Android · Incluso no plano —</p>
                 </div>
             </section>
+            )}
 
             {/* ─── DEPOIMENTOS ─── */}
-            {testimonials.length > 0 && (
+            {show('depoimentos') && testimonials.length > 0 && (
                 <section className="lt-testimonials" id="depoimentos">
                     <div className="lt-container">
                         <div className="lt-section-eyebrow">Quem treina comigo</div>
@@ -465,6 +473,7 @@ export default async function TrainerLandingPage({
             )}
 
             {/* ─── PROCESSO ─── */}
+            {show('processo') && (
             <section className="lt-process" id="processo">
                 <div className="lt-container">
                     <div className="lt-process-head">
@@ -487,8 +496,10 @@ export default async function TrainerLandingPage({
                     </div>
                 </div>
             </section>
+            )}
 
             {/* ─── FAQ ─── */}
+            {show('faq') && (
             <section className="lt-faq" id="faq">
                 <div className="lt-container">
                     <div className="lt-faq-grid">
@@ -518,9 +529,10 @@ export default async function TrainerLandingPage({
                     </div>
                 </div>
             </section>
+            )}
 
             {/* ─── PLANOS ─── */}
-            {plans.length > 0 && (
+            {show('planos') && plans.length > 0 && (
                 <section className="lt-plans" id="planos">
                     <div className="lt-container">
                         <div className="lt-section-eyebrow">Planos</div>

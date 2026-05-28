@@ -10,7 +10,7 @@ const TRAINER_COLUMNS =
     'landing_headline, landing_subheadline, landing_bio, landing_city, ' +
     'landing_cref, landing_certifications, landing_specializations, ' +
     'landing_year_started, landing_price_label, ' +
-    'landing_stats, landing_testimonials, landing_faq, landing_hero_image_url, landing_plans'
+    'landing_stats, landing_testimonials, landing_faq, landing_hero_image_url, landing_plans, landing_sections'
 
 export default async function MarketingLandingPage() {
     const supabase = await createClient()
