@@ -2,15 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Dumbbell, ClipboardList, Share2, Wallet, Check } from 'lucide-react'
+import { UserPlus, Dumbbell, ClipboardList, Share2, Wallet } from 'lucide-react'
+import { AppLinksDialog } from '@/components/onboarding/widgets/app-links-dialog'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 
 interface QuickActionsProps {
     onNewStudent: () => void
 }
-
-const IOS_LINK = 'https://apps.apple.com/br/app/kinevo/id6759053587'
-const ANDROID_LINK = 'https://play.google.com/store/apps/details?id=com.kinevo.mobile'
-const SHARE_MESSAGE = `📱 Baixe o app Kinevo:\niPhone: ${IOS_LINK}\nAndroid: ${ANDROID_LINK}`
 
 const actions = [
     {
@@ -72,41 +70,25 @@ const actions = [
 
 export function QuickActions({ onNewStudent }: QuickActionsProps) {
     const router = useRouter()
-    const [shared, setShared] = useState(false)
-
-    const handleShareApp = async () => {
-        const nav = typeof navigator !== 'undefined' ? navigator : null
-        if (nav?.share) {
-            try {
-                await nav.share({ title: 'Kinevo', text: SHARE_MESSAGE })
-                return
-            } catch {
-                // user cancelled or share failed — fall through to clipboard
-            }
-        }
-        if (nav?.clipboard) {
-            await nav.clipboard.writeText(SHARE_MESSAGE)
-            setShared(true)
-            setTimeout(() => setShared(false), 2000)
-        }
-    }
+    const [shareOpen, setShareOpen] = useState(false)
 
     const handleClick = (action: typeof actions[number]) => {
         if (action.id === 'new-student') {
             onNewStudent()
         } else if (action.id === 'share-app') {
-            handleShareApp()
+            useOnboardingStore.getState().completeMilestone('app_link_shared')
+            setShareOpen(true)
         } else if (action.href) {
             router.push(action.href)
         }
     }
 
     return (
+        <>
         <nav aria-label="Ações rápidas" className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
             {actions.map((action) => {
-                const isShareCopied = action.id === 'share-app' && shared
-                const Icon = isShareCopied ? Check : action.icon
-                const label = isShareCopied ? 'Link copiado' : action.label
+                const Icon = action.icon
+                const label = action.label
                 return (
                     <button
                         key={action.id}
@@ -136,5 +118,8 @@ export function QuickActions({ onNewStudent }: QuickActionsProps) {
                 )
             })}
         </nav>
+
+        <AppLinksDialog isOpen={shareOpen} onClose={() => setShareOpen(false)} />
+        </>
     )
 }
