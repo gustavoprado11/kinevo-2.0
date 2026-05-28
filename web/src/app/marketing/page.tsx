@@ -11,6 +11,7 @@ import {
     UserCheck,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { ShareLandingCard } from './share-landing-card'
 
 export const dynamic = 'force-dynamic'
 
@@ -125,11 +126,16 @@ export default async function MarketingOverviewPage() {
                             href="/marketing/landing"
                             className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-1.5 text-xs font-bold text-white shadow-md shadow-violet-500/20 transition-colors hover:bg-violet-500"
                         >
-                            <Pencil size={12} /> Editar landing
+                            <Pencil size={12} /> {t.public_slug ? 'Editar landing' : 'Criar landing'}
                         </Link>
                     </div>
                 </div>
             </div>
+
+            {/* Como divulgar — só quando publicada (URL ativa) */}
+            {t.public_slug && t.landing_published && (
+                <ShareLandingCard slug={t.public_slug} />
+            )}
 
             {/* KPIs */}
             <div className="grid gap-4 sm:grid-cols-3">
