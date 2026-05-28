@@ -22,7 +22,6 @@ import { useStudentProfile } from '../../hooks/useStudentProfile';
 import { useWatchConnectivity } from '../../hooks/useWatchConnectivity';
 import { ChevronLeft } from 'lucide-react-native';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
-import { WorkoutSuccessModal } from '../../components/workout/WorkoutSuccessModal';
 import { WorkoutCelebration, CelebrationData } from '../../components/workout/WorkoutCelebration';
 import { ShareWorkoutModal } from '../../components/workout/ShareWorkoutModal';
 import { fetchCelebrationExtras } from '../../lib/celebrationStats';
@@ -274,7 +273,6 @@ export default function WorkoutPlayerScreen() {
     const [isFeedbackVisible, setIsFeedbackVisible] = React.useState(false);
     const [showCelebration, setShowCelebration] = React.useState(false);
     const [celebrationData, setCelebrationData] = React.useState<CelebrationData | undefined>(undefined);
-    const [showSuccessModal, setShowSuccessModal] = React.useState(false);
     const [showShareModal, setShowShareModal] = React.useState(false);
     const [videoModalUrl, setVideoModalUrl] = React.useState<string | null>(null);
     const [swapModalVisible, setSwapModalVisible] = React.useState(false);
@@ -729,14 +727,16 @@ export default function WorkoutPlayerScreen() {
         executeFinish(rpe, feedback);
     };
 
+    // "Fechar" na celebração → volta direto pra home. Antes abria o
+    // WorkoutSuccessModal (segunda tela "Treino concluído"), removido por
+    // ser redundante com a própria celebração (mesmas stats + share).
     const handleCelebrationComplete = useCallback(() => {
         setShowCelebration(false);
-        // After celebration fades out, show the success/share modal
-        setShowSuccessModal(true);
-    }, []);
+        router.replace('/(tabs)/home');
+    }, [router]);
 
-    // CTA "Compartilhar conquista" da celebração → abre o share direto
-    // (short-circuit do success modal). Os dados já estão em successData.
+    // CTA "Compartilhar conquista" da celebração → abre o share direto.
+    // Os dados já estão em successData.
     const handleCelebrationShare = useCallback(() => {
         setShowCelebration(false);
         setShowShareModal(true);
@@ -746,12 +746,6 @@ export default function WorkoutPlayerScreen() {
         setShowShareModal(false);
         router.replace('/(tabs)/home');
     }, [router]);
-
-    const handleSuccessClose = () => {
-        setShowSuccessModal(false);
-        // Navigate to home, replacing current screen so user can't go back to workout
-        router.replace('/(tabs)/home');
-    };
 
     if (isLoading) {
         return (
@@ -1088,12 +1082,6 @@ export default function WorkoutPlayerScreen() {
                     onDismiss={handleReadinessProceed}
                 />
             )}
-            {/* Success Modal */}
-            <WorkoutSuccessModal
-                visible={showSuccessModal}
-                onClose={handleSuccessClose}
-                data={successData}
-            />
             {/* Video Modal */}
             <ExerciseVideoModal
                 visible={videoModalUrl !== null}

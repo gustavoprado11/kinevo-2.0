@@ -14,7 +14,7 @@ interface WorkoutCelebrationProps {
   onComplete: () => void;
   data?: CelebrationData;
   /** CTA primário "Compartilhar conquista". Se ausente, cai no onComplete
-   *  (que abre o WorkoutSuccessModal, onde o share existe). */
+   *  (que volta pra home). */
   onShare?: () => void;
 }
 
