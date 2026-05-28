@@ -145,11 +145,7 @@ export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }:
     /* ── Empty states ── */
     if (leads.length === 0) {
         return (
-            <div className="mx-auto max-w-5xl px-4 py-10">
-                <h1 className="text-2xl font-bold text-k-text-primary mb-2">Leads</h1>
-                <p className="text-sm text-k-text-tertiary mb-8">
-                    Pessoas interessadas em treinar com você caem aqui — vindas da sua landing pública.
-                </p>
+            <div className="mx-auto max-w-5xl px-4 py-6">
                 <div className="rounded-2xl border border-dashed border-k-border-primary bg-glass-bg p-12 text-center">
                     <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/12 text-violet-600 dark:text-violet-400">
                         <Inbox size={26} strokeWidth={1.6} />
@@ -159,18 +155,18 @@ export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }:
                     </h2>
                     <p className="mx-auto max-w-md text-sm text-k-text-tertiary mb-6">
                         {!hasLanding
-                            ? 'Defina sua URL pública nas configurações e comece a captar alunos.'
+                            ? 'Crie sua landing pública e comece a captar alunos.'
                             : !landingPublished
                                 ? 'Sua landing ainda está como rascunho. Publique pra começar a receber leads.'
                                 : 'Compartilhe sua URL na bio do Instagram e nas suas redes. O primeiro lead chega logo.'}
                     </p>
                     {!hasLanding || !landingPublished ? (
                         <Link
-                            href="/settings"
+                            href="/marketing/landing"
                             className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-violet-500/20 transition-colors hover:bg-violet-500"
                         >
                             <Sparkles size={14} />
-                            Ir para configurações
+                            {!hasLanding ? 'Criar landing' : 'Publicar landing'}
                         </Link>
                     ) : (
                         publicSlug && (
@@ -185,31 +181,23 @@ export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }:
     return (
         <div className="mx-auto max-w-6xl px-4 py-8">
             {/* Header */}
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-k-text-primary">Leads</h1>
-                    <p className="text-sm text-k-text-tertiary mt-1">
-                        {enriched.filter(l => l.status !== 'archived').length} ativos · captados pela sua landing pública
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {publicSlug && landingPublished && (
-                        <a
-                            href={`https://www.kinevoapp.com/com/${publicSlug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-k-border-subtle bg-surface-card px-3 py-1.5 text-xs font-bold text-k-text-secondary transition-colors hover:bg-glass-bg-active"
-                        >
-                            <ExternalLink size={12} /> Ver landing
-                        </a>
-                    )}
-                    <Link
-                        href="/settings"
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-k-text-tertiary">
+                    <span className="font-bold text-k-text-primary">
+                        {enriched.filter(l => l.status !== 'archived').length}
+                    </span>{' '}
+                    {enriched.filter(l => l.status !== 'archived').length === 1 ? 'lead ativo' : 'leads ativos'} · captados pela sua landing
+                </p>
+                {publicSlug && landingPublished && (
+                    <a
+                        href={`https://www.kinevoapp.com/com/${publicSlug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-xl border border-k-border-subtle bg-surface-card px-3 py-1.5 text-xs font-bold text-k-text-secondary transition-colors hover:bg-glass-bg-active"
                     >
-                        <Sparkles size={12} /> Configurar landing
-                    </Link>
-                </div>
+                        <ExternalLink size={12} /> Ver landing
+                    </a>
+                )}
             </div>
 
             {/* Banner se landing não publicada */}
@@ -218,7 +206,7 @@ export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }:
                     <AlertCircle size={16} className="mt-0.5 flex-none" />
                     <span>
                         Sua landing está como rascunho — novos leads não conseguem te encontrar. {' '}
-                        <Link href="/settings" className="underline font-semibold">Publicar agora</Link>.
+                        <Link href="/marketing/landing" className="underline font-semibold">Publicar agora</Link>.
                     </span>
                 </div>
             )}

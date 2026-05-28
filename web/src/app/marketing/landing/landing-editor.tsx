@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import Link from 'next/link'
 import {
     Check,
     Loader2,
@@ -376,15 +375,10 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
                                             <h3 className="text-base font-bold text-k-text-primary mb-1.5">
                                                 Landing como rascunho
                                             </h3>
-                                            <p className="text-sm text-k-text-tertiary mb-4">
-                                                Publique pra ver a preview ao vivo.
+                                            <p className="mx-auto max-w-xs text-sm text-k-text-tertiary">
+                                                Use o botão <b className="text-k-text-secondary">Publicar landing</b> no
+                                                card acima pra ativar a página e ver a preview ao vivo aqui.
                                             </p>
-                                            <Link
-                                                href="/settings"
-                                                className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-violet-500/20 transition-colors hover:bg-violet-500"
-                                            >
-                                                Ir para configurações
-                                            </Link>
                                         </div>
                                     </div>
                                 )}
@@ -394,15 +388,10 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
                         <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-dashed border-k-border-primary bg-glass-bg p-10 text-center">
                             <div>
                                 <Globe size={28} className="mx-auto mb-3 text-k-text-quaternary" />
-                                <p className="text-sm text-k-text-tertiary mb-4">
-                                    Defina sua URL pública pra ver o preview aqui.
+                                <p className="mx-auto max-w-xs text-sm text-k-text-tertiary">
+                                    Defina sua <b className="text-k-text-secondary">URL pública</b> no card
+                                    acima pra ver o preview aqui.
                                 </p>
-                                <Link
-                                    href="/settings"
-                                    className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-violet-500/20 transition-colors hover:bg-violet-500"
-                                >
-                                    Definir URL pública
-                                </Link>
                             </div>
                         </div>
                     )}
