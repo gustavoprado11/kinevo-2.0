@@ -13,8 +13,13 @@ import {
     ExternalLink,
     Smartphone,
     Monitor,
+    Trash2,
+    Quote,
+    ImageUp,
 } from 'lucide-react'
 import { updateTrainerLanding } from '@/actions/trainer/update-landing'
+import { updateLandingHero } from '@/actions/trainer/update-landing-hero'
+import type { LandingStats, Testimonial, FaqItem } from '@/lib/landing/defaults'
 
 export interface EditorTrainer {
     id: string
@@ -32,6 +37,10 @@ export interface EditorTrainer {
     landing_specializations: string[] | null
     landing_year_started: number | null
     landing_price_label: string | null
+    landing_stats: LandingStats | null
+    landing_testimonials: Testimonial[] | null
+    landing_faq: FaqItem[] | null
+    landing_hero_image_url: string | null
 }
 
 interface FormState {
@@ -44,6 +53,12 @@ interface FormState {
     specializations: string[]
     yearStarted: string // string no input, number na hora de salvar
     priceLabel: string
+    // Stats como string nos inputs; convertidos ao salvar.
+    studentsCount: string
+    rating: string
+    reviewsCount: string
+    testimonials: Testimonial[]
+    faq: FaqItem[]
 }
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -59,6 +74,7 @@ const SPECIALIZATION_SUGGESTIONS = [
 ]
 
 function trainerToForm(t: EditorTrainer): FormState {
+    const s = t.landing_stats ?? {}
     return {
         headline: t.landing_headline ?? '',
         subheadline: t.landing_subheadline ?? '',
@@ -69,8 +85,16 @@ function trainerToForm(t: EditorTrainer): FormState {
         specializations: t.landing_specializations ?? [],
         yearStarted: t.landing_year_started ? String(t.landing_year_started) : '',
         priceLabel: t.landing_price_label ?? '',
+        studentsCount: s.students_count != null ? String(s.students_count) : '',
+        rating: s.rating != null ? String(s.rating) : '',
+        reviewsCount: s.reviews_count != null ? String(s.reviews_count) : '',
+        testimonials: t.landing_testimonials ?? [],
+        faq: t.landing_faq ?? [],
     }
 }
+
+const TESTIMONIALS_MAX = 6
+const FAQ_MAX = 10
 
 export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
     const initial = trainerToForm(trainer)
@@ -81,6 +105,11 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
     const [previewKey, setPreviewKey] = useState(0)
     const [device, setDevice] = useState<'mobile' | 'desktop'>('mobile')
     const iframeRef = useRef<HTMLIFrameElement | null>(null)
+
+    /* Foto do hero (sobe por ação própria, fora do dirty form) */
+    const [heroUrl, setHeroUrl] = useState<string | null>(trainer.landing_hero_image_url)
+    const [heroBusy, setHeroBusy] = useState(false)
+    const heroInputRef = useRef<HTMLInputElement | null>(null)
 
     /* dirty tracking */
     const dirty = JSON.stringify(form) !== JSON.stringify(initial)
@@ -107,6 +136,62 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
         patch(key, form[key].filter((_, i) => i !== idx))
     }
 
+    /* Testimonials */
+    const addTestimonial = () => {
+        if (form.testimonials.length >= TESTIMONIALS_MAX) return
+        patch('testimonials', [...form.testimonials, { name: '', quote: '', role: '', goal: '' }])
+    }
+    const updateTestimonial = (idx: number, field: keyof Testimonial, value: string) => {
+        patch('testimonials', form.testimonials.map((t, i) => i === idx ? { ...t, [field]: value } : t))
+    }
+    const removeTestimonial = (idx: number) => {
+        patch('testimonials', form.testimonials.filter((_, i) => i !== idx))
+    }
+
+    /* FAQ */
+    const addFaq = () => {
+        if (form.faq.length >= FAQ_MAX) return
+        patch('faq', [...form.faq, { question: '', answer: '' }])
+    }
+    const updateFaq = (idx: number, field: keyof FaqItem, value: string) => {
+        patch('faq', form.faq.map((f, i) => i === idx ? { ...f, [field]: value } : f))
+    }
+    const removeFaq = (idx: number) => {
+        patch('faq', form.faq.filter((_, i) => i !== idx))
+    }
+
+    /* Hero photo upload */
+    const handleHeroFile = (file: File | undefined) => {
+        if (!file) return
+        setErrorMsg(null)
+        setHeroBusy(true)
+        const fd = new FormData()
+        fd.append('hero_image', file)
+        startTransition(async () => {
+            const result = await updateLandingHero(fd)
+            setHeroBusy(false)
+            if (!result.success) {
+                setErrorMsg(result.message ?? 'Falha no upload.')
+                return
+            }
+            setHeroUrl(result.heroImageUrl ?? null)
+            setPreviewKey((k) => k + 1)
+        })
+    }
+    const handleHeroRemove = () => {
+        setHeroBusy(true)
+        const fd = new FormData()
+        fd.append('remove', 'true')
+        startTransition(async () => {
+            const result = await updateLandingHero(fd)
+            setHeroBusy(false)
+            if (result.success) {
+                setHeroUrl(null)
+                setPreviewKey((k) => k + 1)
+            }
+        })
+    }
+
     /* save */
     const handleSave = () => {
         setErrorMsg(null)
@@ -115,6 +200,22 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
             setErrorMsg(`Ano de início deve estar entre 1970 e ${CURRENT_YEAR}.`)
             return
         }
+        const ratingNum = form.rating ? parseFloat(form.rating.replace(',', '.')) : null
+        if (ratingNum !== null && (Number.isNaN(ratingNum) || ratingNum < 0 || ratingNum > 5)) {
+            setErrorMsg('A avaliação deve estar entre 0 e 5.')
+            return
+        }
+        const studentsNum = form.studentsCount ? parseInt(form.studentsCount, 10) : null
+        const reviewsNum = form.reviewsCount ? parseInt(form.reviewsCount, 10) : null
+
+        // Limpa testimonials/faq incompletos antes de enviar.
+        const testimonials = form.testimonials
+            .map((t) => ({ ...t, name: t.name.trim(), quote: t.quote.trim() }))
+            .filter((t) => t.name.length > 0 && t.quote.length > 0)
+        const faq = form.faq
+            .map((f) => ({ question: f.question.trim(), answer: f.answer.trim() }))
+            .filter((f) => f.question.length > 0 && f.answer.length > 0)
+
         startTransition(async () => {
             const result = await updateTrainerLanding({
                 headline: form.headline,
@@ -126,6 +227,13 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
                 specializations: form.specializations,
                 yearStarted: yearNum,
                 priceLabel: form.priceLabel,
+                stats: {
+                    students_count: studentsNum,
+                    rating: ratingNum,
+                    reviews_count: reviewsNum,
+                },
+                testimonials,
+                faq,
             })
             if (!result.success) {
                 setErrorMsg(result.message ?? 'Falha ao salvar.')
@@ -238,6 +346,59 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
                         </div>
                     </Section>
 
+                    {/* Foto de destaque */}
+                    <Section title="Foto de destaque" subtitle="A imagem grande do topo. Sem foto, usamos seu avatar.">
+                        <div className="flex items-center gap-4">
+                            <div className="h-20 w-20 flex-none overflow-hidden rounded-xl border border-k-border-subtle bg-glass-bg">
+                                {(heroUrl ?? trainer.avatar_url) ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                        src={heroUrl ?? trainer.avatar_url ?? ''}
+                                        alt="Foto do hero"
+                                        className="h-full w-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-k-text-quaternary">
+                                        <ImageUp size={22} />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <input
+                                    ref={heroInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={(e) => handleHeroFile(e.target.files?.[0])}
+                                />
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => heroInputRef.current?.click()}
+                                        disabled={heroBusy}
+                                        className="inline-flex items-center gap-1.5 rounded-xl border border-k-border-subtle bg-surface-card px-3 py-2 text-xs font-bold text-k-text-secondary hover:bg-glass-bg-active disabled:opacity-50"
+                                    >
+                                        {heroBusy ? <Loader2 size={13} className="animate-spin" /> : <ImageUp size={13} />}
+                                        {heroUrl ? 'Trocar foto' : 'Enviar foto'}
+                                    </button>
+                                    {heroUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={handleHeroRemove}
+                                            disabled={heroBusy}
+                                            className="inline-flex items-center gap-1.5 rounded-xl border border-k-border-subtle bg-surface-card px-3 py-2 text-xs font-bold text-k-text-tertiary hover:bg-glass-bg-active disabled:opacity-50"
+                                        >
+                                            <Trash2 size={13} /> Remover
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-k-text-quaternary">
+                                    JPG, PNG ou WebP até 6MB. Salva na hora — não precisa clicar em Salvar.
+                                </p>
+                            </div>
+                        </div>
+                    </Section>
+
                     {/* Credenciais */}
                     <Section title="Credenciais" subtitle="O que prova sua autoridade.">
                         <Field label="CREF" hint="Aparece como 'CREF XXXXX-G/UF'.">
@@ -260,6 +421,44 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
                         </Field>
                     </Section>
 
+                    {/* Números */}
+                    <Section title="Números" subtitle="Prova de tração. Deixe em branco o que não quiser mostrar.">
+                        <div className="grid grid-cols-3 gap-3">
+                            <Field label="Alunos" hint="">
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={form.studentsCount}
+                                    onChange={(e) => patch('studentsCount', e.target.value)}
+                                    placeholder="200"
+                                    min={0}
+                                    className={inputCls}
+                                />
+                            </Field>
+                            <Field label="Avaliação" hint="0 a 5">
+                                <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={form.rating}
+                                    onChange={(e) => patch('rating', e.target.value)}
+                                    placeholder="4.9"
+                                    className={inputCls}
+                                />
+                            </Field>
+                            <Field label="Nº reviews" hint="">
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={form.reviewsCount}
+                                    onChange={(e) => patch('reviewsCount', e.target.value)}
+                                    placeholder="48"
+                                    min={0}
+                                    className={inputCls}
+                                />
+                            </Field>
+                        </div>
+                    </Section>
+
                     {/* Especializações */}
                     <Section title="Especializações" subtitle="O que você faz de melhor.">
                         <ChipsInput
@@ -272,6 +471,115 @@ export function LandingEditor({ trainer }: { trainer: EditorTrainer }) {
                                 (s) => !form.specializations.includes(s),
                             )}
                         />
+                    </Section>
+
+                    {/* Depoimentos */}
+                    <Section
+                        title="Depoimentos"
+                        subtitle={`Prova social de alunos. Até ${TESTIMONIALS_MAX}.`}
+                    >
+                        <div className="space-y-3">
+                            {form.testimonials.map((t, i) => (
+                                <div key={i} className="rounded-xl border border-k-border-subtle bg-glass-bg p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-k-text-tertiary">
+                                            <Quote size={12} /> Depoimento {i + 1}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeTestimonial(i)}
+                                            className="rounded-lg p-1 text-k-text-quaternary hover:bg-glass-bg-active hover:text-red-500"
+                                            aria-label="Remover depoimento"
+                                        >
+                                            <Trash2 size={13} />
+                                        </button>
+                                    </div>
+                                    <textarea
+                                        value={t.quote}
+                                        onChange={(e) => updateTestimonial(i, 'quote', e.target.value)}
+                                        placeholder="O que o aluno falou sobre treinar com você…"
+                                        maxLength={500}
+                                        rows={2}
+                                        className={inputCls}
+                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                            value={t.name}
+                                            onChange={(e) => updateTestimonial(i, 'name', e.target.value)}
+                                            placeholder="Nome do aluno"
+                                            maxLength={80}
+                                            className={inputCls}
+                                        />
+                                        <input
+                                            value={t.goal ?? ''}
+                                            onChange={(e) => updateTestimonial(i, 'goal', e.target.value)}
+                                            placeholder="Objetivo (ex: -12kg)"
+                                            maxLength={80}
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                            {form.testimonials.length < TESTIMONIALS_MAX && (
+                                <button
+                                    type="button"
+                                    onClick={addTestimonial}
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-k-border-primary bg-transparent px-3 py-2 text-xs font-bold text-k-text-secondary hover:bg-glass-bg-active"
+                                >
+                                    <Plus size={13} /> Adicionar depoimento
+                                </button>
+                            )}
+                        </div>
+                    </Section>
+
+                    {/* FAQ */}
+                    <Section
+                        title="Perguntas frequentes"
+                        subtitle={`Antecipe dúvidas comuns. Vazio usa um FAQ padrão. Até ${FAQ_MAX}.`}
+                    >
+                        <div className="space-y-3">
+                            {form.faq.map((f, i) => (
+                                <div key={i} className="rounded-xl border border-k-border-subtle bg-glass-bg p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-bold uppercase tracking-wide text-k-text-tertiary">
+                                            Pergunta {i + 1}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFaq(i)}
+                                            className="rounded-lg p-1 text-k-text-quaternary hover:bg-glass-bg-active hover:text-red-500"
+                                            aria-label="Remover pergunta"
+                                        >
+                                            <Trash2 size={13} />
+                                        </button>
+                                    </div>
+                                    <input
+                                        value={f.question}
+                                        onChange={(e) => updateFaq(i, 'question', e.target.value)}
+                                        placeholder="Pergunta"
+                                        maxLength={200}
+                                        className={inputCls}
+                                    />
+                                    <textarea
+                                        value={f.answer}
+                                        onChange={(e) => updateFaq(i, 'answer', e.target.value)}
+                                        placeholder="Resposta"
+                                        maxLength={800}
+                                        rows={2}
+                                        className={inputCls}
+                                    />
+                                </div>
+                            ))}
+                            {form.faq.length < FAQ_MAX && (
+                                <button
+                                    type="button"
+                                    onClick={addFaq}
+                                    className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-k-border-primary bg-transparent px-3 py-2 text-xs font-bold text-k-text-secondary hover:bg-glass-bg-active"
+                                >
+                                    <Plus size={13} /> Adicionar pergunta
+                                </button>
+                            )}
+                        </div>
                     </Section>
 
                     {/* Plano */}

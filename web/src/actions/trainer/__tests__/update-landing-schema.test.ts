@@ -79,6 +79,72 @@ describe('LANDING_SCHEMA', () => {
     })
 })
 
+describe('LANDING_SCHEMA — conteúdo rico (Fase 1)', () => {
+    it('aceita stats válidos', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            stats: { students_count: 200, rating: 4.9, reviews_count: 48 },
+        })
+        expect(r.success).toBe(true)
+    })
+
+    it('rejeita rating acima de 5', () => {
+        const r = LANDING_SCHEMA.safeParse({ stats: { rating: 5.5 } })
+        expect(r.success).toBe(false)
+    })
+
+    it('aceita stats com campos nulos (limpar)', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            stats: { students_count: null, rating: null, reviews_count: null },
+        })
+        expect(r.success).toBe(true)
+    })
+
+    it('aceita depoimento mínimo (name + quote)', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            testimonials: [{ name: 'Ana', quote: 'Mudou minha rotina.' }],
+        })
+        expect(r.success).toBe(true)
+    })
+
+    it('rejeita depoimento sem quote', () => {
+        const r = LANDING_SCHEMA.safeParse({ testimonials: [{ name: 'Ana', quote: '' }] })
+        expect(r.success).toBe(false)
+    })
+
+    it('rejeita mais de 6 depoimentos', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            testimonials: Array.from({ length: 7 }, () => ({ name: 'X', quote: 'Y' })),
+        })
+        expect(r.success).toBe(false)
+    })
+
+    it('rejeita photo_url inválida no depoimento', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            testimonials: [{ name: 'Ana', quote: 'Top', photo_url: 'not-a-url' }],
+        })
+        expect(r.success).toBe(false)
+    })
+
+    it('aceita FAQ válido', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            faq: [{ question: 'Quanto custa?', answer: 'A partir de R$ 350.' }],
+        })
+        expect(r.success).toBe(true)
+    })
+
+    it('rejeita FAQ sem resposta', () => {
+        const r = LANDING_SCHEMA.safeParse({ faq: [{ question: 'Oi?', answer: '' }] })
+        expect(r.success).toBe(false)
+    })
+
+    it('rejeita mais de 10 itens de FAQ', () => {
+        const r = LANDING_SCHEMA.safeParse({
+            faq: Array.from({ length: 11 }, () => ({ question: 'Q', answer: 'A' })),
+        })
+        expect(r.success).toBe(false)
+    })
+})
+
 describe('emptyToNull', () => {
     it('retorna null pra undefined', () => {
         expect(emptyToNull(undefined)).toBeNull()

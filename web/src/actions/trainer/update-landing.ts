@@ -55,6 +55,17 @@ export async function updateTrainerLanding(input: UpdateLandingInput): Promise<U
     const certifications = (data.certifications ?? []).filter((s) => s.trim().length > 0)
     const specializations = (data.specializations ?? []).filter((s) => s.trim().length > 0)
 
+    /* Stats: limpa zeros/nulls; objeto vazio vira {} (default da coluna). */
+    const stats = data.stats
+        ? Object.fromEntries(
+            Object.entries(data.stats).filter(([, v]) => v !== null && v !== undefined),
+        )
+        : {}
+
+    /* Testimonials/FAQ: arrays vazios viram [] (default da coluna). */
+    const testimonials = data.testimonials ?? []
+    const faq = data.faq ?? []
+
     const patch = {
         landing_headline: emptyToNull(data.headline ?? null),
         landing_subheadline: emptyToNull(data.subheadline ?? null),
@@ -65,6 +76,9 @@ export async function updateTrainerLanding(input: UpdateLandingInput): Promise<U
         landing_specializations: specializations.length > 0 ? specializations : null,
         landing_year_started: data.yearStarted ?? null,
         landing_price_label: emptyToNull(data.priceLabel ?? null),
+        landing_stats: stats,
+        landing_testimonials: testimonials,
+        landing_faq: faq,
     }
 
     const { error: updateError } = await supabase

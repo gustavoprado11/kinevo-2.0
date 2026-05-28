@@ -1,11 +1,12 @@
 import { z } from 'zod'
 
 /**
- * Schema do update da landing pública (M4 — campos texto).
+ * Schema do update da landing pública.
  *
- *   Escopo MVP: headline, subheadline, bio, city, cref, certifications[],
- *   specializations[], year_started, price_label.
- *   Stats/testimonials/faq/hero_image_url ficam pra fase 2.
+ *   Campos texto (M4): headline, subheadline, bio, city, cref,
+ *   certifications[], specializations[], year_started, price_label.
+ *   Conteúdo rico (Fase 1): stats, testimonials, faq.
+ *   Foto do hero sobe por ação própria (FormData), não aqui.
  *
  *   Mora fora do arquivo com 'use server' porque Next 16 exige que arquivos
  *   marcados como Server Actions só exportem funções async — schemas e
@@ -13,6 +14,27 @@ import { z } from 'zod'
  */
 
 const ARRAY_MAX = 8
+const TESTIMONIALS_MAX = 6
+const FAQ_MAX = 10
+
+const STATS_SCHEMA = z.object({
+    students_count: z.number().int().min(0).max(100000).nullable().optional(),
+    rating: z.number().min(0).max(5).nullable().optional(),
+    reviews_count: z.number().int().min(0).max(100000).nullable().optional(),
+})
+
+const TESTIMONIAL_SCHEMA = z.object({
+    name: z.string().trim().min(1).max(80),
+    quote: z.string().trim().min(1).max(500),
+    role: z.string().trim().max(80).nullable().optional(),
+    goal: z.string().trim().max(80).nullable().optional(),
+    photo_url: z.string().trim().url().max(500).nullable().optional(),
+})
+
+const FAQ_ITEM_SCHEMA = z.object({
+    question: z.string().trim().min(1).max(200),
+    answer: z.string().trim().min(1).max(800),
+})
 
 export const LANDING_SCHEMA = z.object({
     headline: z.string().trim().max(200).optional().nullable(),
@@ -24,6 +46,9 @@ export const LANDING_SCHEMA = z.object({
     specializations: z.array(z.string().trim().min(1).max(40)).max(ARRAY_MAX).optional().nullable(),
     yearStarted: z.number().int().min(1970).max(new Date().getFullYear()).optional().nullable(),
     priceLabel: z.string().trim().max(80).optional().nullable(),
+    stats: STATS_SCHEMA.optional().nullable(),
+    testimonials: z.array(TESTIMONIAL_SCHEMA).max(TESTIMONIALS_MAX).optional().nullable(),
+    faq: z.array(FAQ_ITEM_SCHEMA).max(FAQ_MAX).optional().nullable(),
 })
 
 export type UpdateLandingInput = z.infer<typeof LANDING_SCHEMA>

@@ -124,7 +124,7 @@ export default async function TrainerLandingPage({
     const stats: LandingStats = trainer.landing_stats ?? {}
     const yearStarted = trainer.landing_year_started
     const yearsCount = yearStarted ? new Date().getFullYear() - yearStarted : null
-    const testimonials = (trainer.landing_testimonials ?? []).slice(0, 3)
+    const testimonials = (trainer.landing_testimonials ?? []).slice(0, 6)
     const faq = (trainer.landing_faq && trainer.landing_faq.length > 0) ? trainer.landing_faq : DEFAULT_FAQ
     const priceLabel = trainer.landing_price_label
     const heroImage = trainer.landing_hero_image_url ?? trainer.avatar_url
@@ -429,6 +429,37 @@ export default async function TrainerLandingPage({
                     <p className="lt-phones-caption">— iOS · Android · Incluso no plano —</p>
                 </div>
             </section>
+
+            {/* ─── DEPOIMENTOS ─── */}
+            {testimonials.length > 0 && (
+                <section className="lt-testimonials" id="depoimentos">
+                    <div className="lt-container">
+                        <div className="lt-section-eyebrow">Quem treina comigo</div>
+                        <h2>Resultado não é <em>promessa.</em> É <em>histórico.</em></h2>
+                        <div className="lt-testimonials-grid">
+                            {testimonials.map((t, i) => (
+                                <figure key={i} className="lt-testimonial">
+                                    <blockquote>“{t.quote}”</blockquote>
+                                    <figcaption>
+                                        {t.photo_url ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={t.photo_url} alt={t.name} className="lt-testimonial-photo" />
+                                        ) : (
+                                            <span className="lt-testimonial-initial">
+                                                {t.name.trim().charAt(0).toUpperCase() || '•'}
+                                            </span>
+                                        )}
+                                        <span className="lt-testimonial-meta">
+                                            <b>{t.name}</b>
+                                            {(t.goal || t.role) && <span>{t.goal || t.role}</span>}
+                                        </span>
+                                    </figcaption>
+                                </figure>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* ─── PROCESSO ─── */}
             <section className="lt-process" id="processo">
