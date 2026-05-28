@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
     Copy,
@@ -9,6 +9,7 @@ import {
     MessageCircle,
     QrCode,
     Sparkles,
+    Download,
 } from 'lucide-react'
 
 /**
@@ -18,6 +19,7 @@ import {
  */
 export function ShareLandingCard({ slug }: { slug: string }) {
     const [copied, setCopied] = useState(false)
+    const qrRef = useRef<HTMLDivElement | null>(null)
     const url = `https://www.kinevoapp.com/com/${slug}`
 
     const copy = async () => {
@@ -26,6 +28,42 @@ export function ShareLandingCard({ slug }: { slug: string }) {
             setCopied(true)
             setTimeout(() => setCopied(false), 1800)
         } catch { /* ignore */ }
+    }
+
+    /**
+     * Baixa o QR como PNG de alta resolução. Serializa o <svg> renderizado,
+     * desenha num canvas 1024px com margem branca (quiet zone — essencial
+     * pra leitura), e dispara o download.
+     */
+    const downloadQr = () => {
+        const svg = qrRef.current?.querySelector('svg')
+        if (!svg) return
+        const SIZE = 1024
+        const PAD = 96
+        const xml = new XMLSerializer().serializeToString(svg)
+        const svgUrl = `data:image/svg+xml;base64,${window.btoa(unescape(encodeURIComponent(xml)))}`
+
+        const img = new window.Image()
+        img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = SIZE
+            canvas.height = SIZE
+            const ctx = canvas.getContext('2d')
+            if (!ctx) return
+            ctx.fillStyle = '#FFFFFF'
+            ctx.fillRect(0, 0, SIZE, SIZE)
+            ctx.imageSmoothingEnabled = false
+            ctx.drawImage(img, PAD, PAD, SIZE - PAD * 2, SIZE - PAD * 2)
+            canvas.toBlob((blob) => {
+                if (!blob) return
+                const a = document.createElement('a')
+                a.href = URL.createObjectURL(blob)
+                a.download = `kinevo-qr-${slug}.png`
+                a.click()
+                URL.revokeObjectURL(a.href)
+            }, 'image/png')
+        }
+        img.src = svgUrl
     }
 
     return (
@@ -43,12 +81,15 @@ export function ShareLandingCard({ slug }: { slug: string }) {
             <div className="grid gap-5 sm:grid-cols-[auto_1fr] sm:items-start">
                 {/* QR code */}
                 <div className="flex flex-col items-center gap-2">
-                    <div className="rounded-xl border border-k-border-subtle bg-white p-3">
+                    <div ref={qrRef} className="rounded-xl border border-k-border-subtle bg-white p-3">
                         <QRCodeSVG value={url} size={116} level="M" fgColor="#0E0E0E" bgColor="#FFFFFF" />
                     </div>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-k-text-quaternary">
-                        <QrCode size={11} /> Print pra stories
-                    </span>
+                    <button
+                        onClick={downloadQr}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-k-border-subtle bg-surface-card px-2.5 py-1.5 text-[11px] font-bold text-k-text-secondary transition-colors hover:bg-glass-bg-active"
+                    >
+                        <Download size={12} /> Baixar QR
+                    </button>
                 </div>
 
                 {/* Link + canais */}
