@@ -16,6 +16,7 @@ import {
 import { LeadForm } from './_components/LeadForm'
 import { mix, rgba } from '@/lib/landing/color'
 import { isSectionVisible, type LandingSections } from '@/lib/landing/sections'
+import { IOS_APP_URL, ANDROID_APP_URL } from '@/lib/constants/app-links'
 import './landing.css'
 
 /* ───────── ISR ───────── */
@@ -436,7 +437,25 @@ export default async function TrainerLandingPage({
                         </div>
                     </div>
 
-                    <p className="lt-phones-caption">— iOS · Android · Incluso no plano —</p>
+                    <p className="lt-phones-caption">— Incluso no plano —</p>
+
+                    <div className="lt-store-badges">
+                        <a href={IOS_APP_URL} target="_blank" rel="noopener noreferrer" className="lt-store-badge" aria-label="Baixar na App Store">
+                            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M17.05 12.04c-.03-2.6 2.13-3.85 2.22-3.91-1.21-1.77-3.1-2.01-3.77-2.04-1.6-.16-3.13.94-3.94.94-.81 0-2.07-.92-3.4-.9-1.75.03-3.36 1.02-4.26 2.58-1.82 3.16-.47 7.84 1.3 10.41.86 1.26 1.89 2.67 3.24 2.62 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.39.81 1.4-.02 2.29-1.28 3.15-2.55.99-1.46 1.4-2.87 1.42-2.95-.03-.01-2.72-1.04-2.75-4.12zM14.53 4.42c.72-.87 1.2-2.08 1.07-3.29-1.03.04-2.29.69-3.03 1.56-.66.77-1.24 2-1.09 3.18 1.15.09 2.33-.58 3.05-1.45z" />
+                            </svg>
+                            <span><i>Baixar na</i><b>App Store</b></span>
+                        </a>
+                        <a href={ANDROID_APP_URL} target="_blank" rel="noopener noreferrer" className="lt-store-badge" aria-label="Disponível no Google Play">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="M3.6 1.84c-.24.25-.38.64-.38 1.15v18.02c0 .51.14.9.39 1.15l.06.06L13.8 12.07v-.14L3.66 1.78l-.06.06z" opacity=".9" />
+                                <path fill="currentColor" d="M17.18 15.52l-3.38-3.38v-.14l3.38-3.38.08.04 4 2.27c1.14.65 1.14 1.71 0 2.36l-4 2.27-.08.04z" />
+                                <path fill="currentColor" d="M17.26 15.48l-3.46-3.46-10.2 10.2c.38.4 1 .45 1.71.05l11.95-6.79" opacity=".8" />
+                                <path fill="currentColor" d="M17.26 8.56L5.31 1.77c-.71-.4-1.33-.35-1.71.05l10.2 10.2 3.46-3.46z" opacity=".7" />
+                            </svg>
+                            <span><i>Disponível no</i><b>Google Play</b></span>
+                        </a>
+                    </div>
                 </div>
             </section>
             )}
