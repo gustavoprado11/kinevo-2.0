@@ -15,6 +15,7 @@ import { slugify, validateSlug } from '@/lib/landing/slug'
 import { checkSlugAvailability, type SlugAvailability } from '@/actions/trainer/check-slug-availability'
 import { updateTrainerSlug } from '@/actions/trainer/update-slug'
 import { updateLandingPublished } from '@/actions/trainer/update-landing-published'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 
 const PUBLIC_HOST = 'www.kinevoapp.com'
 const URL_PREFIX = `${PUBLIC_HOST}/com/`
@@ -60,6 +61,10 @@ export function LandingSection({ initialSlug, landingPublished, trainerName }: L
                 return
             }
             setPublished(result.published)
+            // Onboarding: publicar a landing fecha o milestone.
+            if (result.published) {
+                useOnboardingStore.getState().completeMilestone('landing_published')
+            }
         })
     }
 

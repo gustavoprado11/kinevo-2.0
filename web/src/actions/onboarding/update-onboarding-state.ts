@@ -124,6 +124,9 @@ export async function updateOnboardingState(
         first_training_room_session:
           sanitizeBool(incomingMilestones.first_training_room_session) ||
           sanitizeBool(currentMilestones.first_training_room_session),
+        landing_published:
+          sanitizeBool(incomingMilestones.landing_published) ||
+          sanitizeBool(currentMilestones.landing_published),
       },
     }
 

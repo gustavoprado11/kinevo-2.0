@@ -12,6 +12,7 @@ import {
   Share2,
   Smartphone,
   Activity,
+  Globe,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -107,6 +108,13 @@ export const ALL_CHECKLIST_ITEMS: ChecklistItem[] = [
     description: 'Publique um programa para alguém',
     href: '/students',
     icon: Send,
+  },
+  {
+    key: 'landing_published',
+    label: 'Publicar sua landing',
+    description: 'Crie a página pública pra captar alunos',
+    href: '/marketing/landing',
+    icon: Globe,
   },
 ]
 
