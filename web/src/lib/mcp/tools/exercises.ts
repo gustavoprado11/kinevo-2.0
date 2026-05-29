@@ -9,7 +9,7 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
     'kinevo_list_training_methods',
     "List the advanced prescription capabilities available when building or editing workouts: training-method presets (pyramid, drop-set, cluster, 5x5, top+backoff), the per-set scheme fields, the valid set types, and how supersets work. Call this before prescribing advanced methods so you pass the right method_key, set_scheme, and rounds to kinevo_add_exercise_to_session / kinevo_update_workout_item.",
     {},
-    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    { title: 'Listar métodos de treino', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async () => {
       const supabaseAdmin = createAdminClient()
 
@@ -66,7 +66,7 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
       limit: z.number().min(1).max(100).default(30),
       offset: z.number().min(0).default(0),
     },
-    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    { title: 'Listar exercícios', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ search, muscle_group, equipment, limit, offset }) => {
       const supabaseAdmin = createAdminClient()
 

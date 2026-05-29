@@ -7,7 +7,7 @@ export function registerDashboardReadTools(server: McpServer, trainerId: string)
     'kinevo_get_dashboard_summary',
     "Get an overview of the trainer's account: total students, active programs, students without programs, students inactive for 7+ days, recent activity, and key metrics.",
     {},
-    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    { title: 'Resumo do painel', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async () => {
       const supabaseAdmin = createAdminClient()
 

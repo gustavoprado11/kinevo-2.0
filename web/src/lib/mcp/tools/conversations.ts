@@ -10,7 +10,7 @@ export function registerConversationReadTools(server: McpServer, trainerId: stri
     {
       limit: z.number().min(1).max(50).default(20),
     },
-    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    { title: 'Listar conversas', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ limit }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -112,7 +112,7 @@ export function registerConversationReadTools(server: McpServer, trainerId: stri
       limit: z.number().min(1).max(100).default(30),
       before: z.string().optional().describe('Fetch messages before this timestamp (for pagination)'),
     },
-    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    { title: 'Ver conversa', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ student_id, limit, before }) => {
       const supabaseAdmin = createAdminClient()
 

@@ -3,11 +3,52 @@ import { authenticateRequest, McpAuthError } from '@/lib/mcp/auth'
 import { createMcpServer } from '@/lib/mcp/server'
 import { logToolUsage } from '@/lib/mcp/logger'
 
-function jsonRpcError(code: number, message: string, status: number = 400) {
+function getBaseUrl(request: Request): string {
+  const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+  const host =
+    request.headers.get('x-forwarded-host') ??
+    request.headers.get('host') ??
+    'www.kinevoapp.com'
+  return `${proto}://${host}`
+}
+
+function jsonRpcError(
+  code: number,
+  message: string,
+  status: number = 400,
+  extraHeaders?: Record<string, string>
+) {
   return Response.json(
     { jsonrpc: '2.0', error: { code, message }, id: null },
-    { status }
+    { status, headers: extraHeaders }
   )
+}
+
+// Origin allowlist — previne DNS rebinding (requisito de segurança do Directory).
+// Requests server-to-server (Claude backend) não enviam Origin: isso é permitido.
+// Browsers que mandam Origin precisam vir de uma origem conhecida.
+function isAllowedOrigin(request: Request): boolean {
+  const origin = request.headers.get('origin')
+  if (!origin) return true // sem Origin = chamada server-side, não é navegador
+
+  try {
+    const { protocol, hostname } = new URL(origin)
+    if (protocol !== 'https:' && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return false
+    }
+    return (
+      hostname === 'claude.ai' ||
+      hostname === 'claude.com' ||
+      hostname.endsWith('.claude.ai') ||
+      hostname.endsWith('.claude.com') ||
+      hostname === 'kinevoapp.com' ||
+      hostname.endsWith('.kinevoapp.com') ||
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1'
+    )
+  } catch {
+    return false
+  }
 }
 
 export async function GET() {
@@ -28,6 +69,11 @@ const PUBLIC_METHODS = new Set([
 ])
 
 export async function POST(request: Request) {
+  // Origin allowlist (DNS rebinding protection)
+  if (!isAllowedOrigin(request)) {
+    return jsonRpcError(-32600, 'Origem não permitida.', 403)
+  }
+
   // Pre-parse body to determine method
   const body = await request.json()
   const method =
@@ -57,7 +103,15 @@ export async function POST(request: Request) {
     context = await authenticateRequest(request)
   } catch (error) {
     if (error instanceof McpAuthError) {
-      return jsonRpcError(-32600, error.message, error.statusCode)
+      // 401 deve apontar o resource metadata (RFC 9728) para o cliente
+      // descobrir o authorization server e iniciar o fluxo OAuth.
+      const headers =
+        error.statusCode === 401
+          ? {
+              'WWW-Authenticate': `Bearer resource_metadata="${getBaseUrl(request)}/.well-known/oauth-protected-resource"`,
+            }
+          : undefined
+      return jsonRpcError(-32600, error.message, error.statusCode, headers)
     }
     return jsonRpcError(-32603, 'Internal server error', 500)
   }

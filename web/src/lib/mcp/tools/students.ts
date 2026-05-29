@@ -13,7 +13,7 @@ export function registerStudentReadTools(server: McpServer, trainerId: string) {
       limit: z.number().min(1).max(100).default(50).describe('Max results to return'),
       offset: z.number().min(0).default(0).describe('Offset for pagination'),
     },
-    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    { title: 'Listar alunos', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ search, status, limit, offset }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -95,7 +95,7 @@ export function registerStudentReadTools(server: McpServer, trainerId: string) {
     {
       student_id: z.string().uuid().describe("The student's UUID"),
     },
-    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    { title: 'Ver aluno', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ student_id }) => {
       const supabaseAdmin = createAdminClient()
 

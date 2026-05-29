@@ -13,7 +13,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
       duration_weeks: z.number().min(1).max(52).optional().describe('Program duration in weeks'),
       student_id: z.string().uuid().optional().describe("If provided, creates the program as already assigned to this student (status: 'draft')"),
     },
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { title: 'Criar programa', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ name, description, duration_weeks, student_id }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -85,7 +85,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
       start_date: z.string().optional().describe('Start date in YYYY-MM-DD format. Defaults to today.'),
       action: z.enum(['assign_template', 'activate_draft']).describe("'assign_template' copies a template to a student, 'activate_draft' activates an existing draft program"),
     },
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { title: 'Atribuir programa', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ program_id, student_id, start_date, action }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -181,7 +181,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
     {
       program_id: z.string().uuid().describe('The assigned program ID to expire'),
     },
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { title: 'Expirar programa', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ program_id }) => {
       const supabaseAdmin = createAdminClient()
 

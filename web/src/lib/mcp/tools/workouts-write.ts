@@ -187,7 +187,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       order_index: z.number().min(0).optional().describe('Position in the program. If omitted, appends at the end.'),
       scheduled_days: scheduledDaysZod.optional(),
     },
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { title: 'Adicionar sessão de treino', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ program_id, program_type, name, order_index, scheduled_days }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -267,7 +267,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       set_scheme: z.array(setSchemaZod).min(1).optional().describe('Advanced per-set prescription. Each entry is one set (or, for compound methods, one phase of a round). When provided, sets/reps/rest_seconds are derived from it. For drop-set/cluster pass ONE round here and set rounds>1.'),
       rounds: z.number().min(1).max(20).optional().describe('Number of rounds the set_scheme repeats (compound methods like drop-set/cluster). Defaults to 1 (linear methods).'),
     },
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { title: 'Adicionar exercício à sessão', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ workout_id, workout_type, exercise_id, sets, reps, rest_seconds, notes, exercise_function, order_index, method_key, set_scheme, rounds }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -393,7 +393,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       order_index: z.number().min(0).optional().describe('New position in the program'),
       scheduled_days: scheduledDaysZod.optional(),
     },
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { title: 'Atualizar sessão de treino', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ workout_id, workout_type, name, order_index, scheduled_days }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -445,7 +445,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       workout_id: z.string().uuid().describe('The workout session ID to delete'),
       workout_type: z.enum(['template', 'assigned']).default('assigned'),
     },
-    { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    { title: 'Excluir sessão de treino', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     async ({ workout_id, workout_type }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -491,7 +491,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       set_scheme: z.array(setSchemaZod).optional().describe('Advanced per-set prescription. Replaces the entire existing scheme. Pass an empty array [] to remove the scheme and revert to simple mode (also clears method_key). When non-empty, sets/reps/rest_seconds are derived from it.'),
       rounds: z.number().min(1).max(20).optional().describe('Rounds the set_scheme repeats (compound methods). Defaults to 1.'),
     },
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { title: 'Atualizar exercício', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ item_id, workout_type, exercise_id, sets, reps, rest_seconds, notes, exercise_function, method_key, order_index, set_scheme, rounds }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -600,7 +600,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         notes: z.string().optional().describe('Special instructions for this exercise'),
       })).min(2).describe('The exercises in the superset, in order. At least 2.'),
     },
-    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    { title: 'Criar superset', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ workout_id, workout_type, rest_seconds, order_index, exercises }) => {
       const supabaseAdmin = createAdminClient()
 
@@ -714,7 +714,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       item_id: z.string().uuid().describe('The workout item (exercise) ID to delete'),
       workout_type: z.enum(['template', 'assigned']).default('assigned'),
     },
-    { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    { title: 'Excluir exercício', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     async ({ item_id, workout_type }) => {
       const supabaseAdmin = createAdminClient()
 
