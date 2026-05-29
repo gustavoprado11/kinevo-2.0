@@ -990,14 +990,19 @@ example: "Busca exercicios com halter para biceps"
 ```typescript
 name: "kinevo_add_workout_session"
 
-description: "Add a new workout session (e.g., 'Treino A - Peito e Triceps') to an existing program. Works for both templates and assigned programs."
+description: "Add a new workout session to a program. Works for templates and assigned programs. RECOMENDADO passar scheduled_days para agendar os dias da semana da sessao — parte essencial de uma boa prescricao (alimenta o calendario semanal e os lembretes do aluno)."
 
 inputSchema: z.object({
   program_id: z.string().uuid().describe("The program ID to add the session to"),
   program_type: z.enum(["template", "assigned"]).default("assigned").describe("Whether the program is a template or assigned"),
   name: z.string().describe("Session name (e.g., 'Treino A - Peito e Triceps', 'Treino B - Costas e Biceps')"),
   order_index: z.number().min(0).optional().describe("Position in the program. If omitted, appends at the end."),
+  scheduled_days: z.array(z.number().int().min(0).max(6)).optional().describe("Dias da semana como inteiros (0=domingo … 6=sabado). Ex.: [1,4] = seg/qui. []  limpa."),
 })
+
+// scheduled_days: para assigned grava em `assigned_workouts.scheduled_days`
+// (int[]); para template converte para os codigos e grava em
+// `workout_templates.frequency` ('sun'..'sat'). Convencao getDay(): 0=domingo.
 
 outputSchema: {
   workout: { id: string, name: string, order_index: number },
@@ -1143,6 +1148,214 @@ annotations: {
 example: "Adiciona Leg Press 45 graus na sessao B do programa do Joao, 4x12, carga inicial 80kg (vai no campo notes)"
 example: "Adiciona supino reto com barra, 4 series de 8-12, descanso 120s, funcao principal"
 ```
+
+---
+
+#### `kinevo_update_workout_session`
+
+```typescript
+name: "kinevo_update_workout_session"
+
+description: "Rename, reorder, or reschedule an existing workout session in a program. Edita uma sessao in-place sem recriar o programa — incluindo os dias da semana (scheduled_days)."
+
+inputSchema: z.object({
+  workout_id: z.string().uuid().describe("The workout session ID to update"),
+  workout_type: z.enum(["template", "assigned"]).default("assigned"),
+  name: z.string().optional().describe("New session name"),
+  order_index: z.number().min(0).optional().describe("New position in the program"),
+  scheduled_days: z.array(z.number().int().min(0).max(6)).optional().describe("Dias da semana (0=domingo … 6=sabado). [] limpa o agendamento."),
+})
+
+annotations: { readOnlyHint: false, destructiveHint: false }
+
+example: "Renomeia a sessao A do programa do Joao para 'Treino A - Segunda'"
+example: "Agenda o Treino A para segunda e quinta (scheduled_days: [1, 4])"
+```
+
+---
+
+#### `kinevo_delete_workout_session`
+
+```typescript
+name: "kinevo_delete_workout_session"
+
+description: "Delete a workout session and all its exercises (cascade) from a program. Usado para limpar sessoes antigas ao editar um programa in-place."
+
+inputSchema: z.object({
+  workout_id: z.string().uuid().describe("The workout session ID to delete"),
+  workout_type: z.enum(["template", "assigned"]).default("assigned"),
+})
+
+// FK ON DELETE CASCADE em assigned_workout_items / workout_item_templates
+// remove automaticamente os exercicios (e supersets filhos) da sessao.
+
+annotations: { readOnlyHint: false, destructiveHint: true }
+
+example: "Remove as 5 sessoes antigas do Programa de Treinos IV"
+```
+
+---
+
+#### `kinevo_update_workout_item`
+
+```typescript
+name: "kinevo_update_workout_item"
+
+description: "Edita um exercicio dentro de uma sessao in-place: sets, reps, descanso, notas, funcao, metodo, posicao, ou troca o proprio exercicio. So altera os campos enviados."
+
+inputSchema: z.object({
+  item_id: z.string().uuid().describe("The workout item (exercise) ID to update"),
+  workout_type: z.enum(["template", "assigned"]).default("assigned"),
+  exercise_id: z.string().uuid().optional().describe("Swap to a different exercise from the catalog"),
+  sets: z.number().min(1).max(20).optional(),
+  reps: z.string().optional(),
+  rest_seconds: z.number().min(0).max(600).optional(),
+  notes: z.string().nullable().optional().describe("Pass null to clear"),
+  exercise_function: z.enum(["warmup", "activation", "main", "accessory", "conditioning"]).optional(),
+  method_key: z.string().nullable().optional().describe("Pass null to clear"),
+  order_index: z.number().min(0).optional(),
+})
+
+// Ao trocar exercise_id em itens assigned, os snapshots exercise_name/exercise_equipment
+// sao reescritos a partir do catalogo.
+
+annotations: { readOnlyHint: false, destructiveHint: false }
+
+example: "Muda o supino reto da sessao A para 4x6-8, descanso 150s"
+example: "Troca o agachamento livre por hack squat na sessao B"
+```
+
+---
+
+#### `kinevo_delete_workout_item`
+
+```typescript
+name: "kinevo_delete_workout_item"
+
+description: "Remove um exercicio de uma sessao (e os filhos de superset atrelados a ele). Usado para limpar exercicios ao editar uma sessao in-place."
+
+inputSchema: z.object({
+  item_id: z.string().uuid().describe("The workout item (exercise) ID to delete"),
+  workout_type: z.enum(["template", "assigned"]).default("assigned"),
+})
+
+annotations: { readOnlyHint: false, destructiveHint: true }
+
+example: "Remove o crucifixo inclinado da sessao de peito"
+```
+
+---
+
+#### `kinevo_list_training_methods`
+
+```typescript
+name: "kinevo_list_training_methods"
+
+description: "Lista as capacidades de prescricao avancada: presets de metodo (pirâmide, drop-set, cluster, 5x5, top+backoff), os campos do set_scheme, os set_types validos e como funcionam supersets. Chamar antes de prescrever metodos avancados."
+
+inputSchema: z.object({})  // sem parametros
+
+outputSchema: {
+  how_to_use: string,           // instrucoes de como passar method_key + set_scheme + rounds
+  set_scheme_fields: {...},     // documentacao de cada campo de uma serie
+  methods: Array<{              // presets de sistema
+    method_key, name, description, is_compound, default_rounds, default_set_scheme
+  }>,
+  custom_methods: Array<{ method_key, name, description }>,  // presets salvos pelo trainer
+  supersets: { how: string },
+}
+
+// Presets de sistema vem de SYSTEM_PRESETS (shared/lib/prescription/set-scheme-presets.ts).
+// Presets custom vem de training_method_presets WHERE trainer_id = <trainer>.
+
+annotations: { readOnlyHint: true, destructiveHint: false }
+
+example: "Quais metodos avancados posso prescrever no Kinevo?"
+```
+
+---
+
+#### Prescricao avancada (per-set) em `kinevo_add_exercise_to_session` e `kinevo_update_workout_item`
+
+Alem do modo simples (`sets` + `reps` + `rest_seconds`), ambos aceitam um
+`set_scheme` para prescrever **series heterogeneas** (reps/carga/descanso
+diferentes por serie), **metodos** (`method_key`) e **cargas por serie**.
+
+```typescript
+// Campos adicionais (opcionais) em ambas as tools:
+method_key: z.enum(["standard","custom","pyramid_down","pyramid_up","drop_set","top_backoff","5x5","cluster"]).optional()
+rounds: z.number().min(1).max(20).optional()  // rodadas que o set_scheme repete (drop-set/cluster)
+set_scheme: z.array(z.object({
+  set_type: z.enum(["warmup","normal","top","backoff","drop","failure","cluster","amrap"]).default("normal"),
+  reps: z.string(),                          // "8", "8-12", "AMRAP", "8+4+2"
+  rest_seconds: z.number().min(0).max(600).default(60),
+  weight_target_kg: z.number().nullable().optional(),
+  weight_target_pct1rm: z.number().nullable().optional(),
+  rir: z.number().nullable().optional(),
+  tempo: z.string().nullable().optional(),    // "3-1-1-0"
+  notes: z.string().nullable().optional(),
+})).optional()
+// set_number e atribuido automaticamente pela posicao no array.
+```
+
+Persistencia (espelha exatamente os builders web/mobile):
+- As series vao para `assigned_workout_item_sets` (assigned) ou
+  `workout_item_set_templates` (template).
+- Os agregados do item-pai (`sets`/`reps`/`rest_seconds`) sao derivados via
+  `summarizeSetScheme` / `summarizeWithRounds` — nunca divergem.
+- Metodos compostos (`rounds > 1`) materializam N×M linhas via
+  `expandSchemeByRounds`, cada uma com seu `round_number`.
+- No update, passar `set_scheme: []` (vazio) remove o esquema e volta ao modo
+  simples (zera `method_key`).
+
+example: "Prescreve drop-set no Leg Press: 1 serie base 10 reps + 2 quedas de 20% de carga"
+example: "Muda a Remada Baixa para piramide decrescente 12-10-8-6"
+
+---
+
+#### `kinevo_create_superset`
+
+```typescript
+name: "kinevo_create_superset"
+
+description: "Cria um superset (bi-set/tri-set) dentro de uma sessao: grupo de exercicios feitos em sequencia com descanso so apos o grupo. Cria o container e os exercicios-filhos numa unica chamada."
+
+inputSchema: z.object({
+  workout_id: z.string().uuid(),
+  workout_type: z.enum(["template","assigned"]).default("assigned"),
+  rest_seconds: z.number().min(0).max(600).optional().default(60),  // descanso apos cada rodada
+  order_index: z.number().min(0).optional(),
+  exercises: z.array(z.object({
+    exercise_id: z.string().uuid(),
+    sets: z.number().min(1).max(20),
+    reps: z.string(),
+    exercise_function: z.enum(["warmup","activation","main","accessory","conditioning"]).optional().default("main"),
+    notes: z.string().optional(),
+  })).min(2),  // pelo menos 2 exercicios
+})
+
+// Modelo: insere um item-pai item_type="superset" (exercise_id null, rest_seconds = descanso
+// entre rodadas), depois os filhos item_type="exercise" com parent_item_id = pai e
+// rest_seconds=0. Per-set scheme NAO e suportado em filhos de superset (V1).
+
+annotations: { readOnlyHint: false, destructiveHint: false }
+
+example: "Cria um superset de Supino Inclinado com Halteres 3x10 + Puxada Aberta 3x10, descanso 60s"
+```
+
+> **Leitura:** `kinevo_get_program` retorna, por **sessao**, `scheduled_days`
+> (inteiros 0=domingo … 6=sabado, normalizado a partir de
+> `assigned_workouts.scheduled_days` ou `workout_templates.frequency`); e, por
+> **item**, `method_key`, `rounds` e `set_scheme` (array de series prescritas),
+> alem dos `children` de supersets — para que o agente leia a prescricao
+> avancada e o agendamento antes de edita-los.
+
+> **Server instructions:** o servidor MCP (`createMcpServer`) envia, no
+> handshake (`initialize`), um bloco `instructions` orientando o agente a:
+> (1) criar programa + sessoes, (2) **sempre agendar os dias da semana**
+> (`scheduled_days`) de cada sessao, (3) usar prescricao avancada quando fizer
+> sentido (metodos, cargas por serie, supersets) e (4) editar in-place em vez de
+> recriar. Isso faz Claude/GPT proporem o agendamento proativamente.
 
 ---
 

@@ -2,8 +2,60 @@ import { z } from 'zod'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mcpSuccess, mcpError } from '../types'
+import { SYSTEM_PRESETS, COMPOUND_METHOD_KEYS } from '@kinevo/shared/lib/prescription/set-scheme-presets'
 
 export function registerExerciseReadTools(server: McpServer, trainerId: string) {
+  server.tool(
+    'kinevo_list_training_methods',
+    "List the advanced prescription capabilities available when building or editing workouts: training-method presets (pyramid, drop-set, cluster, 5x5, top+backoff), the per-set scheme fields, the valid set types, and how supersets work. Call this before prescribing advanced methods so you pass the right method_key, set_scheme, and rounds to kinevo_add_exercise_to_session / kinevo_update_workout_item.",
+    {},
+    { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    async () => {
+      const supabaseAdmin = createAdminClient()
+
+      // System presets (static) + any custom presets this trainer saved.
+      const methods = (Object.keys(SYSTEM_PRESETS) as Array<keyof typeof SYSTEM_PRESETS>).map(key => {
+        const p = SYSTEM_PRESETS[key]
+        return {
+          method_key: p.key,
+          name: p.name,
+          description: p.description,
+          is_compound: COMPOUND_METHOD_KEYS.has(p.key),
+          default_rounds: p.defaultRounds,
+          default_set_scheme: p.defaultSetsConfig,
+        }
+      })
+
+      let customMethods: Array<{ method_key: string; name: string; description: string | null }> = []
+      const { data: customRows } = await supabaseAdmin
+        .from('training_method_presets')
+        .select('key, name, description')
+        .eq('trainer_id', trainerId)
+      if (customRows) {
+        customMethods = customRows.map(r => ({ method_key: r.key, name: r.name, description: r.description }))
+      }
+
+      return mcpSuccess({
+        how_to_use: 'Pass method_key + set_scheme to kinevo_add_exercise_to_session or kinevo_update_workout_item. set_scheme is an array of per-set objects (set_number is auto-assigned). For compound methods (drop_set, cluster) provide ONE round in set_scheme and set rounds > 1 to repeat it. The parent sets/reps/rest_seconds are derived automatically. method_key="standard" means a simple non-scheme prescription; "custom" means a hand-built scheme matching no preset.',
+        set_scheme_fields: {
+          set_type: "One of: 'warmup', 'normal', 'top', 'backoff', 'drop', 'failure', 'cluster', 'amrap'",
+          reps: "Free-form rep target per set: '8', '8-12', 'AMRAP', '8+4+2' (cluster)",
+          rest_seconds: 'Rest in seconds after this set',
+          weight_target_kg: 'Optional absolute load in kg for this set',
+          weight_target_pct1rm: 'Optional load as % of 1RM for this set',
+          rir: 'Optional reps-in-reserve target',
+          tempo: "Optional tempo string, e.g. '3-1-1-0'",
+          notes: 'Optional per-set note',
+        },
+        methods,
+        custom_methods: customMethods,
+        supersets: {
+          how: 'Use kinevo_create_superset to group 2+ exercises performed back-to-back with rest only after the group. The superset is a container item (item_type "superset") holding child exercises; rest_seconds on the container is the rest between rounds. Per-set schemes are not supported inside superset children (V1).',
+        },
+      })
+    }
+  )
+
   server.tool(
     'kinevo_list_exercises',
     "Search the exercise catalog. Returns exercises available to this trainer (system exercises + trainer's custom exercises). Filter by muscle group, equipment, or name.",

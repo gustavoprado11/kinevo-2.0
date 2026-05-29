@@ -97,13 +97,17 @@ export function registerProgramReadTools(server: McpServer, trainerId: string) {
             student_id,
             students(id, name),
             assigned_workouts(
-              id, name, order_index,
+              id, name, order_index, scheduled_days,
               assigned_workout_items(
                 id, item_type, order_index, exercise_id, sets, reps,
-                rest_seconds, notes, method_key, exercise_function,
+                rest_seconds, notes, method_key, rounds, exercise_function,
                 parent_item_id,
                 exercise_name, exercise_muscle_group, exercise_equipment,
-                exercises(id, name, equipment)
+                exercises(id, name, equipment),
+                assigned_workout_item_sets(
+                  set_number, set_type, reps, rest_seconds,
+                  weight_target_kg, weight_target_pct1rm, rir, tempo, notes, round_number
+                )
               )
             )
           `)
@@ -140,12 +144,16 @@ export function registerProgramReadTools(server: McpServer, trainerId: string) {
         .select(`
           id, name, description, duration_weeks, created_at,
           workout_templates(
-            id, name, order_index,
+            id, name, order_index, frequency,
             workout_item_templates(
               id, item_type, order_index, exercise_id, sets, reps,
-              rest_seconds, notes, method_key, exercise_function,
+              rest_seconds, notes, method_key, rounds, exercise_function,
               parent_item_id,
-              exercises(id, name, equipment)
+              exercises(id, name, equipment),
+              workout_item_set_templates(
+                set_number, set_type, reps, rest_seconds,
+                weight_target_kg, weight_target_pct1rm, rir, tempo, notes, round_number
+              )
             )
           )
         `)
@@ -182,6 +190,19 @@ export function registerProgramReadTools(server: McpServer, trainerId: string) {
 }
 
 // Types for raw Supabase results
+interface RawSet {
+  set_number: number
+  set_type: string
+  reps: string
+  rest_seconds: number
+  weight_target_kg: number | null
+  weight_target_pct1rm: number | null
+  rir: number | null
+  tempo: string | null
+  notes: string | null
+  round_number: number | null
+}
+
 interface RawItem {
   id: string
   item_type: string
@@ -192,20 +213,31 @@ interface RawItem {
   rest_seconds: number | null
   notes: string | null
   method_key: string | null
+  rounds?: number | null
   exercise_function: string | null
   parent_item_id: string | null
   exercise_name?: string | null
   exercise_muscle_group?: string | null
   exercise_equipment?: string | null
   exercises?: { id: string; name: string; equipment: string | null } | null
+  assigned_workout_item_sets?: RawSet[] | null
+  workout_item_set_templates?: RawSet[] | null
 }
 
 interface RawWorkout {
   id: string
   name: string
   order_index: number
+  scheduled_days?: number[] | null
+  frequency?: string[] | null
   assigned_workout_items?: RawItem[]
   items_raw?: RawItem[]
+}
+
+// `workout_templates.frequency` stores day-of-week codes; normalize to the same
+// integer convention as `assigned_workouts.scheduled_days` (0=Sun … 6=Sat).
+const DAY_STR_TO_INT: Record<string, number> = {
+  sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
 }
 
 interface StructuredItem {
@@ -218,7 +250,11 @@ interface StructuredItem {
   rest_seconds: number | null
   notes: string | null
   method_key: string | null
+  rounds: number | null
   exercise_function: string | null
+  /** Per-set prescription (advanced methods). Null when the item uses the
+   *  simple aggregate (sets/reps/rest) prescription. */
+  set_scheme: RawSet[] | null
   children?: StructuredItem[]
 }
 
@@ -234,6 +270,10 @@ function sortAndStructureWorkouts(workouts: RawWorkout[]) {
       const childrenMap = new Map<string, StructuredItem[]>()
 
       for (const item of sorted) {
+        const rawSets = item.assigned_workout_item_sets ?? item.workout_item_set_templates ?? null
+        const setScheme = rawSets && rawSets.length > 0
+          ? [...rawSets].sort((a, b) => a.set_number - b.set_number)
+          : null
         const structured: StructuredItem = {
           id: item.id,
           item_type: item.item_type,
@@ -248,7 +288,9 @@ function sortAndStructureWorkouts(workouts: RawWorkout[]) {
           rest_seconds: item.rest_seconds,
           notes: item.notes,
           method_key: item.method_key,
+          rounds: item.rounds ?? null,
           exercise_function: item.exercise_function,
+          set_scheme: setScheme,
         }
 
         if (item.parent_item_id) {
@@ -268,10 +310,22 @@ function sortAndStructureWorkouts(workouts: RawWorkout[]) {
         }
       }
 
+      // Normalize the weekly schedule to integers (0=Sun … 6=Sat) for both
+      // assigned (scheduled_days: int[]) and template (frequency: string[]).
+      const scheduledDays = w.scheduled_days
+        ? [...w.scheduled_days].sort((a, b) => a - b)
+        : w.frequency
+          ? w.frequency
+              .map(d => DAY_STR_TO_INT[d.toLowerCase()])
+              .filter((n): n is number => typeof n === 'number')
+              .sort((a, b) => a - b)
+          : []
+
       return {
         id: w.id,
         name: w.name,
         order_index: w.order_index,
+        scheduled_days: scheduledDays,
         items: rootItems,
       }
     })
