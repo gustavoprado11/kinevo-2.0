@@ -2,6 +2,11 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { authenticateRequest, McpAuthError } from '@/lib/mcp/auth'
 import { createMcpServer } from '@/lib/mcp/server'
 import { logToolUsage } from '@/lib/mcp/logger'
+import { corsPreflight, withCors, CORS_HEADERS } from '@/lib/mcp/cors'
+
+export function OPTIONS() {
+  return corsPreflight()
+}
 
 function getBaseUrl(request: Request): string {
   const proto = request.headers.get('x-forwarded-proto') ?? 'https'
@@ -20,7 +25,7 @@ function jsonRpcError(
 ) {
   return Response.json(
     { jsonrpc: '2.0', error: { code, message }, id: null },
-    { status, headers: extraHeaders }
+    { status, headers: { ...CORS_HEADERS, ...extraHeaders } }
   )
 }
 
@@ -52,12 +57,15 @@ function isAllowedOrigin(request: Request): boolean {
 }
 
 export async function GET() {
-  return Response.json({
-    name: 'kinevo',
-    version: '1.0.0',
-    description:
-      'Kinevo MCP Server — Gerencie sua plataforma de personal training com IA',
-  })
+  return Response.json(
+    {
+      name: 'kinevo',
+      version: '1.0.0',
+      description:
+        'Kinevo MCP Server — Gerencie sua plataforma de personal training com IA',
+    },
+    { headers: CORS_HEADERS }
+  )
 }
 
 // Methods that work without authentication (discovery + tool catalog)
@@ -93,7 +101,7 @@ export async function POST(request: Request) {
     })
 
     await server.connect(transport)
-    return transport.handleRequest(request, { parsedBody: body })
+    return withCors(await transport.handleRequest(request, { parsedBody: body }))
   }
 
   // All other methods (tools/call, etc.) require authentication
@@ -153,7 +161,7 @@ export async function POST(request: Request) {
     )
   }
 
-  return response
+  return withCors(response)
 }
 
 export async function DELETE() {

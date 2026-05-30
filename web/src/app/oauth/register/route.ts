@@ -1,6 +1,11 @@
 import { randomUUID } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { corsPreflight, withCors } from '@/lib/mcp/cors'
+
+export function OPTIONS() {
+  return corsPreflight()
+}
 
 // Dynamic Client Registration (RFC7591) é aberto por design (MCP), mas precisa
 // de rate-limit pra não virar vetor de DB-fill, e de validação dos redirect_uris.
@@ -16,6 +21,10 @@ function isValidRedirectUri(u: string): boolean {
 }
 
 export async function POST(request: Request) {
+  return withCors(await handleRegister(request))
+}
+
+async function handleRegister(request: Request): Promise<Response> {
   // Rate-limit por IP.
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
   const rlKey = `oauth-register:${ip}`

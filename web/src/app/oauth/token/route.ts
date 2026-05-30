@@ -1,5 +1,10 @@
 import { createHash, randomUUID } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { corsPreflight, withCors } from '@/lib/mcp/cors'
+
+export function OPTIONS() {
+  return corsPreflight()
+}
 
 const ACCESS_TOKEN_TTL = 60 * 60 * 1000          // 1 hour
 const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -20,6 +25,10 @@ function generateToken(prefix: string): { raw: string; hash: string } {
 }
 
 export async function POST(request: Request) {
+  return withCors(await handleToken(request))
+}
+
+async function handleToken(request: Request): Promise<Response> {
   let body: URLSearchParams
   try {
     const text = await request.text()
