@@ -7,6 +7,15 @@ interface UseCachedQueryOptions<T> {
     fetcher: () => Promise<T>;
     ttl?: number;
     enabled?: boolean;
+    /**
+     * When false, skip the background revalidation while the cached entry is
+     * still within its TTL — the screen renders instantly from cache and fires
+     * zero network requests until the data goes stale. Use for slow-changing,
+     * roundtrip-expensive data (e.g. the exercise library on clients far from
+     * the us-west-2 DB). Defaults to true to preserve stale-while-revalidate
+     * behaviour for every existing consumer.
+     */
+    revalidateWhenFresh?: boolean;
 }
 
 interface UseCachedQueryReturn<T> {
@@ -23,6 +32,7 @@ export function useCachedQuery<T>({
     fetcher,
     ttl = 5 * 60 * 1000,
     enabled = true,
+    revalidateWhenFresh = true,
 }: UseCachedQueryOptions<T>): UseCachedQueryReturn<T> {
     const [data, setData] = useState<T | null>(() => {
         // Synchronous initial read from cache for instant render
@@ -78,17 +88,22 @@ export function useCachedQuery<T>({
             setData(cached.data);
             setIsLoading(false);
 
-            // Always revalidate in background when connected
+            // Revalidate in background when connected. When revalidateWhenFresh
+            // is false, skip the fetch while the entry is still within its TTL —
+            // the cache hit already rendered, so we save a roundtrip per open.
             if (isConnected !== false) {
                 const age = Date.now() - cached.timestamp;
-                setIsStale(age >= ttl);
-                setIsRefreshing(true);
-                fetchAndCache().finally(() => {
-                    if (mountedRef.current) {
-                        setIsRefreshing(false);
-                        setIsStale(false);
-                    }
-                });
+                const stale = age >= ttl;
+                if (revalidateWhenFresh || stale) {
+                    setIsStale(stale);
+                    setIsRefreshing(true);
+                    fetchAndCache().finally(() => {
+                        if (mountedRef.current) {
+                            setIsRefreshing(false);
+                            setIsStale(false);
+                        }
+                    });
+                }
             }
         } else if (isConnected !== false) {
             // No cache — must fetch

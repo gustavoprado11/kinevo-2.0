@@ -39,6 +39,9 @@ export function useLoadAssignedProgram(assignedProgramId: string | null): LoadRe
                     name,
                     description,
                     duration_weeks,
+                    status,
+                    started_at,
+                    scheduled_start_date,
                     assigned_workouts (
                         id,
                         name,
@@ -58,6 +61,13 @@ export function useLoadAssignedProgram(assignedProgramId: string | null): LoadRe
                             item_config,
                             method_key,
                             rounds,
+                            exercises (
+                                name,
+                                equipment,
+                                exercise_muscle_groups (
+                                    muscle_groups ( name )
+                                )
+                            ),
                             assigned_workout_item_sets (
                                 set_number,
                                 set_type,
@@ -85,36 +95,24 @@ export function useLoadAssignedProgram(assignedProgramId: string | null): LoadRe
                 return;
             }
 
-            // Resolve exercise names in one batched query so the builder can
-            // render them without each item carrying a nested join payload.
-            const exerciseIds = new Set<string>();
-            for (const w of program.assigned_workouts ?? []) {
-                for (const it of w.assigned_workout_items ?? []) {
-                    if (it.exercise_id) exerciseIds.add(it.exercise_id);
-                }
-            }
-
-            let nameMap: Record<string, { name: string; equipment: string | null }> = {};
-            if (exerciseIds.size > 0) {
-                const { data: exercises } = await (supabase as any)
-                    .from("exercises")
-                    .select("id, name, equipment")
-                    .in("id", Array.from(exerciseIds));
-                if (exercises) {
-                    for (const ex of exercises) {
-                        nameMap[ex.id] = { name: ex.name, equipment: ex.equipment ?? null };
-                    }
-                }
-            }
-
-            // Inject exercise_name on each item — the store's hydrator reads
-            // it directly without re-querying.
+            // Exercise name/equipment/muscle groups now ride along on the first
+            // query via the embedded `exercises` relation (programs are small —
+            // max ~50 items — so the duplication is negligible). This removes the
+            // second sequential roundtrip, which mattered most for clients far
+            // from the us-west-2 DB. Flatten the embed onto each item so the
+            // store's hydrator keeps reading exercise_name/exercise_equipment/
+            // exercise_muscle_groups directly. Muscle groups feed the volume
+            // summary — without them the per-group volume reads as zero and the
+            // summary hides entirely when editing an existing program.
             const enrichedWorkouts = (program.assigned_workouts ?? []).map((w: any) => ({
                 ...w,
                 assigned_workout_items: (w.assigned_workout_items ?? []).map((it: any) => ({
                     ...it,
-                    exercise_name: it.exercise_id ? nameMap[it.exercise_id]?.name ?? "" : "",
-                    exercise_equipment: it.exercise_id ? nameMap[it.exercise_id]?.equipment ?? null : null,
+                    exercise_name: it.exercises?.name ?? "",
+                    exercise_equipment: it.exercises?.equipment ?? null,
+                    exercise_muscle_groups: (it.exercises?.exercise_muscle_groups ?? [])
+                        .map((emg: any) => emg.muscle_groups?.name)
+                        .filter((name: unknown): name is string => typeof name === "string"),
                 })),
             }));
 
@@ -124,6 +122,9 @@ export function useLoadAssignedProgram(assignedProgramId: string | null): LoadRe
                 name: program.name,
                 description: program.description,
                 duration_weeks: program.duration_weeks,
+                status: program.status ?? null,
+                started_at: program.started_at ?? null,
+                scheduled_start_date: program.scheduled_start_date ?? null,
                 assigned_workouts: enrichedWorkouts,
             });
             setLoading(false);

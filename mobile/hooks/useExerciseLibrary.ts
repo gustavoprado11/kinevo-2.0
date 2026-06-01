@@ -62,6 +62,11 @@ export function useExerciseLibrary() {
         cacheKey: CACHE_KEYS.EXERCISE_LIBRARY,
         fetcher,
         ttl: CACHE_TTL.EXERCISE_LIBRARY,
+        // The catalog changes rarely; within the 30 min TTL serve straight from
+        // MMKV with no background roundtrip. Creating/editing/deleting an
+        // exercise invalidates this key in useExerciseCrud, and pull-to-refresh
+        // still refetches — so new exercises are never stranded stale.
+        revalidateWhenFresh: false,
     });
 
     const allExercises = data?.exercises ?? [];
