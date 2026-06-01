@@ -108,7 +108,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
 
                 {isLoading ? (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <ActivityIndicator size="large" color="#7c3aed" />
+                        <ActivityIndicator size="large" color={colors.purple[600]} />
                     </View>
                 ) : submission ? (
                     <>
@@ -222,7 +222,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                     </Text>
                                     <View
                                         style={{
-                                            backgroundColor: "#f0fdf4",
+                                            backgroundColor: "rgba(22, 163, 74, 0.12)",
                                             borderRadius: 14,
                                             padding: 16,
                                             borderLeftWidth: 3,
@@ -251,7 +251,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                     paddingBottom: insets.bottom + 12,
                                     backgroundColor: colors.surface.card,
                                     borderTopWidth: 0.5,
-                                    borderTopColor: "rgba(0,0,0,0.08)",
+                                    borderTopColor: colors.border.default,
                                 }}
                             >
                                 <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10 }}>
@@ -262,7 +262,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                         multiline
                                         style={{
                                             flex: 1,
-                                            backgroundColor: "#f1f5f9",
+                                            backgroundColor: colors.surface.card2,
                                             borderRadius: 14,
                                             paddingHorizontal: 14,
                                             paddingVertical: 12,
@@ -270,7 +270,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                             color: colors.text.primary,
                                             maxHeight: 100,
                                         }}
-                                        placeholderTextColor="#94a3b8"
+                                        placeholderTextColor={colors.text.tertiary}
                                     />
                                     <TouchableOpacity
                                         onPress={handleSendFeedback}
@@ -280,7 +280,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                             height: 44,
                                             borderRadius: 22,
                                             backgroundColor:
-                                                feedbackText.trim() ? "#7c3aed" : "#d1d5db",
+                                                feedbackText.trim() ? colors.purple[600] : colors.surface.card2,
                                             alignItems: "center",
                                             justifyContent: "center",
                                         }}
@@ -289,7 +289,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
                                         {isSending ? (
                                             <ActivityIndicator color="#ffffff" size="small" />
                                         ) : (
-                                            <Send size={18} color="#ffffff" />
+                                            <Send size={18} color={feedbackText.trim() ? "#ffffff" : colors.text.tertiary} />
                                         )}
                                     </TouchableOpacity>
                                 </View>

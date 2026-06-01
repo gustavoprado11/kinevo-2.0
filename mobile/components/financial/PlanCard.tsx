@@ -132,20 +132,6 @@ export function PlanCard({ plan, onEdit, onToggle, onDelete, isToggling, isDelet
                         </Text>
                     )}
                 </TouchableOpacity>
-
-                {/* Stripe badge */}
-                {plan.stripe_price_id && (
-                    <View style={{
-                        backgroundColor: "rgba(124,58,237,0.12)",
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                    }}>
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: "#7c3aed" }}>
-                            Stripe
-                        </Text>
-                    </View>
-                )}
             </View>
         </TouchableOpacity>
     );

@@ -14,6 +14,7 @@ import {
 } from "lucide-react-native";
 import type { ContractEvent, ContractEventType } from "../../types/financial";
 import type { LucideIcon } from "lucide-react-native";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 const EVENT_CONFIG: Record<ContractEventType, { icon: LucideIcon; color: string; label: string }> = {
     student_registered: { icon: UserPlus, color: "#3b82f6", label: "Aluno registrado" },
@@ -61,10 +62,11 @@ interface Props {
 }
 
 export function ContractTimeline({ events, isLoading }: Props) {
+    const colors = useV2Colors();
     if (isLoading) {
         return (
             <View style={{ padding: 24, alignItems: "center" }}>
-                <ActivityIndicator color="#7c3aed" size="small" />
+                <ActivityIndicator color={colors.purple[600]} size="small" />
             </View>
         );
     }
@@ -72,7 +74,7 @@ export function ContractTimeline({ events, isLoading }: Props) {
     if (events.length === 0) {
         return (
             <View style={{ padding: 24, alignItems: "center" }}>
-                <Text style={{ fontSize: 13, color: "#94a3b8" }}>
+                <Text style={{ fontSize: 13, color: colors.text.tertiary }}>
                     Nenhum evento registrado
                 </Text>
             </View>
@@ -108,7 +110,7 @@ export function ContractTimeline({ events, isLoading }: Props) {
                                     style={{
                                         width: 2,
                                         flex: 1,
-                                        backgroundColor: "#e2e8f0",
+                                        backgroundColor: colors.border.default,
                                         marginVertical: 4,
                                     }}
                                 />
@@ -117,15 +119,15 @@ export function ContractTimeline({ events, isLoading }: Props) {
 
                         {/* Content */}
                         <View style={{ flex: 1, paddingBottom: isLast ? 0 : 16, paddingLeft: 8 }}>
-                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#0f172a" }}>
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
                                 {config.label}
                             </Text>
                             {detail && (
-                                <Text style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
+                                <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 2 }}>
                                     {detail}
                                 </Text>
                             )}
-                            <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                            <Text style={{ fontSize: 11, color: colors.text.tertiary, marginTop: 2 }}>
                                 {formatEventDate(event.created_at)}
                             </Text>
                         </View>
