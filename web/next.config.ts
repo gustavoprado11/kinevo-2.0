@@ -74,9 +74,14 @@ const nextConfig: NextConfig = {
     // challenges.cloudflare.com hosts the Turnstile (CAPTCHA) widget script
     // used on /signup. The widget also renders inside an iframe served from
     // the same origin, which is allowed via frame-src below.
+    // In production, Vercel Speed Insights is served same-origin
+    // (/_vercel/speed-insights/...), so 'self' already covers it. Only the
+    // local dev build pulls script.debug.js from va.vercel-scripts.com, so we
+    // allow that domain in the dev CSP to silence the console error without
+    // loosening the production policy.
     const scriptSrc = isProd
       ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
-      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com";
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://va.vercel-scripts.com";
 
     return [
       {

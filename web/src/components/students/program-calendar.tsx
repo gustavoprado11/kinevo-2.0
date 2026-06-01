@@ -195,10 +195,10 @@ function WeekView({
                                         </span>
                                     ) : day.status === 'missed' ? (
                                         <span className="text-red-400">
-                                            Faltou: {day.scheduledWorkouts[0]?.name || 'Treino'}
+                                            Faltou: {day.scheduledWorkouts.map(w => w.name).join(' · ') || 'Treino'}
                                         </span>
                                     ) : day.status === 'scheduled' ? (
-                                        <span>Agendado: {day.scheduledWorkouts[0]?.name}</span>
+                                        <span>Agendado: {day.scheduledWorkouts.map(w => w.name).join(' · ')}</span>
                                     ) : (
                                         <span className="text-k-text-tertiary">Descanso</span>
                                     )}

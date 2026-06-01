@@ -520,7 +520,6 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
     // Initialize workouts helper
     const initializeWorkouts = (): Workout[] => {
-        console.log('Initializing workouts with program:', program?.workout_templates)
         if (!program?.workout_templates || program.workout_templates.length === 0) {
             // Programa novo: seeda N workouts conforme prefs do treinador.
             // Programas existentes (program !== null) preservam tudo.
@@ -829,7 +828,6 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     }, [])
 
     const updateWorkoutFrequency = useCallback((workoutId: string, days: string[]) => {
-        console.log('updateWorkoutFrequency', workoutId, days)
         setWorkouts(prev => prev.map(w =>
             w.id === workoutId ? { ...w, frequency: days } : w
         ))
@@ -1499,7 +1497,6 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
             // Save workouts and items
             for (const workout of workouts) {
-                console.log('Saving workout:', workout.name, 'Frequency:', workout.frequency)
                 const { data: savedWorkout, error: workoutError } = await supabase
                     .from('workout_templates')
                     .insert({

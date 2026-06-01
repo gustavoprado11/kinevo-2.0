@@ -128,9 +128,9 @@ export function WeeklyPerformanceTracker({
                                     {day.session ? (
                                         <span>Realizado: {day.session.assigned_workout_id ? 'Treino' : 'Sessão'}</span>
                                     ) : day.isMissed ? (
-                                        <span className="text-red-400">Faltou: {day.workoutsScheduled[0]?.name || 'Treino'}</span>
+                                        <span className="text-red-400">Faltou: {day.workoutsScheduled.map(w => w.name).join(' · ') || 'Treino'}</span>
                                     ) : day.isScheduled ? (
-                                        <span>Agendado: {day.workoutsScheduled[0]?.name}</span>
+                                        <span>Agendado: {day.workoutsScheduled.map(w => w.name).join(' · ')}</span>
                                     ) : (
                                         <span className="text-k-text-tertiary">Descanso</span>
                                     )}

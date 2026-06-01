@@ -140,7 +140,9 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                         source_template_id: workout.id,
                         name: workout.name,
                         order_index: workout.order_index,
-                        scheduled_days: scheduledDays
+                        // Keep weekdays in chronological order (0=Sun … 6=Sat) so the
+                        // student app renders them sorted regardless of click order.
+                        scheduled_days: [...scheduledDays].sort((a, b) => a - b)
                     })
                     .select('id')
                     .single()

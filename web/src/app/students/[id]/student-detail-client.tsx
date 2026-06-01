@@ -448,8 +448,6 @@ export function StudentDetailClient({
             case 'view_finance':
                 router.push(`/financial?student=${student.id}`)
                 break
-            default:
-                console.warn('[SmartBanner] action sem handler:', actionId)
         }
     }
 

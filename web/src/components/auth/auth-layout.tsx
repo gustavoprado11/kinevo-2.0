@@ -121,8 +121,9 @@ export function AuthLayout({
                         {/* Footer (e.g. "Already have an account?") */}
                         {footer}
 
-                        {/* Security badge */}
-                        <div className="flex items-center justify-center gap-2 text-slate-400 text-xs mt-6">
+                        {/* Security badge — only on mobile; on desktop the left
+                            branding panel already shows it (avoids duplication). */}
+                        <div className="lg:hidden flex items-center justify-center gap-2 text-slate-400 text-xs mt-6">
                             <Lock size={12} />
                             <span>Seus dados estão protegidos com criptografia de ponta a ponta</span>
                         </div>

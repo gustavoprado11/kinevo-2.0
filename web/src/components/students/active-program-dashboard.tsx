@@ -320,9 +320,6 @@ export function ActiveProgramDashboard({
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
                         Programa Atual
-                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
-                            Ativo
-                        </span>
                     </h3>
                 </div>
 
