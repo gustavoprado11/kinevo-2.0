@@ -4,18 +4,19 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    FlatList,
     Alert,
     ActivityIndicator,
     ScrollView,
 } from "react-native";
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
+import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import { Search, X, Plus, Edit2, Trash2, Lock, Check } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { colors } from "@/theme";
 import { useMuscleGroupCrud, type MuscleGroupFull } from "@/hooks/useMuscleGroupCrud";
 import { useAuth } from "@/contexts/AuthContext";
 import { useV2Colors } from "../../../hooks/useV2Colors";
+import { toRgba } from "@/lib/brandColor";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface MuscleGroupManagerModalProps {
     visible: boolean;
@@ -24,6 +25,7 @@ interface MuscleGroupManagerModalProps {
 
 export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManagerModalProps) {
     const v2c = useV2Colors();
+    const insets = useSafeAreaInsets();
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["70%", "90%"], []);
     const { user } = useAuth();
@@ -234,11 +236,11 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                             )}
                             {isEditable && (
                                 <View style={{
-                                    backgroundColor: "rgba(124,58,237,0.12)",
+                                    backgroundColor: toRgba(v2c.purple[600], 0.12),
                                     paddingHorizontal: 6, paddingVertical: 2,
                                     borderRadius: 6,
                                 }}>
-                                    <Text style={{ fontSize: 9, fontWeight: "700", color: "#7c3aed", letterSpacing: 0.5 }}>
+                                    <Text style={{ fontSize: 9, fontWeight: "700", color: v2c.purple[600], letterSpacing: 0.5 }}>
                                         CUSTOM
                                     </Text>
                                 </View>
@@ -293,6 +295,8 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
             ref={bottomSheetRef}
             index={0}
             snapPoints={snapPoints}
+            topInset={insets.top}
+            enableDynamicSizing={false}
             onClose={onClose}
             enablePanDownToClose
             backdropComponent={renderBackdrop}
@@ -301,7 +305,7 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
             keyboardBehavior="interactive"
             keyboardBlurBehavior="restore"
         >
-            <BottomSheetView style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
                 {/* Header */}
                 <View style={{
                     flexDirection: "row",
@@ -369,7 +373,7 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                             height: 44,
                             paddingHorizontal: 16,
                             borderRadius: 12,
-                            backgroundColor: newName.trim() ? "#7c3aed" : v2c.surface.card2,
+                            backgroundColor: newName.trim() ? v2c.purple[600] : v2c.surface.card2,
                             flexDirection: "row",
                             alignItems: "center",
                             justifyContent: "center",
@@ -414,9 +418,9 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                                     paddingHorizontal: 12,
                                     paddingVertical: 6,
                                     borderRadius: 16,
-                                    backgroundColor: parentForNewGroup === null ? "#7c3aed" : v2c.surface.card,
+                                    backgroundColor: parentForNewGroup === null ? v2c.purple[600] : v2c.surface.card,
                                     borderWidth: 1,
-                                    borderColor: parentForNewGroup === null ? "#7c3aed" : v2c.border.default,
+                                    borderColor: parentForNewGroup === null ? v2c.purple[600] : v2c.border.default,
                                 }}
                             >
                                 <Text style={{
@@ -438,9 +442,9 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                                             paddingHorizontal: 12,
                                             paddingVertical: 6,
                                             borderRadius: 16,
-                                            backgroundColor: selected ? "#7c3aed" : v2c.surface.card,
+                                            backgroundColor: selected ? v2c.purple[600] : v2c.surface.card,
                                             borderWidth: 1,
-                                            borderColor: selected ? "#7c3aed" : v2c.border.default,
+                                            borderColor: selected ? v2c.purple[600] : v2c.border.default,
                                         }}
                                     >
                                         <Text style={{
@@ -488,13 +492,14 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                 {/* List */}
                 {isLoading ? (
                     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                        <ActivityIndicator size="large" color="#7c3aed" />
+                        <ActivityIndicator size="large" color={v2c.purple[600]} />
                     </View>
                 ) : (
-                    <FlatList
+                    <BottomSheetFlatList
                         data={filteredGroups}
                         keyExtractor={(item) => item.id}
-                        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+                        style={{ flex: 1 }}
+                        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
                         keyboardShouldPersistTaps="handled"
                         renderItem={renderItem}
                         ListEmptyComponent={
@@ -506,7 +511,7 @@ export function MuscleGroupManagerModal({ visible, onClose }: MuscleGroupManager
                         }
                     />
                 )}
-            </BottomSheetView>
+            </View>
         </BottomSheet>
     );
 }

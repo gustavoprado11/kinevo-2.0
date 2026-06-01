@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useMemo, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity } from "react-native";
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
+import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList } from "@gorhom/bottom-sheet";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Search, X, Dumbbell, Play, Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useV2Colors } from "@/hooks/useV2Colors";
@@ -23,6 +24,7 @@ const toTitleCase = (s: string): string =>
 
 export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePickerModalProps) {
     const colors = useV2Colors();
+    const insets = useSafeAreaInsets();
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["75%", "95%"], []);
 
@@ -91,13 +93,15 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
             ref={bottomSheetRef}
             index={0}
             snapPoints={snapPoints}
+            topInset={insets.top}
+            enableDynamicSizing={false}
             onClose={onClose}
             enablePanDownToClose
             backdropComponent={renderBackdrop}
             handleIndicatorStyle={{ backgroundColor: colors.text.quaternary }}
             backgroundStyle={{ backgroundColor: colors.surface.canvas }}
         >
-            <BottomSheetView style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
                 {/* Header */}
                 <View style={{
                     flexDirection: "row",
@@ -215,10 +219,11 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                 />
 
                 {/* Exercise list */}
-                <FlatList
+                <BottomSheetFlatList
                     data={exercises}
                     keyExtractor={(item) => item.id}
-                    contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
                     keyboardShouldPersistTaps="handled"
                     renderItem={({ item }) => (
                         <TouchableOpacity
@@ -296,7 +301,7 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                         </View>
                     }
                 />
-            </BottomSheetView>
+            </View>
 
             {/* Video Preview Modal */}
             <VideoPreviewModal

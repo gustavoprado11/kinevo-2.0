@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, AlertCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/theme';
@@ -34,6 +35,7 @@ const STRATEGY_OPTIONS: { id: MultiAttemptNumericTest['selection_strategy']; lab
 // Edita campos comuns (label, metric_key) + campos específicos por tipo.
 // Computed e Protocol têm shape fixo (só label editável).
 export function TestPropertiesSheet({ test, duplicateKey, onSave, onClose }: Props) {
+    const insets = useSafeAreaInsets();
     const sheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ['75%', '95%'], []);
     const [draft, setDraft] = useState<AssessmentTest | null>(test);
@@ -74,13 +76,15 @@ export function TestPropertiesSheet({ test, duplicateKey, onSave, onClose }: Pro
             ref={sheetRef}
             snapPoints={snapPoints}
             index={0}
+            topInset={insets.top}
+            enableDynamicSizing={false}
             enablePanDownToClose
             onClose={onClose}
             backdropComponent={renderBackdrop}
             backgroundStyle={{ backgroundColor: colors.background.card }}
             handleIndicatorStyle={{ backgroundColor: colors.text.quaternary }}
         >
-            <BottomSheetView style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
                 {/* Header */}
                 <View
                     style={{
@@ -126,9 +130,9 @@ export function TestPropertiesSheet({ test, duplicateKey, onSave, onClose }: Pro
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView
+                <BottomSheetScrollView
                     style={{ flex: 1 }}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+                    contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 48 }}
                     keyboardShouldPersistTaps="handled"
                 >
                     {duplicateKey && (
@@ -191,8 +195,8 @@ export function TestPropertiesSheet({ test, duplicateKey, onSave, onClose }: Pro
                             Protocolo &quot;{draft.protocol}&quot; com fórmula fixa.
                         </ReadOnlyNote>
                     )}
-                </ScrollView>
-            </BottomSheetView>
+                </BottomSheetScrollView>
+            </View>
         </BottomSheet>
     );
 }

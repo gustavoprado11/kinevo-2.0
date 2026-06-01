@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ScrollView } from 'react-native';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/theme';
@@ -16,6 +17,7 @@ interface Props {
 // (Antropometria / Pregas / Força / etc). Tap no item adiciona à seção
 // corrente e fecha o sheet.
 export function TestLibrarySheet({ visible, onClose, onSelect }: Props) {
+    const insets = useSafeAreaInsets();
     const sheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ['65%', '92%'], []);
     const [activeGroup, setActiveGroup] = useState<CatalogGroup>('antropometria');
@@ -61,13 +63,15 @@ export function TestLibrarySheet({ visible, onClose, onSelect }: Props) {
             ref={sheetRef}
             snapPoints={snapPoints}
             index={0}
+            topInset={insets.top}
+            enableDynamicSizing={false}
             enablePanDownToClose
             onClose={onClose}
             backdropComponent={renderBackdrop}
             backgroundStyle={{ backgroundColor: colors.background.card }}
             handleIndicatorStyle={{ backgroundColor: colors.text.quaternary }}
         >
-            <BottomSheetView style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
                 {/* Header */}
                 <View
                     style={{
@@ -126,10 +130,11 @@ export function TestLibrarySheet({ visible, onClose, onSelect }: Props) {
                 </ScrollView>
 
                 {/* Items */}
-                <FlatList
+                <BottomSheetFlatList
                     data={items}
                     keyExtractor={item => item.catalogId}
-                    contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 32 }}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: insets.bottom + 32 }}
                     renderItem={({ item }) => {
                         const Icon = item.icon;
                         return (
@@ -174,7 +179,7 @@ export function TestLibrarySheet({ visible, onClose, onSelect }: Props) {
                         );
                     }}
                 />
-            </BottomSheetView>
+            </View>
         </BottomSheet>
     );
 }
