@@ -78,7 +78,7 @@ export const KINEVO_DEFAULT_PREFERENCES: PrescriptionPreferences = {
     },
     program_structure: {
         default_weeks: 4,
-        default_workout_count: 3,
+        default_workout_count: 1,
         naming_convention: 'letter',
     },
     ai: {

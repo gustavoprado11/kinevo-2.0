@@ -353,6 +353,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [alsoActivate, setAlsoActivate] = useState(false)
     const [savingTemplate, setSavingTemplate] = useState(false)
     const [frequencyWarning, setFrequencyWarning] = useState<{ workoutNames: string[], onConfirm: () => void } | null>(null)
+    // Soft warning: workout(s) being assigned to a student without any prescribed
+    // exercise. The student would open an empty training day. Mirrors the
+    // frequencyWarning pattern — warns, but lets the trainer proceed on purpose.
+    const [emptyWorkoutWarning, setEmptyWorkoutWarning] = useState<{ workoutNames: string[], onConfirm: () => void } | null>(null)
     const [activationBlock, setActivationBlock] = useState<{ workoutNames: string[] } | null>(null)
 
     // Helper to calculate end date from weeks
@@ -1405,7 +1409,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
 
     // Save program — overrideType allows buttons to pass the assignment type directly
-    const saveProgram = async (overrideType?: 'immediate' | 'scheduled', skipFrequencyCheck = false) => {
+    const saveProgram = async (overrideType?: 'immediate' | 'scheduled', skipFrequencyCheck = false, skipEmptyCheck = false) => {
         const effectiveAssignmentType = overrideType ?? assignmentType
         if (!name.trim()) {
             setError('Por favor, preencha o nome do programa.')
@@ -1423,6 +1427,23 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     onConfirm: () => {
                         setFrequencyWarning(null)
                         saveProgram(overrideType, true)
+                    }
+                })
+                return
+            }
+        }
+
+        // Soft check (student assignments only): workout(s) with no prescribed
+        // exercise. Warmups/notes alone don't count as content; cardio does, so
+        // a pure-aerobic day isn't flagged. The trainer can still proceed.
+        if (!skipEmptyCheck && isStudentContext) {
+            const empty = workouts.filter(w => !w.items?.some(i => i.item_type === 'exercise' || i.item_type === 'superset' || i.item_type === 'cardio'))
+            if (empty.length > 0) {
+                setEmptyWorkoutWarning({
+                    workoutNames: empty.map(w => w.name),
+                    onConfirm: () => {
+                        setEmptyWorkoutWarning(null)
+                        saveProgram(overrideType, true, true)
                     }
                 })
                 return
@@ -2310,23 +2331,23 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Sem dia da semana selecionado" />
                                                             )}
                                                             {activeWorkoutId === workout.id && (
-                                                                <span className="flex items-center gap-0.5 ml-1 border-l border-[#E8E8ED] dark:border-k-border-subtle pl-2">
+                                                                <span className="flex items-center gap-1 ml-1 border-l border-[#E8E8ED] dark:border-k-border-subtle pl-2">
                                                                     <span
                                                                         onClick={(e) => { e.stopPropagation(); duplicateWorkout(workout.id) }}
-                                                                        className="p-0.5 rounded text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-violet-400 transition-colors cursor-pointer"
+                                                                        className="p-1 rounded-md text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-violet-400 hover:bg-[#7C3AED]/10 dark:hover:bg-violet-500/15 transition-colors cursor-pointer"
                                                                         title="Duplicar treino"
                                                                     >
-                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                                                         </svg>
                                                                     </span>
                                                                     {workouts.length > 1 && (
                                                                         <span
                                                                             onClick={(e) => { e.stopPropagation(); deleteWorkout(workout.id) }}
-                                                                            className="p-0.5 rounded text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#FF3B30] dark:hover:text-red-400 transition-colors cursor-pointer"
+                                                                            className="p-1 rounded-md text-[#FF3B30] dark:text-red-400 bg-[#FF3B30]/10 dark:bg-red-500/15 hover:text-white hover:bg-[#FF3B30] dark:hover:bg-red-500 transition-colors cursor-pointer"
                                                                             title="Excluir treino"
                                                                         >
-                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                                             </svg>
                                                                         </span>
@@ -2496,6 +2517,48 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 className="flex-1 py-3 bg-[#F5F5F7] dark:bg-glass-bg hover:bg-[#ECECF0] dark:hover:bg-glass-bg-active text-[#6E6E73] dark:text-k-text-secondary text-xs font-bold rounded-full transition-colors border border-[#D2D2D7] dark:border-k-border-subtle"
                             >
                                 Salvar assim mesmo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Empty-workout warning modal — workout(s) without prescribed exercises */}
+            {emptyWorkoutWarning && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm" onClick={() => setEmptyWorkoutWarning(null)} />
+                    <div className="relative bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
+                        <div className="w-12 h-12 bg-[#FF9500]/10 dark:bg-amber-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                            <AlertCircle className="w-6 h-6 text-[#FF9500] dark:text-amber-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-[#1D1D1F] dark:text-white text-center mb-2">
+                            {emptyWorkoutWarning.workoutNames.length === 1 ? 'Treino sem exercícios' : 'Treinos sem exercícios'}
+                        </h3>
+                        <p className="text-sm text-[#6E6E73] dark:text-k-text-tertiary text-center mb-1">
+                            {emptyWorkoutWarning.workoutNames.length === 1
+                                ? `O treino "${emptyWorkoutWarning.workoutNames[0]}" não tem nenhum exercício prescrito.`
+                                : `Os treinos ${emptyWorkoutWarning.workoutNames.map(n => `"${n}"`).join(' e ')} não têm nenhum exercício prescrito.`
+                            }
+                        </p>
+                        <p className="text-xs text-[#FF9500] dark:text-amber-400/80 text-center mb-6">
+                            O aluno verá {emptyWorkoutWarning.workoutNames.length === 1 ? 'esse treino vazio' : 'esses treinos vazios'} no dia agendado.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setEmptyWorkoutWarning(null)
+                                    const firstEmpty = workouts.find(w => !w.items?.some(i => i.item_type === 'exercise' || i.item_type === 'superset' || i.item_type === 'cardio'))
+                                    if (firstEmpty) setActiveWorkoutId(firstEmpty.id)
+                                }}
+                                className="flex-1 py-3 bg-[#FF9500]/10 hover:bg-[#FF9500]/20 text-[#FF9500] dark:text-amber-400 text-xs font-bold rounded-full transition-colors border border-[#FF9500]/20 dark:border-amber-500/20"
+                            >
+                                Adicionar exercícios
+                            </button>
+                            <button
+                                onClick={emptyWorkoutWarning.onConfirm}
+                                className="flex-1 py-3 bg-[#F5F5F7] dark:bg-glass-bg hover:bg-[#ECECF0] dark:hover:bg-glass-bg-active text-[#6E6E73] dark:text-k-text-secondary text-xs font-bold rounded-full transition-colors border border-[#D2D2D7] dark:border-k-border-subtle"
+                            >
+                                Continuar assim mesmo
                             </button>
                         </div>
                     </div>
