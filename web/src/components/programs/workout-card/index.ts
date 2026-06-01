@@ -8,7 +8,6 @@ export { ExerciseItemCard } from './ExerciseItemCard'
 export { WarmupItemCard } from './WarmupItemCard'
 export { CardioItemCard } from './CardioItemCard'
 export { SupersetItemCard } from './SupersetItemCard'
-export { SupersetChildCard } from './SupersetChildCard'
 export { WorkoutCardShell, type WorkoutCardShellProps } from './WorkoutCardShell'
 export {
     WorkoutCardKebab,

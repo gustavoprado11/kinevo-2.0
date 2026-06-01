@@ -2,6 +2,7 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { motion } from 'framer-motion'
 import { WorkoutItemCard } from './workout-item-card'
 import type { WorkoutItem } from './program-builder-client'
 import type { Exercise } from '@/types/exercise'
@@ -50,7 +51,8 @@ function DraggableSortableItem(props: SortableWorkoutItemProps) {
         setNodeRef,
         transform,
         transition,
-        isDragging
+        isDragging,
+        isSorting,
     } = useSortable({ id: props.item.id })
 
     const style = {
@@ -62,11 +64,20 @@ function DraggableSortableItem(props: SortableWorkoutItemProps) {
     }
 
     return (
-        <div ref={setNodeRef} style={style} className="touch-none">
+        // `layout` anima a troca de posição (FLIP) quando a ordem muda via setas,
+        // dando a percepção de que o card se moveu. Desligado durante o
+        // drag-and-drop (`isSorting`) para não brigar com o transform do dnd-kit.
+        <motion.div
+            ref={setNodeRef}
+            layout={!isSorting}
+            transition={{ type: 'spring', stiffness: 700, damping: 42, mass: 0.5 }}
+            style={style}
+            className="touch-none"
+        >
             <WorkoutItemCard
                 {...props}
                 dragHandleProps={{ ...attributes, ...listeners }}
             />
-        </div>
+        </motion.div>
     )
 }

@@ -3,11 +3,13 @@
 import {
     ArrowLeftRight,
     ChevronDown,
+    ChevronUp,
     Copy,
     GripVertical,
     PlayCircle,
     Sliders,
     Trash2,
+    Unlink,
 } from 'lucide-react'
 import { useState, type HTMLAttributes } from 'react'
 
@@ -37,6 +39,26 @@ interface ExerciseItemCardProps {
     onDuplicate?: () => void
     dragHandleProps?: HTMLAttributes<HTMLDivElement>
     readonly?: boolean
+    /**
+     * Quando usado como filho de um superset: oculta o card de Descanso do
+     * trilho (o descanso vive no superset pai, entre rodadas).
+     */
+    omitRest?: boolean
+    /**
+     * Quando usado como filho de um superset: esconde o grip de arrastar
+     * (filhos não são reordenáveis via dnd) e exibe a ação "desvincular".
+     */
+    hideDragHandle?: boolean
+    /** Callback de "desvincular do superset" (só em filhos). */
+    onRemoveFromSuperset?: () => void
+    /**
+     * Reordenar via setas (alternativa ao drag-and-drop). Só passado em cards
+     * top-level; filhos de superset não recebem. canMove* desabilita nas bordas.
+     */
+    onMoveUp?: () => void
+    onMoveDown?: () => void
+    canMoveUp?: boolean
+    canMoveDown?: boolean
 }
 
 /**
@@ -68,6 +90,13 @@ export function ExerciseItemCard({
     onDuplicate,
     dragHandleProps,
     readonly,
+    omitRest,
+    hideDragHandle,
+    onRemoveFromSuperset,
+    onMoveUp,
+    onMoveDown,
+    canMoveUp,
+    canMoveDown,
 }: ExerciseItemCardProps) {
     const [showVideo, setShowVideo] = useState(false)
     const [videoExercise, setVideoExercise] = useState<Exercise | null>(null)
@@ -166,7 +195,7 @@ export function ExerciseItemCard({
             <div className="bg-[var(--surface-card)] rounded-xl border border-[var(--border-subtle)] p-4 relative transition-colors hover:border-[var(--border-primary)]">
                 <div className="flex items-start gap-3">
                     {/* Drag Handle */}
-                    {!readonly && (
+                    {!readonly && !hideDragHandle && (
                         <div
                             {...(dragHandleProps ?? {})}
                             className="mt-1 text-[var(--text-quaternary)] hover:text-[var(--text-secondary)] cursor-grab active:cursor-grabbing touch-none transition-colors shrink-0"
@@ -181,6 +210,31 @@ export function ExerciseItemCard({
                         {/* Header: title + play + pills + method chip + actions */}
                         <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0 flex-wrap">
+                                {/* Setas de reordenar — alternativa ao drag-and-drop, junto ao nome */}
+                                {!readonly && (onMoveUp || onMoveDown) && (
+                                    <div className="flex flex-col shrink-0 -my-0.5">
+                                        <button
+                                            type="button"
+                                            onClick={onMoveUp}
+                                            disabled={!canMoveUp}
+                                            className="text-[var(--text-quaternary)] hover:text-[#7C3AED] dark:hover:text-violet-400 disabled:opacity-25 disabled:hover:text-[var(--text-quaternary)] transition-colors"
+                                            title="Mover para cima"
+                                            aria-label="Mover exercício para cima"
+                                        >
+                                            <ChevronUp className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={onMoveDown}
+                                            disabled={!canMoveDown}
+                                            className="text-[var(--text-quaternary)] hover:text-[#7C3AED] dark:hover:text-violet-400 disabled:opacity-25 disabled:hover:text-[var(--text-quaternary)] transition-colors"
+                                            title="Mover para baixo"
+                                            aria-label="Mover exercício para baixo"
+                                        >
+                                            <ChevronDown className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                )}
                                 <span className="text-sm font-bold text-[var(--text-primary)] truncate">
                                     {item.exercise?.name || 'Exercício sem nome'}
                                 </span>
@@ -265,6 +319,17 @@ export function ExerciseItemCard({
                                     >
                                         <ArrowLeftRight className="w-3.5 h-3.5" />
                                     </button>
+                                    {onRemoveFromSuperset && (
+                                        <button
+                                            type="button"
+                                            onClick={onRemoveFromSuperset}
+                                            className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                                            title="Desvincular do superset"
+                                            aria-label="Desvincular do superset"
+                                        >
+                                            <Unlink className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={onDelete}
@@ -283,6 +348,7 @@ export function ExerciseItemCard({
                             item={item}
                             readonly={readonly}
                             onUpdate={onUpdate}
+                            omitRest={omitRest}
                         />
 
                         {/* Tudo abaixo do trilho some quando o card está

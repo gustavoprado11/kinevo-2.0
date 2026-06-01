@@ -3,11 +3,14 @@
 import { ChevronDown, Copy, GripVertical, Repeat, Trash2 } from 'lucide-react'
 import { useState, type HTMLAttributes } from 'react'
 
+import type { Exercise } from '@/types/exercise'
+
 import type { WorkoutItem } from '../program-builder-client'
-import { SupersetChildCard } from './SupersetChildCard'
+import { ExerciseItemCard } from './ExerciseItemCard'
 
 interface SupersetItemCardProps {
     item: WorkoutItem
+    exercises: Exercise[]
     onUpdate: (updates: Partial<WorkoutItem>) => void
     onDelete: () => void
     onDuplicate?: () => void
@@ -45,6 +48,7 @@ interface SupersetItemCardProps {
  */
 export function SupersetItemCard({
     item,
+    exercises,
     onUpdate,
     onDelete,
     onDuplicate,
@@ -173,17 +177,23 @@ export function SupersetItemCard({
                 </div>
             </div>
 
-            {/* Filhos — escondidos quando o superset está minimizado */}
+            {/* Filhos — escondidos quando o superset está minimizado.
+             *  Reusam o ExerciseItemCard completo (nota técnica, substituições,
+             *  pills musculares, trocar exercício), porém com `omitRest` (o
+             *  descanso é do superset pai) e sem grip de arrastar. */}
             {!isMinimized && (
                 <div className="space-y-2 pl-3">
                     {children.map((child) => (
-                        <SupersetChildCard
+                        <ExerciseItemCard
                             key={child.id}
                             item={child}
+                            exercises={exercises}
                             onUpdate={(updates) => onUpdateChild?.(child.id, updates)}
                             onDelete={() => onDeleteChild?.(child.id)}
                             onRemoveFromSuperset={() => onRemoveFromSuperset?.(child.id)}
                             readonly={readonly}
+                            omitRest
+                            hideDragHandle
                         />
                     ))}
                 </div>

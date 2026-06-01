@@ -37,9 +37,13 @@ import {
 export function WorkoutItemCard({
     item,
     exercises,
+    index,
+    totalItems,
     onUpdate,
     onDelete,
     onDuplicate,
+    onMoveUp,
+    onMoveDown,
     onUpdateChild,
     onDeleteChild,
     onRemoveFromSuperset,
@@ -93,6 +97,7 @@ export function WorkoutItemCard({
         return (
             <SupersetItemCard
                 item={item}
+                exercises={exercises}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 onDuplicate={onDuplicate}
@@ -138,6 +143,10 @@ export function WorkoutItemCard({
             onUpdate={onUpdate}
             onDelete={onDelete}
             onDuplicate={onDuplicate}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+            canMoveUp={index > 0}
+            canMoveDown={index < totalItems - 1}
             dragHandleProps={dragHandleProps}
             readonly={readonly}
         />
