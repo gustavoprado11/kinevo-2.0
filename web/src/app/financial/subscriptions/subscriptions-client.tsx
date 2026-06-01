@@ -19,7 +19,7 @@ import type { FinancialStudent, DisplayStatus } from '@/types/financial'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import {
     Plus, Search, Users, Loader2, CheckCircle, ArrowLeft, Copy,
-    RefreshCw, MessageCircle, Settings2,
+    MessageCircle, Settings2,
     Heart, DollarSign, CheckCircle2, FolderArchive, CalendarOff
 } from 'lucide-react'
 
@@ -156,7 +156,6 @@ export function SubscriptionsClient({
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<FinancialStudent | null>(null)
     const [actionLoading, setActionLoading] = useState<string | null>(null)
-    const [syncing, setSyncing] = useState(false)
     const [blockConfirmId, setBlockConfirmId] = useState<string | null>(null)
     const [archiveTarget, setArchiveTarget] = useState<FinancialStudent | null>(null)
     const [appointmentPrompt, setAppointmentPrompt] = useState<{
@@ -197,21 +196,6 @@ export function SubscriptionsClient({
 
     const handleSuccess = () => {
         router.refresh()
-    }
-
-    const handleSyncContracts = async () => {
-        setSyncing(true)
-        try {
-            const res = await fetch('/api/stripe/connect/sync-contracts', { method: 'POST' })
-            const data = await res.json()
-            if (data.synced > 0) {
-                router.refresh()
-            }
-        } catch {
-            // silently fail
-        } finally {
-            setSyncing(false)
-        }
     }
 
     const handleRowClick = (student: FinancialStudent) => {
@@ -439,17 +423,6 @@ export function SubscriptionsClient({
                         </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                        {hasStripeConnect && (
-                            <button
-                                onClick={handleSyncContracts}
-                                disabled={syncing}
-                                title="Sincronizar assinaturas com o Stripe legado"
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card text-[#86868B] dark:text-k-text-tertiary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg text-xs font-medium disabled:opacity-50"
-                            >
-                                <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
-                                {syncing ? 'Sincronizando…' : 'Sincronizar Stripe'}
-                            </button>
-                        )}
                         <button
                             onClick={() => handleOpenConfigModal('new')}
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98]"
