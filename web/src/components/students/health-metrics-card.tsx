@@ -215,7 +215,7 @@ export function HealthMetricsCard({
                     </div>
                     <div className="flex items-center justify-center">
                         <SendButton
-                            label="Enviar reavaliação"
+                            label="Enviar avaliação"
                             formTemplates={formTemplates}
                             dropdownOpen={dropdownOpen}
                             setDropdownOpen={setDropdownOpen}

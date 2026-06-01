@@ -161,9 +161,17 @@ export function StudentsClient({
         [students]
     )
 
+    // Real students = everyone except the trainer's own training profile ("Eu").
+    // Counts mirror the dashboard "Alunos ativos" metric (which excludes the
+    // self-profile via !is_trainer_profile), so both screens agree.
+    const realStudents = useMemo(
+        () => studentsWithAttention.filter(s => !s.is_trainer_profile),
+        [studentsWithAttention]
+    )
+
     // Filter counts for chips
     const filterCounts = useMemo(() => {
-        const all = studentsWithAttention
+        const all = realStudents
         return {
             all: all.length,
             attention: all.filter(s => s.attention !== 'ok').length,
@@ -171,7 +179,7 @@ export function StudentsClient({
             presential: all.filter(s => s.modality === 'presential').length,
             no_program: all.filter(s => !s.programName && s.status === 'active').length,
         }
-    }, [studentsWithAttention])
+    }, [realStudents])
 
     // Apply search + filter + sort
     const filteredStudents = useMemo(() => {
@@ -284,7 +292,7 @@ export function StudentsClient({
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-white">
-                        Alunos <span className="font-normal text-[#86868B] dark:text-[#8E8E93]">{students.length}</span>
+                        Alunos <span className="font-normal text-[#86868B] dark:text-[#8E8E93]">{realStudents.length}</span>
                     </h1>
                 </div>
                 <Button

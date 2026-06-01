@@ -158,7 +158,7 @@ export default async function MarketingOverviewPage() {
                     label="Conversão"
                     value={total30 > 0 ? `${conversion}%` : '—'}
                     accent="emerald"
-                    sub={`${convertidos} virou${convertidos === 1 ? '' : 'am'} aluno`}
+                    sub={convertidos === 0 ? 'Nenhum virou aluno' : convertidos === 1 ? '1 virou aluno' : `${convertidos} viraram alunos`}
                 />
             </div>
 
