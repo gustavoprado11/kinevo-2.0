@@ -356,14 +356,31 @@ export function useProgramBuilder() {
 
         store.setSaving(true);
         try {
-            // 1. Update program-level metadata.
+            // 1. Update program-level metadata. Start date / status mirror the
+            //    web edit flow: an immediate program writes `started_at` + sets
+            //    status active; a scheduled one writes `scheduled_start_date` +
+            //    status scheduled. `expires_at` is intentionally not touched
+            //    here (it's managed by assign/extend/cron). Duration drives the
+            //    end date shown in the UI.
+            const programUpdate: Record<string, unknown> = {
+                name: draft.name.trim(),
+                description: draft.description.trim() || null,
+                duration_weeks: draft.duration_weeks,
+            };
+            if (draft.start_date && draft.assignment_type) {
+                if (draft.assignment_type === "immediate") {
+                    programUpdate.started_at = draft.start_date;
+                    programUpdate.scheduled_start_date = null;
+                    programUpdate.status = "active";
+                } else {
+                    programUpdate.scheduled_start_date = draft.start_date;
+                    programUpdate.started_at = null;
+                    programUpdate.status = "scheduled";
+                }
+            }
             const { error: updateProgramError } = await supabase
                 .from("assigned_programs")
-                .update({
-                    name: draft.name.trim(),
-                    description: draft.description.trim() || null,
-                    duration_weeks: draft.duration_weeks,
-                } as any)
+                .update(programUpdate as any)
                 .eq("id", programId);
             if (updateProgramError) throw updateProgramError;
 
@@ -847,6 +864,7 @@ export function useProgramBuilder() {
         updateName: store.updateName,
         updateDescription: store.updateDescription,
         updateDurationWeeks: store.updateDurationWeeks,
+        updateStartDate: store.updateStartDate,
         addWorkout: store.addWorkout,
         removeWorkout: store.removeWorkout,
         renameWorkout: store.renameWorkout,

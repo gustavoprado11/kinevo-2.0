@@ -30,6 +30,9 @@ export default function EditAssignedProgramRoute() {
             name: data.name,
             description: data.description,
             duration_weeks: data.duration_weeks,
+            status: data.status,
+            started_at: data.started_at,
+            scheduled_start_date: data.scheduled_start_date,
             assigned_workouts: data.assigned_workouts,
         });
         router.replace({

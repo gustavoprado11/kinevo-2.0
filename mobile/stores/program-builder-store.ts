@@ -84,6 +84,20 @@ export interface ProgramDraft {
     name: string;
     description: string;
     duration_weeks: number | null;
+    /**
+     * Editable start date (YYYY-MM-DD) for an assigned program. Persisted to
+     * `started_at` (active programs) or `scheduled_start_date` (scheduled)
+     * depending on `assignment_type` — mirrors the web edit flow. Null outside
+     * of assigned-program edit (templates / new drafts have no schedule).
+     */
+    start_date: string | null;
+    /**
+     * Whether the assigned program activates immediately (`started_at`/active)
+     * or on a future date (`scheduled_start_date`/scheduled). Preserved from
+     * the loaded row so the save writes the matching field. Null when the draft
+     * isn't an assigned-program edit.
+     */
+    assignment_type: 'immediate' | 'scheduled' | null;
     workouts: Workout[];
     studentId: string | null;
     /**
@@ -181,6 +195,9 @@ export interface AssignedProgramHydrationData {
     name: string;
     description: string | null;
     duration_weeks: number | null;
+    started_at?: string | null;
+    scheduled_start_date?: string | null;
+    status?: string | null;
     assigned_workouts: AssignedWorkoutRow[];
 }
 
@@ -306,6 +323,7 @@ interface ProgramBuilderState {
     updateName: (name: string) => void;
     updateDescription: (desc: string) => void;
     updateDurationWeeks: (weeks: number | null) => void;
+    updateStartDate: (date: string | null) => void;
 
     // Workouts
     addWorkout: () => void;
@@ -375,6 +393,8 @@ function createEmptyDraft(studentId?: string): ProgramDraft {
         name: '',
         description: '',
         duration_weeks: null,
+        start_date: null,
+        assignment_type: null,
         studentId: studentId ?? null,
         workouts: [{
             id: workoutId,
@@ -788,6 +808,8 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     name: '',
                     description: '',
                     duration_weeks: null,
+                    start_date: null,
+                    assignment_type: null,
                     studentId,
                     workouts,
                     generationId: null,
@@ -836,6 +858,8 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                             name: '',
                             description: '',
                             duration_weeks: null,
+                            start_date: null,
+                            assignment_type: null,
                             studentId,
                             workouts,
                             generationId: null,
@@ -911,10 +935,20 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                         originalItemIds.push(it.id);
                     }
                 }
+                // Mirror the web edit flow: a row with `scheduled_start_date`
+                // is a future/scheduled program; otherwise it activates
+                // immediately and the start lives in `started_at`. The single
+                // editable start date prefers the field that matches the mode.
+                const assignment_type: 'immediate' | 'scheduled' =
+                    program.scheduled_start_date ? 'scheduled' : 'immediate';
+                const rawStart = program.started_at || program.scheduled_start_date || null;
+                const start_date = rawStart ? rawStart.split('T')[0] : null;
                 const draft: ProgramDraft = {
                     name: program.name ?? '',
                     description: program.description ?? '',
                     duration_weeks: program.duration_weeks ?? null,
+                    start_date,
+                    assignment_type,
                     studentId,
                     workouts,
                     generationId: null,
@@ -956,6 +990,8 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     name: program.name ?? '',
                     description: program.description ?? '',
                     duration_weeks: program.duration_weeks ?? null,
+                    start_date: null,
+                    assignment_type: null,
                     studentId: null,
                     workouts,
                     generationId: null,
@@ -989,6 +1025,8 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     name: builderData.name || '',
                     description: builderData.description ?? '',
                     duration_weeks: builderData.duration_weeks ?? null,
+                    start_date: null,
+                    assignment_type: null,
                     studentId,
                     workouts,
                     generationId,
@@ -1018,6 +1056,11 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
 
             updateDurationWeeks: (duration_weeks) => set((state) => ({
                 draft: { ...state.draft, duration_weeks },
+                isDirty: true,
+            })),
+
+            updateStartDate: (start_date) => set((state) => ({
+                draft: { ...state.draft, start_date },
                 isDirty: true,
             })),
 

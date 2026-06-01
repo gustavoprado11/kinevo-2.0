@@ -1,18 +1,53 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
-import { Calendar, Eye, Layers, Timer } from "lucide-react-native";
+import { Calendar, CalendarDays, Eye, Layers, Timer } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useV2Colors } from "@/hooks/useV2Colors";
 import { VolumeSummary } from "./VolumeSummary";
 import { WorkoutSelectorCard, WorkoutSelectorAddCard } from "./WorkoutSelectorCard";
 import { WorkoutDetailHeader } from "./WorkoutDetailHeader";
+import { ProgramDatePickerModal } from "./ProgramDatePickerModal";
 import type { Workout } from "@/stores/program-builder-store";
+
+/** end = start + (weeks * 7) - 1 day, as YYYY-MM-DD. Mirrors the web edit
+ *  flow's calculateEndDate so duration ↔ end stay in sync across platforms. */
+function calculateEndDate(start: string | null, weeks: number | null): string | null {
+    if (!start || !weeks || weeks <= 0) return null;
+    const startObj = new Date(start);
+    if (isNaN(startObj.getTime())) return null;
+    const endObj = new Date(startObj);
+    endObj.setUTCDate(endObj.getUTCDate() + weeks * 7 - 1);
+    return endObj.toISOString().split("T")[0];
+}
+
+/** Whole weeks between start and end (inclusive of both ends). Mirrors web. */
+function calculateWeeks(start: string, end: string): number {
+    const startObj = new Date(start);
+    const endObj = new Date(end);
+    if (isNaN(startObj.getTime()) || isNaN(endObj.getTime())) return 0;
+    const diffDays = Math.max(0, Math.ceil((endObj.getTime() - startObj.getTime()) / 86400000) + 1);
+    return Math.max(1, Math.round(diffDays / 7));
+}
+
+/** YYYY-MM-DD → DD/MM/AAAA (string-only, no timezone drift). */
+function formatBrDate(iso: string | null): string | null {
+    if (!iso) return null;
+    const [y, m, d] = iso.split("-");
+    if (!y || !m || !d) return null;
+    return `${d}/${m}/${y}`;
+}
 
 export interface ProgramBuilderListHeaderProps {
     /** Conteúdo do programa. */
     name: string;
     description: string;
     durationWeeks: number | null;
+    /** Data de início (YYYY-MM-DD) do programa atribuído; null fora de edição. */
+    startDate: string | null;
+    /** Modo de ativação (preserva o campo gravado no save). */
+    assignmentType: 'immediate' | 'scheduled' | null;
+    /** Só programas atribuídos têm agenda; templates/novos não mostram datas. */
+    showSchedule: boolean;
     workouts: Workout[];
     currentWorkout: Workout | null;
     currentWorkoutId: string | null;
@@ -32,6 +67,7 @@ export interface ProgramBuilderListHeaderProps {
     onUpdateName: (name: string) => void;
     onUpdateDescription: (description: string) => void;
     onUpdateDurationWeeks: (weeks: number | null) => void;
+    onUpdateStartDate: (date: string) => void;
 
     /** Handlers dos treinos. */
     onAddWorkout: () => void;
@@ -61,6 +97,8 @@ export function ProgramBuilderListHeader({
     name,
     description,
     durationWeeks,
+    startDate,
+    showSchedule,
     workouts,
     currentWorkout,
     currentWorkoutId,
@@ -74,6 +112,7 @@ export function ProgramBuilderListHeader({
     onUpdateName,
     onUpdateDescription,
     onUpdateDurationWeeks,
+    onUpdateStartDate,
     onAddWorkout,
     onSelectWorkout,
     onRenameWorkout,
@@ -82,6 +121,11 @@ export function ProgramBuilderListHeader({
     onPreview,
 }: ProgramBuilderListHeaderProps) {
     const colors = useV2Colors();
+    const [datePicker, setDatePicker] = useState<"start" | "end" | null>(null);
+
+    const endDate = calculateEndDate(startDate, durationWeeks);
+    const startLabel = formatBrDate(startDate);
+    const endLabel = formatBrDate(endDate);
 
     // Meta chips: cada um só aparece quando há dado real para mostrar.
     // Métricas derivadas do conteúdo do programa.
@@ -123,14 +167,58 @@ export function ProgramBuilderListHeader({
         <View>
             {/* === Bloco 1: Nome / Descrição / Stats / Duração ============== */}
             <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14, gap: 12 }}>
-                {/* Linha 1 — duração à direita (back agora vive na compact bar) */}
+                {/* Linha 1 — Início / Fim + Duração, tudo no topo */}
                 <View
                     style={{
                         flexDirection: "row",
-                        alignItems: "center",
+                        alignItems: "stretch",
                         justifyContent: "flex-end",
+                        gap: 8,
                     }}
                 >
+                    {showSchedule && ([
+                        { key: "start" as const, label: "Início", value: startLabel },
+                        { key: "end" as const, label: "Fim", value: endLabel },
+                    ]).map(({ key, label, value }) => (
+                        <TouchableOpacity
+                            key={key}
+                            onPress={() => {
+                                Haptics.selectionAsync();
+                                setDatePicker(key);
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${label}: ${value ?? "definir"}`}
+                            style={{
+                                flex: 1,
+                                justifyContent: "center",
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 10,
+                                backgroundColor: colors.surface.card,
+                                borderWidth: 1,
+                                borderColor: colors.border.default,
+                            }}
+                        >
+                            <Text style={{ fontSize: 10.5, color: colors.text.tertiary, fontWeight: "500" }}>
+                                {label}
+                            </Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
+                                <CalendarDays size={13} color={colors.purple[600]} />
+                                <Text
+                                    adjustsFontSizeToFit
+                                    numberOfLines={1}
+                                    style={{
+                                        flex: 1,
+                                        fontSize: 14,
+                                        fontWeight: "700",
+                                        color: value ? colors.text.primary : colors.text.quaternary,
+                                    }}
+                                >
+                                    {value ?? "Definir"}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    ))}
                     <View
                         style={{
                             flexDirection: "row",
@@ -381,6 +469,23 @@ export function ProgramBuilderListHeader({
                     Mantenha pressionado pra reordenar
                 </Text>
             )}
+
+            {/* Date picker (Início / Fim) — fim ajusta a duração em semanas */}
+            <ProgramDatePickerModal
+                visible={datePicker !== null}
+                title={datePicker === "end" ? "Data de término" : "Data de início"}
+                value={datePicker === "end" ? endDate : startDate}
+                minDate={datePicker === "end" ? startDate : null}
+                onClose={() => setDatePicker(null)}
+                onSelect={(date) => {
+                    if (datePicker === "end") {
+                        // Editar o fim recalcula a duração; o início manda.
+                        if (startDate) onUpdateDurationWeeks(calculateWeeks(startDate, date));
+                    } else {
+                        onUpdateStartDate(date);
+                    }
+                }}
+            />
         </View>
     );
 }

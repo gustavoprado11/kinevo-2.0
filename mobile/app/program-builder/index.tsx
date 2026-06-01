@@ -86,6 +86,7 @@ export default function ProgramBuilderScreen() {
         updateName,
         updateDescription,
         updateDurationWeeks,
+        updateStartDate,
         addWorkout,
         removeWorkout,
         renameWorkout,
@@ -535,6 +536,9 @@ export default function ProgramBuilderScreen() {
                                 name={draft.name}
                                 description={draft.description}
                                 durationWeeks={draft.duration_weeks}
+                                startDate={draft.start_date}
+                                assignmentType={draft.assignment_type}
+                                showSchedule={isEditMode}
                                 workouts={draft.workouts}
                                 currentWorkout={currentWorkout}
                                 currentWorkoutId={currentWorkoutId}
@@ -548,6 +552,7 @@ export default function ProgramBuilderScreen() {
                                 onUpdateName={updateName}
                                 onUpdateDescription={updateDescription}
                                 onUpdateDurationWeeks={updateDurationWeeks}
+                                onUpdateStartDate={updateStartDate}
                                 onAddWorkout={addWorkout}
                                 onSelectWorkout={setCurrentWorkout}
                                 onRenameWorkout={renameWorkout}
