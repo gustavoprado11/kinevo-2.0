@@ -76,6 +76,7 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
     const [isAddingNote, setIsAddingNote] = useState(false)
     const [noteText, setNoteText] = useState('')
     const [saving, setSaving] = useState(false)
+    const [noteError, setNoteError] = useState<string | null>(null)
     const inputRef = useRef<HTMLTextAreaElement>(null)
 
     // Split into pinned notes and AI insights
@@ -144,6 +145,7 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
     const handleAddNote = useCallback(async () => {
         if (!noteText.trim() || saving) return
         setSaving(true)
+        setNoteError(null)
         const result = await createPinnedNote(studentId, noteText.trim())
         if (result.success && result.id) {
             const newNote: InsightItem = {
@@ -164,6 +166,9 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
             setInsights(prev => [newNote, ...prev])
             setNoteText('')
             setIsAddingNote(false)
+        } else {
+            // Não falhar em silêncio: mantém o texto e mostra o erro pro treinador.
+            setNoteError(result.error || 'Não foi possível salvar a nota. Tente novamente.')
         }
         setSaving(false)
     }, [noteText, saving, studentId])
@@ -191,10 +196,11 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
                         <NoteInput
                             ref={inputRef}
                             value={noteText}
-                            onChange={setNoteText}
+                            onChange={(v) => { setNoteText(v); if (noteError) setNoteError(null) }}
                             onSubmit={handleAddNote}
-                            onCancel={() => { setIsAddingNote(false); setNoteText('') }}
+                            onCancel={() => { setIsAddingNote(false); setNoteText(''); setNoteError(null) }}
                             saving={saving}
+                            error={noteError}
                         />
                     </div>
                 )}
@@ -233,10 +239,11 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
                     <NoteInput
                         ref={inputRef}
                         value={noteText}
-                        onChange={setNoteText}
+                        onChange={(v) => { setNoteText(v); if (noteError) setNoteError(null) }}
                         onSubmit={handleAddNote}
-                        onCancel={() => { setIsAddingNote(false); setNoteText('') }}
+                        onCancel={() => { setIsAddingNote(false); setNoteText(''); setNoteError(null) }}
                         saving={saving}
+                        error={noteError}
                     />
                 </div>
             )}
@@ -344,8 +351,10 @@ const NoteInput = forwardRef<HTMLTextAreaElement, {
     onSubmit: () => void
     onCancel: () => void
     saving: boolean
-}>(({ value, onChange, onSubmit, onCancel, saving }, ref) => {
+    error?: string | null
+}>(({ value, onChange, onSubmit, onCancel, saving, error }, ref) => {
     return (
+        <div>
         <div className="flex gap-2">
             <textarea
                 ref={ref}
@@ -373,6 +382,12 @@ const NoteInput = forwardRef<HTMLTextAreaElement, {
                     <X className="w-3.5 h-3.5" />
                 </button>
             </div>
+        </div>
+        {error && (
+            <p className="mt-1.5 text-[11px] text-red-500 dark:text-red-400">
+                {error}
+            </p>
+        )}
         </div>
     )
 })
