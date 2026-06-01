@@ -95,25 +95,35 @@ export function useLoadTemplate(templateId: string | null): LoadResult {
                 }
             }
 
-            const nameMap: Record<string, { name: string; equipment: string | null }> = {};
+            const nameMap: Record<string, { name: string; equipment: string | null; muscleGroups: string[] }> = {};
             if (exerciseIds.size > 0) {
                 const { data: exercises } = await (supabase as any)
                     .from("exercises")
-                    .select("id, name, equipment")
+                    .select("id, name, equipment, exercise_muscle_groups(muscle_groups(name))")
                     .in("id", Array.from(exerciseIds));
                 if (exercises) {
                     for (const ex of exercises) {
-                        nameMap[ex.id] = { name: ex.name, equipment: ex.equipment ?? null };
+                        nameMap[ex.id] = {
+                            name: ex.name,
+                            equipment: ex.equipment ?? null,
+                            muscleGroups: (ex.exercise_muscle_groups ?? [])
+                                .map((emg: any) => emg.muscle_groups?.name)
+                                .filter((name: unknown): name is string => typeof name === "string"),
+                        };
                     }
                 }
             }
 
+            // Flatten name/equipment/muscle groups onto each item. Muscle groups
+            // feed the builder's volume summary — without them the per-group
+            // volume reads as zero and the summary hides when editing a template.
             const enrichedWorkouts = (program.workout_templates ?? []).map((w: any) => ({
                 ...w,
                 workout_item_templates: (w.workout_item_templates ?? []).map((it: any) => ({
                     ...it,
                     exercise_name: it.exercise_id ? nameMap[it.exercise_id]?.name ?? "" : "",
                     exercise_equipment: it.exercise_id ? nameMap[it.exercise_id]?.equipment ?? null : null,
+                    exercise_muscle_groups: it.exercise_id ? nameMap[it.exercise_id]?.muscleGroups ?? [] : [],
                 })),
             }));
 
