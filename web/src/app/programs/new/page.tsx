@@ -46,6 +46,7 @@ export default async function NewProgramPage() {
                 )
             )
         `)
+        .eq('is_archived', false)
         .order('name')
 
     // Map to Exercise type

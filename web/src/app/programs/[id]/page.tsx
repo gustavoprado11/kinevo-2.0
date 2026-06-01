@@ -87,6 +87,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
                 )
             )
         `)
+        .eq('is_archived', false)
         .order('name')
 
     // Map to Exercise type with backward compatibility

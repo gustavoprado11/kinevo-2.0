@@ -54,6 +54,7 @@ async function fetchTrainerLibrary(trainerId: string): Promise<Exercise[]> {
             )
         `)
         .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
+        .eq('is_archived', false)
         .order('name')
 
     if (error) {
