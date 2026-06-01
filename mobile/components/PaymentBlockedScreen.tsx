@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, Linking, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Lock, AlertCircle, MessageCircle, CreditCard } from "lucide-react-native";
+import { useV2Colors } from "@/hooks/useV2Colors";
 
 const WHATSAPP_NUMBER = "5531999064997";
 const WHATSAPP_MESSAGE = "Olá! Preciso de ajuda com minha assinatura no app Kinevo.";
@@ -34,6 +35,7 @@ const defaultMessage = {
 
 export function PaymentBlockedScreen({ reason }: PaymentBlockedScreenProps) {
     const router = useRouter();
+    const colors = useV2Colors();
     const msg = messages[reason] || defaultMessage;
     const Icon = msg.icon;
 
@@ -110,7 +112,7 @@ export function PaymentBlockedScreen({ reason }: PaymentBlockedScreenProps) {
                         onPress={() => router.push("/payment")}
                         activeOpacity={0.85}
                         style={{
-                            backgroundColor: "#7c3aed",
+                            backgroundColor: colors.purple[600],
                             borderRadius: 16,
                             flexDirection: "row",
                             alignItems: "center",
@@ -162,12 +164,12 @@ export function PaymentBlockedScreen({ reason }: PaymentBlockedScreenProps) {
                         gap: 6,
                     }}
                 >
-                    <CreditCard size={14} color="#7c3aed" strokeWidth={1.5} />
+                    <CreditCard size={14} color={colors.purple[600]} strokeWidth={1.5} />
                     <Text
                         style={{
                             fontSize: 13,
                             fontWeight: "600",
-                            color: "#7c3aed",
+                            color: colors.purple[600],
                         }}
                     >
                         Ver Minha Assinatura

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
     View,
     Text,
@@ -18,6 +18,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Mail, ChevronLeft, CheckCircle2 } from "lucide-react-native";
 import { supabase } from "../../lib/supabase";
 import { useResponsive } from "../../hooks/useResponsive";
+import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 
 const WEB_URL =
     process.env.EXPO_PUBLIC_WEB_URL ?? "https://www.kinevoapp.com";
@@ -31,6 +33,8 @@ export default function ForgotPasswordScreen() {
 
     const router = useRouter();
     const { isTablet } = useResponsive();
+    const colors = useV2Colors();
+    const styles = useMemo(() => makeStyles(colors), [colors]);
 
     const handleReset = async () => {
         const trimmed = email.trim();
@@ -146,7 +150,7 @@ export default function ForgotPasswordScreen() {
                             )}
 
                             <View style={[styles.field, isEmailFocused && styles.fieldFocused]}>
-                                <Mail size={18} color={isEmailFocused ? "#A78BFA" : "#71717A"} />
+                                <Mail size={18} color={isEmailFocused ? colors.purple[400] : "#71717A"} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder="seu@email.com"
@@ -172,7 +176,7 @@ export default function ForgotPasswordScreen() {
                                 accessibilityLabel="Enviar link de recuperação"
                             >
                                 <LinearGradient
-                                    colors={["#7C3AED", "#A78BFA"]}
+                                    colors={[colors.purple[600], colors.purple[400]]}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 1 }}
                                     style={[
@@ -202,7 +206,7 @@ export default function ForgotPasswordScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: V2Palette) => StyleSheet.create({
     safe: {
         flex: 1,
         backgroundColor: "#09090B",
@@ -213,7 +217,7 @@ const styles = StyleSheet.create({
         left: -100,
         right: -100,
         height: 500,
-        backgroundColor: "rgba(124,58,237,0.18)",
+        backgroundColor: toRgba(colors.purple[600], 0.18),
         borderRadius: 9999,
         opacity: 0.6,
     },
@@ -263,7 +267,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "#3F1B91",
-        shadowColor: "#7C3AED",
+        shadowColor: colors.purple[600],
         shadowOffset: { width: 0, height: 20 },
         shadowOpacity: 0.5,
         shadowRadius: 40,
@@ -318,8 +322,8 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     fieldFocused: {
-        borderColor: "rgba(124,58,237,0.4)",
-        backgroundColor: "rgba(124,58,237,0.05)",
+        borderColor: toRgba(colors.purple[600], 0.4),
+        backgroundColor: toRgba(colors.purple[600], 0.05),
     },
     input: {
         flex: 1,
@@ -334,7 +338,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         alignItems: "center",
         justifyContent: "center",
-        shadowColor: "#7C3AED",
+        shadowColor: colors.purple[600],
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.5,
         shadowRadius: 32,

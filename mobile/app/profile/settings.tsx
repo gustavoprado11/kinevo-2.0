@@ -230,8 +230,8 @@ export default function SettingsScreen() {
                                     gap: 8,
                                 }}
                             >
-                                <ExternalLink size={16} color="#7c3aed" strokeWidth={1.5} />
-                                <Text style={{ fontSize: 13, fontWeight: "600", color: "#7c3aed" }}>
+                                <ExternalLink size={16} color={colors.purple[600]} strokeWidth={1.5} />
+                                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.purple[600] }}>
                                     Gerenciar no Saúde
                                 </Text>
                             </TouchableOpacity>

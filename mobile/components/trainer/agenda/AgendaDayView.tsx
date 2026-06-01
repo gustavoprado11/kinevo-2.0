@@ -163,7 +163,7 @@ export function AgendaDayView({
                                 flexDirection: "row",
                                 alignItems: "center",
                                 gap: 6,
-                                backgroundColor: "#7c3aed",
+                                backgroundColor: colors.purple[600],
                                 paddingHorizontal: 14,
                                 paddingVertical: 8,
                                 borderRadius: 100,
@@ -237,13 +237,13 @@ export function AgendaDayView({
                             <RefreshControl
                                 refreshing={isRefreshing}
                                 onRefresh={onRefresh}
-                                tintColor="#7c3aed"
+                                tintColor={colors.purple[600]}
                             />
                         }
                     >
                         {isLoading ? (
                             <View style={{ paddingTop: 80, alignItems: "center" }}>
-                                <ActivityIndicator size="small" color="#7c3aed" />
+                                <ActivityIndicator size="small" color={colors.purple[600]} />
                             </View>
                         ) : dayOccurrences.length === 0 ? (
                             <View style={{ paddingTop: 80, alignItems: "center", paddingHorizontal: 20 }}>
@@ -258,7 +258,7 @@ export function AgendaDayView({
                                         marginBottom: 16,
                                     }}
                                 >
-                                    <CalendarIcon size={28} color="#7c3aed" />
+                                    <CalendarIcon size={28} color={colors.purple[600]} />
                                 </View>
                                 <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary, textAlign: "center" }}>
                                     Sem agendamentos
@@ -271,11 +271,11 @@ export function AgendaDayView({
                                     hapticStyle={Haptics.ImpactFeedbackStyle.Medium}
                                     style={{
                                         marginTop: 24,
-                                        backgroundColor: "#7c3aed",
+                                        backgroundColor: colors.purple[600],
                                         paddingHorizontal: 22,
                                         paddingVertical: 12,
                                         borderRadius: 100,
-                                        shadowColor: "#7c3aed",
+                                        shadowColor: colors.purple[600],
                                         shadowOffset: { width: 0, height: 4 },
                                         shadowOpacity: 0.25,
                                         shadowRadius: 10,

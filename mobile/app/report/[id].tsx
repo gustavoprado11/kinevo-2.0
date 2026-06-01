@@ -32,6 +32,7 @@ import { supabase } from "../../lib/supabase";
 import { useRoleMode } from "../../contexts/RoleModeContext";
 import { generateReportHTML } from "../../lib/reports/program-report-pdf";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 
 // ── Types (mirrored from web service — kept local to avoid cross-package import) ──
 
@@ -127,8 +128,8 @@ function useReportColors() {
     return {
         bg: v2.surface.canvas,
         card: v2.surface.card,
-        primary: "#7c3aed",
-        primaryLight: "rgba(124,58,237,0.12)",
+        primary: v2.purple[600],
+        primaryLight: toRgba(v2.purple[600], 0.12),
         text: v2.text.primary,
         textSecondary: v2.text.tertiary,
         textMuted: v2.text.quaternary,

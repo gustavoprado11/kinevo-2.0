@@ -25,6 +25,7 @@ import * as Haptics from 'expo-haptics';
 import { Clock, X } from 'lucide-react-native';
 import { v2 } from '@kinevo/shared/tokens';
 import { useV2Colors, useIsDark } from '../../../hooks/useV2Colors';
+import { toRgba } from '../../../lib/brandColor';
 
 const { radius } = v2;
 
@@ -118,10 +119,10 @@ export function KRestTimer({
     }
 
     const gradColors: [string, string] = isDark
-        ? ['rgba(124,58,237,0.22)', 'rgba(124,58,237,0.10)']
-        : ['#EDE9FE', '#F5F3FF'];
-    const borderColor = isDark ? 'rgba(167,139,250,0.32)' : '#DDD6FE';
-    const fg = isDark ? '#C4B5FD' : colors.purple[700];
+        ? [toRgba(colors.purple[600], 0.22), toRgba(colors.purple[600], 0.10)]
+        : [colors.purple[100], colors.purple[100]];
+    const borderColor = isDark ? 'rgba(167,139,250,0.32)' : colors.purple[200];
+    const fg = isDark ? colors.purple[300] : colors.purple[700];
     const a11y = accessibilityLabel ?? `Descanso ${formatMMSS(remaining)} restante${nextSetLabel ? `, ${nextSetLabel}` : ''}`;
 
     return (
@@ -141,7 +142,7 @@ export function KRestTimer({
                     },
                     Platform.OS === 'ios' && urgent
                         ? {
-                              shadowColor: '#7C3AED',
+                              shadowColor: colors.purple[600],
                               shadowOffset: { width: 0, height: 2 },
                               shadowOpacity: 0.22,
                               shadowRadius: 8,

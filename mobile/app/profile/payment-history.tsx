@@ -172,7 +172,7 @@ export default function PaymentHistoryScreen() {
             <>
                 <Stack.Screen options={{ title: "Histórico de Pagamentos" }} />
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                    <ActivityIndicator color="#8b5cf6" />
+                    <ActivityIndicator color={colors.purple[500]} />
                     <Text style={{ color: colors.text.tertiary, marginTop: 12, fontSize: 13 }}>
                         Carregando...
                     </Text>

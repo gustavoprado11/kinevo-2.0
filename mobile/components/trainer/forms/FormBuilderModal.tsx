@@ -357,7 +357,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                             paddingVertical: 14,
                             marginTop: 12,
                             borderWidth: 1,
-                            borderColor: "#ede9fe",
+                            borderColor: colors.purple[100],
                             borderStyle: "dashed",
                         }}
                     >
@@ -443,7 +443,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                         disabled={!canSave || isSaving}
                         activeOpacity={0.7}
                         style={{
-                            backgroundColor: canSave ? "#7c3aed" : "#d1d5db",
+                            backgroundColor: canSave ? colors.purple[600] : "#d1d5db",
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: "center",

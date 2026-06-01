@@ -133,7 +133,7 @@ export default function AgendaScreen() {
                         backgroundColor: colors.purple[600],
                         alignItems: "center",
                         justifyContent: "center",
-                        shadowColor: "#7c3aed",
+                        shadowColor: colors.purple[600],
                         shadowOffset: { width: 0, height: 6 },
                         shadowOpacity: 0.35,
                         shadowRadius: 12,

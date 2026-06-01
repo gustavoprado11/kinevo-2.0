@@ -553,7 +553,7 @@ export default function ContractDetailScreen() {
                                         label="Compartilhar link de pagamento"
                                         icon={LinkIcon}
                                         color={colors.purple[600]}
-                                        bg="#f5f3ff"
+                                        bg={colors.purple[100]}
                                         loading={actionLoading === "share-link"}
                                         onPress={handleShareAsaasLink}
                                     />
@@ -572,7 +572,7 @@ export default function ContractDetailScreen() {
                                     label="Gerar link de pagamento"
                                     icon={LinkIcon}
                                     color={colors.purple[600]}
-                                    bg="#f5f3ff"
+                                    bg={colors.purple[100]}
                                     loading={actionLoading === "checkout"}
                                     onPress={handleCheckoutLink}
                                 />

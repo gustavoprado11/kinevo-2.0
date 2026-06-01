@@ -505,7 +505,7 @@ export function UnifiedCalendar({
                         const isCurrentMonth = day.date.getMonth() === anchorMonth;
                         const isSelected = day.dateKey === selectedKey;
                         const isToday = day.isToday;
-                        const dotColor = STATUS_DOT_COLORS[day.status];
+                        const dotColor = day.status === "done" ? brand.color : STATUS_DOT_COLORS[day.status];
                         const isClickable = isCurrentMonth;
 
                         return (

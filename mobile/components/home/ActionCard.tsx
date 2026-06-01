@@ -15,11 +15,13 @@ import { ANIM } from "../../lib/animations";
 import type { PendingWorkout, WeeklyProgress } from "@kinevo/shared/utils/schedule-projection";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 import { useBrand } from "../../stores/brandStore";
+import { toRgba } from "../../lib/brandColor";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // ── Share Button (static — no breathing pulse) ──
 function ShareButton({ onPress }: { onPress: () => void }) {
+    const colors = useV2Colors();
     const scale = useSharedValue(1);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -41,16 +43,16 @@ function ShareButton({ onPress }: { onPress: () => void }) {
             style={[
                 animatedStyle,
                 {
-                    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+                    backgroundColor: toRgba(colors.purple[600], 0.08),
                     paddingHorizontal: 14,
                     paddingVertical: 9,
                     borderRadius: 12,
                     borderWidth: 1,
-                    borderColor: 'rgba(124, 58, 237, 0.18)',
+                    borderColor: toRgba(colors.purple[600], 0.18),
                 },
             ]}
         >
-            <Text style={{ color: '#7c3aed', fontSize: 12, fontWeight: '700' }}>
+            <Text style={{ color: colors.purple[600], fontSize: 12, fontWeight: '700' }}>
                 Compartilhar
             </Text>
         </AnimatedPressable>
@@ -247,7 +249,7 @@ export function ActionCard({
                     <View style={styles.heroCardInner}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <View style={styles.heroIcon}>
-                                <Dumbbell size={20} color="#7c3aed" />
+                                <Dumbbell size={20} color={colors.purple[600]} />
                             </View>
                             <View style={styles.badge}>
                                 <Text style={styles.badgeText}>PREVISTO</Text>
@@ -636,7 +638,7 @@ function makeStyles(colors: V2Palette) {
         heroShell: {
             borderRadius: 24,
             overflow: 'hidden' as const,
-            shadowColor: '#7C3AED',
+            shadowColor: colors.purple[600],
             shadowOffset: { width: 0, height: 12 },
             shadowOpacity: 0.22,
             shadowRadius: 24,
@@ -652,7 +654,7 @@ function makeStyles(colors: V2Palette) {
             height: 44,
             width: 44,
             borderRadius: 22,
-            backgroundColor: 'rgba(124,58,237,0.30)',
+            backgroundColor: toRgba(colors.purple[600], 0.30),
             borderWidth: 1,
             borderColor: 'rgba(255,255,255,0.12)',
             alignItems: 'center' as const,
@@ -873,7 +875,7 @@ function makeStyles(colors: V2Palette) {
             height: 44,
             width: 44,
             borderRadius: 22,
-            backgroundColor: 'rgba(124, 58, 237, 0.08)',
+            backgroundColor: toRgba(colors.purple[600], 0.08),
             alignItems: 'center' as const,
             justifyContent: 'center' as const,
         },
@@ -899,11 +901,11 @@ function makeStyles(colors: V2Palette) {
         startButton: {
             flexDirection: 'row' as const,
             alignItems: 'center' as const,
-            backgroundColor: '#7c3aed',
+            backgroundColor: colors.purple[600],
             paddingHorizontal: 16,
             paddingVertical: 10,
             borderRadius: 16,
-            shadowColor: '#8b5cf6',
+            shadowColor: colors.purple[500],
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.2,
             shadowRadius: 8,

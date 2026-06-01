@@ -28,6 +28,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { PressableScale } from "../../shared/PressableScale";
 import { useV2Colors, useIsDark } from "../../../hooks/useV2Colors";
+import { toRgba } from "../../../lib/brandColor";
 
 export interface AddBlockSheetProps {
     visible: boolean;
@@ -72,7 +73,7 @@ export function AddBlockSheet({
             subtitle: "Movimento com séries, reps e carga",
             icon: Dumbbell,
             iconColor: colors.purple[600],
-            iconBg: isDark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.10)",
+            iconBg: isDark ? toRgba(colors.purple[600], 0.18) : toRgba(colors.purple[600], 0.10),
             accessibilityLabel: "Adicionar exercício",
             onPress: () => handleSelect(onAddExercise),
         },

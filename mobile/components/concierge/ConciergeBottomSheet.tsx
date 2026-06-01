@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface ConciergeBottomSheetProps {
     visible: boolean;
@@ -146,9 +147,9 @@ export function ConciergeBottomSheet({ visible, source, onClose }: ConciergeBott
                                 width: 48,
                                 height: 48,
                                 borderRadius: 16,
-                                backgroundColor: 'rgba(124,58,237,0.10)',
+                                backgroundColor: toRgba(colors.purple[600], 0.10),
                                 borderWidth: 1,
-                                borderColor: 'rgba(124,58,237,0.20)',
+                                borderColor: toRgba(colors.purple[600], 0.20),
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}

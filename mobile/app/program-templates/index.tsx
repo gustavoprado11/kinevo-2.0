@@ -223,7 +223,7 @@ export default function ProgramTemplatesScreen() {
                             backgroundColor: colors.purple[600],
                             alignItems: "center",
                             justifyContent: "center",
-                            shadowColor: "#7c3aed",
+                            shadowColor: colors.purple[600],
                             shadowOffset: { width: 0, height: 4 },
                             shadowOpacity: 0.3,
                             shadowRadius: 8,

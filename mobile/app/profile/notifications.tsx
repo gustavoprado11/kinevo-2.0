@@ -120,7 +120,7 @@ export default function NotificationSettings() {
                         <Switch
                             value={prefs.push_enabled}
                             onValueChange={togglePushEnabled}
-                            trackColor={{ false: "#e2e8f0", true: "#7c3aed" }}
+                            trackColor={{ false: "#e2e8f0", true: colors.purple[600] }}
                             thumbColor="#fff"
                         />
                     </View>
@@ -171,7 +171,7 @@ export default function NotificationSettings() {
                                     <Switch
                                         value={prefs.categories[key as keyof typeof prefs.categories]}
                                         onValueChange={() => toggleCategory(key)}
-                                        trackColor={{ false: "#e2e8f0", true: "#7c3aed" }}
+                                        trackColor={{ false: "#e2e8f0", true: colors.purple[600] }}
                                         thumbColor="#fff"
                                     />
                                 </View>

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Activity, ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useV2Colors } from '@/hooks/useV2Colors';
+import { toRgba } from '@/lib/brandColor';
 import type { TrainerAssessmentTemplate } from '../../../hooks/useTrainerAssessmentTemplates';
 
 interface Props {
@@ -42,12 +43,12 @@ export function AssessmentTemplateCard({ template, onPress }: Props) {
                     width: 40,
                     height: 40,
                     borderRadius: 10,
-                    backgroundColor: '#7c3aed' + '14',
+                    backgroundColor: toRgba(colors.purple[600], 20 / 255),
                     alignItems: 'center',
                     justifyContent: 'center',
                 }}
             >
-                <Activity size={20} color="#7c3aed" />
+                <Activity size={20} color={colors.purple[600]} />
             </View>
 
             <View style={{ flex: 1, gap: 4 }}>
@@ -68,14 +69,14 @@ export function AssessmentTemplateCard({ template, onPress }: Props) {
                             paddingHorizontal: 8,
                             paddingVertical: 2,
                             borderRadius: 6,
-                            backgroundColor: isSystem ? '#7c3aed' + '15' : colors.neutral[100],
+                            backgroundColor: isSystem ? toRgba(colors.purple[600], 21 / 255) : colors.neutral[100],
                         }}
                     >
                         <Text
                             style={{
                                 fontSize: 10,
                                 fontWeight: '700',
-                                color: isSystem ? '#7c3aed' : colors.text.secondary,
+                                color: isSystem ? colors.purple[600] : colors.text.secondary,
                             }}
                         >
                             {isSystem ? 'Kinevo' : 'Meu'}

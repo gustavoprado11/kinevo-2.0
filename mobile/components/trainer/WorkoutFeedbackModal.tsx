@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface WorkoutFeedbackModalProps {
     visible: boolean;
@@ -43,6 +45,7 @@ export function WorkoutFeedbackModal({
     onConfirm,
     onCancel,
 }: WorkoutFeedbackModalProps) {
+    const colors = useV2Colors();
     const [rpe, setRpe] = useState<number | null>(null);
     const [feedback, setFeedback] = useState('');
 
@@ -128,11 +131,11 @@ export function WorkoutFeedbackModal({
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         backgroundColor: isSelected
-                                            ? 'rgba(124, 58, 237, 0.1)'
+                                            ? toRgba(colors.purple[600], 0.1)
                                             : '#fff',
                                         borderWidth: 1,
                                         borderColor: isSelected
-                                            ? 'rgba(124, 58, 237, 0.3)'
+                                            ? toRgba(colors.purple[600], 0.3)
                                             : '#f1f5f9',
                                     }}
                                 >
@@ -141,7 +144,7 @@ export function WorkoutFeedbackModal({
                                         style={{
                                             fontSize: 14,
                                             fontWeight: '700',
-                                            color: isSelected ? '#7c3aed' : '#0f172a',
+                                            color: isSelected ? colors.purple[600] : '#0f172a',
                                             marginTop: 2,
                                         }}
                                     >
@@ -156,7 +159,7 @@ export function WorkoutFeedbackModal({
                         <Text
                             style={{
                                 fontSize: 13,
-                                color: '#7c3aed',
+                                color: colors.purple[600],
                                 fontWeight: '500',
                                 textAlign: 'center',
                                 marginBottom: 20,
@@ -236,7 +239,7 @@ export function WorkoutFeedbackModal({
                         activeOpacity={0.7}
                         style={{
                             flex: 1,
-                            backgroundColor: '#7c3aed',
+                            backgroundColor: colors.purple[600],
                             borderRadius: 14,
                             paddingVertical: 14,
                             alignItems: 'center',

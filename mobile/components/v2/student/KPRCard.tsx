@@ -94,7 +94,7 @@ export function KPRCard({
     const validData = useMemo(() => (data ?? []).filter((n) => Number.isFinite(n)), [data]);
     const sparkPath = useMemo(() => pointsToPath(validData, SPARK_W, SPARK_H), [validData]);
 
-    const lineColor = recent ? '#F59E0B' : sparkPath ? '#7C3AED' : colors.neutral[400];
+    const lineColor = recent ? '#F59E0B' : sparkPath ? colors.purple[600] : colors.neutral[400];
 
     const a11y =
         accessibilityLabel

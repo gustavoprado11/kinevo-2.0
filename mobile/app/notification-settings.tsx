@@ -6,6 +6,7 @@ import { Calendar, ChevronLeft } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { supabase } from "../lib/supabase";
 import { colors } from "@/theme";
+import { useV2Colors } from "../hooks/useV2Colors";
 import {
     useTrainerNotificationPreferences,
     type AppointmentReminderMinutes,
@@ -45,6 +46,7 @@ const REMINDER_OPTIONS: AppointmentReminderMinutes[] = [15, 30, 60];
 
 export default function NotificationSettingsScreen() {
     const router = useRouter();
+    const v2colors = useV2Colors();
     const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFS);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -167,7 +169,7 @@ export default function NotificationSettingsScreen() {
 
             {isLoading ? (
                 <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                    <ActivityIndicator size="large" color="#7c3aed" />
+                    <ActivityIndicator size="large" color={v2colors.purple[600]} />
                 </View>
             ) : (
                 <ScrollView
@@ -215,13 +217,13 @@ export default function NotificationSettingsScreen() {
                                     width: 32,
                                     height: 32,
                                     borderRadius: 10,
-                                    backgroundColor: "#ede9fe",
+                                    backgroundColor: v2colors.purple[100],
                                     alignItems: "center",
                                     justifyContent: "center",
                                     marginRight: 12,
                                 }}
                             >
-                                <Calendar size={16} color="#7c3aed" />
+                                <Calendar size={16} color={v2colors.purple[600]} />
                             </View>
                             <View style={{ flex: 1, marginRight: 12 }}>
                                 <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
@@ -234,7 +236,7 @@ export default function NotificationSettingsScreen() {
                             <Switch
                                 value={appointmentRemindersEnabled}
                                 onValueChange={handleToggleAppointmentReminders}
-                                trackColor={{ false: "#e2e8f0", true: "#7c3aed" }}
+                                trackColor={{ false: "#e2e8f0", true: v2colors.purple[600] }}
                                 thumbColor="#fff"
                                 disabled={isSavingAppt}
                             />
@@ -262,9 +264,9 @@ export default function NotificationSettingsScreen() {
                                                         paddingVertical: 10,
                                                         borderRadius: 10,
                                                         alignItems: "center",
-                                                        backgroundColor: selected ? "#7c3aed" : "#f8fafc",
+                                                        backgroundColor: selected ? v2colors.purple[600] : "#f8fafc",
                                                         borderWidth: 1,
-                                                        borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                                        borderColor: selected ? v2colors.purple[600] : "#e2e8f0",
                                                     }}
                                                 >
                                                     <Text
@@ -334,7 +336,7 @@ export default function NotificationSettingsScreen() {
                                     <Switch
                                         value={preferences[item.key]}
                                         onValueChange={() => togglePreference(item.key)}
-                                        trackColor={{ false: "#e2e8f0", true: "#7c3aed" }}
+                                        trackColor={{ false: "#e2e8f0", true: v2colors.purple[600] }}
                                         thumbColor="#fff"
                                         disabled={isSaving}
                                     />
@@ -345,7 +347,7 @@ export default function NotificationSettingsScreen() {
 
                     {isSaving && (
                         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 16, gap: 8 }}>
-                            <ActivityIndicator size="small" color="#7c3aed" />
+                            <ActivityIndicator size="small" color={v2colors.purple[600]} />
                             <Text style={{ fontSize: 12, color: "#94a3b8" }}>Salvando...</Text>
                         </View>
                     )}

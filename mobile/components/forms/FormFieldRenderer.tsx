@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TextInput, Pressable, Image } from "react-native";
 import { Upload, Camera } from "lucide-react-native";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 
 // ---------------------------------------------------------------------------
 // Types — shared across FormRenderer and inbox
@@ -94,8 +95,8 @@ export function FormFieldRenderer({
                             }
                             style={{
                                 borderWidth: 1,
-                                borderColor: isSelected ? "#7c3aed" : colors.border.default,
-                                backgroundColor: isSelected ? "rgba(124,58,237,0.14)" : colors.surface.card2,
+                                borderColor: isSelected ? colors.purple[600] : colors.border.default,
+                                backgroundColor: isSelected ? toRgba(colors.purple[600], 0.14) : colors.surface.card2,
                                 borderRadius: 10,
                                 padding: 10,
                                 opacity: disabled ? 0.6 : 1,
@@ -128,8 +129,8 @@ export function FormFieldRenderer({
                             }}
                             style={{
                                 borderWidth: 1,
-                                borderColor: isSelected ? "#7c3aed" : colors.border.default,
-                                backgroundColor: isSelected ? "rgba(124,58,237,0.14)" : colors.surface.card2,
+                                borderColor: isSelected ? colors.purple[600] : colors.border.default,
+                                backgroundColor: isSelected ? toRgba(colors.purple[600], 0.14) : colors.surface.card2,
                                 borderRadius: 10,
                                 padding: 10,
                                 flexDirection: "row",
@@ -144,8 +145,8 @@ export function FormFieldRenderer({
                                     height: 20,
                                     borderRadius: 4,
                                     borderWidth: 1.5,
-                                    borderColor: isSelected ? "#7c3aed" : colors.text.quaternary,
-                                    backgroundColor: isSelected ? "#7c3aed" : "transparent",
+                                    borderColor: isSelected ? colors.purple[600] : colors.text.quaternary,
+                                    backgroundColor: isSelected ? colors.purple[600] : "transparent",
                                     alignItems: "center",
                                     justifyContent: "center",
                                 }}
@@ -189,8 +190,8 @@ export function FormFieldRenderer({
                                 alignItems: "center",
                                 justifyContent: "center",
                                 borderWidth: 1,
-                                borderColor: selected ? "#7c3aed" : colors.border.default,
-                                backgroundColor: selected ? "rgba(124,58,237,0.14)" : colors.surface.card2,
+                                borderColor: selected ? colors.purple[600] : colors.border.default,
+                                backgroundColor: selected ? toRgba(colors.purple[600], 0.14) : colors.surface.card2,
                                 opacity: disabled ? 0.6 : 1,
                             }}
                         >
@@ -215,14 +216,14 @@ export function FormFieldRenderer({
                         onPress={() => !disabled && onPickImage(question.id)}
                         disabled={disabled}
                         style={{
-                            backgroundColor: "rgba(124, 58, 237, 0.05)",
+                            backgroundColor: toRgba(colors.purple[600], 0.05),
                             borderRadius: 12,
                             padding: 12,
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 8,
                             borderWidth: 1,
-                            borderColor: "rgba(124, 58, 237, 0.1)",
+                            borderColor: toRgba(colors.purple[600], 0.1),
                             opacity: disabled ? 0.6 : 1,
                         }}
                     >

@@ -5,6 +5,7 @@ import { Swipeable } from "react-native-gesture-handler";
 import Animated, { FadeInRight } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useV2Colors } from "@/hooks/useV2Colors";
+import { toRgba } from "@/lib/brandColor";
 import { NoteItemRow } from "./NoteItemRow";
 import { WarmupItemRow } from "./WarmupItemRow";
 import { CardioItemRow } from "./CardioItemRow";
@@ -369,9 +370,9 @@ export function WorkoutItemRow({
                             flexDirection: 'row',
                             alignItems: 'stretch',
                             gap: 12,
-                            backgroundColor: 'rgba(124,58,237,0.06)',
+                            backgroundColor: toRgba(colors.purple[600], 0.06),
                             borderWidth: 1,
-                            borderColor: 'rgba(124,58,237,0.14)',
+                            borderColor: toRgba(colors.purple[600], 0.14),
                             borderRadius: 12,
                             paddingVertical: 12,
                             paddingHorizontal: 16,
@@ -403,7 +404,7 @@ export function WorkoutItemRow({
                                 SÉRIES × REPS
                             </Text>
                         </View>
-                        <View style={{ width: 1, backgroundColor: 'rgba(124,58,237,0.18)' }} />
+                        <View style={{ width: 1, backgroundColor: toRgba(colors.purple[600], 0.18) }} />
                         <View style={{ alignItems: 'flex-end', justifyContent: 'center', gap: 2 }}>
                             <Text
                                 style={{
@@ -516,7 +517,7 @@ export function WorkoutItemRow({
                         {showRoundsBadge && (
                             <View
                                 style={{
-                                    backgroundColor: 'rgba(124,58,237,0.10)',
+                                    backgroundColor: toRgba(colors.purple[600], 0.10),
                                     paddingHorizontal: 7,
                                     paddingVertical: 2,
                                     borderRadius: 100,

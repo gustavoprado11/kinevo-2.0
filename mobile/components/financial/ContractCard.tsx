@@ -92,7 +92,7 @@ export function ContractCard({ student, onPress }: Props) {
                         marginRight: 12,
                     }}
                 >
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: "#7c3aed" }}>{initials}</Text>
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: colors.purple[600] }}>{initials}</Text>
                 </View>
             )}
 

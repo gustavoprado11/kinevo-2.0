@@ -43,7 +43,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
     };
 
     // Status accent strip color
-    let accentColor = "#7c3aed"; // default violet (scheduled)
+    let accentColor: string = colors.purple[600]; // default violet (scheduled)
     if (isCompleted) accentColor = "#16a34a";
     else if (isNoShow) accentColor = "#ef4444";
     else if (isRescheduled) accentColor = "#f59e0b";
@@ -94,7 +94,7 @@ export function AppointmentCard({ occurrence, onPress }: AppointmentCardProps) {
                             marginRight: 12,
                         }}
                     >
-                        <Text style={{ fontSize: 13, fontWeight: "700", color: "#7c3aed" }}>
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.purple[600] }}>
                             {initials(studentName)}
                         </Text>
                     </View>

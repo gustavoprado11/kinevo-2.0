@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Plus, X } from "lucide-react-native";
 import type { PrescriptionProfile } from "../../../hooks/usePrescriptionData";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 const TRAINING_LEVELS = [
     { value: "beginner", label: "Iniciante" },
@@ -51,6 +52,7 @@ interface Props {
 }
 
 export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }: Props) {
+    const colors = useV2Colors();
     const [trainingLevel, setTrainingLevel] = useState(existingProfile?.training_level || "beginner");
     const [goal, setGoal] = useState(existingProfile?.goal || "hypertrophy");
     const [availableDays, setAvailableDays] = useState<number[]>(existingProfile?.available_days || []);
@@ -127,7 +129,7 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                             paddingVertical: 12,
                             borderRadius: 12,
                             alignItems: "center",
-                            backgroundColor: trainingLevel === lvl.value ? "#7c3aed" : "#ffffff",
+                            backgroundColor: trainingLevel === lvl.value ? colors.purple[600] : "#ffffff",
                             borderWidth: trainingLevel === lvl.value ? 0 : 1,
                             borderColor: "#e2e8f0",
                         }}
@@ -157,7 +159,7 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                             paddingVertical: 12,
                             borderRadius: 12,
                             alignItems: "center",
-                            backgroundColor: goal === g.value ? "#7c3aed" : "#ffffff",
+                            backgroundColor: goal === g.value ? colors.purple[600] : "#ffffff",
                             borderWidth: goal === g.value ? 0 : 1,
                             borderColor: "#e2e8f0",
                         }}
@@ -190,7 +192,7 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                                 paddingVertical: 10,
                                 borderRadius: 10,
                                 alignItems: "center",
-                                backgroundColor: selected ? "#7c3aed" : "#ffffff",
+                                backgroundColor: selected ? colors.purple[600] : "#ffffff",
                                 borderWidth: selected ? 0 : 1,
                                 borderColor: "#e2e8f0",
                             }}
@@ -220,7 +222,7 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                             paddingHorizontal: 16,
                             paddingVertical: 10,
                             borderRadius: 10,
-                            backgroundColor: sessionDuration === d ? "#7c3aed" : "#ffffff",
+                            backgroundColor: sessionDuration === d ? colors.purple[600] : "#ffffff",
                             borderWidth: sessionDuration === d ? 0 : 1,
                             borderColor: "#e2e8f0",
                         }}
@@ -251,16 +253,16 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                                 paddingHorizontal: 14,
                                 paddingVertical: 10,
                                 borderRadius: 10,
-                                backgroundColor: selected ? "#f3f0ff" : "#ffffff",
+                                backgroundColor: selected ? colors.purple[100] : "#ffffff",
                                 borderWidth: selected ? 2 : 1,
-                                borderColor: selected ? "#7c3aed" : "#e2e8f0",
+                                borderColor: selected ? colors.purple[600] : "#e2e8f0",
                             }}
                         >
                             <Text
                                 style={{
                                     fontSize: 13,
                                     fontWeight: "500",
-                                    color: selected ? "#7c3aed" : "#475569",
+                                    color: selected ? colors.purple[600] : "#475569",
                                 }}
                             >
                                 {eq.label}
@@ -310,7 +312,7 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                     onSubmitEditing={addRestriction}
                 />
                 <TouchableOpacity onPress={addRestriction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Plus size={20} color="#7c3aed" />
+                    <Plus size={20} color={colors.purple[600]} />
                 </TouchableOpacity>
             </View>
 
@@ -326,7 +328,7 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                 onPress={handleSubmit}
                 disabled={isSaving}
                 style={{
-                    backgroundColor: "#7c3aed",
+                    backgroundColor: colors.purple[600],
                     borderRadius: 14,
                     paddingVertical: 16,
                     alignItems: "center",

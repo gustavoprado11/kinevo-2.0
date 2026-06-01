@@ -69,7 +69,10 @@ export function PreWorkoutReadinessSheet({
   const colors = useV2Colors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const categoryColor = CATEGORY_COLOR[readiness.category];
-  const gradient = CATEGORY_GRADIENT[readiness.category];
+  // O 1º stop dos gradients de categoria é a marca do estúdio → rebrand via
+  // colors.purple[600]; o 2º stop é semântico por categoria (mantido).
+  const baseGradient = CATEGORY_GRADIENT[readiness.category];
+  const gradient: [string, string] = [colors.purple[600], baseGradient[1]];
   const recommendation = getReadinessRecommendation(readiness);
   const ctaLabel = CATEGORY_CTA[readiness.category];
   // Card de orientação só aparece quando há ajuste acionável (recuperação
@@ -139,7 +142,7 @@ export function PreWorkoutReadinessSheet({
             <View style={styles.actions}>
               <Pressable onPress={onProceed}>
                 <LinearGradient
-                  colors={['#7c3aed', '#A78BFA']}
+                  colors={[colors.purple[600], '#A78BFA']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.ctaPrimary}

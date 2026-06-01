@@ -8,6 +8,7 @@ import { toast } from "../../../lib/toast";
 import { getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
 import type { StudentDetailData } from "../../../hooks/useStudentDetail";
 import { useV2Colors } from "../../../hooks/useV2Colors";
+import { toRgba } from "../../../lib/brandColor";
 
 interface Props {
     data: StudentDetailData;
@@ -185,9 +186,9 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
                              *  card pra fluir título → semanas → lista. */}
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                 {data.activeProgram.ai_generated && (
-                                    <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f3f0ff", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                                        <Sparkles size={12} color="#7c3aed" />
-                                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c3aed", marginLeft: 3 }}>IA</Text>
+                                    <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: toRgba(colors.purple[600], 0.12), paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                        <Sparkles size={12} color={colors.purple[600]} />
+                                        <Text style={{ fontSize: 11, fontWeight: "600", color: colors.purple[600], marginLeft: 3 }}>IA</Text>
                                     </View>
                                 )}
                                 <TouchableOpacity
@@ -209,11 +210,11 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
                                         paddingHorizontal: 10,
                                         paddingVertical: 5,
                                         borderRadius: 8,
-                                        backgroundColor: "#ede9fe",
+                                        backgroundColor: toRgba(colors.purple[600], 0.16),
                                     }}
                                 >
-                                    <Pencil size={12} color="#6d28d9" strokeWidth={2.5} />
-                                    <Text style={{ fontSize: 12, fontWeight: "700", color: "#6d28d9", letterSpacing: 0.1 }}>
+                                    <Pencil size={12} color={colors.purple[700]} strokeWidth={2.5} />
+                                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.purple[700], letterSpacing: 0.1 }}>
                                         Editar
                                     </Text>
                                 </TouchableOpacity>
@@ -350,14 +351,14 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
                                                 marginTop: 8,
                                                 paddingVertical: 6,
                                                 paddingHorizontal: 10,
-                                                backgroundColor: "#f3f0ff",
+                                                backgroundColor: toRgba(colors.purple[600], 0.12),
                                                 borderRadius: 8,
                                                 alignSelf: "flex-start",
                                                 gap: 5,
                                             }}
                                         >
-                                            <FileText size={13} color="#7c3aed" />
-                                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c3aed" }}>
+                                            <FileText size={13} color={colors.purple[600]} />
+                                            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.purple[600] }}>
                                                 Ver relatório
                                             </Text>
                                         </TouchableOpacity>

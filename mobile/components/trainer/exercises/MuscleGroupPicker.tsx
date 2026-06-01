@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from "reac
 import { Plus, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useV2Colors } from "../../../hooks/useV2Colors";
+import { toRgba } from "../../../lib/brandColor";
 
 interface MuscleGroup {
     id: string;
@@ -61,9 +62,9 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                                 paddingHorizontal: 14,
                                 paddingVertical: 8,
                                 borderRadius: 20,
-                                backgroundColor: selected ? "#7c3aed" : colors.surface.card,
+                                backgroundColor: selected ? colors.purple[600] : colors.surface.card,
                                 borderWidth: 1,
-                                borderColor: selected ? "#7c3aed" : colors.border.default,
+                                borderColor: selected ? colors.purple[600] : colors.border.default,
                             }}
                         >
                             <Text
@@ -93,17 +94,17 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                             paddingHorizontal: 12,
                             paddingVertical: 8,
                             borderRadius: 20,
-                            backgroundColor: "rgba(124,58,237,0.12)",
+                            backgroundColor: toRgba(colors.purple[600], 0.12),
                             borderWidth: 1,
-                            borderColor: "rgba(124,58,237,0.30)",
+                            borderColor: toRgba(colors.purple[600], 0.30),
                             borderStyle: "dashed",
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 4,
                         }}
                     >
-                        <Plus size={14} color="#7c3aed" strokeWidth={2.5} />
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: "#7c3aed" }}>
+                        <Plus size={14} color={colors.purple[600]} strokeWidth={2.5} />
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.purple[600] }}>
                             Novo
                         </Text>
                     </TouchableOpacity>
@@ -125,7 +126,7 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                         borderRadius: 10,
                         paddingHorizontal: 12,
                         borderWidth: 1,
-                        borderColor: "#7c3aed",
+                        borderColor: colors.purple[600],
                     }}>
                         <TextInput
                             autoFocus
@@ -144,7 +145,7 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                         />
                     </View>
                     {isCreating ? (
-                        <ActivityIndicator size="small" color="#7c3aed" />
+                        <ActivityIndicator size="small" color={colors.purple[600]} />
                     ) : (
                         <View style={{ flexDirection: "row", gap: 4 }}>
                             <TouchableOpacity
@@ -152,7 +153,7 @@ export function MuscleGroupPicker({ muscleGroups, selectedIds, onChange, onCreat
                                 disabled={!newName.trim()}
                                 style={{
                                     width: 36, height: 36, borderRadius: 10,
-                                    backgroundColor: newName.trim() ? "#7c3aed" : colors.surface.card2,
+                                    backgroundColor: newName.trim() ? colors.purple[600] : colors.surface.card2,
                                     alignItems: "center", justifyContent: "center",
                                 }}
                             >

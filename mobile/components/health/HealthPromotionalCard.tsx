@@ -5,6 +5,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Heart } from 'lucide-react-native';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 export interface HealthPromotionalCardProps {
   onConnect: () => void;
@@ -61,7 +62,7 @@ function createStyles(c: V2Palette) {
       width: 44,
       height: 44,
       borderRadius: 12,
-      backgroundColor: 'rgba(124,58,237,0.18)',
+      backgroundColor: toRgba(c.purple[600], 0.18),
       justifyContent: 'center',
       alignItems: 'center',
     },

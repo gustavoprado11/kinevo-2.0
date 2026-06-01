@@ -485,9 +485,9 @@ export function AppointmentDetailSheet({
                         {mode === "reschedule" ? (
                             <Pressable onPress={submitReschedule} disabled={busy} hitSlop={8}>
                                 {busy ? (
-                                    <ActivityIndicator size="small" color="#7c3aed" />
+                                    <ActivityIndicator size="small" color={colors.purple[600]} />
                                 ) : (
-                                    <Text style={{ fontSize: 15, fontWeight: "700", color: "#7c3aed" }}>
+                                    <Text style={{ fontSize: 15, fontWeight: "700", color: colors.purple[600] }}>
                                         Salvar
                                     </Text>
                                 )}
@@ -495,9 +495,9 @@ export function AppointmentDetailSheet({
                         ) : mode === "edit_notes" ? (
                             <Pressable onPress={submitEditNotes} disabled={busy} hitSlop={8}>
                                 {busy ? (
-                                    <ActivityIndicator size="small" color="#7c3aed" />
+                                    <ActivityIndicator size="small" color={colors.purple[600]} />
                                 ) : (
-                                    <Text style={{ fontSize: 15, fontWeight: "700", color: "#7c3aed" }}>
+                                    <Text style={{ fontSize: 15, fontWeight: "700", color: colors.purple[600] }}>
                                         Salvar
                                     </Text>
                                 )}
@@ -531,7 +531,7 @@ export function AppointmentDetailSheet({
                                         marginRight: 12,
                                     }}
                                 >
-                                    <Text style={{ fontSize: 16, fontWeight: "700", color: "#7c3aed" }}>
+                                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.purple[600] }}>
                                         {initialsOf(studentName)}
                                     </Text>
                                 </View>
@@ -551,20 +551,20 @@ export function AppointmentDetailSheet({
                                 {/* Info rows */}
                                 <InfoRow
                                     colors={colors}
-                                    icon={<CalendarClock size={16} color="#7c3aed" />}
+                                    icon={<CalendarClock size={16} color={colors.purple[600]} />}
                                     label="Quando"
                                     value={`${DAY_LABELS_SHORT[parseInt(occurrence.date.slice(8, 10), 10) % 7]} ${occurrence.date.slice(8, 10)}/${occurrence.date.slice(5, 7)}/${occurrence.date.slice(0, 4)}`}
                                 />
                                 <InfoRow
                                     colors={colors}
-                                    icon={<Repeat size={16} color="#7c3aed" />}
+                                    icon={<Repeat size={16} color={colors.purple[600]} />}
                                     label="Recorrência"
                                     value={frequencyLabel(frequencyHint ?? null)}
                                 />
                                 {occurrence.notes ? (
                                     <InfoRow
                                         colors={colors}
-                                        icon={<StickyNote size={16} color="#7c3aed" />}
+                                        icon={<StickyNote size={16} color={colors.purple[600]} />}
                                         label="Notas"
                                         value={occurrence.notes}
                                     />
@@ -652,9 +652,9 @@ export function AppointmentDetailSheet({
                                                     paddingVertical: 10,
                                                     alignItems: "center",
                                                     borderRadius: 12,
-                                                    backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
+                                                    backgroundColor: selected ? colors.purple[600] : colors.surface.card2,
                                                     borderWidth: 1,
-                                                    borderColor: selected ? "#7c3aed" : colors.border.default,
+                                                    borderColor: selected ? colors.purple[600] : colors.border.default,
                                                 }}
                                             >
                                                 <Text
@@ -710,9 +710,9 @@ export function AppointmentDetailSheet({
                                                     paddingVertical: 8,
                                                     paddingHorizontal: 14,
                                                     borderRadius: 100,
-                                                    backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
+                                                    backgroundColor: selected ? colors.purple[600] : colors.surface.card2,
                                                     borderWidth: 1,
-                                                    borderColor: selected ? "#7c3aed" : colors.border.default,
+                                                    borderColor: selected ? colors.purple[600] : colors.border.default,
                                                 }}
                                             >
                                                 <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : colors.text.primary }}>

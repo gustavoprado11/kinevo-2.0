@@ -27,6 +27,7 @@ import {
 import { Minus } from "lucide-react-native";
 
 import { useV2Colors } from "@/hooks/useV2Colors";
+import { toRgba } from "@/lib/brandColor";
 import { SetSchemeCard } from "./SetSchemeCard";
 import { SetSchemePresetChips } from "./SetSchemePresetChips";
 
@@ -331,9 +332,9 @@ export function SetSchemeEditor({
                                 paddingHorizontal: 12,
                                 paddingVertical: 5,
                                 borderRadius: 999,
-                                backgroundColor: "rgba(124, 58, 237, 0.10)",
+                                backgroundColor: toRgba(colors.purple[600], 0.10),
                                 borderWidth: 1,
-                                borderColor: "rgba(124, 58, 237, 0.25)",
+                                borderColor: toRgba(colors.purple[600], 0.25),
                             }}
                         >
                             <Repeat size={12} color={colors.purple[600]} />

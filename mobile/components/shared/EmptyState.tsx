@@ -35,7 +35,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction }: 
                     accessibilityLabel={actionLabel}
                     style={{
                         marginTop: 20,
-                        backgroundColor: "#7c3aed",
+                        backgroundColor: colors.purple[600],
                         paddingHorizontal: 20,
                         paddingVertical: 10,
                         borderRadius: 10,

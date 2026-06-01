@@ -166,7 +166,7 @@ export default function PlansScreen() {
                         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 100 }}
                         showsVerticalScrollIndicator={false}
                         refreshControl={
-                            <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#7c3aed" />
+                            <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={colors.purple[600]} />
                         }
                         ListEmptyComponent={
                             <EmptyState
@@ -192,7 +192,7 @@ export default function PlansScreen() {
                         backgroundColor: colors.purple[600],
                         alignItems: "center",
                         justifyContent: "center",
-                        shadowColor: "#7c3aed",
+                        shadowColor: colors.purple[600],
                         shadowOffset: { width: 0, height: 4 },
                         shadowOpacity: 0.3,
                         shadowRadius: 8,

@@ -15,6 +15,7 @@ import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { useProgramBuilderStore } from '@/stores/program-builder-store';
 import { useV2Colors } from '@/hooks/useV2Colors';
 import { hydrateSetPrescriptions } from '@/lib/hydrateWorkoutSets';
+import { toRgba } from '@/lib/brandColor';
 import { expandSchemeByRounds } from '@kinevo/shared/lib/prescription/set-scheme';
 import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets';
 import type { WorkoutItem } from '@/stores/program-builder-store';
@@ -106,8 +107,8 @@ export default function ProgramBuilderPreviewScreen() {
                         accessibilityLabel="Voltar para o builder"
                         style={{ flexDirection: 'row', alignItems: 'center' }}
                     >
-                        <ChevronLeft size={22} color="#7c3aed" />
-                        <Text style={{ fontSize: 16, color: '#7c3aed', marginLeft: 2 }}>Voltar</Text>
+                        <ChevronLeft size={22} color={colors.purple[600]} />
+                        <Text style={{ fontSize: 16, color: colors.purple[600], marginLeft: 2 }}>Voltar</Text>
                     </TouchableOpacity>
                     <Text
                         style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.text.primary }}
@@ -126,11 +127,11 @@ export default function ProgramBuilderPreviewScreen() {
                         gap: 8,
                         paddingHorizontal: 16,
                         paddingVertical: 10,
-                        backgroundColor: 'rgba(124, 58, 237, 0.08)',
+                        backgroundColor: toRgba(colors.purple[600], 0.08),
                     }}
                 >
-                    <Eye size={14} color="#6d28d9" />
-                    <Text style={{ fontSize: 12, color: '#6d28d9', fontWeight: '600' }}>
+                    <Eye size={14} color={colors.purple[700]} />
+                    <Text style={{ fontSize: 12, color: colors.purple[700], fontWeight: '600' }}>
                         Modo preview — assim que o aluno verá
                     </Text>
                 </View>
@@ -166,9 +167,9 @@ export default function ProgramBuilderPreviewScreen() {
                                         paddingVertical: 8,
                                         minHeight: 34,
                                         borderRadius: 999,
-                                        backgroundColor: active ? '#7c3aed' : '#ffffff',
+                                        backgroundColor: active ? colors.purple[600] : '#ffffff',
                                         borderWidth: 1,
-                                        borderColor: active ? '#7c3aed' : '#e2e8f0',
+                                        borderColor: active ? colors.purple[600] : '#e2e8f0',
                                         justifyContent: 'center',
                                     }}
                                 >
@@ -212,7 +213,7 @@ export default function ProgramBuilderPreviewScreen() {
                                             style={{
                                                 fontSize: 11,
                                                 fontWeight: '700',
-                                                color: '#7c3aed',
+                                                color: colors.purple[600],
                                                 marginBottom: 6,
                                                 textTransform: 'uppercase',
                                                 letterSpacing: 1,

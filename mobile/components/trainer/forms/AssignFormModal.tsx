@@ -217,7 +217,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                     paddingHorizontal: 14,
                                     paddingVertical: 8,
                                     borderRadius: 20,
-                                    backgroundColor: deadlineDays === opt.days ? "#7c3aed" : "#ffffff",
+                                    backgroundColor: deadlineDays === opt.days ? colors.purple[600] : "#ffffff",
                                 }}
                             >
                                 <Text
@@ -269,7 +269,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         }}
                     >
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                            <RefreshCw size={16} color={isRecurring ? "#7c3aed" : "#94a3b8"} />
+                            <RefreshCw size={16} color={isRecurring ? colors.purple[600] : "#94a3b8"} />
                             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
                                 Envio recorrente
                             </Text>
@@ -279,7 +279,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                 width: 44,
                                 height: 24,
                                 borderRadius: 12,
-                                backgroundColor: isRecurring ? "#7c3aed" : "#d1d5db",
+                                backgroundColor: isRecurring ? colors.purple[600] : "#d1d5db",
                                 justifyContent: "center",
                                 paddingHorizontal: 2,
                             }}
@@ -305,7 +305,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                         paddingHorizontal: 14,
                                         paddingVertical: 8,
                                         borderRadius: 20,
-                                        backgroundColor: frequency === opt.key ? "#7c3aed" : "#ffffff",
+                                        backgroundColor: frequency === opt.key ? colors.purple[600] : "#ffffff",
                                     }}
                                 >
                                     <Text
@@ -377,10 +377,10 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                     paddingVertical: 10,
                                     paddingHorizontal: 12,
                                     marginBottom: 4,
-                                    backgroundColor: isSelected ? "#f3f0ff" : "#ffffff",
+                                    backgroundColor: isSelected ? colors.purple[100] : "#ffffff",
                                     borderRadius: 12,
                                     borderWidth: isSelected ? 1.5 : 0,
-                                    borderColor: isSelected ? "#7c3aed" : "transparent",
+                                    borderColor: isSelected ? colors.purple[600] : "transparent",
                                 }}
                             >
                                 <View
@@ -449,7 +449,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         onPress={handleSend}
                         disabled={selectedIds.size === 0 || isSending}
                         style={{
-                            backgroundColor: selectedIds.size === 0 ? "#d1d5db" : "#7c3aed",
+                            backgroundColor: selectedIds.size === 0 ? "#d1d5db" : colors.purple[600],
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: "center",

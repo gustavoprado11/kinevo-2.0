@@ -200,9 +200,9 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                                     paddingHorizontal: 14,
                                     paddingVertical: 8,
                                     borderRadius: 20,
-                                    backgroundColor: difficulty === opt.key ? "#7c3aed" : colors.surface.card,
+                                    backgroundColor: difficulty === opt.key ? colors.purple[600] : colors.surface.card,
                                     borderWidth: 1,
-                                    borderColor: difficulty === opt.key ? "#7c3aed" : colors.border.default,
+                                    borderColor: difficulty === opt.key ? colors.purple[600] : colors.border.default,
                                 }}
                                 accessibilityLabel={opt.label}
                                 accessibilityRole="button"
@@ -260,7 +260,7 @@ export function ExerciseFormModal({ visible, exercise, muscleGroups, onClose, on
                         accessibilityLabel={isEditing ? "Salvar alterações" : "Criar exercício"}
                         accessibilityRole="button"
                         style={{
-                            backgroundColor: canSave ? "#7c3aed" : colors.surface.card2,
+                            backgroundColor: canSave ? colors.purple[600] : colors.surface.card2,
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: "center",

@@ -7,6 +7,7 @@ import {
     ActivityIndicator,
 } from "react-native";
 import { Check, X, Sparkles, AlertTriangle } from "lucide-react-native";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface WorkoutItem {
     exercise_name: string;
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function ProgramPreview({ output, source, violations, isApproving, onApprove, onDiscard }: Props) {
+    const colors = useV2Colors();
     const hasWarnings = violations && violations.length > 0;
 
     return (
@@ -57,19 +59,19 @@ export function ProgramPreview({ output, source, violations, isApproving, onAppr
                         style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            backgroundColor: source === "llm" ? "#f3f0ff" : "#fef3c7",
+                            backgroundColor: source === "llm" ? colors.purple[100] : "#fef3c7",
                             paddingHorizontal: 8,
                             paddingVertical: 4,
                             borderRadius: 8,
                             gap: 4,
                         }}
                     >
-                        <Sparkles size={12} color={source === "llm" ? "#7c3aed" : "#d97706"} />
+                        <Sparkles size={12} color={source === "llm" ? colors.purple[600] : "#d97706"} />
                         <Text
                             style={{
                                 fontSize: 11,
                                 fontWeight: "600",
-                                color: source === "llm" ? "#7c3aed" : "#d97706",
+                                color: source === "llm" ? colors.purple[600] : "#d97706",
                             }}
                         >
                             {source === "llm" ? "IA" : "Heurístico"}
@@ -148,7 +150,7 @@ export function ProgramPreview({ output, source, violations, isApproving, onAppr
                 onPress={onApprove}
                 disabled={isApproving}
                 style={{
-                    backgroundColor: "#7c3aed",
+                    backgroundColor: colors.purple[600],
                     borderRadius: 14,
                     paddingVertical: 16,
                     alignItems: "center",

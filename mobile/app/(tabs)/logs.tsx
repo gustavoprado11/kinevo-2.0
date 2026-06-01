@@ -30,6 +30,7 @@ import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS, type WarmupType, type Card
 import { PressableScale } from '../../components/shared/PressableScale';
 import { KPRCard } from '../../components/v2/student';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 import { v2 } from '@kinevo/shared/tokens';
 import { WorkoutHealthCard } from '../../components/workout/WorkoutHealthCard';
 import { useWorkoutHealthSummary } from '../../hooks/useWorkoutHealthSummary';
@@ -484,9 +485,9 @@ function HistoryCard({ session }: { session: HistorySession }) {
                                 {dateStr}
                             </Text>
                             {session.has_pre_checkin && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(124,58,237,0.08)', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 }}>
-                                    <ClipboardCheck size={9} color="#7c3aed" />
-                                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#7c3aed' }}>Pré</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: toRgba(colors.purple[600], 0.08), paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 }}>
+                                    <ClipboardCheck size={9} color={colors.purple[600]} />
+                                    <Text style={{ fontSize: 9, fontWeight: '700', color: colors.purple[600] }}>Pré</Text>
                                 </View>
                             )}
                             {session.has_post_checkin && (
@@ -580,7 +581,7 @@ function ExerciseSetsView({ name, sets }: { name: string; sets: { id: string; we
     return (
         <>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <View style={{ width: 3, height: 16, backgroundColor: '#7c3aed', borderRadius: 2, marginRight: 10 }} />
+                <View style={{ width: 3, height: 16, backgroundColor: colors.purple[600], borderRadius: 2, marginRight: 10 }} />
                 <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary, flex: 1 }}>{name}</Text>
             </View>
             <View style={{ gap: 6, paddingLeft: 13 }}>
@@ -676,8 +677,8 @@ function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFi
     if (item.itemType === 'superset') {
         return (
             <View style={{ ...separator as any }}>
-                <View style={{ borderLeftWidth: 2, borderLeftColor: '#7c3aed', borderRadius: 8, paddingLeft: 10 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                <View style={{ borderLeftWidth: 2, borderLeftColor: colors.purple[600], borderRadius: 8, paddingLeft: 10 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.purple[600], textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
                         {(item.children?.length || 0) <= 2 ? 'Bi-set' : 'Tri-set'}
                     </Text>
                     {(item.children || []).map((child, idx) => (
@@ -737,7 +738,7 @@ function PublishedReportsSection() {
                 <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.quaternary, textTransform: 'uppercase', letterSpacing: 1 }}>
                     Relatórios de Programa
                 </Text>
-                <FileText size={14} color="#7c3aed" />
+                <FileText size={14} color={colors.purple[600]} />
             </View>
             {reports.map((r) => {
                 const period = [r.program_started_at, r.program_completed_at]

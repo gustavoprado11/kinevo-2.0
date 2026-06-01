@@ -146,7 +146,7 @@ export default function ContractsScreen() {
                                         paddingHorizontal: 14,
                                         paddingVertical: 8,
                                         borderRadius: 100,
-                                        backgroundColor: active ? "#7c3aed" : colors.surface.card,
+                                        backgroundColor: active ? colors.purple[600] : colors.surface.card,
                                         borderWidth: active ? 0 : 1,
                                         borderColor: colors.border.default,
                                     }}
@@ -179,7 +179,7 @@ export default function ContractsScreen() {
                         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
                         showsVerticalScrollIndicator={false}
                         refreshControl={
-                            <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#7c3aed" />
+                            <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={colors.purple[600]} />
                         }
                         ListEmptyComponent={
                             <EmptyState

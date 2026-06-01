@@ -7,6 +7,7 @@ import { ChevronLeft, Sparkles, Link2, Check, AlertTriangle, ArrowRight } from "
 import { walletFetch } from "../../../lib/wallet-api";
 import { useRoleMode } from "../../../contexts/RoleModeContext";
 import { useV2Colors, type V2Palette } from "../../../hooks/useV2Colors";
+import { toRgba } from "../../../lib/brandColor";
 
 type Mode = "choose" | "new" | "link";
 type CompanyType = "INDIVIDUAL" | "MEI" | "LIMITED" | "ASSOCIATION";
@@ -239,7 +240,7 @@ function ChooseMode({ colors, onNew, onLink }: { colors: V2Palette; onNew: () =>
 
             <TouchableOpacity onPress={onNew} activeOpacity={0.85} style={{ borderWidth: 2, borderColor: colors.purple[600], backgroundColor: colors.purple[100], borderRadius: 16, padding: 16, marginBottom: 12 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                    <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(124,58,237,0.18)" }}>
+                    <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: toRgba(colors.purple[600], 0.18) }}>
                         <Sparkles size={18} color={colors.purple[700]} />
                     </View>
                     <View style={{ flex: 1 }}>

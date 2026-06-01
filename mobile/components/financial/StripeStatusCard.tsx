@@ -26,7 +26,7 @@ export function StripeStatusCard({ status, isLoading }: Props) {
                     minHeight: 60,
                 }}
             >
-                <ActivityIndicator color="#7c3aed" size="small" />
+                <ActivityIndicator color={colors.purple[600]} size="small" />
             </View>
         );
     }

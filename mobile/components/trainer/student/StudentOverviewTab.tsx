@@ -49,7 +49,7 @@ export function StudentOverviewTab({ data }: Props) {
             {/* KPI Cards */}
             <ResponsiveGrid columns={{ phone: 2, tablet: 4 }} gap={10} style={{ marginBottom: 20 }}>
                 <KPICard
-                    icon={<Dumbbell size={16} color="#7c3aed" />}
+                    icon={<Dumbbell size={16} color={colors.purple[600]} />}
                     label="Esta semana"
                     value={`${data.sessionsThisWeek}/${data.expectedPerWeek || "—"}`}
                 />
@@ -91,8 +91,8 @@ export function StudentOverviewTab({ data }: Props) {
                                 {data.activeProgram.name}
                             </Text>
                             {data.activeProgram.ai_generated && (
-                                <View style={{ backgroundColor: "#f3f0ff", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: "600", color: "#7c3aed" }}>IA</Text>
+                                <View style={{ backgroundColor: colors.purple[100], paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: "600", color: colors.purple[600] }}>IA</Text>
                                 </View>
                             )}
                         </View>

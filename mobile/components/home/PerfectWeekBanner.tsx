@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Award } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { useV2Colors } from '../../hooks/useV2Colors';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface PerfectWeekBannerProps {
     completedCount: number;
@@ -17,6 +18,7 @@ interface PerfectWeekBannerProps {
  */
 export function PerfectWeekBanner({ completedCount, consecutiveCount = 0, onShare }: PerfectWeekBannerProps) {
     const colors = useV2Colors();
+    const styles = makeStyles(colors);
 
     const subtitle = consecutiveCount > 1
         ? `${consecutiveCount}ª semana perfeita seguida`
@@ -43,14 +45,16 @@ export function PerfectWeekBanner({ completedCount, consecutiveCount = 0, onShar
     );
 }
 
-const styles = StyleSheet.create({
-    card: {
-        flexDirection: 'row', alignItems: 'center', gap: 14,
-        borderRadius: 20, borderWidth: 1, padding: 16, marginBottom: 16,
-    },
-    icon: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(16,185,129,0.10)', alignItems: 'center', justifyContent: 'center' },
-    title: { fontSize: 15, fontWeight: '800' },
-    sub: { fontSize: 12, marginTop: 2 },
-    shareBtn: { backgroundColor: 'rgba(124,58,237,0.08)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.18)', borderRadius: 12, paddingVertical: 9, paddingHorizontal: 13 },
-    shareText: { color: '#7c3aed', fontSize: 12, fontWeight: '700' },
-});
+function makeStyles(colors: V2Palette) {
+    return StyleSheet.create({
+        card: {
+            flexDirection: 'row', alignItems: 'center', gap: 14,
+            borderRadius: 20, borderWidth: 1, padding: 16, marginBottom: 16,
+        },
+        icon: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(16,185,129,0.10)', alignItems: 'center', justifyContent: 'center' },
+        title: { fontSize: 15, fontWeight: '800' },
+        sub: { fontSize: 12, marginTop: 2 },
+        shareBtn: { backgroundColor: toRgba(colors.purple[600], 0.08), borderWidth: 1, borderColor: toRgba(colors.purple[600], 0.18), borderRadius: 12, paddingVertical: 9, paddingHorizontal: 13 },
+        shareText: { color: colors.purple[600], fontSize: 12, fontWeight: '700' },
+    });
+}

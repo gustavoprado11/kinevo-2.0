@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Calendar, Dumbbell } from "lucide-react-native";
 import type { ProgramTemplate } from "../../../hooks/useTrainerProgramTemplates";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface Props {
     template: ProgramTemplate;
@@ -10,17 +11,18 @@ interface Props {
 }
 
 export function ProgramTemplateCard({ template, isSelected, onPress }: Props) {
+    const colors = useV2Colors();
     return (
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.6}
             style={{
-                backgroundColor: isSelected ? "#f3f0ff" : "#ffffff",
+                backgroundColor: isSelected ? colors.purple[100] : "#ffffff",
                 borderRadius: 14,
                 padding: 16,
                 marginBottom: 10,
                 borderWidth: isSelected ? 2 : 0,
-                borderColor: isSelected ? "#7c3aed" : "transparent",
+                borderColor: isSelected ? colors.purple[600] : "transparent",
             }}
         >
             <Text style={{ fontSize: 16, fontWeight: "600", color: "#1a1a2e" }}>

@@ -30,7 +30,7 @@ export default function AchievementsScreen() {
 
                 {a.loading ? (
                     <View style={{ paddingTop: 60, alignItems: 'center' }}>
-                        <ActivityIndicator color="#7c3aed" />
+                        <ActivityIndicator color={colors.purple[600]} />
                     </View>
                 ) : (
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>

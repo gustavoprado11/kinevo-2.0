@@ -92,7 +92,7 @@ export function HealthOnboardingSheet({ visible, onClose }: HealthOnboardingShee
 
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.heroIconWrap}>
-            <LinearGradient colors={['#7c3aed', '#A78BFA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroIcon}>
+            <LinearGradient colors={[colors.purple[600], colors.purple[400]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroIcon}>
               <Heart size={28} color="#FFF" strokeWidth={2.5} fill="#FFF" />
             </LinearGradient>
           </View>
@@ -128,7 +128,7 @@ export function HealthOnboardingSheet({ visible, onClose }: HealthOnboardingShee
 
         <View style={styles.actions}>
           <Pressable onPress={handleConnect} disabled={isConnecting}>
-            <LinearGradient colors={['#7c3aed', '#A78BFA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaPrimary}>
+            <LinearGradient colors={[colors.purple[600], colors.purple[400]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaPrimary}>
               {isConnecting ? (
                 <ActivityIndicator color="#FFF" />
               ) : (

@@ -18,6 +18,7 @@ import {
     useTrainerProgramTemplates,
     ProgramTemplate,
 } from "../../../hooks/useTrainerProgramTemplates";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 import { ProgramTemplateCard } from "./ProgramTemplateCard";
 
 interface Props {
@@ -40,6 +41,7 @@ export function AssignProgramWizard({
     onSuccess,
 }: Props) {
     const insets = useSafeAreaInsets();
+    const colors = useV2Colors();
     const { templates, isLoading } = useTrainerProgramTemplates();
     const [step, setStep] = useState<Step>("select");
     const [selectedTemplate, setSelectedTemplate] = useState<ProgramTemplate | null>(null);
@@ -124,7 +126,7 @@ export function AssignProgramWizard({
                                 borderRadius: 1.5,
                                 backgroundColor:
                                     idx <= ["select", "configure", "confirm"].indexOf(step)
-                                        ? "#7c3aed"
+                                        ? colors.purple[600]
                                         : "#e2e8f0",
                             }}
                         />
@@ -146,7 +148,7 @@ export function AssignProgramWizard({
                         )}
                         ListEmptyComponent={
                             isLoading ? (
-                                <ActivityIndicator style={{ marginTop: 40 }} color="#7c3aed" />
+                                <ActivityIndicator style={{ marginTop: 40 }} color={colors.purple[600]} />
                             ) : (
                                 <View style={{ alignItems: "center", marginTop: 60 }}>
                                     <Text style={{ fontSize: 15, fontWeight: "600", color: "#94a3b8" }}>
@@ -202,12 +204,12 @@ export function AssignProgramWizard({
                         <TouchableOpacity
                             onPress={() => setIsImmediate(true)}
                             style={{
-                                backgroundColor: isImmediate ? "#f3f0ff" : "#ffffff",
+                                backgroundColor: isImmediate ? colors.purple[100] : "#ffffff",
                                 borderRadius: 14,
                                 padding: 16,
                                 marginBottom: 10,
                                 borderWidth: isImmediate ? 2 : 0,
-                                borderColor: isImmediate ? "#7c3aed" : "transparent",
+                                borderColor: isImmediate ? colors.purple[600] : "transparent",
                             }}
                         >
                             <Text style={{ fontSize: 15, fontWeight: "600", color: "#1a1a2e" }}>
@@ -221,12 +223,12 @@ export function AssignProgramWizard({
                         <TouchableOpacity
                             onPress={() => setIsImmediate(false)}
                             style={{
-                                backgroundColor: !isImmediate ? "#f3f0ff" : "#ffffff",
+                                backgroundColor: !isImmediate ? colors.purple[100] : "#ffffff",
                                 borderRadius: 14,
                                 padding: 16,
                                 marginBottom: 20,
                                 borderWidth: !isImmediate ? 2 : 0,
-                                borderColor: !isImmediate ? "#7c3aed" : "transparent",
+                                borderColor: !isImmediate ? colors.purple[600] : "transparent",
                             }}
                         >
                             <Text style={{ fontSize: 15, fontWeight: "600", color: "#1a1a2e" }}>
@@ -241,7 +243,7 @@ export function AssignProgramWizard({
                         <TouchableOpacity
                             onPress={() => setStep("confirm")}
                             style={{
-                                backgroundColor: "#7c3aed",
+                                backgroundColor: colors.purple[600],
                                 borderRadius: 14,
                                 paddingVertical: 16,
                                 alignItems: "center",
@@ -278,7 +280,7 @@ export function AssignProgramWizard({
                             onPress={handleConfirm}
                             disabled={isAssigning}
                             style={{
-                                backgroundColor: "#7c3aed",
+                                backgroundColor: colors.purple[600],
                                 borderRadius: 14,
                                 paddingVertical: 16,
                                 alignItems: "center",

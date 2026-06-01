@@ -141,7 +141,7 @@ export function FormTemplateCard({ template, onAssign, onEdit, onDelete }: Props
                     width: 36,
                     height: 36,
                     borderRadius: 18,
-                    backgroundColor: "#7c3aed",
+                    backgroundColor: colors.purple[600],
                     alignItems: "center",
                     justifyContent: "center",
                 }}

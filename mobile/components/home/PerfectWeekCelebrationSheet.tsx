@@ -5,7 +5,7 @@ import { Award, Share2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PerfectWeekCardProps } from '../workout/sharing/PerfectWeekTemplate';
-import { useV2Colors } from '../../hooks/useV2Colors';
+import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
 interface PerfectWeekCelebrationSheetProps {
     visible: boolean;
@@ -23,6 +23,7 @@ interface PerfectWeekCelebrationSheetProps {
  */
 export function PerfectWeekCelebrationSheet({ visible, card, onShare, onClose }: PerfectWeekCelebrationSheetProps) {
     const colors = useV2Colors();
+    const styles = makeStyles(colors);
     const insets = useSafeAreaInsets();
 
     useEffect(() => {
@@ -89,7 +90,8 @@ export function PerfectWeekCelebrationSheet({ visible, card, onShare, onClose }:
     );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: V2Palette) {
+    return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'rgba(9,9,15,0.55)', justifyContent: 'flex-end' },
     sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 10, alignItems: 'center' },
     grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(120,120,130,0.35)', marginBottom: 18 },
@@ -106,9 +108,10 @@ const styles = StyleSheet.create({
     statLabel: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 10, marginTop: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
     primary: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-        backgroundColor: '#7C3AED', borderRadius: 15, paddingVertical: 15, alignSelf: 'stretch', marginTop: 24,
+        backgroundColor: colors.purple[600], borderRadius: 15, paddingVertical: 15, alignSelf: 'stretch', marginTop: 24,
     },
     primaryText: { fontFamily: 'PlusJakartaSans_800ExtraBold', fontSize: 15, color: '#fff' },
     ghost: { paddingVertical: 12, marginTop: 2 },
     ghostText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14 },
-});
+    });
+}

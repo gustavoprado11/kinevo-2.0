@@ -33,11 +33,11 @@ export default function ProfileLayout() {
                             marginLeft: -8,
                         }}
                     >
-                        <ChevronLeft size={24} color="#7c3aed" strokeWidth={2} />
+                        <ChevronLeft size={24} color={colors.purple[600]} strokeWidth={2} />
                         <Text
                             style={{
                                 fontSize: 15,
-                                color: "#7c3aed",
+                                color: colors.purple[600],
                                 fontWeight: "500",
                             }}
                         >

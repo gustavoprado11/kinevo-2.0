@@ -136,7 +136,7 @@ export default function PixKeysScreen() {
                         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 100 }}
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
-                        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#7c3aed" />}
+                        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={colors.purple[600]} />}
                     >
                         {adding ? (
                             <View style={{ backgroundColor: colors.surface.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border.default, marginBottom: 16 }}>

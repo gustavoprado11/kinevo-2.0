@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ActionSheetIOS, Platform, Alert } from "r
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { Video, Film, Trash2 } from "lucide-react-native";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 interface VideoFile {
     uri: string;
@@ -40,6 +41,7 @@ async function pickVideo(source: "library" | "camera"): Promise<VideoFile | null
 }
 
 export function VideoUploadField({ videoFile, currentVideoUrl, onSelectVideo, onRemoveCurrentVideo }: Props) {
+    const colors = useV2Colors();
     const handleSelect = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -89,14 +91,14 @@ export function VideoUploadField({ videoFile, currentVideoUrl, onSelectVideo, on
                     style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        backgroundColor: "#f5f3ff",
+                        backgroundColor: colors.purple[100],
                         borderRadius: 12,
                         padding: 14,
                         gap: 12,
                     }}
                 >
-                    <Film size={20} color="#7c3aed" />
-                    <Text style={{ flex: 1, fontSize: 13, fontWeight: "500", color: "#7c3aed" }} numberOfLines={1}>
+                    <Film size={20} color={colors.purple[600]} />
+                    <Text style={{ flex: 1, fontSize: 13, fontWeight: "500", color: colors.purple[600] }} numberOfLines={1}>
                         {videoFile ? videoFile.name : "Vídeo atual"}
                     </Text>
                     <TouchableOpacity

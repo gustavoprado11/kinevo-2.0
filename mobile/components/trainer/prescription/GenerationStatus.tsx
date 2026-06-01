@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Animated, Easing, TouchableOpacity } from "react-native";
 import { Sparkles } from "lucide-react-native";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 
 const MESSAGES = [
     "Analisando perfil do aluno...",
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function GenerationStatus({ elapsedSeconds, onCancel }: Props) {
+    const colors = useV2Colors();
     const spinAnim = useRef(new Animated.Value(0)).current;
     const [messageIndex, setMessageIndex] = useState(0);
 
@@ -49,7 +51,7 @@ export function GenerationStatus({ elapsedSeconds, onCancel }: Props) {
     return (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 }}>
             <Animated.View style={{ transform: [{ rotate: spin }], marginBottom: 24 }}>
-                <Sparkles size={48} color="#7c3aed" />
+                <Sparkles size={48} color={colors.purple[600]} />
             </Animated.View>
 
             <Text style={{ fontSize: 18, fontWeight: "700", color: "#1a1a2e", marginBottom: 8, textAlign: "center" }}>
@@ -69,7 +71,7 @@ export function GenerationStatus({ elapsedSeconds, onCancel }: Props) {
                             width: 6,
                             height: 6,
                             borderRadius: 3,
-                            backgroundColor: idx <= messageIndex ? "#7c3aed" : "#e2e8f0",
+                            backgroundColor: idx <= messageIndex ? colors.purple[600] : "#e2e8f0",
                         }}
                     />
                 ))}

@@ -10,6 +10,7 @@ import {
     type ScheduledWorkoutRef,
     type SessionRef,
 } from "@kinevo/shared/utils/schedule-projection";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 const CALENDAR_PADDING = 40; // px-5 on each side
 
@@ -49,6 +50,7 @@ function WeekRow({
     onDayPress: (date: Date) => void;
     calendarWidth: number;
 }) {
+    const colors = useV2Colors();
     const selectedKey = toDateKey(selectedDate);
 
     return (
@@ -74,7 +76,7 @@ function WeekRow({
                                 marginBottom: 10,
                                 fontWeight: isSelected ? "600" : isToday ? "500" : "400",
                                 color: isSelected
-                                    ? "#7c3aed"
+                                    ? colors.purple[600]
                                     : "#94a3b8",
                             }}
                         >
@@ -89,7 +91,7 @@ function WeekRow({
                                     borderRadius: 18,
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    backgroundColor: isSelected ? "#7c3aed" : "transparent",
+                                    backgroundColor: isSelected ? colors.purple[600] : "transparent",
                                 }}
                             >
                                 <Text
@@ -135,6 +137,7 @@ export function WeekCalendar({
     onExpand,
     fetchRange,
 }: WeekCalendarProps) {
+    const colors = useV2Colors();
     const { width: screenWidth } = useWindowDimensions();
     const CALENDAR_WIDTH = screenWidth - CALENDAR_PADDING;
 
@@ -257,10 +260,10 @@ export function WeekCalendar({
                                 paddingHorizontal: 8,
                                 paddingVertical: 2,
                                 borderRadius: 6,
-                                backgroundColor: '#f5f3ff',
+                                backgroundColor: colors.purple[100],
                             }}
                         >
-                            <Text style={{ fontSize: 9, fontWeight: "700", color: "#7c3aed", letterSpacing: 1.5, textTransform: "uppercase" }}>
+                            <Text style={{ fontSize: 9, fontWeight: "700", color: colors.purple[600], letterSpacing: 1.5, textTransform: "uppercase" }}>
                                 Hoje
                             </Text>
                         </TouchableOpacity>

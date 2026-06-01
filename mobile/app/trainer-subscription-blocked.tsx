@@ -7,12 +7,14 @@ import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useRoleMode } from "../contexts/RoleModeContext";
 import { PressableScale } from "../components/shared/PressableScale";
 import { WEB_URL } from "../lib/config";
+import { useV2Colors } from "../hooks/useV2Colors";
 
 const SUBSCRIBE_URL = `${WEB_URL}/subscription`;
 
 export default function TrainerSubscriptionBlockedScreen() {
     const { switchToStudent } = useRoleMode();
     const router = useRouter();
+    const colors = useV2Colors();
 
     const handleSubscribe = () => {
         Linking.openURL(SUBSCRIBE_URL);
@@ -69,7 +71,7 @@ export default function TrainerSubscriptionBlockedScreen() {
                         onPress={handleSubscribe}
                         pressScale={0.97}
                         style={{
-                            backgroundColor: "#7c3aed",
+                            backgroundColor: colors.purple[600],
                             borderRadius: 16,
                             paddingVertical: 16,
                             flexDirection: "row",

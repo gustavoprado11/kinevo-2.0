@@ -11,6 +11,7 @@ import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Stop } from 'reac
 import { TrendingUp, TrendingDown } from 'lucide-react-native';
 import { v2 } from '@kinevo/shared/tokens';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 const { spacing, radius, shadows } = v2;
 
@@ -122,7 +123,11 @@ export function KPICard({
     style,
 }: KPICardProps) {
     const colors = useV2Colors();
-    const accentPair = ACCENT_MAP[accent];
+    // Accent roxo segue a marca do estúdio (rebrand via colors.purple[N]);
+    // demais accents mantêm cores semânticas fixas.
+    const accentPair = accent === 'purple'
+        ? { fg: colors.purple[600], bg: toRgba(colors.purple[600], 0.10) }
+        : ACCENT_MAP[accent];
 
     const a11y = accessibilityLabel
         ?? `${label}: ${value}${valueSub ?? ''}${delta ? `, variação ${delta.direction === 'up' ? 'positiva' : 'negativa'} ${delta.label}` : ''}`;

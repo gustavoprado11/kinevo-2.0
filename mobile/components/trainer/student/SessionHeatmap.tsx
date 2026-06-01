@@ -5,6 +5,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { useStudentHeatmap, type HeatmapDay } from "../../../hooks/useStudentHeatmap";
 import { spacing } from "../../../theme/spacing";
 import { useV2Colors } from "../../../hooks/useV2Colors";
+import { toRgba } from "../../../lib/brandColor";
 
 // ─── Constants ───────────────────────────────────────────────────────
 const WEEKDAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]; // segunda → domingo
@@ -414,7 +415,7 @@ export function SessionHeatmap({ studentId }: { studentId: string }) {
                                     borderRadius: 3,
                                     backgroundColor: colors.brand.primaryLight,
                                     borderWidth: 1,
-                                    borderColor: "rgba(124, 58, 237, 0.15)",
+                                    borderColor: toRgba(colors.purple[600], 0.15),
                                 }}
                             />
                             <Text style={{ fontSize: 10, color: colors.text.tertiary, fontWeight: "500" }}>1</Text>

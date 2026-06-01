@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { Feather } from "@expo/vector-icons";
 import OtpInput from "../../components/OtpInput";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
@@ -22,6 +23,7 @@ import OtpInput from "../../components/OtpInput";
 
 export default function EnterCodeScreen() {
     const router = useRouter();
+    const colors = useV2Colors();
     const { email, otpType } = useLocalSearchParams<{
         email: string;
         otpType: "email" | "email_change";
@@ -109,7 +111,7 @@ export default function EnterCodeScreen() {
                     {/* Header */}
                     <View className="items-center mb-10">
                         <View className="w-20 h-20 bg-gray-900 rounded-full items-center justify-center mb-6">
-                            <Feather name="shield" size={40} color="#a855f7" />
+                            <Feather name="shield" size={40} color={colors.purple[400]} />
                         </View>
                         <Text className="text-3xl font-bold text-white tracking-tight mb-2">
                             Digite o código

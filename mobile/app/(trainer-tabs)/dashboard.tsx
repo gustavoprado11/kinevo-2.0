@@ -342,7 +342,11 @@ export default function DashboardScreen() {
                     >
                         <SectionLabel>Acesso rápido</SectionLabel>
                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing[2] }}>
-                            {QUICK_ACCESS.map((q) => (
+                            {QUICK_ACCESS.map((q) => {
+                                // Atalho da Agenda usa a marca; resolve com o hook
+                                // (o array é module-level e não enxerga a marca custom).
+                                const qColor = q.key === "agenda" ? colors.purple[600] : q.color;
+                                return (
                                 <View key={q.key} style={{ width: "48%" }}>
                                     <KCard
                                         variant="tinted"
@@ -358,12 +362,12 @@ export default function DashboardScreen() {
                                                     width: 32,
                                                     height: 32,
                                                     borderRadius: radius.sm,
-                                                    backgroundColor: q.color + "1A",
+                                                    backgroundColor: qColor + "1A",
                                                     alignItems: "center",
                                                     justifyContent: "center",
                                                 }}
                                             >
-                                                <q.icon size={16} color={q.color} strokeWidth={2.4} />
+                                                <q.icon size={16} color={qColor} strokeWidth={2.4} />
                                             </View>
                                             <Text
                                                 style={{
@@ -379,7 +383,8 @@ export default function DashboardScreen() {
                                         </View>
                                     </KCard>
                                 </View>
-                            ))}
+                                );
+                            })}
                         </View>
                     </Animated.View>
 

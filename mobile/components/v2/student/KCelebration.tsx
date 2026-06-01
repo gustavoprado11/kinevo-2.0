@@ -37,6 +37,7 @@ import Svg, { Rect } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { v2 } from '@kinevo/shared/tokens';
 import { useV2Colors, useIsDark } from '../../../hooks/useV2Colors';
+import { toRgba } from '../../../lib/brandColor';
 import {
     generateConfettiParticles,
     type ConfettiParticle,
@@ -100,7 +101,13 @@ export function KCelebration({
 }: KCelebrationProps) {
     const colors = useV2Colors();
     const isDark = useIsDark();
-    const cfg = TYPE_CONFIG[type];
+    const baseCfg = TYPE_CONFIG[type];
+    // O accent do tipo 'workout-complete' é a marca do estúdio — rebrand via
+    // colors.purple[N]. A palette de confetti ('purple') é decorativa (multi-hue)
+    // e permanece intacta.
+    const cfg = type === 'workout-complete'
+        ? { ...baseCfg, accent: colors.purple[600], accentBg: toRgba(colors.purple[600], 0.16) }
+        : baseCfg;
 
     const cardScale = useSharedValue(0.9);
     const cardOpacity = useSharedValue(0);

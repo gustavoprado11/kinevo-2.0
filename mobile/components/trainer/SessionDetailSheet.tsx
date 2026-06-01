@@ -21,6 +21,8 @@ import {
 } from "lucide-react-native";
 import { useSessionDetails } from "../../hooks/useSessionDetails";
 import type { SessionItem, SessionSetLog } from "../../hooks/useSessionDetails";
+import { useV2Colors } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 
 // ── Helpers ──
 
@@ -124,6 +126,7 @@ function StatCard({
 // ── Exercise Log ──
 
 function ExerciseLogItem({ item }: { item: SessionItem }) {
+    const colors = useV2Colors();
     const hasLogs = item.setLogs.length > 0;
     const functionLabels: Record<string, string> = {
         warmup: "Aquec.",
@@ -142,8 +145,8 @@ function ExerciseLogItem({ item }: { item: SessionItem }) {
                         {item.exerciseName || "Exercício"}
                     </Text>
                     {functionLabel && (
-                        <View style={{ backgroundColor: "#f5f3ff", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                            <Text style={{ fontSize: 9, fontWeight: "700", color: "#7c3aed" }}>{functionLabel}</Text>
+                        <View style={{ backgroundColor: colors.purple[100], paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                            <Text style={{ fontSize: 9, fontWeight: "700", color: colors.purple[600] }}>{functionLabel}</Text>
                         </View>
                     )}
                 </View>
@@ -267,14 +270,15 @@ function NoteLogItem({ item }: { item: SessionItem }) {
 // ── Superset Log ──
 
 function SupersetLogItem({ item }: { item: SessionItem }) {
+    const colors = useV2Colors();
     const childCount = item.children?.length || 0;
     const label = childCount <= 2 ? "Bi-set" : childCount === 3 ? "Tri-set" : `Super-set (${childCount})`;
 
     return (
-        <View style={{ borderRadius: 14, borderWidth: 1, borderColor: "rgba(124,58,237,0.2)", overflow: "hidden" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(124,58,237,0.05)", paddingHorizontal: 14, paddingVertical: 8 }}>
-                <Layers size={13} color="#7c3aed" />
-                <Text style={{ fontSize: 10, fontWeight: "800", color: "#7c3aed", textTransform: "uppercase", letterSpacing: 1 }}>{label}</Text>
+        <View style={{ borderRadius: 14, borderWidth: 1, borderColor: toRgba(colors.purple[600], 0.2), overflow: "hidden" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: toRgba(colors.purple[600], 0.05), paddingHorizontal: 14, paddingVertical: 8 }}>
+                <Layers size={13} color={colors.purple[600]} />
+                <Text style={{ fontSize: 10, fontWeight: "800", color: colors.purple[600], textTransform: "uppercase", letterSpacing: 1 }}>{label}</Text>
                 {item.restSeconds != null && (
                     <Text style={{ fontSize: 10, color: "#94a3b8", marginLeft: "auto" as any }}>Descanso: {item.restSeconds}s</Text>
                 )}
@@ -310,6 +314,7 @@ interface SessionDetailSheetProps {
 }
 
 export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetailSheetProps) {
+    const colors = useV2Colors();
     const { data, isLoading, error, fetchDetails, reset } = useSessionDetails();
 
     useEffect(() => {
@@ -345,7 +350,7 @@ export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetai
                 {/* Content */}
                 {isLoading ? (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                        <ActivityIndicator size="large" color="#7c3aed" />
+                        <ActivityIndicator size="large" color={colors.purple[600]} />
                         <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 12 }}>Carregando...</Text>
                     </View>
                 ) : error ? (
@@ -365,7 +370,7 @@ export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetai
                         {/* Session Header */}
                         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
                             <View style={{ flex: 1, marginRight: 16 }}>
-                                <Text style={{ fontSize: 10, fontWeight: "900", color: "#7c3aed", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6 }}>
+                                <Text style={{ fontSize: 10, fontWeight: "900", color: colors.purple[600], textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6 }}>
                                     Treino Executado
                                 </Text>
                                 <Text style={{ fontSize: 22, fontWeight: "900", color: "#0f172a", letterSpacing: -0.5 }} numberOfLines={2}>
@@ -381,7 +386,7 @@ export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetai
                         {/* Stats Grid */}
                         <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
                             <StatCard icon={Clock} iconColor="#3b82f6" label="Duração" value={formatDuration(data.stats.durationSeconds)} />
-                            <StatCard icon={Dumbbell} iconColor="#7c3aed" label="Exercícios" value={String(data.stats.exerciseCount)} />
+                            <StatCard icon={Dumbbell} iconColor={colors.purple[600]} label="Exercícios" value={String(data.stats.exerciseCount)} />
                         </View>
                         <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
                             <StatCard

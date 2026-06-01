@@ -17,6 +17,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { translateAuthError } from "../../lib/auth-errors";
 import { Feather } from "@expo/vector-icons";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -36,6 +37,7 @@ function maskEmail(email: string): string {
 export default function VerifyEmailScreen() {
     const { user } = useAuth();
     const router = useRouter();
+    const colors = useV2Colors();
     const currentEmail = user?.email ?? "";
 
     const [mode, setMode] = useState<"confirm" | "change">("confirm");
@@ -117,7 +119,7 @@ export default function VerifyEmailScreen() {
                     {/* Header */}
                     <View className="items-center mb-10">
                         <View className="w-20 h-20 bg-gray-900 rounded-full items-center justify-center mb-6">
-                            <Feather name="mail" size={40} color="#a855f7" />
+                            <Feather name="mail" size={40} color={colors.purple[400]} />
                         </View>
                         <Text className="text-3xl font-bold text-white tracking-tight mb-2">
                             Verifique seu e-mail
@@ -185,7 +187,7 @@ export default function VerifyEmailScreen() {
                                 <Feather
                                     name="mail"
                                     size={20}
-                                    color={isNewEmailFocused ? "#a855f7" : "#9ca3af"}
+                                    color={isNewEmailFocused ? colors.purple[400] : "#9ca3af"}
                                     style={{ marginRight: 12 }}
                                 />
                                 <TextInput

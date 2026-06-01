@@ -18,6 +18,7 @@ import { walletFetch } from "../../lib/wallet-api";
 import { useRoleMode } from "../../contexts/RoleModeContext";
 import type { TrainerPlan } from "../../hooks/useTrainerPlans";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
@@ -243,7 +244,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                 }}>
                     {step !== "student" ? (
                         <TouchableOpacity onPress={handleBack} hitSlop={8}>
-                            <Text style={{ fontSize: 15, color: "#7c3aed", fontWeight: "600" }}>Voltar</Text>
+                            <Text style={{ fontSize: 15, color: colors.purple[600], fontWeight: "600" }}>Voltar</Text>
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity onPress={onClose} hitSlop={8}>
@@ -265,7 +266,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                     {step === "student" && (
                         loadingStudents ? (
                             <View style={{ paddingTop: 40, alignItems: "center" }}>
-                                <ActivityIndicator color="#7c3aed" size="large" />
+                                <ActivityIndicator color={colors.purple[600]} size="large" />
                             </View>
                         ) : students.length === 0 ? (
                             <View style={{ paddingTop: 40, alignItems: "center" }}>
@@ -302,7 +303,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                                                     backgroundColor: colors.purple[100], alignItems: "center",
                                                     justifyContent: "center", marginRight: 12,
                                                 }}>
-                                                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#7c3aed" }}>{initials}</Text>
+                                                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.purple[600] }}>{initials}</Text>
                                                 </View>
                                             )}
                                             <Text style={{ flex: 1, fontSize: 15, fontWeight: "500", color: colors.text.primary }}>
@@ -342,7 +343,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                                             backgroundColor: colors.purple[100], alignItems: "center",
                                             justifyContent: "center", marginRight: 14,
                                         }}>
-                                            <Icon size={18} color="#7c3aed" />
+                                            <Icon size={18} color={colors.purple[600]} />
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.primary }}>
@@ -444,10 +445,10 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
 
                             {/* Info text */}
                             {isAsaas(selectedBilling) && (
-                                <View style={{ backgroundColor: "rgba(124,58,237,0.12)", borderRadius: 12, padding: 14, marginBottom: 20 }}>
+                                <View style={{ backgroundColor: toRgba(colors.purple[600], 0.12), borderRadius: 12, padding: 14, marginBottom: 20 }}>
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                        <LinkIcon size={14} color="#7c3aed" />
-                                        <Text style={{ fontSize: 13, color: "#7c3aed", fontWeight: "500", flex: 1 }}>
+                                        <LinkIcon size={14} color={colors.purple[600]} />
+                                        <Text style={{ fontSize: 13, color: colors.purple[600], fontWeight: "500", flex: 1 }}>
                                             {selectedBilling === "asaas_recurring"
                                                 ? "Assinatura no cartão de crédito (cobrança automática todo ciclo). Um link é gerado para o aluno cadastrar o cartão."
                                                 : "Um link de pagamento (PIX, cartão ou boleto) será gerado para compartilhar com o aluno."}
@@ -462,7 +463,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                                 disabled={submitting}
                                 activeOpacity={0.7}
                                 style={{
-                                    backgroundColor: "#7c3aed",
+                                    backgroundColor: colors.purple[600],
                                     borderRadius: 14,
                                     paddingVertical: 16,
                                     alignItems: "center",

@@ -15,6 +15,7 @@ import { X, User, Mail, Phone, Globe, MapPin, AlertCircle } from "lucide-react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useUpdateStudent, type UpdateStudentInput } from "../../../hooks/useUpdateStudent";
+import { useV2Colors } from "../../../hooks/useV2Colors";
 import type { Student, StudentModality } from "../../../types/student";
 
 interface EditStudentModalProps {
@@ -34,6 +35,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function EditStudentModal({ visible, onClose, onSuccess, student }: EditStudentModalProps) {
     const insets = useSafeAreaInsets();
+    const colors = useV2Colors();
     const { updateStudent, isUpdating } = useUpdateStudent();
 
     const [name, setName] = useState(student.name);
@@ -277,7 +279,7 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
                                         gap: 6,
                                         paddingVertical: 12,
                                         borderRadius: 10,
-                                        backgroundColor: isActive ? "#7c3aed" : "transparent",
+                                        backgroundColor: isActive ? colors.purple[600] : "transparent",
                                     }}
                                 >
                                     <Icon size={16} color={isActive ? "#ffffff" : "#94a3b8"} />
@@ -314,7 +316,7 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
                         accessibilityLabel="Salvar alterações"
                         accessibilityRole="button"
                         style={{
-                            backgroundColor: canSubmit ? "#7c3aed" : "#d1d5db",
+                            backgroundColor: canSubmit ? colors.purple[600] : "#d1d5db",
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: "center",

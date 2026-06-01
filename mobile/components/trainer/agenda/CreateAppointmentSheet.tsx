@@ -312,9 +312,9 @@ export function CreateAppointmentSheet({
                     </Text>
                     <TouchableOpacity onPress={handleSubmit} disabled={submitting} hitSlop={8}>
                         {submitting ? (
-                            <ActivityIndicator size="small" color="#7c3aed" />
+                            <ActivityIndicator size="small" color={colors.purple[600]} />
                         ) : (
-                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#7c3aed" }}>
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.purple[600] }}>
                                 Salvar
                             </Text>
                         )}
@@ -337,7 +337,7 @@ export function CreateAppointmentSheet({
                                 borderRadius: 12,
                                 backgroundColor: colors.purple[100],
                                 borderWidth: 1,
-                                borderColor: "#7c3aed",
+                                borderColor: colors.purple[600],
                             }}
                         >
                             {selectedStudent.avatar_url ? (
@@ -357,7 +357,7 @@ export function CreateAppointmentSheet({
                                         marginRight: 10,
                                     }}
                                 >
-                                    <Text style={{ fontSize: 12, fontWeight: "700", color: "#7c3aed" }}>
+                                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.purple[600] }}>
                                         {initialsOf(selectedStudent.name)}
                                     </Text>
                                 </View>
@@ -365,7 +365,7 @@ export function CreateAppointmentSheet({
                             <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
                                 {selectedStudent.name}
                             </Text>
-                            <Text style={{ fontSize: 12, color: "#7c3aed", fontWeight: "600" }}>Trocar</Text>
+                            <Text style={{ fontSize: 12, color: colors.purple[600], fontWeight: "600" }}>Trocar</Text>
                         </Pressable>
                     ) : (
                         <View
@@ -388,7 +388,7 @@ export function CreateAppointmentSheet({
                                 />
                             </View>
                             {studentsLoading ? (
-                                <ActivityIndicator size="small" color="#7c3aed" style={{ marginVertical: 16 }} />
+                                <ActivityIndicator size="small" color={colors.purple[600]} style={{ marginVertical: 16 }} />
                             ) : (
                                 // Render the student list inline (no nested vertical
                                 // ScrollView). A nested ScrollView inside
@@ -474,9 +474,9 @@ export function CreateAppointmentSheet({
                                         paddingVertical: 10,
                                         alignItems: "center",
                                         borderRadius: 12,
-                                        backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
+                                        backgroundColor: selected ? colors.purple[600] : colors.surface.card2,
                                         borderWidth: 1,
-                                        borderColor: selected ? "#7c3aed" : colors.border.default,
+                                        borderColor: selected ? colors.purple[600] : colors.border.default,
                                     }}
                                 >
                                     <Text
@@ -535,9 +535,9 @@ export function CreateAppointmentSheet({
                                         paddingVertical: 8,
                                         paddingHorizontal: 14,
                                         borderRadius: 100,
-                                        backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
+                                        backgroundColor: selected ? colors.purple[600] : colors.surface.card2,
                                         borderWidth: 1,
-                                        borderColor: selected ? "#7c3aed" : colors.border.default,
+                                        borderColor: selected ? colors.purple[600] : colors.border.default,
                                     }}
                                 >
                                     <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : colors.text.primary }}>
@@ -565,9 +565,9 @@ export function CreateAppointmentSheet({
                                         paddingVertical: 10,
                                         borderRadius: 10,
                                         alignItems: "center",
-                                        backgroundColor: selected ? "#7c3aed" : colors.surface.card2,
+                                        backgroundColor: selected ? colors.purple[600] : colors.surface.card2,
                                         borderWidth: 1,
-                                        borderColor: selected ? "#7c3aed" : colors.border.default,
+                                        borderColor: selected ? colors.purple[600] : colors.border.default,
                                     }}
                                 >
                                     <Text style={{ fontSize: 13, fontWeight: "600", color: selected ? "#ffffff" : colors.text.primary }}>
@@ -598,7 +598,7 @@ export function CreateAppointmentSheet({
                                         borderRadius: 12,
                                         backgroundColor: selected ? colors.purple[100] : colors.surface.card2,
                                         borderWidth: 1,
-                                        borderColor: selected ? "#7c3aed" : colors.border.default,
+                                        borderColor: selected ? colors.purple[600] : colors.border.default,
                                     }}
                                 >
                                     <View style={{ flex: 1 }}>
@@ -609,7 +609,7 @@ export function CreateAppointmentSheet({
                                             {opt.hint}
                                         </Text>
                                     </View>
-                                    {selected && <Check size={18} color="#7c3aed" />}
+                                    {selected && <Check size={18} color={colors.purple[600]} />}
                                 </Pressable>
                             );
                         })}

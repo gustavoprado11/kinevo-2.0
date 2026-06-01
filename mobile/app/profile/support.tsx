@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, Linking, Alert } from "react-native";
 import { Stack } from "expo-router";
 import { MessageCircle, HelpCircle } from "lucide-react-native";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 
 // Número oficial de suporte (mesmo usado no menu do treinador em more.tsx).
 const WHATSAPP_NUMBER = "5531999064997";
@@ -48,13 +49,13 @@ export default function SupportScreen() {
                             width: 56,
                             height: 56,
                             borderRadius: 28,
-                            backgroundColor: "rgba(124,58,237,0.12)",
+                            backgroundColor: toRgba(colors.purple[600], 0.12),
                             alignItems: "center",
                             justifyContent: "center",
                             marginBottom: 16,
                         }}
                     >
-                        <HelpCircle size={28} color="#7c3aed" strokeWidth={1.5} />
+                        <HelpCircle size={28} color={colors.purple[600]} strokeWidth={1.5} />
                     </View>
                     <Text
                         style={{

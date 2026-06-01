@@ -65,7 +65,15 @@ function ToastBody({
   text2?: string;
 }) {
   const colors = useV2Colors();
-  const accent = ACCENT[variant];
+  const accent =
+    variant === "info"
+      ? {
+          borderLeft: colors.purple[600],
+          icon: colors.purple[600],
+          title: colors.purple[700],
+          subtitle: colors.purple[800],
+        }
+      : ACCENT[variant];
   const Icon =
     variant === "success" ? CheckCircle : variant === "error" ? AlertCircle : Info;
 

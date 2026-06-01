@@ -130,7 +130,7 @@ export default function WalletScreen() {
                         style={{ flex: 1 }}
                         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 100 }}
                         showsVerticalScrollIndicator={false}
-                        refreshControl={<RefreshControl refreshing={isRefreshing || balance.isRefreshing} onRefresh={onRefresh} tintColor="#7c3aed" />}
+                        refreshControl={<RefreshControl refreshing={isRefreshing || balance.isRefreshing} onRefresh={onRefresh} tintColor={colors.purple[600]} />}
                     >
                         {error && !summary ? (
                             <View style={{ backgroundColor: colors.semantic.danger.bg, borderRadius: 16, padding: 16, marginTop: 8 }}>

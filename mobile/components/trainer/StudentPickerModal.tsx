@@ -18,6 +18,7 @@ import { useTrainingRoomStore, MAX_SIMULTANEOUS_STUDENTS } from '../../stores/tr
 import type { SessionSetupData } from '../../stores/training-room-store';
 import { useRoleMode } from '../../contexts/RoleModeContext';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface StudentPickerModalProps {
     visible: boolean;
@@ -263,7 +264,7 @@ export function StudentPickerModal({ visible, onClose, initialStudentId }: Stude
                             onPress={() => setSelectedStudent(null)}
                             style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
                         >
-                            <ChevronLeft size={18} color="#7c3aed" />
+                            <ChevronLeft size={18} color={colors.purple[600]} />
                             <Text style={{ fontSize: 14, color: colors.purple[600], fontWeight: '500' }}>
                                 Voltar
                             </Text>
@@ -315,7 +316,7 @@ export function StudentPickerModal({ visible, onClose, initialStudentId }: Stude
                         {/* Student list */}
                         {isLoading ? (
                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                                <ActivityIndicator size="small" color="#7c3aed" />
+                                <ActivityIndicator size="small" color={colors.purple[600]} />
                             </View>
                         ) : filtered.length === 0 ? (
                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -523,9 +524,9 @@ function WorkoutOptionButton({
                 padding: 12,
                 borderRadius: 12,
                 marginBottom: 6,
-                backgroundColor: isSelected ? 'rgba(124, 58, 237, 0.08)' : colors.surface.card,
+                backgroundColor: isSelected ? toRgba(colors.purple[600], 0.08) : colors.surface.card,
                 borderWidth: 1,
-                borderColor: isSelected ? 'rgba(124, 58, 237, 0.3)' : colors.border.subtle,
+                borderColor: isSelected ? toRgba(colors.purple[600], 0.3) : colors.border.subtle,
             }}
         >
             <View
@@ -533,19 +534,19 @@ function WorkoutOptionButton({
                     width: 32,
                     height: 32,
                     borderRadius: 10,
-                    backgroundColor: isSelected ? 'rgba(124, 58, 237, 0.12)' : '#f8fafc',
+                    backgroundColor: isSelected ? toRgba(colors.purple[600], 0.12) : '#f8fafc',
                     alignItems: 'center',
                     justifyContent: 'center',
                 }}
             >
-                <Dumbbell size={16} color={isSelected ? '#7c3aed' : '#94a3b8'} />
+                <Dumbbell size={16} color={isSelected ? colors.purple[600] : '#94a3b8'} />
             </View>
             <Text
                 style={{
                     flex: 1,
                     fontSize: 14,
                     fontWeight: '500',
-                    color: isSelected ? '#7c3aed' : '#0f172a',
+                    color: isSelected ? colors.purple[600] : '#0f172a',
                 }}
             >
                 {workout.name}

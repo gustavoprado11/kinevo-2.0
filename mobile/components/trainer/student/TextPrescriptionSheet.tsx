@@ -25,6 +25,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
 import { toast } from "@/lib/toast";
 import { colors } from "@/theme";
+import { useV2Colors } from "../../../hooks/useV2Colors";
+import { toRgba } from "../../../lib/brandColor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mirrored from web)
@@ -634,6 +636,7 @@ function GroupedExerciseList({
     exercises: ParsedExercise[];
     workoutIndex: number;
 }) {
+    const v2 = useV2Colors();
     // Build groups: consecutive exercises with same superset_group are grouped
     const groups: ExerciseGroup[] = [];
     const processedGroups = new Set<string>();
@@ -688,7 +691,7 @@ function GroupedExerciseList({
                                 paddingHorizontal: 14,
                                 paddingTop: 10,
                                 paddingBottom: 4,
-                                backgroundColor: "rgba(124,58,237,0.04)",
+                                backgroundColor: toRgba(v2.purple[600], 0.04),
                             }}
                         >
                             <Link size={12} color={colors.brand.primary} />
@@ -737,6 +740,7 @@ function ExerciseRow({
     isLast: boolean;
     inSuperset?: boolean;
 }) {
+    const v2 = useV2Colors();
     if (exercise.matched) {
         return (
             <View
@@ -750,7 +754,7 @@ function ExerciseRow({
                     borderBottomWidth: isLast ? 0 : 0.5,
                     borderBottomColor: colors.border.primary,
                     backgroundColor: inSuperset
-                        ? "rgba(124,58,237,0.04)"
+                        ? toRgba(v2.purple[600], 0.04)
                         : undefined,
                 }}
             >

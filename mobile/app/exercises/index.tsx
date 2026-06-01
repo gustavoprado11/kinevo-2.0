@@ -292,14 +292,14 @@ export default function ExercisesListScreen() {
                                 justifyContent: "center",
                                 alignItems: "center",
                                 borderRadius: 18,
-                                backgroundColor: muscleFilter === null ? "#7c3aed" : "#ffffff",
+                                backgroundColor: muscleFilter === null ? colors.purple[600] : colors.surface.card,
                                 borderWidth: 1,
-                                borderColor: muscleFilter === null ? "#7c3aed" : "#e2e8f0",
+                                borderColor: muscleFilter === null ? colors.purple[600] : colors.border.default,
                             }}
                             accessibilityLabel="Todos os grupos musculares"
                             accessibilityRole="button"
                         >
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: muscleFilter === null ? "#ffffff" : "#64748b" }}>
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: muscleFilter === null ? "#ffffff" : colors.text.secondary }}>
                                 Todos
                             </Text>
                         </TouchableOpacity>
@@ -316,14 +316,14 @@ export default function ExercisesListScreen() {
                                     justifyContent: "center",
                                     alignItems: "center",
                                     borderRadius: 18,
-                                    backgroundColor: muscleFilter === mg.id ? "#7c3aed" : "#ffffff",
+                                    backgroundColor: muscleFilter === mg.id ? colors.purple[600] : colors.surface.card,
                                     borderWidth: 1,
-                                    borderColor: muscleFilter === mg.id ? "#7c3aed" : "#e2e8f0",
+                                    borderColor: muscleFilter === mg.id ? colors.purple[600] : colors.border.default,
                                 }}
                                 accessibilityLabel={mg.name}
                                 accessibilityRole="button"
                             >
-                                <Text style={{ fontSize: 13, fontWeight: "600", color: muscleFilter === mg.id ? "#ffffff" : "#64748b" }}>
+                                <Text style={{ fontSize: 13, fontWeight: "600", color: muscleFilter === mg.id ? "#ffffff" : colors.text.secondary }}>
                                     {mg.name}
                                 </Text>
                             </TouchableOpacity>
@@ -384,7 +384,7 @@ export default function ExercisesListScreen() {
                             backgroundColor: colors.purple[600],
                             alignItems: "center",
                             justifyContent: "center",
-                            shadowColor: "#7c3aed",
+                            shadowColor: colors.purple[600],
                             shadowOffset: { width: 0, height: 4 },
                             shadowOpacity: 0.3,
                             shadowRadius: 8,

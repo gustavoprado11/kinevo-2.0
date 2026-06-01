@@ -143,7 +143,9 @@ export function KRing({
     const palette = useV2Colors();
     const isDark = useIsDark();
     const { size: svgSize, radius, strokeWidth } = RING_SIZE_MAP[size];
-    const primaryColor = COLOR_MAP[color];
+    // Ring roxo segue a marca do estúdio (rebrand via palette.purple[N]);
+    // demais cores semânticas (red/green/cyan/gold) ficam fixas.
+    const primaryColor = color === 'purple' ? palette.purple[600] : COLOR_MAP[color];
 
     const bgAlpha = isDark ? 0.18 : 0.14;
     const bgFor = (hex: string) => hexToRgba(hex, bgAlpha);

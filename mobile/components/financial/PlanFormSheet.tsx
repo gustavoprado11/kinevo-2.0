@@ -196,7 +196,7 @@ export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: Pl
                                             paddingVertical: 12,
                                             borderRadius: 12,
                                             alignItems: "center",
-                                            backgroundColor: active ? "#7c3aed" : isEditing ? colors.surface.card2 : colors.surface.card,
+                                            backgroundColor: active ? colors.purple[600] : isEditing ? colors.surface.card2 : colors.surface.card,
                                             borderWidth: active ? 0 : 1,
                                             borderColor: colors.border.default,
                                         }}
@@ -244,7 +244,7 @@ export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: Pl
                             disabled={loading}
                             activeOpacity={0.7}
                             style={{
-                                backgroundColor: "#7c3aed",
+                                backgroundColor: colors.purple[600],
                                 borderRadius: 14,
                                 paddingVertical: 16,
                                 alignItems: "center",

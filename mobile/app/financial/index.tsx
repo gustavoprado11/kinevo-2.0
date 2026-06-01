@@ -35,6 +35,7 @@ import { AttentionCard } from "../../components/financial/AttentionCard";
 import { PendingChargeRow } from "../../components/financial/PendingChargeRow";
 import { AwaitingPayoutBanner } from "../../components/financial/AwaitingPayoutBanner";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 import type { FinancialTransaction } from "../../types/financial";
 import type { PendingCharge } from "../../hooks/useFinancialDashboard";
 
@@ -121,7 +122,7 @@ export default function FinancialDashboardScreen() {
                         style={{ flex: 1 }}
                         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 100 }}
                         showsVerticalScrollIndicator={false}
-                        refreshControl={<RefreshControl refreshing={isRefreshing || balance.isRefreshing} onRefresh={onRefresh} tintColor="#7c3aed" />}
+                        refreshControl={<RefreshControl refreshing={isRefreshing || balance.isRefreshing} onRefresh={onRefresh} tintColor={colors.purple[600]} />}
                     >
                         {/* Subtítulo */}
                         <Text style={{ fontSize: 13, color: colors.text.tertiary, marginBottom: 16 }}>
@@ -130,7 +131,7 @@ export default function FinancialDashboardScreen() {
 
                         {/* HERO: Carteira */}
                         {walletApproved ? (
-                            <View style={{ backgroundColor: "rgba(124,58,237,0.06)", borderWidth: 1, borderColor: "rgba(124,58,237,0.15)", borderRadius: 20, padding: 20, marginBottom: 20 }}>
+                            <View style={{ backgroundColor: toRgba(colors.purple[600], 0.06), borderWidth: 1, borderColor: toRgba(colors.purple[600], 0.15), borderRadius: 20, padding: 20, marginBottom: 20 }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 }}>
                                     <Text style={{ fontSize: 12, fontWeight: "500", color: colors.text.secondary }}>Saldo disponível</Text>
                                     {wallet?.mode === "linked" ? (
@@ -205,7 +206,7 @@ export default function FinancialDashboardScreen() {
                                 <StatCard label="Receita do mês" value={formatBRL(data?.monthlyRevenue ?? 0)} icon={DollarSign} iconColor="#16a34a" iconBg="#f0fdf4" />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <StatCard label="Alunos pagantes" value={payingCount} icon={Users} iconColor="#7c3aed" iconBg="#f5f3ff" />
+                                <StatCard label="Alunos pagantes" value={payingCount} icon={Users} iconColor={colors.purple[600]} iconBg={colors.purple[100]} />
                             </View>
                         </View>
                         <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>

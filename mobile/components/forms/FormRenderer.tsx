@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as SecureStore from "expo-secure-store";
 import { FormFieldRenderer, type Question } from "./FormFieldRenderer";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -341,16 +342,16 @@ export function FormRenderer(props: FormRendererProps) {
                         marginTop: 10,
                         borderRadius: 16,
                         overflow: "hidden",
-                        shadowColor: "#8b5cf6",
+                        shadowColor: colors.purple[500],
                         shadowOffset: { width: 0, height: 4 },
                         shadowOpacity: 0.3,
                         shadowRadius: 10,
                         elevation: 6,
                     }}
                 >
-                    <BlurView intensity={80} tint="light" style={{ backgroundColor: "rgba(124, 58, 237, 0.85)" }}>
+                    <BlurView intensity={80} tint="light" style={{ backgroundColor: toRgba(colors.purple[600], 0.85) }}>
                         <LinearGradient
-                            colors={["rgba(139, 92, 246, 0.5)", "rgba(109, 40, 217, 0.5)"]}
+                            colors={[toRgba(colors.purple[500], 0.5), toRgba(colors.purple[700], 0.5)]}
                             style={{
                                 paddingVertical: 16,
                                 alignItems: "center",

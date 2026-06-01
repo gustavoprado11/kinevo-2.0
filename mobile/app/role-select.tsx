@@ -111,13 +111,13 @@ export default function RoleSelectScreen() {
                                     width: 52,
                                     height: 52,
                                     borderRadius: 16,
-                                    backgroundColor: "#f5f3ff",
+                                    backgroundColor: colors.purple[100],
                                     alignItems: "center",
                                     justifyContent: "center",
                                     marginRight: 16,
                                 }}
                             >
-                                <Users size={24} color="#7c3aed" />
+                                <Users size={24} color={colors.purple[600]} />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={{ fontSize: 17, fontWeight: "700", color: "#0f172a" }}>

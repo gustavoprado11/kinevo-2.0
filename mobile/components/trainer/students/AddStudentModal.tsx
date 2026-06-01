@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 import { useCreateStudent } from "../../../hooks/useCreateStudent";
 import { useV2Colors } from "../../../hooks/useV2Colors";
+import { toRgba } from "../../../lib/brandColor";
 
 let Clipboard: any = null;
 try {
@@ -293,7 +294,7 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                                                 gap: 6,
                                                 paddingVertical: 12,
                                                 borderRadius: 10,
-                                                backgroundColor: isActive ? "#7c3aed" : "transparent",
+                                                backgroundColor: isActive ? colors.purple[600] : "transparent",
                                             }}
                                         >
                                             <Icon size={16} color={isActive ? "#ffffff" : colors.text.quaternary} />
@@ -326,7 +327,7 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                                 accessibilityLabel="Criar aluno"
                                 accessibilityRole="button"
                                 style={{
-                                    backgroundColor: canSubmit ? "#7c3aed" : colors.surface.card2,
+                                    backgroundColor: canSubmit ? colors.purple[600] : colors.surface.card2,
                                     borderRadius: 14,
                                     paddingVertical: 16,
                                     alignItems: "center",
@@ -388,7 +389,7 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                                     style={{
                                         fontSize: 15,
                                         fontWeight: "700",
-                                        color: "#7c3aed",
+                                        color: colors.purple[600],
                                         marginTop: 4,
                                         fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
                                     }}
@@ -433,19 +434,19 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                                     alignItems: "center",
                                     justifyContent: "center",
                                     gap: 8,
-                                    backgroundColor: "rgba(124,58,237,0.10)",
+                                    backgroundColor: toRgba(colors.purple[600], 0.10),
                                     borderRadius: 14,
                                     paddingVertical: 16,
                                     borderWidth: 1,
-                                    borderColor: "rgba(124,58,237,0.20)",
+                                    borderColor: toRgba(colors.purple[600], 0.20),
                                 }}
                             >
                                 {copied ? (
                                     <Check size={18} color="#16a34a" />
                                 ) : (
-                                    <Copy size={18} color="#7c3aed" />
+                                    <Copy size={18} color={colors.purple[600]} />
                                 )}
-                                <Text style={{ fontSize: 15, fontWeight: "600", color: copied ? "#16a34a" : "#7c3aed" }}>
+                                <Text style={{ fontSize: 15, fontWeight: "600", color: copied ? "#16a34a" : colors.purple[600] }}>
                                     {copied ? "Copiado!" : "Copiar credenciais"}
                                 </Text>
                             </TouchableOpacity>
@@ -482,7 +483,7 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                             accessibilityLabel="Concluir"
                             accessibilityRole="button"
                             style={{
-                                backgroundColor: "#7c3aed",
+                                backgroundColor: colors.purple[600],
                                 borderRadius: 14,
                                 paddingVertical: 16,
                                 alignItems: "center",

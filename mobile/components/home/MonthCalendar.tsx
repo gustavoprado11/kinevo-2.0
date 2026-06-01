@@ -11,6 +11,7 @@ import {
     type ScheduledWorkoutRef,
     type SessionRef,
 } from "@kinevo/shared/utils/schedule-projection";
+import { useV2Colors } from "../../hooks/useV2Colors";
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -50,6 +51,7 @@ export function MonthCalendar({
     onCollapse,
     fetchRange,
 }: MonthCalendarProps) {
+    const colors = useV2Colors();
     const [anchorDate, setAnchorDate] = useState(() => new Date(selectedDate));
     const selectedKey = toDateKey(selectedDate);
 
@@ -158,7 +160,7 @@ export function MonthCalendar({
                     const isSelected = day.dateKey === selectedKey;
                     const isToday = day.isToday;
                     const isOutOfProgram = day.status === "out_of_program";
-                    const dotColor = STATUS_DOT_COLORS[day.status];
+                    const dotColor = day.status === "done" ? colors.purple[600] : STATUS_DOT_COLORS[day.status];
                     const isClickable = isCurrentMonth && !isOutOfProgram;
 
                     return (
@@ -188,9 +190,9 @@ export function MonthCalendar({
                                     borderRadius: 16,
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    backgroundColor: isSelected ? "#7c3aed" : "transparent",
+                                    backgroundColor: isSelected ? colors.purple[600] : "transparent",
                                     borderWidth: isToday && !isSelected ? 1 : 0,
-                                    borderColor: "#7c3aed",
+                                    borderColor: colors.purple[600],
                                 }}
                             >
                                 <Text
@@ -200,7 +202,7 @@ export function MonthCalendar({
                                         color: isSelected
                                             ? "#ffffff"
                                             : isToday
-                                                ? "#7c3aed"
+                                                ? colors.purple[600]
                                                 : "#334155",
                                     }}
                                 >

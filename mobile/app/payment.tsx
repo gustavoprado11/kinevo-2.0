@@ -56,7 +56,7 @@ export default function StudentPaymentScreen() {
                     <ScrollView
                         style={{ flex: 1 }}
                         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 60 }}
-                        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor="#7c3aed" />}
+                        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor={colors.purple[600]} />}
                     >
                         {error ? (
                             <View style={{ backgroundColor: colors.semantic.danger.bg, borderRadius: 16, padding: 16 }}>

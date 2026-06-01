@@ -139,7 +139,7 @@ function DayCell({
 
             {isToday ? (
                 <LinearGradient
-                    colors={['#8B5CF6', '#7C3AED']}
+                    colors={[colors.purple[500], colors.purple[600]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={[
@@ -147,7 +147,7 @@ function DayCell({
                         styles.dayNumToday,
                         Platform.OS === 'ios'
                             ? {
-                                  shadowColor: '#7C3AED',
+                                  shadowColor: colors.purple[600],
                                   shadowOffset: { width: 0, height: 4 },
                                   shadowOpacity: 0.32,
                                   shadowRadius: 8,
