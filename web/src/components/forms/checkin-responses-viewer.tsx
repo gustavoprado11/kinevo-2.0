@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, ClipboardCheck, BarChart3, CheckCircle2, Type } from 'lucide-react'
+import { X, ClipboardCheck, BarChart3, CheckCircle2, Type, MessageSquare, Pencil, Send, Loader2 } from 'lucide-react'
 
 interface CheckinResponsesViewerProps {
     title: string // "Check-in Pré-treino" / "Check-in Pós-treino"
@@ -10,6 +10,16 @@ interface CheckinResponsesViewerProps {
     schema: { questions?: any[] } | null // schema_snapshot_json
     onClose: () => void
     workoutName?: string // nome do treino vinculado (ex: "Treino A")
+    /**
+     * Quando fornecido, exibe um footer pra o treinador enviar/editar feedback
+     * da avaliação sem sair do modal. Opcional: usos que só visualizam (ex.
+     * check-ins na session-detail-sheet) não passam e o footer não aparece.
+     */
+    feedback?: {
+        initialMessage: string
+        sentAt: string | null
+        onSend: (message: string) => Promise<{ success: boolean; error?: string }>
+    }
 }
 
 // ── Helpers (same logic as submission-detail-sheet) ──
@@ -110,9 +120,35 @@ function CompactAnswer({ question, rawValue }: { question: any; rawValue: any })
 
 // ── Main Component ──
 
-export function CheckinResponsesViewer({ title, date, answers, schema, onClose, workoutName }: CheckinResponsesViewerProps) {
+export function CheckinResponsesViewer({ title, date, answers, schema, onClose, workoutName, feedback }: CheckinResponsesViewerProps) {
     const questions = schema?.questions || []
     const answersMap = answers?.answers || answers || {}
+
+    // Feedback do treinador (estado local; só relevante quando `feedback` é passado).
+    const [feedbackMessage, setFeedbackMessage] = useState(feedback?.initialMessage || '')
+    const [sentAt, setSentAt] = useState<string | null>(feedback?.sentAt ?? null)
+    const [editing, setEditing] = useState(false)
+    const [sending, setSending] = useState(false)
+
+    const handleSendFeedback = async () => {
+        if (!feedback) return
+        const msg = feedbackMessage.trim()
+        if (!msg || sending) return
+        setSending(true)
+        try {
+            const result = await feedback.onSend(msg)
+            if (result.success) {
+                setSentAt(new Date().toISOString())
+                setEditing(false)
+            } else {
+                alert(result.error || 'Erro ao enviar feedback.')
+            }
+        } catch {
+            alert('Erro ao enviar feedback.')
+        } finally {
+            setSending(false)
+        }
+    }
 
     // If no schema, render raw answers
     const renderableQuestions = questions.length > 0
@@ -174,6 +210,61 @@ export function CheckinResponsesViewer({ title, date, answers, schema, onClose, 
                         ))
                     )}
                 </div>
+
+                {/* Feedback footer — só quando habilitado via prop */}
+                {feedback && (
+                    <div className="border-t border-border px-5 py-4">
+                        {sentAt && !editing ? (
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <MessageSquare size={13} className="text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-[11px] text-muted-foreground">Seu feedback enviado</span>
+                                </div>
+                                <div className="bg-muted/40 rounded-xl p-3 text-sm text-foreground border-l-2 border-emerald-500/40 italic whitespace-pre-wrap">
+                                    {feedbackMessage || feedback.initialMessage}
+                                </div>
+                                <button
+                                    onClick={() => setEditing(true)}
+                                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mt-2 transition-colors"
+                                >
+                                    <Pencil size={12} />
+                                    Editar feedback
+                                </button>
+                            </div>
+                        ) : (
+                            <div>
+                                <p className="mb-2 text-xs font-medium text-muted-foreground">Feedback para o aluno</p>
+                                <textarea
+                                    value={feedbackMessage}
+                                    onChange={(e) => setFeedbackMessage(e.target.value)}
+                                    placeholder="Escreva orientações, correções ou parabéns..."
+                                    className="min-h-[80px] w-full rounded-xl border border-border bg-muted/30 p-3 text-sm text-foreground outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 resize-none transition-all"
+                                />
+                                <div className="flex items-center justify-between mt-2 gap-2">
+                                    <span className="text-[10px] text-muted-foreground">O aluno receberá no app</span>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {editing && (
+                                            <button
+                                                onClick={() => { setEditing(false); setFeedbackMessage(feedback.initialMessage) }}
+                                                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={handleSendFeedback}
+                                            disabled={sending || !feedbackMessage.trim()}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                                        >
+                                            {sending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                                            {sending ? 'Enviando…' : 'Enviar feedback'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     )

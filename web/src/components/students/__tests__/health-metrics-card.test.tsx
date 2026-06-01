@@ -7,6 +7,17 @@ vi.mock('@/actions/forms/assign-form', () => ({
     assignFormToStudents: (...args: unknown[]) => assignFormMock(...args),
 }))
 
+// Actions de avaliação são mockadas: o módulo real importa push-notifications →
+// supabase-admin, que exige SUPABASE_SERVICE_ROLE_KEY (ausente nos testes).
+const getSubmissionResponsesMock = vi.fn()
+vi.mock('@/actions/forms/get-submission-responses', () => ({
+    getSubmissionResponses: (...args: unknown[]) => getSubmissionResponsesMock(...args),
+}))
+const sendFormFeedbackMock = vi.fn()
+vi.mock('@/actions/forms/send-form-feedback', () => ({
+    sendFormFeedback: (...args: unknown[]) => sendFormFeedbackMock(...args),
+}))
+
 // ActiveSchedulesList renderiza tabela complexa — mock minimalista pra não
 // importar a árvore inteira nestes testes.
 vi.mock('../active-schedules-list', () => ({

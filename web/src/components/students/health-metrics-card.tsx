@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
     AlertTriangle,
@@ -15,6 +16,9 @@ import {
     Activity,
 } from 'lucide-react'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
+import { getSubmissionResponses, type SubmissionResponses } from '@/actions/forms/get-submission-responses'
+import { sendFormFeedback } from '@/actions/forms/send-form-feedback'
+import { CheckinResponsesViewer } from '@/components/forms/checkin-responses-viewer'
 import { ActiveSchedulesList } from './active-schedules-list'
 import { BodyMetricsTrend } from './body-metrics-trend'
 import type { FormScheduleRow } from '@/actions/forms/form-schedules'
@@ -115,6 +119,26 @@ export function HealthMetricsCard({
     const [dropdownOpen, setDropdownOpen] = useState(false)
     const [sending, setSending] = useState(false)
     const [schedulesExpanded, setSchedulesExpanded] = useState(false)
+    // Visualização inline das respostas da última avaliação (sem sair da tela).
+    const [viewer, setViewer] = useState<SubmissionResponses | null>(null)
+    const [loadingViewer, setLoadingViewer] = useState(false)
+
+    const handleViewSubmission = async () => {
+        if (!lastSubmission || loadingViewer) return
+        setLoadingViewer(true)
+        try {
+            const result = await getSubmissionResponses(lastSubmission.id)
+            if (result.success && result.data) {
+                setViewer(result.data)
+            } else {
+                alert(result.error || 'Não foi possível carregar as respostas')
+            }
+        } catch {
+            alert('Não foi possível carregar as respostas')
+        } finally {
+            setLoadingViewer(false)
+        }
+    }
 
     const handleSendForm = async (templateId: string) => {
         setSending(true)
@@ -353,11 +377,17 @@ export function HealthMetricsCard({
                     )
                 )}
 
-                {/* Last submission */}
+                {/* Last submission — clicável para ver as respostas inline */}
                 {lastSubmission && (
-                    <div className="flex items-start gap-2 rounded-lg -mx-2 px-2 py-1.5">
+                    <button
+                        type="button"
+                        onClick={handleViewSubmission}
+                        disabled={loadingViewer}
+                        className="group flex w-full items-start gap-2 rounded-lg -mx-2 px-2 py-1.5 text-left transition-colors hover:bg-[#F5F5F7] dark:hover:bg-white/5 disabled:opacity-60"
+                        aria-label="Ver respostas da avaliação"
+                    >
                         <FileCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             <p className="text-sm text-[#1C1C1E] dark:text-k-text-secondary">
                                 {categoryLabels[lastSubmission.templateCategory] || lastSubmission.templateCategory}
                                 <span className="text-[#86868B] dark:text-k-text-quaternary ml-1">
@@ -368,7 +398,12 @@ export function HealthMetricsCard({
                                 {lastSubmission.templateTitle}
                             </p>
                         </div>
-                    </div>
+                        {loadingViewer ? (
+                            <Loader2 className="w-4 h-4 shrink-0 mt-0.5 text-[#86868B] dark:text-k-text-quaternary animate-spin" />
+                        ) : (
+                            <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-[#C7C7CC] dark:text-k-text-quaternary transition-colors group-hover:text-violet-500 dark:group-hover:text-violet-400" />
+                        )}
+                    </button>
                 )}
 
                 {/* Recurring schedules — accordion fechado por padrão */}
@@ -393,6 +428,30 @@ export function HealthMetricsCard({
                     </div>
                 )}
             </div>
+
+            {/* Respostas da avaliação — modal inline, read-only.
+             *  Renderizado via portal no body: o card raiz usa backdrop-blur
+             *  (backdrop-filter), que criaria um containing block e prenderia
+             *  o `position: fixed` do modal à área do card em vez da viewport. */}
+            {viewer && createPortal(
+                <CheckinResponsesViewer
+                    title={viewer.title}
+                    date={viewer.submittedAt || ''}
+                    answers={viewer.answers}
+                    schema={viewer.schema}
+                    onClose={() => setViewer(null)}
+                    feedback={{
+                        initialMessage: viewer.feedback,
+                        sentAt: viewer.feedbackSentAt,
+                        onSend: async (message) => {
+                            const result = await sendFormFeedback({ submissionId: viewer.id, message })
+                            if (result.success) router.refresh()
+                            return result
+                        },
+                    }}
+                />,
+                document.body,
+            )}
         </div>
     )
 }
