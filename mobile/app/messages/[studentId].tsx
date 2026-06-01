@@ -5,10 +5,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, Send, Check, CheckCheck, ImageOff, MessageCircle } from 'lucide-react-native';
+import { ChevronLeft, Send, Check, CheckCheck, MessageCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
 import { useTrainerChatRoom, type ChatMessage } from '../../hooks/useTrainerChatRoom';
+import { ChatImage } from '../../components/chat/ChatImage';
 import { useV2Colors } from '../../hooks/useV2Colors';
 
 // ── Helpers ──
@@ -54,7 +55,6 @@ export default function TrainerChatScreen() {
     const [text, setText] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
     const flatListRef = useRef<FlatList>(null);
 
     // Fetch student info
@@ -145,30 +145,14 @@ export default function TrainerChatScreen() {
                             elevation: 1,
                         }),
                     }}>
-                        {item.image_url && (
-                            failedImages.has(item.id) ? (
-                                <View style={{
-                                    width: 220, height: 100, borderRadius: 12,
-                                    backgroundColor: isTrainer ? 'rgba(255,255,255,0.1)' : colors.surface.card2,
-                                    alignItems: 'center', justifyContent: 'center',
-                                    marginBottom: item.content ? 6 : 0,
-                                }}>
-                                    <ImageOff size={24} color={isTrainer ? 'rgba(255,255,255,0.4)' : colors.text.tertiary} />
-                                    <Text style={{ fontSize: 11, color: isTrainer ? 'rgba(255,255,255,0.4)' : colors.text.tertiary, marginTop: 4 }}>
-                                        Imagem indisponível
-                                    </Text>
-                                </View>
-                            ) : (
-                                <Image
-                                    source={{ uri: item.image_url }}
-                                    style={{
-                                        width: 220, height: 160, borderRadius: 12,
-                                        marginBottom: item.content ? 6 : 0,
-                                    }}
-                                    resizeMode="cover"
-                                    onError={() => setFailedImages(prev => new Set(prev).add(item.id))}
-                                />
-                            )
+                        {(item.image_path || item.image_url) && (
+                            <ChatImage
+                                path={item.image_path}
+                                fallbackUrl={item.image_url}
+                                hasContent={!!item.content}
+                                mutedColor={isTrainer ? 'rgba(255,255,255,0.4)' : colors.text.tertiary}
+                                mutedBg={isTrainer ? 'rgba(255,255,255,0.1)' : colors.surface.card2}
+                            />
                         )}
 
                         {item.content && (
@@ -201,7 +185,7 @@ export default function TrainerChatScreen() {
                 </View>
             </View>
         );
-    }, [messages, failedImages]);
+    }, [messages]);
 
     const canSend = text.trim().length > 0 && !isSending;
 

@@ -187,7 +187,7 @@ export async function getMessages(
 
     let query = auth.supabase
         .from('messages')
-        .select('id, student_id, sender_type, sender_id, content, image_url, read_at, created_at')
+        .select('id, student_id, sender_type, sender_id, content, image_url, image_path, read_at, created_at')
         .eq('student_id', studentId)
         .order('created_at', { ascending: false })
         .limit(limit + 1) // Fetch one extra to detect hasMore

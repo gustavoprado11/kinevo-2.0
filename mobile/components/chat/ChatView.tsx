@@ -5,11 +5,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Send, ImagePlus, ImageOff, X, Check, CheckCheck, MessageCircle } from 'lucide-react-native';
+import { ChevronLeft, Send, ImagePlus, X, Check, CheckCheck, MessageCircle } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
 import { useTrainerChat, type ChatMessage } from '../../hooks/useTrainerChat';
+import { ChatImage } from './ChatImage';
 import { useV2Colors } from '../../hooks/useV2Colors';
 import { useBrand } from '../../stores/brandStore';
 import { toRgba } from '../../lib/brandColor';
@@ -86,7 +87,6 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [imageMimeType, setImageMimeType] = useState<string | undefined>(undefined);
     const [isSending, setIsSending] = useState(false);
-    const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
     const flatListRef = useRef<FlatList>(null);
 
     // Load initial messages
@@ -245,30 +245,14 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                             elevation: 1,
                         }),
                     }}>
-                        {item.image_url && (
-                            failedImages.has(item.id) ? (
-                                <View style={{
-                                    width: 220, height: 100, borderRadius: 12,
-                                    backgroundColor: isStudent ? 'rgba(255,255,255,0.1)' : colors.surface.card2,
-                                    alignItems: 'center', justifyContent: 'center',
-                                    marginBottom: item.content ? 6 : 0,
-                                }}>
-                                    <ImageOff size={24} color={isStudent ? 'rgba(255,255,255,0.4)' : colors.text.tertiary} />
-                                    <Text style={{ fontSize: 11, color: isStudent ? 'rgba(255,255,255,0.4)' : colors.text.tertiary, marginTop: 4 }}>
-                                        Imagem indisponível
-                                    </Text>
-                                </View>
-                            ) : (
-                                <Image
-                                    source={{ uri: item.image_url }}
-                                    style={{
-                                        width: 220, height: 160, borderRadius: 12,
-                                        marginBottom: item.content ? 6 : 0,
-                                    }}
-                                    resizeMode="cover"
-                                    onError={() => setFailedImages(prev => new Set(prev).add(item.id))}
-                                />
-                            )
+                        {(item.image_path || item.image_url) && (
+                            <ChatImage
+                                path={item.image_path}
+                                fallbackUrl={item.image_url}
+                                hasContent={!!item.content}
+                                mutedColor={isStudent ? 'rgba(255,255,255,0.4)' : colors.text.tertiary}
+                                mutedBg={isStudent ? 'rgba(255,255,255,0.1)' : colors.surface.card2}
+                            />
                         )}
 
                         {item.content && (

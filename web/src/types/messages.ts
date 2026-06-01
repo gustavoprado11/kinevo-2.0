@@ -5,6 +5,7 @@ export interface Message {
     sender_id: string
     content: string | null
     image_url: string | null
+    image_path?: string | null
     read_at: string | null
     created_at: string
 }

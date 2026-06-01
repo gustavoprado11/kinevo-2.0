@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Check, CheckCheck, ImageOff, Loader2 } from 'lucide-react'
+import { ArrowLeft, Check, CheckCheck, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getMessages, markMessagesAsRead } from '@/app/messages/actions'
 import { MessageInput } from './message-input'
+import { ChatImage } from './chat-image'
 import type { Message } from '@/types/messages'
 
 function getInitials(name: string): string {
@@ -238,26 +239,9 @@ export function ChatPanel({ studentId, studentName, studentAvatar, onBack }: Cha
                                         ? 'bg-[#7C3AED] dark:bg-violet-600 text-white rounded-br-md'
                                         : 'bg-white dark:bg-surface-card text-[#1D1D1F] dark:text-white rounded-bl-md shadow-sm border border-[#D2D2D7]/50 dark:border-k-border-subtle'
                                 }`}>
-                                    {/* Image */}
-                                    {msg.image_url && (
-                                        <a href={msg.image_url} target="_blank" rel="noopener noreferrer" className="block mb-1.5" data-img-container>
-                                            <img
-                                                src={msg.image_url}
-                                                alt=""
-                                                className="max-w-[280px] max-h-[200px] rounded-lg object-cover cursor-pointer"
-                                                onError={(e) => {
-                                                    const target = e.currentTarget
-                                                    target.style.display = 'none'
-                                                    const container = target.closest('[data-img-container]')
-                                                    const fallback = container?.querySelector<HTMLElement>('[data-fallback="img-error"]')
-                                                    if (fallback) fallback.style.display = 'flex'
-                                                }}
-                                            />
-                                            <div data-fallback="img-error" className="hidden items-center justify-center gap-1.5 w-[200px] h-[80px] rounded-lg bg-[#F5F5F7] dark:bg-k-bg-tertiary">
-                                                <ImageOff size={16} className="text-[#86868B] dark:text-k-text-quaternary" />
-                                                <span className="text-[11px] text-[#86868B] dark:text-k-text-quaternary">Imagem indisponível</span>
-                                            </div>
-                                        </a>
+                                    {/* Image (resolves a signed URL from image_path, falls back to image_url) */}
+                                    {(msg.image_path || msg.image_url) && (
+                                        <ChatImage path={msg.image_path} fallbackUrl={msg.image_url} />
                                     )}
                                     {/* Text */}
                                     {msg.content && (

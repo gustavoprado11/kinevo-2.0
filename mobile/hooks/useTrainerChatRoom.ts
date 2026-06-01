@@ -9,6 +9,7 @@ export interface ChatMessage {
     sender_id: string;
     content: string | null;
     image_url: string | null;
+    image_path?: string | null;
     read_at: string | null;
     created_at: string;
 }
@@ -33,7 +34,7 @@ export function useTrainerChatRoom(studentId: string): UseTrainerChatRoomReturn 
     const fetchMessages = useCallback(async (cursor?: string, limit = 50): Promise<{ messages: ChatMessage[]; hasMore: boolean }> => {
         let query = supabase
             .from('messages' as any)
-            .select('id, student_id, sender_type, sender_id, content, image_url, read_at, created_at')
+            .select('id, student_id, sender_type, sender_id, content, image_url, image_path, read_at, created_at')
             .eq('student_id', studentId)
             .order('created_at', { ascending: false })
             .limit(limit + 1);
