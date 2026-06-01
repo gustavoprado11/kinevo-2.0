@@ -751,7 +751,7 @@ export default function WorkoutPlayerScreen() {
         return (
             <ScreenWrapper>
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface.canvas }}>
-                    <ActivityIndicator size="large" color="#8b5cf6" />
+                    <ActivityIndicator size="large" color={colors.purple[500]} />
                     <Text style={{ color: colors.text.tertiary, marginTop: 16 }}>Carregando treino...</Text>
                 </View>
             </ScreenWrapper>
@@ -1026,7 +1026,7 @@ export default function WorkoutPlayerScreen() {
                     disabled={isSubmitting}
                     activeOpacity={0.8}
                     style={{
-                        backgroundColor: allSetsCompleted ? '#7c3aed' : colors.surface.card2,
+                        backgroundColor: allSetsCompleted ? colors.purple[600] : colors.surface.card2,
                         borderRadius: 16,
                         height: 52,
                         alignItems: 'center',

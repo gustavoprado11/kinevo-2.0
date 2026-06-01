@@ -485,7 +485,7 @@ function makeStyles(colors: V2Palette) {
             paddingHorizontal: 24,
         },
         shareButton: {
-            backgroundColor: '#7c3aed',
+            backgroundColor: colors.purple[600],
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',

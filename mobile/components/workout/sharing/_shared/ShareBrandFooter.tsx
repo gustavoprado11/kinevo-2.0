@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { KMark } from './KMark';
-import { SHARE_TOKENS, FONT } from './tokens';
+import { SHARE_TOKENS, useShareTokens, FONT } from './tokens';
 
 interface ShareBrandFooterProps {
     coach: {
@@ -20,6 +20,7 @@ interface ShareBrandFooterProps {
  * Ref: share-cards.jsx → CardFooter.
  */
 export function ShareBrandFooter({ coach, borderColor = 'rgba(0,0,0,0.08)' }: ShareBrandFooterProps) {
+    const bt = useShareTokens();
     const handle = coach?.instagram_handle?.trim() || null;
     const name = coach?.name || 'Kinevo';
     const initial = name.charAt(0).toUpperCase();
@@ -30,8 +31,8 @@ export function ShareBrandFooter({ coach, borderColor = 'rgba(0,0,0,0.08)' }: Sh
                 {coach?.avatar_url ? (
                     <Image source={{ uri: coach.avatar_url }} style={styles.avatar} />
                 ) : (
-                    <View style={[styles.avatar, styles.avatarFallback]}>
-                        <Text style={styles.avatarInitial}>{initial}</Text>
+                    <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: bt.brandSoft }]}>
+                        <Text style={[styles.avatarInitial, { color: bt.brandText }]}>{initial}</Text>
                     </View>
                 )}
                 <View style={{ flexShrink: 1 }}>

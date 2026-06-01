@@ -7,8 +7,9 @@ import { ShareBrandFooter } from './_shared/ShareBrandFooter';
 import { ShareTopRow } from './_shared/ShareTopRow';
 import { ShareGrain } from './_shared/ShareGrain';
 import { ShareAccentStripe } from './_shared/ShareAccentStripe';
-import { SHARE_TOKENS, FONT, CARD_W, CARD_H } from './_shared/tokens';
+import { SHARE_TOKENS, useShareTokens, FONT, CARD_W, CARD_H } from './_shared/tokens';
 import { fmtKg, fmtVolume } from './_shared/formatVolume';
+import { toRgba } from '../../../lib/brandColor';
 
 const MAX_ROWS = 8;
 
@@ -21,6 +22,7 @@ export const FullWorkoutTemplate = ({
     date,
     coach,
 }: ShareableCardProps) => {
+    const bt = useShareTokens();
     const all = exerciseDetails ?? [];
     const visible = all.slice(0, MAX_ROWS);
     const remaining = all.length - visible.length;
@@ -42,8 +44,8 @@ export const FullWorkoutTemplate = ({
                         </Text>
                     </View>
                     {programWeek && (
-                        <View style={styles.weekChip}>
-                            <Text style={styles.weekChipText}>SEMANA {programWeek.current}/{programWeek.total}</Text>
+                        <View style={[styles.weekChip, { backgroundColor: bt.brandSoft }]}>
+                            <Text style={[styles.weekChipText, { color: bt.brandText }]}>SEMANA {programWeek.current}/{programWeek.total}</Text>
                         </View>
                     )}
                 </View>
@@ -59,7 +61,7 @@ export const FullWorkoutTemplate = ({
                 {/* Rows */}
                 <View style={{ flex: 1 }}>
                     {visible.map((ex, i) => (
-                        <View key={i} style={[styles.row, i % 2 === 1 && styles.rowZebra]}>
+                        <View key={i} style={[styles.row, i % 2 === 1 && { backgroundColor: toRgba(bt.brand, 0.025) }]}>
                             <Text style={styles.idx}>{String(i + 1).padStart(2, '0')}</Text>
                             <View style={styles.nameCell}>
                                 <Text style={styles.exName} numberOfLines={1}>{ex.name}</Text>
@@ -100,7 +102,6 @@ const styles = StyleSheet.create({
     },
     headLabel: { fontFamily: FONT.bold, fontSize: 9, color: SHARE_TOKENS.textTertiary, letterSpacing: 0.8, textTransform: 'uppercase' },
     row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 4 },
-    rowZebra: { backgroundColor: 'rgba(124,58,237,0.025)' },
     idx: { width: 18, fontFamily: FONT.semibold, fontSize: 10, color: SHARE_TOKENS.textTertiary, fontVariant: ['tabular-nums'] },
     nameCell: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
     exName: { fontFamily: FONT.semibold, fontSize: 12.5, color: SHARE_TOKENS.textPrimary, flexShrink: 1 },

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { StickyNote, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface WorkoutNoteCardProps {
     note: string;
@@ -16,9 +17,9 @@ export function WorkoutNoteCard({ note }: WorkoutNoteCardProps) {
             activeOpacity={0.7}
             onPress={() => setCollapsed(!collapsed)}
             style={{
-                backgroundColor: 'rgba(124, 58, 237, 0.06)',
+                backgroundColor: toRgba(colors.purple[600], 0.06),
                 borderWidth: 1,
-                borderColor: 'rgba(124, 58, 237, 0.12)',
+                borderColor: toRgba(colors.purple[600], 0.12),
                 borderRadius: 16,
                 padding: 14,
                 flexDirection: 'row',
@@ -27,7 +28,7 @@ export function WorkoutNoteCard({ note }: WorkoutNoteCardProps) {
                 marginBottom: 12,
             }}
         >
-            <StickyNote size={16} color="#8b5cf6" style={{ marginTop: 1 }} />
+            <StickyNote size={16} color={colors.purple[500]} style={{ marginTop: 1 }} />
             <View style={{ flex: 1 }}>
                 <Text
                     numberOfLines={collapsed ? 1 : undefined}
@@ -37,9 +38,9 @@ export function WorkoutNoteCard({ note }: WorkoutNoteCardProps) {
                 </Text>
             </View>
             {collapsed ? (
-                <ChevronDown size={14} color="#8b5cf6" style={{ marginTop: 2 }} />
+                <ChevronDown size={14} color={colors.purple[500]} style={{ marginTop: 2 }} />
             ) : (
-                <ChevronUp size={14} color="#8b5cf6" style={{ marginTop: 2 }} />
+                <ChevronUp size={14} color={colors.purple[500]} style={{ marginTop: 2 }} />
             )}
         </TouchableOpacity>
     );

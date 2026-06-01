@@ -13,13 +13,14 @@ import { DeltaPill } from './_shared/DeltaPill';
 import { useReduceMotion } from './_shared/useReduceMotion';
 import { useCelebrationClock } from './_shared/useCelebrationClock';
 import { winW, lerpW } from './_shared/easings';
-import { CELEB_TOKENS as T, CFONT } from './_shared/tokens';
+import { CELEB_TOKENS as T, CFONT, useCelebTokens } from './_shared/tokens';
 import type { CelebrationVariantProps } from './types';
 
 const volT = (n: number) => `${(n / 1000).toFixed(1).replace('.', ',')} t`;
 
 export function CelebrationEditorial({ data, onComplete, onShare }: CelebrationVariantProps) {
   const reduce = useReduceMotion();
+  const ct = useCelebTokens();
   const clock = useCelebrationClock(3.5, reduce);
   const pct = data.totalSets > 0 ? Math.round((data.completedSets / data.totalSets) * 100) : 100;
 
@@ -39,7 +40,7 @@ export function CelebrationEditorial({ data, onComplete, onShare }: CelebrationV
 
   return (
     <ScreenWrap tintTop={T.tintEditorialTop}>
-      <LinearGradient colors={[...T.brandStripe]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.stripe} />
+      <LinearGradient colors={[...ct.brandStripe]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.stripe} />
       <View style={s.root}>
         {/* Eyebrow */}
         <Reveal clock={clock} start={0} end={0.35} fromY={6} style={s.eyebrow}>
@@ -50,7 +51,7 @@ export function CelebrationEditorial({ data, onComplete, onShare }: CelebrationV
         {/* Hero number */}
         <Reveal clock={clock} start={0.3} end={0.7} ease="outBack" fromScale={0.85} scaleOrigin="top" style={s.heroRow}>
           <CountText target={pct} startMs={300} durMs={1300} ease="outQuint" skip={reduce} style={s.heroNum} format={(n) => `${Math.floor(n)}`} />
-          <Animated.Text style={[s.heroPct, pctStyle]}>%</Animated.Text>
+          <Animated.Text style={[s.heroPct, { color: ct.brand }, pctStyle]}>%</Animated.Text>
         </Reveal>
 
         {/* Subtitle + underline */}
@@ -92,7 +93,7 @@ export function CelebrationEditorial({ data, onComplete, onShare }: CelebrationV
         {/* CTA */}
         <Reveal clock={clock} start={3.0} end={3.35} fromY={8}>
           <TouchableOpacity activeOpacity={0.85} onPress={onShare}>
-            <LinearGradient colors={[...T.brandStripe]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.primary}>
+            <LinearGradient colors={[...ct.brandStripe]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.primary, { shadowColor: ct.brand }]}>
               <Text style={s.primaryText}>Compartilhar conquista</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -131,7 +132,7 @@ const s = StyleSheet.create({
   statValue: { fontFamily: CFONT.bold, fontSize: 18, color: T.textPrimary, letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
   statLabel: { fontFamily: CFONT.medium, fontSize: 10, color: T.textSecondary, marginTop: 3, letterSpacing: 0.2 },
   chips: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 24 },
-  primary: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 8 },
+  primary: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 8 },
   primaryText: { fontFamily: CFONT.bold, fontSize: 16, color: '#FFFFFF' },
   secondary: { marginTop: 12, alignItems: 'center', paddingVertical: 4 },
   secondaryText: { fontFamily: CFONT.semibold, fontSize: 14, color: T.textSecondary },

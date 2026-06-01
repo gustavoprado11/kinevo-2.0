@@ -5,6 +5,7 @@ import { BlurView } from 'expo-blur';
 import Svg, { Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useV2Colors, useIsDark, type V2Palette } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface RestTimerOverlayProps {
     endTime: number;
@@ -103,7 +104,7 @@ export function RestTimerOverlay({
                             cx={CIRCLE_SIZE / 2}
                             cy={CIRCLE_SIZE / 2}
                             r={RADIUS}
-                            stroke="#7c3aed"
+                            stroke={colors.purple[600]}
                             strokeWidth={STROKE_WIDTH}
                             fill="none"
                             strokeDasharray={`${CIRCUMFERENCE}`}
@@ -167,7 +168,7 @@ function makeStyles(colors: V2Palette) {
             paddingBottom: 44,
             paddingHorizontal: 24,
             alignItems: 'center',
-            shadowColor: '#7C3AED',
+            shadowColor: colors.purple[600],
             shadowOffset: { width: 0, height: -8 },
             shadowOpacity: 0.1,
             shadowRadius: 24,
@@ -250,7 +251,7 @@ function makeStyles(colors: V2Palette) {
             paddingVertical: 10,
             paddingHorizontal: 20,
             // Tint roxo sutil — contrasta em ambos modos via alpha brand.
-            backgroundColor: 'rgba(124, 58, 237, 0.14)',
+            backgroundColor: toRgba(colors.purple[600], 0.14),
         },
         adjustText: {
             color: colors.text.primary,

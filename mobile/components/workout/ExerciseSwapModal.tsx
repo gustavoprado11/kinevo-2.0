@@ -5,6 +5,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ExerciseSubstituteOption } from '../../hooks/useWorkoutSession';
 import { useV2Colors, useIsDark } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface ExerciseSwapModalProps {
     visible: boolean;
@@ -63,7 +64,7 @@ export function ExerciseSwapModal({
                     >
                         <View className="flex-row items-center justify-between mb-4">
                             <View className="flex-row items-center gap-2">
-                                <ArrowRightLeft size={18} color="#7c3aed" />
+                                <ArrowRightLeft size={18} color={colors.purple[600]} />
                                 <Text style={{ color: colors.text.primary, fontSize: 18, fontWeight: '700' }}>Substituir Exercício</Text>
                             </View>
                             <TouchableOpacity onPress={onClose} style={{ padding: 8, backgroundColor: colors.surface.card2, borderRadius: 999 }}>
@@ -106,7 +107,7 @@ export function ExerciseSwapModal({
 
                         {isLoading ? (
                             <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
-                                <ActivityIndicator size="large" color="#8B5CF6" />
+                                <ActivityIndicator size="large" color={colors.purple[500]} />
                                 <Text style={{ color: colors.text.tertiary, marginTop: 12 }}>Carregando substituicoes...</Text>
                             </View>
                         ) : (
@@ -136,10 +137,10 @@ export function ExerciseSwapModal({
                                                         paddingVertical: 4,
                                                         borderRadius: 999,
                                                         borderWidth: 1,
-                                                        backgroundColor: option.source === 'manual' ? 'rgba(124,58,237,0.14)' : colors.surface.card2,
-                                                        borderColor: option.source === 'manual' ? 'rgba(124,58,237,0.32)' : colors.border.default,
+                                                        backgroundColor: option.source === 'manual' ? toRgba(colors.purple[600], 0.14) : colors.surface.card2,
+                                                        borderColor: option.source === 'manual' ? toRgba(colors.purple[600], 0.32) : colors.border.default,
                                                     }}>
-                                                        <Text style={{ fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: option.source === 'manual' ? '#7c3aed' : colors.text.secondary }}>
+                                                        <Text style={{ fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: option.source === 'manual' ? colors.purple[600] : colors.text.secondary }}>
                                                             {option.source === 'manual' ? 'Treinador' : 'Automática'}
                                                         </Text>
                                                     </View>
@@ -158,7 +159,7 @@ export function ExerciseSwapModal({
                                 </Text>
                                 {isSearching ? (
                                     <View style={{ paddingVertical: 24, alignItems: 'center', justifyContent: 'center' }}>
-                                        <ActivityIndicator size="small" color="#7c3aed" />
+                                        <ActivityIndicator size="small" color={colors.purple[600]} />
                                         <Text style={{ color: colors.text.tertiary, marginTop: 8, fontSize: 14 }}>Buscando...</Text>
                                     </View>
                                 ) : searchQuery.trim().length < 2 ? (

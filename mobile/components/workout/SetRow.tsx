@@ -10,6 +10,7 @@ import {
 import { buildSetMetaLabel, isAmrapReps } from '@kinevo/shared/lib/prescription/set-meta-label';
 import { SetTypeBadge } from './SetTypeBadge';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface SetRowProps {
     index: number;
@@ -131,7 +132,7 @@ export function SetRow({
                     borderRadius: 10,
                     marginBottom: 4,
                 },
-                isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.06)' },
+                isCompleted && { backgroundColor: toRgba(colors.purple[600], 0.06) },
             ]}>
                 {/* Set Number */}
                 <View style={[
@@ -144,12 +145,12 @@ export function SetRow({
                         marginRight: 6,
                     },
                     isCompleted
-                        ? { backgroundColor: 'rgba(124, 58, 237, 0.15)' }
+                        ? { backgroundColor: toRgba(colors.purple[600], 0.15) }
                         : { backgroundColor: colors.surface.card2 },
                 ]}>
                     <Text style={[
                         { fontSize: 12, fontWeight: '600' },
-                        isCompleted ? { color: '#7c3aed' } : { color: colors.text.tertiary },
+                        isCompleted ? { color: colors.purple[600] } : { color: colors.text.tertiary },
                     ]}>
                         {index + 1}
                     </Text>
@@ -189,7 +190,7 @@ export function SetRow({
                             style={{
                                 fontSize: 10,
                                 fontWeight: '700',
-                                color: '#7c3aed',
+                                color: colors.purple[600],
                                 textAlign: 'center',
                                 marginBottom: 2,
                                 letterSpacing: 0.2,
@@ -210,11 +211,11 @@ export function SetRow({
                                 color: colors.text.primary,
                                 fontVariant: ['tabular-nums'],
                             },
-                            isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
+                            isCompleted && { backgroundColor: toRgba(colors.purple[600], 0.08), color: colors.purple[600] },
                             readOnly && { opacity: 0.85 },
                         ]}
                         placeholder={weightPlaceholder}
-                        placeholderTextColor={hasWeightTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? colors.text.quaternary : colors.text.quaternary)}
+                        placeholderTextColor={hasWeightTarget ? toRgba(colors.purple[600], 0.55) : (hasPrevious ? colors.text.quaternary : colors.text.quaternary)}
                         keyboardType="decimal-pad"
                         returnKeyType="next"
                         value={weight}
@@ -235,7 +236,7 @@ export function SetRow({
                             style={{
                                 fontSize: 10,
                                 fontWeight: '700',
-                                color: '#7c3aed',
+                                color: colors.purple[600],
                                 textAlign: 'center',
                                 marginBottom: 2,
                                 letterSpacing: 0.2,
@@ -256,11 +257,11 @@ export function SetRow({
                                 color: colors.text.primary,
                                 fontVariant: ['tabular-nums'],
                             },
-                            isCompleted && { backgroundColor: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed' },
+                            isCompleted && { backgroundColor: toRgba(colors.purple[600], 0.08), color: colors.purple[600] },
                             readOnly && { opacity: 0.85 },
                         ]}
                         placeholder={repsPlaceholder}
-                        placeholderTextColor={hasTarget ? 'rgba(124, 58, 237, 0.55)' : (hasPrevious ? colors.text.quaternary : colors.text.quaternary)}
+                        placeholderTextColor={hasTarget ? toRgba(colors.purple[600], 0.55) : (hasPrevious ? colors.text.quaternary : colors.text.quaternary)}
                         keyboardType="number-pad"
                         returnKeyType="done"
                         value={reps}
@@ -285,7 +286,7 @@ export function SetRow({
                                 justifyContent: 'center',
                             },
                             isCompleted
-                                ? { backgroundColor: '#7c3aed' }
+                                ? { backgroundColor: colors.purple[600] }
                                 : { backgroundColor: colors.surface.card2, borderWidth: 1, borderColor: colors.border.default },
                         ]}
                     >

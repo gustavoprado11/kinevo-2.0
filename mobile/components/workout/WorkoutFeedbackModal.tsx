@@ -112,22 +112,22 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm, summary }: W
                             {summary && (
                                 <View style={styles.summaryGrid}>
                                     <SummaryItem
-                                        icon={<Clock size={15} color="#7c3aed" strokeWidth={2} />}
+                                        icon={<Clock size={15} color={colors.purple[600]} strokeWidth={2} />}
                                         value={summary.duration}
                                         label="Duração"
                                     />
                                     <SummaryItem
-                                        icon={<Dumbbell size={15} color="#7c3aed" strokeWidth={2} />}
+                                        icon={<Dumbbell size={15} color={colors.purple[600]} strokeWidth={2} />}
                                         value={String(summary.exerciseCount)}
                                         label="Exercícios"
                                     />
                                     <SummaryItem
-                                        icon={<Target size={15} color="#7c3aed" strokeWidth={2} />}
+                                        icon={<Target size={15} color={colors.purple[600]} strokeWidth={2} />}
                                         value={`${summary.completedSets}/${summary.totalSets}`}
                                         label="Séries"
                                     />
                                     <SummaryItem
-                                        icon={<TrendingUp size={15} color="#7c3aed" strokeWidth={2} />}
+                                        icon={<TrendingUp size={15} color={colors.purple[600]} strokeWidth={2} />}
                                         value={formatVolume(summary.totalVolume)}
                                         label="Volume"
                                     />
@@ -436,7 +436,7 @@ function makeStyles(colors: V2Palette) {
             lineHeight: 22,
         },
         textareaFocused: {
-            shadowColor: '#7c3aed',
+            shadowColor: colors.purple[600],
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.15,
             shadowRadius: 6,
@@ -451,7 +451,7 @@ function makeStyles(colors: V2Palette) {
         submitBtn: {
             height: 52,
             borderRadius: 14,
-            backgroundColor: '#7c3aed',
+            backgroundColor: colors.purple[600],
             alignItems: 'center',
             justifyContent: 'center',
             marginHorizontal: 4,

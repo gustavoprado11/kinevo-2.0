@@ -3,6 +3,8 @@ import { View, Text } from 'react-native';
 import { Repeat, Clock } from 'lucide-react-native';
 import { ExerciseCard } from './ExerciseCard';
 import type { ExerciseData } from '../../hooks/useWorkoutSession';
+import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface SupersetGroupProps {
     exercises: ExerciseData[];
@@ -38,7 +40,7 @@ export function SupersetGroup({
     onSwapPress,
     globalIndices,
 }: SupersetGroupProps) {
-    // SupersetGroup só usa brand purple (independe de modo). Hook removido.
+    const colors = useV2Colors();
     const { currentRound, totalRounds } = computeRoundInfo(exercises);
     const allDone = currentRound >= totalRounds;
 
@@ -46,8 +48,8 @@ export function SupersetGroup({
         <View
             style={{
                 borderWidth: 1.5,
-                borderColor: allDone ? 'rgba(16, 185, 129, 0.3)' : 'rgba(124, 58, 237, 0.25)',
-                backgroundColor: allDone ? 'rgba(16, 185, 129, 0.03)' : 'rgba(124, 58, 237, 0.03)',
+                borderColor: allDone ? 'rgba(16, 185, 129, 0.3)' : toRgba(colors.purple[600], 0.25),
+                backgroundColor: allDone ? 'rgba(16, 185, 129, 0.03)' : toRgba(colors.purple[600], 0.03),
                 borderRadius: 20,
                 padding: 12,
                 marginBottom: 12,
@@ -61,21 +63,21 @@ export function SupersetGroup({
                     gap: 5,
                     paddingHorizontal: 8,
                     paddingVertical: 4,
-                    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+                    backgroundColor: toRgba(colors.purple[600], 0.08),
                     borderRadius: 8,
                 }}>
-                    <Repeat size={12} color="#7c3aed" />
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 1 }}>
+                    <Repeat size={12} color={colors.purple[600]} />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.purple[600], textTransform: 'uppercase', letterSpacing: 1 }}>
                         Superset
                     </Text>
                 </View>
                 <View style={{
-                    backgroundColor: allDone ? 'rgba(16, 185, 129, 0.1)' : 'rgba(124, 58, 237, 0.1)',
+                    backgroundColor: allDone ? 'rgba(16, 185, 129, 0.1)' : toRgba(colors.purple[600], 0.1),
                     borderRadius: 8,
                     paddingHorizontal: 8,
                     paddingVertical: 3,
                 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: allDone ? '#10b981' : '#7c3aed' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: allDone ? '#10b981' : colors.purple[600] }}>
                         {allDone ? 'Concluído' : `Rodada ${currentRound + 1} de ${totalRounds}`}
                     </Text>
                 </View>
@@ -110,11 +112,11 @@ export function SupersetGroup({
                         {/* "sem descanso" connector between exercises */}
                         {localIdx < exercises.length - 1 && (
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 2, marginBottom: 8 }}>
-                                <View style={{ height: 1, flex: 1, backgroundColor: 'rgba(124, 58, 237, 0.15)' }} />
-                                <Text style={{ color: '#8b5cf6', fontSize: 10, marginHorizontal: 8, fontWeight: '500' }}>
+                                <View style={{ height: 1, flex: 1, backgroundColor: toRgba(colors.purple[600], 0.15) }} />
+                                <Text style={{ color: colors.purple[500], fontSize: 10, marginHorizontal: 8, fontWeight: '500' }}>
                                     sem descanso
                                 </Text>
-                                <View style={{ height: 1, flex: 1, backgroundColor: 'rgba(124, 58, 237, 0.15)' }} />
+                                <View style={{ height: 1, flex: 1, backgroundColor: toRgba(colors.purple[600], 0.15) }} />
                             </View>
                         )}
                     </React.Fragment>
@@ -130,11 +132,11 @@ export function SupersetGroup({
                 marginTop: 4,
                 paddingVertical: 6,
                 paddingHorizontal: 12,
-                backgroundColor: 'rgba(124, 58, 237, 0.06)',
+                backgroundColor: toRgba(colors.purple[600], 0.06),
                 borderRadius: 10,
             }}>
-                <Clock size={12} color="#8b5cf6" />
-                <Text style={{ color: '#7c3aed', fontSize: 11, fontWeight: '500' }}>
+                <Clock size={12} color={colors.purple[500]} />
+                <Text style={{ color: colors.purple[600], fontSize: 11, fontWeight: '500' }}>
                     Descanso entre rodadas: {supersetRestSeconds}s
                 </Text>
             </View>

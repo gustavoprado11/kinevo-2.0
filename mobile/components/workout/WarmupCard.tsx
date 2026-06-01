@@ -529,7 +529,7 @@ function makeStyles(colors: V2Palette) {
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: '#7c3aed',
+            backgroundColor: colors.purple[600],
             alignItems: 'center',
             justifyContent: 'center',
         },

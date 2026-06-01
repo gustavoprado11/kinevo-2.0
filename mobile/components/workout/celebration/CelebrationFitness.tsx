@@ -11,13 +11,14 @@ import { BadgeStreak } from './_shared/BadgeStreak';
 import { DeltaPill } from './_shared/DeltaPill';
 import { useReduceMotion } from './_shared/useReduceMotion';
 import { useCelebrationClock } from './_shared/useCelebrationClock';
-import { CELEB_TOKENS as T, CFONT } from './_shared/tokens';
+import { CELEB_TOKENS as T, CFONT, useCelebTokens } from './_shared/tokens';
 import type { CelebrationVariantProps } from './types';
 
 const volT = (n: number) => `${(n / 1000).toFixed(1).replace('.', ',')}t`;
 
 export function CelebrationFitness({ data, onComplete, onShare }: CelebrationVariantProps) {
   const reduce = useReduceMotion();
+  const ct = useCelebTokens();
   const clock = useCelebrationClock(4.0, reduce);
 
   useEffect(() => {
@@ -55,15 +56,15 @@ export function CelebrationFitness({ data, onComplete, onShare }: CelebrationVar
 
         {/* Stats grid */}
         <Reveal clock={clock} start={2.6} end={2.9} style={s.statsGrid}>
-          <Stat dot={T.statDots[0]} label="duração"><Text style={s.statValue}>{data.duration}</Text></Stat>
-          <Stat dot={T.statDots[1]} label="séries">
+          <Stat dot={ct.statDots[0]} label="duração"><Text style={s.statValue}>{data.duration}</Text></Stat>
+          <Stat dot={ct.statDots[1]} label="séries">
             <CountText target={data.completedSets} startMs={2700} durMs={800} skip={reduce} style={s.statValue}
               format={(n) => `${Math.floor(n)}/${data.totalSets}`} />
           </Stat>
-          <Stat dot={T.statDots[2]} label="volume">
+          <Stat dot={ct.statDots[2]} label="volume">
             <CountText target={data.totalVolume} startMs={2700} durMs={800} skip={reduce} style={s.statValue} format={volT} />
           </Stat>
-          <Stat dot={T.statDots[3]} label="RPE">
+          <Stat dot={ct.statDots[3]} label="RPE">
             <CountText target={data.rpe} startMs={2700} durMs={800} skip={reduce} style={s.statValue}
               format={(n) => `${Math.floor(n)}/10`} />
           </Stat>

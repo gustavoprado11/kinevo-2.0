@@ -12,7 +12,7 @@ import { DeltaPill } from './_shared/DeltaPill';
 import { useReduceMotion } from './_shared/useReduceMotion';
 import { useCelebrationClock } from './_shared/useCelebrationClock';
 import { winW, lerpW } from './_shared/easings';
-import { CELEB_TOKENS as T, CFONT } from './_shared/tokens';
+import { CELEB_TOKENS as T, CFONT, useCelebTokens } from './_shared/tokens';
 import type { CelebrationVariantProps } from './types';
 
 const volT = (kg: number) => (kg >= 1000 ? `${(kg / 1000).toFixed(1).replace('.', ',')} t` : `${Math.round(kg)} kg`);
@@ -23,6 +23,7 @@ function Dashed({ style }: { style?: any }) {
 
 export function CelebrationReceipt({ data, onComplete, onShare }: CelebrationVariantProps) {
   const reduce = useReduceMotion();
+  const ct = useCelebTokens();
   const clock = useCelebrationClock(4.0, reduce);
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export function CelebrationReceipt({ data, onComplete, onShare }: CelebrationVar
         {/* Receipt card */}
         <View style={{ marginTop: 14 }}>
           <Reveal clock={clock} start={0} end={0.6} ease="outQuart" fromY={80} style={s.card}>
-            <LinearGradient colors={[...T.brandStripe]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cardStripe} />
+            <LinearGradient colors={[...ct.brandStripe]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.cardStripe} />
 
             <Reveal clock={clock} start={0.5} end={0.8} style={{ paddingTop: 6 }}>
               <Text style={s.cardEyebrow}>TREINO CONCLUÍDO</Text>
@@ -105,7 +106,7 @@ export function CelebrationReceipt({ data, onComplete, onShare }: CelebrationVar
             {data.coach && (
               <Reveal clock={clock} start={1.95} end={2.25} style={s.footer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                  <View style={s.avatar}><Text style={s.avatarText}>{data.coach.initial}</Text></View>
+                  <View style={[s.avatar, { backgroundColor: ct.brandSoft }]}><Text style={[s.avatarText, { color: ct.brandSoftText }]}>{data.coach.initial}</Text></View>
                   <Text style={s.coachName}>{data.coach.name}</Text>
                 </View>
                 <Text style={s.brand}>kinevo.app</Text>

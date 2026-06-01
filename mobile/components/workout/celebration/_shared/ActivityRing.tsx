@@ -5,15 +5,11 @@ import Animated, { useAnimatedProps, useAnimatedStyle, type SharedValue } from '
 import { LinearGradient } from 'expo-linear-gradient';
 import { Check } from 'lucide-react-native';
 import { winW, lerpW } from './easings';
-import { CELEB_TOKENS } from './tokens';
+import { CELEB_TOKENS, useCelebTokens } from './tokens';
+import { lighten } from '../../../../lib/brandColor';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-const RINGS = [
-  { r: 80, color: CELEB_TOKENS.ringMove, track: CELEB_TOKENS.ringMoveTrack, t0: 0.4, t1: 2.0 },
-  { r: 60, color: CELEB_TOKENS.ringExercise, track: CELEB_TOKENS.ringExerciseTrack, t0: 0.6, t1: 2.1 },
-  { r: 40, color: CELEB_TOKENS.ringStand, track: CELEB_TOKENS.ringStandTrack, t0: 0.8, t1: 2.2 },
-] as const;
 const SW = 14;
 const circ = (r: number) => 2 * Math.PI * r;
 
@@ -36,6 +32,12 @@ function Ring({ clock, r, color, track, t0, t1 }: { clock: SharedValue<number>; 
 }
 
 export function ActivityRing({ clock, size = 200 }: { clock: SharedValue<number>; size?: number }) {
+  const ct = useCelebTokens();
+  const RINGS = [
+    { r: 80, color: CELEB_TOKENS.ringMove, track: CELEB_TOKENS.ringMoveTrack, t0: 0.4, t1: 2.0 },
+    { r: 60, color: ct.ringExercise, track: ct.ringExerciseTrack, t0: 0.6, t1: 2.1 },
+    { r: 40, color: CELEB_TOKENS.ringStand, track: CELEB_TOKENS.ringStandTrack, t0: 0.8, t1: 2.2 },
+  ];
   const checkPx = size * 0.3;
   const checkStyle = useAnimatedStyle(() => ({
     opacity: winW(clock.value, 1.8, 2.2),
@@ -60,12 +62,12 @@ export function ActivityRing({ clock, size = 200 }: { clock: SharedValue<number>
       >
         <Animated.View style={checkStyle}>
           <LinearGradient
-            colors={['#8B5CF6', '#7C3AED']}
+            colors={[lighten(ct.ringExercise, 0.2), ct.ringExercise]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={{
               width: checkPx, height: checkPx, borderRadius: checkPx / 2,
               alignItems: 'center', justifyContent: 'center',
-              shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 24, elevation: 10,
+              shadowColor: ct.ringExercise, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 24, elevation: 10,
             }}
           >
             <Check size={checkPx * 0.47} color="#fff" strokeWidth={3.4} />

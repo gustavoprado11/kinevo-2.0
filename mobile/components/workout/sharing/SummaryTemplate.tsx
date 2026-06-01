@@ -8,7 +8,7 @@ import { ShareBrandFooter } from './_shared/ShareBrandFooter';
 import { ShareTopRow } from './_shared/ShareTopRow';
 import { ShareGrain } from './_shared/ShareGrain';
 import { ShareActivityRing } from './_shared/ShareActivityRing';
-import { SHARE_TOKENS, FONT, CARD_W, CARD_H } from './_shared/tokens';
+import { SHARE_TOKENS, useShareTokens, FONT, CARD_W, CARD_H } from './_shared/tokens';
 import { fmtVolume } from './_shared/formatVolume';
 
 export const SummaryTemplate = ({
@@ -21,9 +21,10 @@ export const SummaryTemplate = ({
     date,
     coach,
 }: ShareableCardProps) => {
+    const bt = useShareTokens();
     const rows = [
         { label: 'Duração', value: duration, tint: SHARE_TOKENS.ringRed },
-        { label: 'Volume', value: `${fmtVolume(volume)} kg`, tint: SHARE_TOKENS.ringViolet },
+        { label: 'Volume', value: `${fmtVolume(volume)} kg`, tint: bt.ringViolet },
         {
             label: 'Exercícios',
             value: completedSets != null ? `${exerciseCount} · ${completedSets} séries` : `${exerciseCount}`,
@@ -85,7 +86,7 @@ export const SummaryTemplate = ({
                             {Array.from({ length: 7 }).map((_, i) => (
                                 <View
                                     key={i}
-                                    style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: i < filledDots ? SHARE_TOKENS.brand : '#E5E5EA' }}
+                                    style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: i < filledDots ? bt.brand : '#E5E5EA' }}
                                 />
                             ))}
                         </View>

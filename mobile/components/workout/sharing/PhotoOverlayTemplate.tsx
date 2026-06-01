@@ -8,7 +8,7 @@ import { ShareableCardProps } from './types';
 import { ShareGrain } from './_shared/ShareGrain';
 import { ShareAccentStripe } from './_shared/ShareAccentStripe';
 import { KMark } from './_shared/KMark';
-import { SHARE_TOKENS, FONT, CARD_W, CARD_H } from './_shared/tokens';
+import { SHARE_TOKENS, useShareTokens, FONT, CARD_W, CARD_H } from './_shared/tokens';
 import { fmtVolume } from './_shared/formatVolume';
 
 export const PhotoOverlayTemplate = ({
@@ -20,6 +20,7 @@ export const PhotoOverlayTemplate = ({
     coach,
     backgroundImageUri,
 }: ShareableCardProps) => {
+    const bt = useShareTokens();
     if (!backgroundImageUri) {
         return (
             <View style={[styles.container, styles.placeholder]}>
@@ -76,8 +77,8 @@ export const PhotoOverlayTemplate = ({
                             {coach?.avatar_url ? (
                                 <Image source={{ uri: coach.avatar_url }} style={styles.avatar} />
                             ) : (
-                                <View style={[styles.avatar, styles.avatarFallback]}>
-                                    <Text style={styles.avatarInitial}>{(coach?.name ?? 'K').charAt(0).toUpperCase()}</Text>
+                                <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: bt.brandSoft }]}>
+                                    <Text style={[styles.avatarInitial, { color: bt.brandText }]}>{(coach?.name ?? 'K').charAt(0).toUpperCase()}</Text>
                                 </View>
                             )}
                             <Text style={styles.coachName} numberOfLines={1}>

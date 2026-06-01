@@ -19,6 +19,7 @@ import { SetRow } from './SetRow';
 import { TrainerNote } from './TrainerNote';
 import type { SetPrescription } from '../../lib/hydrateWorkoutSets';
 import { useV2Colors, useIsDark } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 export interface SetData {
     weight: string;
@@ -176,13 +177,13 @@ export function ExerciseCard({
                                     paddingHorizontal: 8,
                                     paddingVertical: 3,
                                     borderRadius: 999,
-                                    backgroundColor: 'rgba(124, 58, 237, 0.12)',
+                                    backgroundColor: toRgba(colors.purple[600], 0.12),
                                     borderWidth: 1,
-                                    borderColor: 'rgba(124, 58, 237, 0.25)',
+                                    borderColor: toRgba(colors.purple[600], 0.25),
                                 }}
                             >
-                                <MethodIcon size={11} color="#6d28d9" strokeWidth={2.4} />
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#6d28d9', letterSpacing: 0.2 }}>
+                                <MethodIcon size={11} color={colors.purple[700]} strokeWidth={2.4} />
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.purple[700], letterSpacing: 0.2 }}>
                                     {methodChip}
                                 </Text>
                             </View>
@@ -198,12 +199,12 @@ export function ExerciseCard({
                         </Text>
                     )}
                     {isSwapped && (
-                        <Text style={{ color: '#7c3aed', fontSize: 11, marginTop: 2 }}>
+                        <Text style={{ color: colors.purple[600], fontSize: 11, marginTop: 2 }}>
                             Exercício substituído nesta sessão
                         </Text>
                     )}
                     {supersetBadge && (
-                        <Text style={{ color: '#7c3aed', fontSize: 11, fontWeight: '500', marginTop: 2 }}>
+                        <Text style={{ color: colors.purple[600], fontSize: 11, fontWeight: '500', marginTop: 2 }}>
                             {supersetBadge}
                         </Text>
                     )}
@@ -213,17 +214,17 @@ export function ExerciseCard({
                     {!readOnly && (
                         <TouchableOpacity
                             onPress={onSwapPress}
-                            style={{ padding: 8, borderRadius: 20, backgroundColor: 'rgba(124, 58, 237, 0.1)' }}
+                            style={{ padding: 8, borderRadius: 20, backgroundColor: toRgba(colors.purple[600], 0.1) }}
                         >
-                            <ArrowRightLeft size={18} color="#7c3aed" />
+                            <ArrowRightLeft size={18} color={colors.purple[600]} />
                         </TouchableOpacity>
                     )}
                     {!readOnly && (
                         <TouchableOpacity
                             onPress={handleOpenVideo}
-                            style={{ padding: 8, borderRadius: 20, backgroundColor: 'rgba(124, 58, 237, 0.1)' }}
+                            style={{ padding: 8, borderRadius: 20, backgroundColor: toRgba(colors.purple[600], 0.1) }}
                         >
-                            <PlayCircle size={18} color="#7c3aed" />
+                            <PlayCircle size={18} color={colors.purple[600]} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -263,11 +264,11 @@ export function ExerciseCard({
                                     marginTop: roundIdx === 0 ? 0 : 10,
                                     paddingTop: roundIdx === 0 ? 0 : 6,
                                     borderTopWidth: roundIdx === 0 ? 0 : 1,
-                                    borderTopColor: 'rgba(124, 58, 237, 0.12)',
+                                    borderTopColor: toRgba(colors.purple[600], 0.12),
                                 }}
                             >
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 4 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#6d28d9', letterSpacing: 0.4, textTransform: 'uppercase' }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.purple[700], letterSpacing: 0.4, textTransform: 'uppercase' }}>
                                         Rodada {roundIdx + 1} de {rounds}
                                     </Text>
                                     <View
@@ -278,7 +279,7 @@ export function ExerciseCard({
                                             borderRadius: 9,
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            backgroundColor: allDone ? '#7c3aed' : 'transparent',
+                                            backgroundColor: allDone ? colors.purple[600] : 'transparent',
                                             borderWidth: allDone ? 0 : 1.5,
                                             borderColor: colors.border.default,
                                         }}

@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 
 import type { SetType } from '@kinevo/shared/types/prescription';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 export interface RestConnectorProps {
     /** Descanso em segundos prescrito após a série atual. */
@@ -184,9 +185,9 @@ function getStyleForFlavor(
             };
         case 'restPause':
             return {
-                bg: 'rgba(124, 58, 237, 0.08)',
-                border: 'rgba(124, 58, 237, 0.25)',
-                fg: '#6d28d9',
+                bg: toRgba(colors.purple[600], 0.08),
+                border: toRgba(colors.purple[600], 0.25),
+                fg: colors.purple[700],
                 weight: '600',
             };
         case 'endRound':

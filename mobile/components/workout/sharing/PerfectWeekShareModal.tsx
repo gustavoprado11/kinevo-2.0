@@ -8,7 +8,7 @@ import * as Sharing from 'expo-sharing';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PerfectWeekTemplate, PerfectWeekCardProps } from './PerfectWeekTemplate';
-import { CARD_W, CARD_H } from './_shared/tokens';
+import { CARD_W, CARD_H, useShareTokens } from './_shared/tokens';
 
 interface PerfectWeekShareModalProps {
     visible: boolean;
@@ -21,6 +21,7 @@ export function PerfectWeekShareModal({ visible, onClose, data }: PerfectWeekSha
     const insets = useSafeAreaInsets();
     const viewShotRef = useRef<ViewShot>(null);
     const [isSharing, setIsSharing] = useState(false);
+    const bt = useShareTokens();
 
     // Preview controlado — nunca domina a tela.
     const maxPreviewH = SCREEN_H * 0.5;
@@ -82,7 +83,7 @@ export function PerfectWeekShareModal({ visible, onClose, data }: PerfectWeekSha
                         onPress={handleShare}
                         disabled={isSharing}
                         activeOpacity={0.85}
-                        style={styles.shareBtn}
+                        style={[styles.shareBtn, { backgroundColor: bt.brand }]}
                     >
                         <Share2 size={18} color="#fff" strokeWidth={2.4} />
                         <Text style={styles.shareText}>{isSharing ? 'Gerando…' : 'Compartilhar'}</Text>
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
     closeBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
     body: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22, paddingHorizontal: 24 },
     title: { fontSize: 17, fontWeight: '700', color: '#F8FAFC' },
-    shareBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#7C3AED', borderRadius: 15, paddingVertical: 15, paddingHorizontal: 28, alignSelf: 'stretch' },
+    shareBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 15, paddingVertical: 15, paddingHorizontal: 28, alignSelf: 'stretch' },
     shareText: { fontSize: 16, fontWeight: '800', color: '#fff' },
     offscreen: { position: 'absolute', left: -9999, top: 0, width: CARD_W, height: CARD_H },
 });

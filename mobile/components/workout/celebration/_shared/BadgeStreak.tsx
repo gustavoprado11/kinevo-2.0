@@ -1,15 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Flame } from 'lucide-react-native';
-import { CELEB_TOKENS as T, CFONT } from './tokens';
+import { CELEB_TOKENS as T, CFONT, useCelebTokens } from './tokens';
 
 type Kind = 'card' | 'pill' | 'chip';
 
 export function BadgeStreak({ days, kind = 'card' }: { days: number; kind?: Kind }) {
+  const ct = useCelebTokens();
   if (kind === 'card') {
     return (
-      <View style={[s.card, { backgroundColor: T.brandSoft, borderColor: T.brandSoftBorder }]}>
-        <Flame size={18} color={T.brand} strokeWidth={2} />
+      <View style={[s.card, { backgroundColor: ct.brandSoft, borderColor: ct.brandSoftBorder }]}>
+        <Flame size={18} color={ct.brand} strokeWidth={2} />
         <Text numberOfLines={1} style={s.cardTitle}>{days} dias</Text>
         <Text numberOfLines={1} style={s.cardSub}>seguidos</Text>
       </View>
@@ -17,16 +18,16 @@ export function BadgeStreak({ days, kind = 'card' }: { days: number; kind?: Kind
   }
   if (kind === 'pill') {
     return (
-      <View style={[s.pill, { backgroundColor: T.brandSoft, borderColor: T.brandSoftBorder }]}>
-        <Flame size={11} color={T.brandSoftText} strokeWidth={2.4} />
-        <Text style={[s.pillText, { color: T.brandSoftText }]}>{days} dias seguidos</Text>
+      <View style={[s.pill, { backgroundColor: ct.brandSoft, borderColor: ct.brandSoftBorder }]}>
+        <Flame size={11} color={ct.brandSoftText} strokeWidth={2.4} />
+        <Text style={[s.pillText, { color: ct.brandSoftText }]}>{days} dias seguidos</Text>
       </View>
     );
   }
   return (
-    <View style={[s.chip, { backgroundColor: T.brandSoft, borderColor: T.brandSoftBorder }]}>
-      <Flame size={10} color={T.brandSoftText} strokeWidth={2.4} />
-      <Text style={[s.chipText, { color: T.brandSoftText }]}>{days} dias</Text>
+    <View style={[s.chip, { backgroundColor: ct.brandSoft, borderColor: ct.brandSoftBorder }]}>
+      <Flame size={10} color={ct.brandSoftText} strokeWidth={2.4} />
+      <Text style={[s.chipText, { color: ct.brandSoftText }]}>{days} dias</Text>
     </View>
   );
 }

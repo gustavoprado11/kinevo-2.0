@@ -45,6 +45,29 @@ export const SHARE_TOKENS = {
   ringGreenSoft: '#D6F0DC',
 } as const;
 
+// Marca do estúdio — quando o coach tem cor custom, só a família violeta
+// (brand/ring violeta) é rederivada da marca; os neutros quentes e as cores
+// Apple-Fitness (vermelho/verde) ficam intactos. Consumidores chamam
+// `useShareTokens()` em vez de `SHARE_TOKENS` para pintar na marca. Brand
+// default Kinevo → devolve o objeto estático (zero impacto).
+import { useBrand } from '../../../../stores/brandStore';
+import { deriveBrandScale } from '../../../../lib/brandColor';
+
+export function useShareTokens() {
+    const brand = useBrand();
+    if (!brand.isCustom) return SHARE_TOKENS;
+    const s = deriveBrandScale(brand.color);
+    return {
+        ...SHARE_TOKENS,
+        brand: brand.color,
+        brandText: s[800],
+        brandSoft: s[50],
+        brandStripe: [s[800], brand.color, s[400]] as const,
+        ringViolet: brand.color,
+        ringVioletSoft: s[100],
+    };
+}
+
 // Plus Jakarta Sans — famílias por peso (carregadas no app via expo-font).
 // RN não herda fontFamily para <Text> filhos: setar em cada Text.
 export const FONT = {

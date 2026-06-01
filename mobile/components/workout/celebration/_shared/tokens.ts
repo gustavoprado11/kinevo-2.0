@@ -42,6 +42,30 @@ export const CELEB_TOKENS = {
   hairlineSoft: '#EDE5DA',
 } as const;
 
+// Marca do estúdio — quando o coach tem cor custom, só a família violeta
+// (brand + ring "exercise" + dot violeta) é rederivada da marca; neutros e as
+// cores Apple-Fitness (move=vermelho / stand=verde) ficam intactos.
+// Consumidores chamam `useCelebTokens()` em vez de `CELEB_TOKENS`.
+import { useBrand } from '../../../../stores/brandStore';
+import { deriveBrandScale } from '../../../../lib/brandColor';
+
+export function useCelebTokens() {
+    const brand = useBrand();
+    if (!brand.isCustom) return CELEB_TOKENS;
+    const s = deriveBrandScale(brand.color);
+    return {
+        ...CELEB_TOKENS,
+        ringExercise: brand.color,
+        ringExerciseTrack: s[100],
+        statDots: [CELEB_TOKENS.ringMove, brand.color, CELEB_TOKENS.ringStand, CELEB_TOKENS.textSecondary] as const,
+        brand: brand.color,
+        brandStripe: [s[800], brand.color, s[400]] as const,
+        brandSoft: s[50],
+        brandSoftBorder: s[300],
+        brandSoftText: s[800],
+    };
+}
+
 // Plus Jakarta Sans — famílias por peso (carregadas no app via expo-font).
 export const CFONT = {
   regular: 'PlusJakartaSans_400Regular',

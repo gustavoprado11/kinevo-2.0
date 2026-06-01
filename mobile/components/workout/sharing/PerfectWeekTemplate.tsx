@@ -10,7 +10,7 @@ import { ShareTopRow } from './_shared/ShareTopRow';
 import { ShareGrain } from './_shared/ShareGrain';
 import { ShareAccentStripe } from './_shared/ShareAccentStripe';
 import { ShareBrandFooter } from './_shared/ShareBrandFooter';
-import { SHARE_TOKENS, FONT, CARD_W, CARD_H } from './_shared/tokens';
+import { SHARE_TOKENS, useShareTokens, FONT, CARD_W, CARD_H } from './_shared/tokens';
 
 export interface PerfectWeekWorkout {
     name: string;
@@ -56,6 +56,7 @@ export const PerfectWeekTemplate = ({
     weekRangeLabel,
     coach,
 }: PerfectWeekCardProps) => {
+    const bt = useShareTokens();
     const streak = streakLabel(consecutiveCount);
     const shown = workouts.slice(0, MAX_ROWS);
     const extra = workouts.length - shown.length;
@@ -86,7 +87,7 @@ export const PerfectWeekTemplate = ({
 
                 {/* Hero */}
                 <View style={styles.hero}>
-                    <Text style={styles.eyebrow}>SEMANA PERFEITA</Text>
+                    <Text style={[styles.eyebrow, { color: bt.brandText }]}>SEMANA PERFEITA</Text>
                     <View style={styles.heroRow}>
                         <Text style={styles.heroNum}>{completedCount}</Text>
                         <Text style={styles.heroSlash}>/</Text>

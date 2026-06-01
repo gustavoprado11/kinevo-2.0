@@ -6,6 +6,7 @@ import Animated, { FadeInUp, Easing } from 'react-native-reanimated';
 import { FormRenderer } from '../forms/FormRenderer';
 import type { TriggerData } from '../../hooks/useWorkoutFormTriggers';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { toRgba } from '../../lib/brandColor';
 
 interface PreWorkoutFormSheetProps {
     visible: boolean;
@@ -44,7 +45,7 @@ export function PreWorkoutFormSheet({ visible, trigger, onSubmit, onSkip }: PreW
                                     width: 40,
                                     height: 40,
                                     borderRadius: 12,
-                                    backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                                    backgroundColor: toRgba(colors.purple[600], 0.1),
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                 }}
