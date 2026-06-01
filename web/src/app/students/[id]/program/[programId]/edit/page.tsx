@@ -27,9 +27,13 @@ export default async function EditProgramPage({ params }: PageProps) {
     // firing on a hidden join failure).
     // Run the heavy program tree query in parallel with the (cached) library
     // fetch — eliminates ~hundreds of ms on the worst-performing route.
+    // getFormTemplatesForTriggers() doesn't depend on the program, so it joins
+    // the same Promise.all instead of running as a sequential 3rd roundtrip
+    // (cuts one Brazil↔us-west-2 RTT off the blocking render path).
     const [
         { data: program, error: programError },
         mappedExercises,
+        triggerResult,
     ] = await Promise.all([
         supabase
             .from('assigned_programs')
@@ -79,6 +83,7 @@ export default async function EditProgramPage({ params }: PageProps) {
             .eq('student_id', studentId)
             .single(),
         getTrainerExerciseLibrary(trainer.id),
+        getFormTemplatesForTriggers(),
     ])
 
     // Fase 4.5j: log the Supabase error explicitly. If we don't, an RLS
@@ -102,8 +107,9 @@ export default async function EditProgramPage({ params }: PageProps) {
         notFound()
     }
 
-    // Fetch form trigger templates for configuration + existing triggers from source
-    const triggerResult = await getFormTemplatesForTriggers()
+    // Existing triggers from the source template. This one genuinely depends on
+    // program.source_template_id, so it stays after the program loads — but it's
+    // conditional (only fires when the program came from a template).
     let formTriggers: { preWorkout: any; postWorkout: any } | undefined
     const sourceTemplateId: string | null = (program as any).source_template_id ?? null
 
