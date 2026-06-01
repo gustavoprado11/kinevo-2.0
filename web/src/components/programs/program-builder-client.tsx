@@ -1968,6 +1968,15 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 <div data-onboarding="program-save">
                                     <Button
                                         onClick={() => {
+                                            // Validate name first — before the archive-confirm modal, so we
+                                            // never ask the trainer to confirm archiving the current program
+                                            // for an activation that can't proceed.
+                                            if (!name.trim()) {
+                                                setError('Por favor, preencha o nome do programa.')
+                                                setNameShake(true)
+                                                setTimeout(() => setNameShake(false), 600)
+                                                return
+                                            }
                                             // Block activation if any workout has no scheduled days
                                             const missing = workoutsWithoutDays
                                             if (missing.length > 0) {
