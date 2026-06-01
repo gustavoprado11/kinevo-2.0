@@ -38,7 +38,14 @@ function buildInitialMessage(insight: InsightItem): string {
         return `Vi que ${name} está sem treinar há ${days} dias. Como posso ajudar?`
     }
     if (insight.insight_key?.startsWith('stagnation')) return `Identifiquei que ${name} está estagnado em ${meta.exercise_name || 'um exercício'}. Quer analisar?`
-    if (insight.insight_key?.startsWith('ready_to_progress')) return `${name} está pronto para progredir em ${meta.exercise_name || 'um exercício'}. Quer analisar?`
+    if (insight.insight_key?.startsWith('ready_to_progress')) {
+        const count = typeof meta.count === 'number' ? meta.count : null
+        const exercises = Array.isArray(meta.exercises) ? meta.exercises as Array<{ name?: string }> : []
+        const where = count && count > 1
+            ? `${count} exercícios`
+            : (exercises[0]?.name || meta.exercise_name || 'um exercício')
+        return `${name} bateu o topo do range em ${where}. Quer revisar como evoluir a prescrição (carga, reps, séries, cadência…)?`
+    }
     if (insight.insight_key?.startsWith('program_expiring')) return `O programa de ${name} está encerrando. Quer que eu analise o progresso para sugerir o próximo?`
     if (insight.insight_key?.startsWith('pain_report')) return `${name} reportou desconforto no último check-in. Quer revisar os detalhes?`
     return `Insight sobre ${name}: ${insight.title}. Como posso ajudar?`

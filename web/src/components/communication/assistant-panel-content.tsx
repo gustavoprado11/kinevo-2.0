@@ -11,7 +11,7 @@ import { useCommunicationStore } from '@/stores/communication-store'
 const INSIGHT_CHIPS: Record<string, string[]> = {
     gap_alert: ['Sugerir mensagem de follow-up', 'Analisar histórico do aluno'],
     stagnation: ['Sugerir nova carga', 'Analisar tendência de progressão'],
-    ready_to_progress: ['Sugerir aumento de carga', 'Analisar tendência de progressão'],
+    ready_to_progress: ['Sugerir como progredir', 'Analisar tendência de progressão'],
     program_expiring: ['Analisar progresso do programa', 'Sugerir próximo programa'],
     pain_report: ['Analisar relatório de dor', 'Sugerir ajustes no programa'],
 }

@@ -99,16 +99,22 @@ export async function GET(request: NextRequest) {
                     totalInsights += succeeded
                     console.log(`[cron:generate-insights] trainer=${trainerId} inserted=${inserted} updated=${updated} skipped=${insights.length - succeeded}`)
 
-                    // Phase 2B: Enrich with LLM (best-effort)
+                    // Phase 2B: Enrich with LLM (best-effort).
+                    // `ready_to_progress` é excluído de propósito: já vem com
+                    // texto neutro/consolidado e o enricher tende a reintroduzir
+                    // viés de carga ("aumente a carga"). Mantemos a enrichment
+                    // pros demais (inclui a consolidação de estagnação).
                     try {
-                        const enrichResult = await enrichInsightsWithLLM(trainerId, insights.map(i => ({
-                            insight_key: i.insight_key,
-                            student_id: i.student_id,
-                            category: i.category,
-                            title: i.title,
-                            body: i.body,
-                            action_metadata: i.action_metadata as Record<string, unknown>,
-                        })))
+                        const enrichResult = await enrichInsightsWithLLM(trainerId, insights
+                            .filter(i => !i.insight_key.startsWith('ready_to_progress'))
+                            .map(i => ({
+                                insight_key: i.insight_key,
+                                student_id: i.student_id,
+                                category: i.category,
+                                title: i.title,
+                                body: i.body,
+                                action_metadata: i.action_metadata as Record<string, unknown>,
+                            })))
                         totalEnriched += enrichResult.enriched
                         totalConsolidated += enrichResult.consolidated
                     } catch (enrichError) {
@@ -570,12 +576,18 @@ async function detectReadyToProgress(trainerId: string, today: string): Promise<
         })
     }
 
-    const insights: InsightRow[] = []
+    // Critério: bateu o topo do range em TODAS as séries por N+ sessões
+    // consecutivas. Threshold deliberadamente alto (4) pra reduzir ruído —
+    // só sinaliza quando o platô de repetições é consistente.
+    const READY_THRESHOLD = 4
+
+    // Coleta por ALUNO os exercícios que cruzaram o critério. Consolidamos em
+    // 1 insight por aluno (em vez de 1 por exercício) pra não inundar o painel.
+    const perStudent = new Map<string, Array<{ exerciseId: string; weight: number; sessions: number }>>()
 
     for (const [key, entries] of progressMap) {
         const [studentId, exerciseId] = key.split(':')
 
-        // Sort by date and check last 3+ consecutive sessions all at top
         entries.sort((a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime())
 
         let consecutiveAtTop = 0
@@ -589,45 +601,66 @@ async function detectReadyToProgress(trainerId: string, today: string): Promise<
             }
         }
 
-        if (consecutiveAtTop >= 3 && lastWeight > 0) {
-            const session = sessions.find(s => s.student_id === studentId)
-            const studentName = (session as any)?.students?.name || 'Aluno'
-
-            // Fetch exercise name
-            const { data: exercise } = await supabaseAdmin
-                .from('exercises')
-                .select('name')
-                .eq('id', exerciseId)
-                .single()
-
-            const exerciseName = exercise?.name || 'Exercício'
-
-            // Find prescribed reps text
-            const item = items.find(i => i.exercise_id === exerciseId)
-            const repsText = item?.reps || '?'
-
-            insights.push({
-                trainer_id: trainerId,
-                student_id: studentId,
-                category: 'progression',
-                priority: 'medium',
-                title: `${studentName} — pronto para progredir em ${exerciseName}`,
-                body: `${consecutiveAtTop} sessões consecutivas completando todas as séries no topo do range prescrito (${repsText} reps) com ${lastWeight}kg. Considere aumentar a carga.`,
-                action_type: 'adjust_load',
-                action_metadata: {
-                    student_id: studentId,
-                    exercise_id: exerciseId,
-                    exercise_name: exerciseName,
-                    current_weight: lastWeight,
-                    sessions_at_top: consecutiveAtTop,
-                },
-                status: 'new',
-                insight_key: `ready_to_progress:${studentId}:${exerciseId}:${today}`,
-                insight_key_prefix: `ready_to_progress:${studentId}:${exerciseId}`,
-                source: 'rules',
-                expires_at: expiresIn(14),
-            })
+        if (consecutiveAtTop >= READY_THRESHOLD && lastWeight > 0) {
+            if (!perStudent.has(studentId)) perStudent.set(studentId, [])
+            perStudent.get(studentId)!.push({ exerciseId, weight: lastWeight, sessions: consecutiveAtTop })
         }
+    }
+
+    const insights: InsightRow[] = []
+    if (perStudent.size === 0) return insights
+
+    // Nomes de alunos e exercícios em lote (evita N+1 dentro do loop).
+    const studentIds = [...perStudent.keys()]
+    const exerciseIds = [...new Set([...perStudent.values()].flat().map(e => e.exerciseId))]
+    const [studentsRes, exercisesRes] = await Promise.all([
+        supabaseAdmin.from('students').select('id, name').in('id', studentIds),
+        supabaseAdmin.from('exercises').select('id, name').in('id', exerciseIds),
+    ])
+    const studentNameMap = new Map((studentsRes.data || []).map(s => [s.id, s.name]))
+    const exerciseNameMap = new Map((exercisesRes.data || []).map(e => [e.id, e.name]))
+
+    for (const [studentId, list] of perStudent) {
+        const studentName = studentNameMap.get(studentId) || 'Aluno'
+        // Sinal mais forte primeiro (mais sessões no topo).
+        list.sort((a, b) => b.sessions - a.sessions)
+        const names = list.map(e => exerciseNameMap.get(e.exerciseId) || 'exercício')
+        const count = list.length
+
+        const title = count === 1
+            ? `${studentName} — pronto para evoluir em ${names[0]}`
+            : `${studentName} — pronto para evoluir em ${count} exercícios`
+
+        const shown = names.slice(0, 3).join(', ')
+        const extra = names.length > 3 ? ` e mais ${names.length - 3}` : ''
+        const listStr = count === 1 ? names[0] : `${shown}${extra}`
+        // Mensagem NEUTRA: progressão não é só carga. Lista as alavancas.
+        const body = `Bateu o topo do range por ${READY_THRESHOLD}+ sessões em ${listStr}. Dá pra progredir de várias formas — carga, repetições, séries, cadência, amplitude ou variação.`.slice(0, 200)
+
+        insights.push({
+            trainer_id: trainerId,
+            student_id: studentId,
+            category: 'progression',
+            priority: 'low',
+            title,
+            body,
+            action_type: 'review_program',
+            action_metadata: {
+                student_id: studentId,
+                count,
+                exercises: list.map(e => ({
+                    id: e.exerciseId,
+                    name: exerciseNameMap.get(e.exerciseId) || null,
+                    current_weight: e.weight,
+                    sessions_at_top: e.sessions,
+                })),
+            },
+            status: 'new',
+            insight_key: `ready_to_progress:${studentId}:${today}`,
+            insight_key_prefix: `ready_to_progress:${studentId}`,
+            source: 'rules',
+            expires_at: expiresIn(14),
+        })
     }
 
     return insights
