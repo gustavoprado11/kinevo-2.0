@@ -42,17 +42,21 @@ export function ExerciseSwapModal({
             onRequestClose={onClose}
         >
             <View style={{ flex: 1, backgroundColor: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1, justifyContent: 'flex-end' }}
+                >
                     <BlurView
                         intensity={isDark ? 100 : 90}
                         tint={isDark ? 'dark' : 'light'}
                         style={{
+                            flex: 1,
                             backgroundColor: colors.surface.glass,
                             borderTopLeftRadius: 32,
                             borderTopRightRadius: 32,
                             padding: 24,
                             paddingBottom: 40,
-                            maxHeight: '80%',
+                            maxHeight: '85%',
                             borderTopWidth: 1,
                             borderTopColor: colors.border.subtle,
                             shadowColor: '#000',
@@ -111,7 +115,7 @@ export function ExerciseSwapModal({
                                 <Text style={{ color: colors.text.tertiary, marginTop: 12 }}>Carregando substituicoes...</Text>
                             </View>
                         ) : (
-                            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                                 <Text style={{ color: colors.text.tertiary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 }}>
                                     Sugestões rápidas
                                 </Text>
