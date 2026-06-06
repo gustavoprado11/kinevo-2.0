@@ -664,7 +664,7 @@ export function LandingHero() {
                     transition={{ duration: 0.6, delay: 0.18 }}
                     className="font-jakarta text-lg text-[#6E6E73] mt-5 max-w-xl mx-auto"
                 >
-                    <strong className="font-semibold text-[#1D1D1F]">Prescreva</strong> programas com IA,{' '}
+                    <strong className="font-semibold text-[#1D1D1F]">Prescreva</strong> programas com IA que você revisa e aprova,{' '}
                     <strong className="font-semibold text-[#1D1D1F]">acompanhe</strong> cada treino em tempo real e seu aluno treina no{' '}
                     <strong className="font-semibold text-[#1D1D1F]">iPhone</strong>, no{' '}
                     <strong className="font-semibold text-[#1D1D1F]">Android</strong> e até no{' '}
@@ -742,7 +742,7 @@ export function LandingHero() {
                         <div className="flex-1 flex justify-center">
                             <div className="bg-white/80 rounded-md px-4 py-1 border border-black/[0.04] inline-flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#34C759]" />
-                                <span className="font-jakarta text-[10px] text-[#6E6E73]">app.kinevo.com.br/dashboard</span>
+                                <span className="font-jakarta text-[10px] text-[#6E6E73]">www.kinevoapp.com/dashboard</span>
                             </div>
                         </div>
                         <div className="w-16" />

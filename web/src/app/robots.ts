@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
         rules: [
             { userAgent: '*', allow: '/', disallow: ['/api/', '/dashboard/', '/students/', '/programs/', '/financial/', '/settings/', '/messages/', '/exercises/', '/forms/', '/reports/', '/training-room/', '/subscription/'] },
         ],
-        sitemap: 'https://kinevo.com.br/sitemap.xml',
-        host: 'https://kinevo.com.br',
+        sitemap: 'https://www.kinevoapp.com/sitemap.xml',
+        host: 'https://www.kinevoapp.com',
     }
 }

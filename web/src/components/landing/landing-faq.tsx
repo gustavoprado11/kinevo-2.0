@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { faqs } from './faqs-data'
 
@@ -62,24 +62,21 @@ export function LandingFaq() {
                                     </motion.span>
                                 </button>
 
-                                <AnimatePresence initial={false}>
-                                    {isOpen && (
-                                        <motion.div
-                                            id={panelId}
-                                            role="region"
-                                            aria-labelledby={buttonId}
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.25, ease: 'easeOut' }}
-                                            className="overflow-hidden"
-                                        >
-                                            <p className="font-jakarta text-[#6E6E73] text-sm leading-relaxed px-6 pb-5">
-                                                {faq.answer}
-                                            </p>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                {/* Resposta sempre montada no DOM (SSR) para crawlers de IA/busca;
+                                    colapsa visualmente via altura quando fechada. */}
+                                <motion.div
+                                    id={panelId}
+                                    role="region"
+                                    aria-labelledby={buttonId}
+                                    initial={false}
+                                    animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
+                                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                                    className="overflow-hidden"
+                                >
+                                    <p className="font-jakarta text-[#6E6E73] text-sm leading-relaxed px-6 pb-5">
+                                        {faq.answer}
+                                    </p>
+                                </motion.div>
                             </motion.div>
                         )
                     })}

@@ -429,44 +429,44 @@ export function LandingAiAssistant() {
                             })}
                         </div>
 
-                        {/* Tagline + support */}
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={current.id}
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -4 }}
-                                transition={{ duration: 0.25 }}
-                                className="flex-1 flex flex-col"
-                            >
-                                <h3 className="font-jakarta text-3xl md:text-4xl font-bold text-[#1D1D1F] leading-[1.1] tracking-tight">
-                                    {current.tagline}
-                                </h3>
-                                <p className="font-jakarta text-base text-[#6E6E73] mt-4 max-w-md leading-relaxed">
-                                    {current.support}
-                                </p>
+                        {/* Tagline + support — as 3 features ficam no DOM (SSR p/ crawlers de
+                            IA/busca); apenas a ativa é exibida. */}
+                        <div className="flex-1 flex flex-col">
+                            {tabs.map((tab, i) => (
+                                <div
+                                    key={tab.id}
+                                    className={activeTab === i ? 'flex-1 flex flex-col' : 'hidden'}
+                                    aria-hidden={activeTab !== i}
+                                >
+                                    <h3 className="font-jakarta text-3xl md:text-4xl font-bold text-[#1D1D1F] leading-[1.1] tracking-tight">
+                                        {tab.tagline}
+                                    </h3>
+                                    <p className="font-jakarta text-base text-[#6E6E73] mt-4 max-w-md leading-relaxed">
+                                        {tab.support}
+                                    </p>
 
-                                {/* Subtle footer pill — echoes the active feature */}
-                                <div className="mt-auto pt-10">
-                                    <div
-                                        className="inline-flex items-center gap-2 font-jakarta text-[11px] font-semibold uppercase tracking-wider"
-                                        style={{ color: current.color }}
-                                    >
-                                        <span className="flex h-1.5 w-1.5 relative">
-                                            <span
-                                                className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                                                style={{ backgroundColor: current.color }}
-                                            />
-                                            <span
-                                                className="relative inline-flex rounded-full h-1.5 w-1.5"
-                                                style={{ backgroundColor: current.color }}
-                                            />
-                                        </span>
-                                        Ao vivo no Kinevo
+                                    {/* Subtle footer pill — echoes the active feature */}
+                                    <div className="mt-auto pt-10">
+                                        <div
+                                            className="inline-flex items-center gap-2 font-jakarta text-[11px] font-semibold uppercase tracking-wider"
+                                            style={{ color: tab.color }}
+                                        >
+                                            <span className="flex h-1.5 w-1.5 relative">
+                                                <span
+                                                    className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                                                    style={{ backgroundColor: tab.color }}
+                                                />
+                                                <span
+                                                    className="relative inline-flex rounded-full h-1.5 w-1.5"
+                                                    style={{ backgroundColor: tab.color }}
+                                                />
+                                            </span>
+                                            Ao vivo no Kinevo
+                                        </div>
                                     </div>
                                 </div>
-                            </motion.div>
-                        </AnimatePresence>
+                            ))}
+                        </div>
                     </motion.div>
 
                     {/* Right — real product mock */}
