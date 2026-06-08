@@ -241,12 +241,19 @@ export default function HomeScreen() {
         }
 
         // Within current program (or today) — existing logic
-        const workout = workouts.find(w => {
-            if (!w.scheduled_days) return false;
-            return w.scheduled_days.some((d: any) => Number(d) === selectedDayIndex);
-        });
-
         const daySessions = sessionsMap.get(selectedKey) || [];
+
+        // M7: pode haver 2+ treinos agendados no mesmo dia. Mostra o primeiro
+        // ainda NÃO concluído; se todos concluídos, mostra o último (estado
+        // concluído). Antes o .find pegava só o primeiro, então concluir o 2º
+        // treino do dia não marcava o dia como feito no herói.
+        const dayWorkouts = workouts.filter(w =>
+            w.scheduled_days?.some((d: any) => Number(d) === selectedDayIndex)
+        );
+        const workout =
+            dayWorkouts.find(w => !daySessions.some(s => s.status === 'completed' && s.assigned_workout_id === w.id))
+            ?? dayWorkouts[dayWorkouts.length - 1];
+
         const isCompleted = workout
             ? daySessions.some(s => s.status === 'completed' && s.assigned_workout_id === workout.id)
             : daySessions.some(s => s.status === 'completed');

@@ -117,6 +117,24 @@ export function ExerciseCard({
         && setScheme!.some((s) => typeof s.round_number === 'number');
     const phasesPerRound = isCompoundLayout ? Math.max(1, Math.floor(setScheme!.length / rounds)) : 0;
 
+    // M5: agrupa as séries por round_number real (fallback posicional) em vez de
+    // fatiar por `phasesPerRound`. Sem isto, quando setScheme.length não é
+    // divisível por `rounds` (ex.: 5 séries / 2 rodadas) as séries excedentes
+    // não eram renderizadas — o aluno não conseguia registrá-las e o progresso
+    // travava sem chegar a 100%.
+    const roundGroups: number[][] = (() => {
+        if (!isCompoundLayout) return [];
+        const byRound = new Map<number, number[]>();
+        setScheme!.forEach((s, idx) => {
+            const r = typeof s.round_number === 'number'
+                ? s.round_number
+                : Math.floor(idx / Math.max(1, phasesPerRound)) + 1;
+            if (!byRound.has(r)) byRound.set(r, []);
+            byRound.get(r)!.push(idx);
+        });
+        return [...byRound.keys()].sort((a, b) => a - b).map((k) => byRound.get(k)!);
+    })();
+
     // Header summary: "3 rodadas · 2 fases · 10/8 reps" for compound; legacy
     // "N séries · X reps · Ys descanso" for linear.
     let headerSummary: string;
@@ -252,11 +270,10 @@ export function ExerciseCard({
             {/* Sets List */}
             <View>
                 {isCompoundLayout
-                    ? Array.from({ length: rounds }, (_, roundIdx) => {
-                        const startIdx = roundIdx * phasesPerRound;
-                        const endIdx = startIdx + phasesPerRound;
-                        const roundSlice = setsData.slice(startIdx, endIdx);
+                    ? roundGroups.map((indices, roundIdx) => {
+                        const roundSlice = indices.map((i) => setsData[i]).filter(Boolean);
                         const allDone = roundSlice.length > 0 && roundSlice.every((s) => s.completed);
+                        const isLastRound = roundIdx === roundGroups.length - 1;
                         return (
                             <View
                                 key={`round-${roundIdx + 1}`}
@@ -269,7 +286,7 @@ export function ExerciseCard({
                             >
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 4 }}>
                                     <Text style={{ fontSize: 11, fontWeight: '700', color: colors.purple[700], letterSpacing: 0.4, textTransform: 'uppercase' }}>
-                                        Rodada {roundIdx + 1} de {rounds}
+                                        Rodada {roundIdx + 1} de {roundGroups.length}
                                     </Text>
                                     <View
                                         accessibilityLabel={allDone ? 'Rodada concluída' : 'Rodada em andamento'}
@@ -287,13 +304,13 @@ export function ExerciseCard({
                                         {allDone ? <Check size={12} color="#fff" strokeWidth={3} /> : null}
                                     </View>
                                 </View>
-                                {roundSlice.map((set, localIdx) => {
-                                    const globalIdx = startIdx + localIdx;
+                                {indices.map((globalIdx, localIdx) => {
+                                    const set = setsData[globalIdx];
+                                    if (!set) return null;
                                     const prev = previousSets?.[globalIdx];
                                     const prescription = setScheme![globalIdx];
                                     const nextPrescription = setScheme![globalIdx + 1];
-                                    const isLastPhaseInRound = localIdx === phasesPerRound - 1;
-                                    const isLastRound = roundIdx === rounds - 1;
+                                    const isLastPhaseInRound = localIdx === indices.length - 1;
                                     const isLastInExercise = isLastPhaseInRound && isLastRound;
                                     const isLastInRound = isLastPhaseInRound && !isLastRound;
                                     return (
