@@ -43,7 +43,6 @@
         "backgroundColor": "#111019"
       },
       "package": "com.kinevo.mobile",
-      "versionCode": 34,
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "permissions": [
