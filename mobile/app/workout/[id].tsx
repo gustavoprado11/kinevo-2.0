@@ -20,7 +20,7 @@ import { useWorkoutSession } from '../../hooks/useWorkoutSession';
 import { useLiveActivity } from '../../hooks/useLiveActivity';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
 import { useWatchConnectivity } from '../../hooks/useWatchConnectivity';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, Info } from 'lucide-react-native';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
 import { WorkoutCelebration, CelebrationData } from '../../components/workout/WorkoutCelebration';
 import { ShareWorkoutModal } from '../../components/workout/ShareWorkoutModal';
@@ -54,6 +54,22 @@ export default function WorkoutPlayerScreen() {
         updateTimerState: (data: import('../../hooks/useLiveActivity').TimerUpdateData) => void;
         clearTimerState: () => void;
     } | null>(null);
+
+    // C1: aviso transitório (não-bloqueante) quando uma série é marcada sem
+    // carga/reps e sem alvo/histórico pra herdar.
+    const [emptySetNotice, setEmptySetNotice] = React.useState(false);
+    const emptyNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const onEmptySetLogged = useCallback(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setEmptySetNotice(true);
+        if (emptyNoticeTimerRef.current) clearTimeout(emptyNoticeTimerRef.current);
+        emptyNoticeTimerRef.current = setTimeout(() => setEmptySetNotice(false), 3500);
+    }, []);
+
+    useEffect(() => () => {
+        if (emptyNoticeTimerRef.current) clearTimeout(emptyNoticeTimerRef.current);
+    }, []);
 
     const onSetComplete = useCallback((exerciseIndex: number, _setIndex: number) => {
         const exercise = exercisesRef.current[exerciseIndex];
@@ -125,7 +141,7 @@ export default function WorkoutPlayerScreen() {
         assignedProgramId,
         toggleCardioComplete,
         isSubmitting
-    } = useWorkoutSession(id as string, { onSetComplete, deferSessionCreation: true });
+    } = useWorkoutSession(id as string, { onSetComplete, onEmptySetLogged, deferSessionCreation: true });
 
     // Form triggers for pre/post workout check-in
     const {
@@ -997,6 +1013,38 @@ export default function WorkoutPlayerScreen() {
 
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* C1: aviso transitório não-bloqueante de série sem carga/reps */}
+            {emptySetNotice && (
+                <View
+                    pointerEvents="none"
+                    style={{
+                        position: 'absolute',
+                        left: 16,
+                        right: 16,
+                        bottom: Math.max(insets.bottom, 16) + 72,
+                        backgroundColor: colors.surface.card2,
+                        borderRadius: 12,
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                        borderWidth: StyleSheet.hairlineWidth,
+                        borderColor: colors.border.default,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.2,
+                        shadowRadius: 12,
+                        elevation: 6,
+                    }}
+                >
+                    <Info size={16} color={colors.text.secondary} />
+                    <Text style={{ flex: 1, color: colors.text.secondary, fontSize: 13, fontWeight: '500' }}>
+                        Série marcada sem carga e reps. Toque nos campos para registrar.
+                    </Text>
+                </View>
+            )}
 
             {/* Fixed Finalizar button */}
             <View style={{

@@ -8,6 +8,7 @@ import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
 import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription';
 import { sortExerciseItems } from '../utils/sortExerciseItems';
 import { hydrateSetPrescriptions, type SetPrescription } from '../lib/hydrateWorkoutSets';
+import { formatWeightKg } from '@kinevo/shared/lib/prescription/set-scheme';
 
 export interface WorkoutSetData {
     weight: string;
@@ -111,6 +112,10 @@ export interface ExerciseSubstituteOption {
 
 interface UseWorkoutSessionOptions {
     onSetComplete?: (exerciseIndex: number, setIndex: number) => void;
+    /** C1: chamado quando uma série é marcada como concluída mas, mesmo após
+     *  herdar alvo/anterior, ficou sem carga e sem reps (0×0). A UI deve
+     *  INFORMAR o aluno sem bloquear o registro. */
+    onEmptySetLogged?: (exerciseIndex: number, setIndex: number) => void;
     /** When true, the session is NOT created on mount. Call createSession() manually. */
     deferSessionCreation?: boolean;
 }
@@ -175,6 +180,28 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             completed: false
         }))
     );
+
+    // C1: quando o aluno marca uma série sem digitar nada, herdamos o valor que
+    // o placeholder do SetRow já exibia (alvo prescrito → carga/reps anteriores).
+    // Espelha a resolução de placeholder do SetRow pra não gravar 0kg×0rep
+    // silenciosamente. Retorna '' quando não há nada coerente a herdar.
+    const resolveWeightFallback = (exercise: ExerciseData, setIndex: number): string => {
+        const kg = formatWeightKg(exercise.setScheme?.[setIndex]?.weight_target_kg ?? null);
+        if (kg !== null) return kg;
+        const prev = exercise.previousSets?.[setIndex];
+        if (prev && Number.isFinite(prev.weight)) return String(prev.weight);
+        return '';
+    };
+
+    const resolveRepsFallback = (exercise: ExerciseData, setIndex: number): string => {
+        const target = (exercise.setScheme?.[setIndex]?.reps_target ?? '').trim();
+        // Só herda o alvo se ele contiver número (ex.: "10", "8-12", "8+").
+        // Alvos textuais (AMRAP/falha/máximo) não viram reps — cai no anterior.
+        if (target.length > 0 && /\d/.test(target)) return target;
+        const prev = exercise.previousSets?.[setIndex];
+        if (prev && Number.isFinite(prev.reps)) return String(prev.reps);
+        return '';
+    };
 
     const formatLoadLabel = (maxWeight?: number | null) => {
         if (maxWeight === null || maxWeight === undefined) return undefined;
@@ -351,6 +378,24 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             }
         } catch (err: any) {
             if (__DEV__) console.error(`[useWorkoutSession] persistSetLog exception: ${err?.message}`);
+        }
+    };
+
+    // C2: ao desmarcar uma série, remove o registro já persistido. Sem isto a
+    // série "removida" continuava valendo no banco (inflando volume / PR falso).
+    const deletePersistedSetLog = async (exercise: ExerciseData, setIndex: number) => {
+        const sid = sessionId;
+        if (!sid) return; // nada foi persistido ainda
+        try {
+            const { error } = await supabase
+                .from('set_logs' as any)
+                .delete()
+                .eq('workout_session_id', sid)
+                .eq('assigned_workout_item_id', exercise.id)
+                .eq('set_number', setIndex + 1);
+            if (error && __DEV__) console.error(`[useWorkoutSession] deletePersistedSetLog error: ${error.message}`);
+        } catch (err: any) {
+            if (__DEV__) console.error(`[useWorkoutSession] deletePersistedSetLog exception: ${err?.message}`);
         }
     };
 
@@ -741,18 +786,40 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             const exercise = { ...newExercises[exerciseIndex] };
             const newSets = [...exercise.setsData];
             const wasCompleted = newSets[setIndex].completed;
-            newSets[setIndex] = { ...newSets[setIndex], completed: !wasCompleted };
-            exercise.setsData = newSets;
-            newExercises[exerciseIndex] = exercise;
 
-            // Fire callback when marking as complete (not when unchecking)
-            if (!wasCompleted && options?.onSetComplete) {
-                options.onSetComplete(exerciseIndex, setIndex);
-            }
-
-            // Persist to DB immediately (fire-and-forget)
             if (!wasCompleted) {
-                persistSetLog(exercise, setIndex, newSets[setIndex]);
+                // C1: herda o placeholder (alvo prescrito → carga/reps anteriores)
+                // quando o campo está vazio, em vez de gravar 0kg×0rep.
+                let weight = newSets[setIndex].weight;
+                let reps = newSets[setIndex].reps;
+                if (weight.trim() === '') weight = resolveWeightFallback(exercise, setIndex);
+                if (reps.trim() === '') reps = resolveRepsFallback(exercise, setIndex);
+                const completedSet: WorkoutSetData = { weight, reps, completed: true };
+                newSets[setIndex] = completedSet;
+                exercise.setsData = newSets;
+                newExercises[exerciseIndex] = exercise;
+
+                // Fire callback when marking as complete (not when unchecking)
+                if (options?.onSetComplete) {
+                    options.onSetComplete(exerciseIndex, setIndex);
+                }
+
+                // Persist to DB immediately (fire-and-forget)
+                persistSetLog(exercise, setIndex, completedSet);
+
+                // C1: se mesmo após herdar não há carga nem reps (sem alvo nem
+                // histórico), INFORMA o aluno — mas NÃO bloqueia o registro.
+                const stillEmpty = (parseFloat(weight) || 0) === 0 && (parseInt(reps) || 0) === 0;
+                if (stillEmpty && options?.onEmptySetLogged) {
+                    options.onEmptySetLogged(exerciseIndex, setIndex);
+                }
+            } else {
+                newSets[setIndex] = { ...newSets[setIndex], completed: false };
+                exercise.setsData = newSets;
+                newExercises[exerciseIndex] = exercise;
+
+                // C2: desmarcar remove o registro já persistido
+                deletePersistedSetLog(exercise, setIndex);
             }
 
             return newExercises;
@@ -781,6 +848,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             if (weight !== undefined && Number.isFinite(weight)) {
                 currentSet.weight = String(weight);
             }
+
+            // C1: mesma herança do toque manual — se o Watch não mandou valor e o
+            // campo está vazio, herda alvo/anterior em vez de gravar 0.
+            if (currentSet.weight.trim() === '') currentSet.weight = resolveWeightFallback(exercise, setIndex);
+            if (currentSet.reps.trim() === '') currentSet.reps = resolveRepsFallback(exercise, setIndex);
 
             currentSet.completed = true;
             newSets[setIndex] = currentSet;
@@ -904,6 +976,23 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         const hasCompletedSets = current.setsData.some((set) => set.completed);
         if (hasCompletedSets && !forceReset) {
             return { success: false, requiresConfirmation: true, message: 'Este exercicio ja possui series concluidas.' };
+        }
+
+        // C4: ao trocar resetando, apaga os set_logs já gravados do exercício
+        // antigo. Sem isto, as séries concluídas do exercício original ficavam
+        // órfãs sob o mesmo assigned_workout_item_id, misturando dois exercícios
+        // no histórico/volume.
+        if (sessionId && hasCompletedSets) {
+            try {
+                const { error } = await supabase
+                    .from('set_logs' as any)
+                    .delete()
+                    .eq('workout_session_id', sessionId)
+                    .eq('assigned_workout_item_id', current.id);
+                if (error && __DEV__) console.error(`[useWorkoutSession] swap cleanup error: ${error.message}`);
+            } catch (err: any) {
+                if (__DEV__) console.error(`[useWorkoutSession] swap cleanup exception: ${err?.message}`);
+            }
         }
 
         let nextPreviousLoad: string | undefined = undefined;
@@ -1177,6 +1266,17 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                 if (logsError) {
                     console.error('[useWorkoutSession] Error upserting set_logs at finish:', __DEV__ ? logsError : '');
+                    // C3: NÃO concluir um treino com séries faltando. Reverte a
+                    // sessão para in_progress (best-effort) e lança — o executeFinish
+                    // mantém a tela e o aluno re-finaliza. O upsert é idempotente
+                    // (onConflict), então a re-tentativa re-sincroniza tudo.
+                    try {
+                        await supabase
+                            .from('workout_sessions' as any)
+                            .update({ status: 'in_progress', completed_at: null })
+                            .eq('id', currentSessionId);
+                    } catch { /* best-effort */ }
+                    throw logsError;
                 }
             }
 
