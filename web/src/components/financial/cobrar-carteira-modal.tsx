@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
     X, Loader2, AlertCircle, Copy, Check,
-    MessageCircle, Wallet, CalendarClock, Receipt,
+    MessageCircle, Wallet, CalendarClock, Receipt, Layers,
 } from 'lucide-react'
 import { FeesSimulationCard } from './fees-simulation-card'
 
@@ -27,6 +27,7 @@ interface Plan {
     allow_pix?: boolean
     allow_credit_card?: boolean
     allow_boleto?: boolean
+    max_installment_count?: number | null
 }
 
 interface Student {
@@ -35,7 +36,10 @@ interface Student {
     email: string
 }
 
-type ChargeMode = 'one_off' | 'recurring'
+type ChargeMode = 'one_off' | 'recurring' | 'installment'
+
+/** Teto absoluto de parcelas suportado pelo Asaas. */
+const MAX_INSTALLMENTS = 12
 
 interface CobrarCarteiraModalProps {
     isOpen: boolean
@@ -75,6 +79,7 @@ export function CobrarCarteiraModal({
     const [studentId, setStudentId] = useState('')
     const [planId, setPlanId] = useState('')
     const [mode, setMode] = useState<ChargeMode>(initialMode)
+    const [installments, setInstallments] = useState(2)
     const [dueDate, setDueDate] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -88,6 +93,7 @@ export function CobrarCarteiraModal({
             // Respeita o modo que o caller pediu (ex: dropdown "Nova assinatura"
             // já abre o modal em recurring).
             setMode(initialMode)
+            setInstallments(2)
             // dueDate padrão: hoje + 3 dias
             const d = new Date()
             d.setDate(d.getDate() + 3)
@@ -105,9 +111,17 @@ export function CobrarCarteiraModal({
         [plans, planId]
     )
 
+    // Teto de parcelas do plano selecionado (default do plano, treinador pode
+    // ajustar pra baixo). Se o plano não permite parcelar (1), libera até o teto
+    // absoluto pra cobrança ad-hoc.
+    const planInstallmentCap = useMemo(() => {
+        const cap = selectedPlan?.max_installment_count ?? 1
+        return cap > 1 ? Math.min(cap, MAX_INSTALLMENTS) : MAX_INSTALLMENTS
+    }, [selectedPlan])
+
     const allowedMethods = useMemo(() => {
-        // Recorrência é só no cartão (único com débito automático).
-        if (mode === 'recurring') return ['CREDIT_CARD'] as const
+        // Recorrência e parcelamento são só no cartão.
+        if (mode === 'recurring' || mode === 'installment') return ['CREDIT_CARD'] as const
         if (!selectedPlan) return ['PIX', 'CREDIT_CARD'] as const
         const m: Array<'PIX' | 'CREDIT_CARD' | 'BOLETO'> = []
         if (selectedPlan.allow_pix ?? true) m.push('PIX')
@@ -116,7 +130,19 @@ export function CobrarCarteiraModal({
         return m.length > 0 ? m : (['PIX', 'CREDIT_CARD'] as const)
     }, [selectedPlan, mode])
 
+    // Ao entrar no modo parcelado ou trocar de plano, pré-preenche o nº de
+    // parcelas com o teto definido no plano (treinador pode ajustar pra baixo).
+    useEffect(() => {
+        if (mode !== 'installment') return
+        const planDefault = (selectedPlan?.max_installment_count ?? 0) > 1
+            ? Math.min(selectedPlan!.max_installment_count!, MAX_INSTALLMENTS)
+            : 2
+        setInstallments(planDefault)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [planId, mode])
+
     const canSubmit = !loading && studentId && planId && dueDate && selectedPlan
+        && (mode !== 'installment' || installments >= 2)
 
     if (!isOpen) return null
 
@@ -178,6 +204,10 @@ export function CobrarCarteiraModal({
                     value: selectedPlan.price,
                     dueDate,
                     description: selectedPlan.title,
+                    // Parcelado: envia o nº de parcelas (cartão). Avulsa não envia.
+                    ...(mode === 'installment'
+                        ? { installments: Math.min(installments, planInstallmentCap) }
+                        : {}),
                 }
 
             const res = await fetch(endpoint, {
@@ -297,58 +327,92 @@ export function CobrarCarteiraModal({
                     </select>
                 </div>
 
-                {/* Tipo (avulsa vs recorrente) */}
+                {/* Tipo (avulsa / parcelado / recorrente) */}
                 <div>
                     <label className="mb-2 block text-xs font-medium text-k-text-tertiary">Tipo de cobrança</label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                         <button
                             type="button"
                             onClick={() => setMode('one_off')}
-                            className={`relative rounded-lg border-2 px-3 py-2.5 pr-7 text-left transition-all ${
+                            className={`relative rounded-lg border-2 px-2.5 py-2.5 text-left transition-all ${
                                 mode === 'one_off'
                                     ? 'border-violet-500 bg-violet-500/10 ring-2 ring-violet-500/20'
                                     : 'border-k-border-subtle bg-glass-bg hover:border-violet-500/40'
                             }`}
                         >
-                            {mode === 'one_off' && (
-                                <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5 text-violet-600 dark:text-violet-400" strokeWidth={3} />
-                            )}
                             <div className="flex items-center gap-1.5 mb-0.5">
                                 <Receipt className={`w-3.5 h-3.5 ${mode === 'one_off' ? 'text-violet-600 dark:text-violet-400' : 'text-k-text-tertiary'}`} />
                                 <span className={`text-xs font-semibold ${mode === 'one_off' ? 'text-violet-700 dark:text-violet-300' : 'text-k-text-primary'}`}>Avulsa</span>
                             </div>
                             <p className="text-[11px] text-k-text-tertiary leading-tight">
-                                Uma cobrança única
+                                Cobrança única
+                            </p>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setMode('installment')}
+                            className={`relative rounded-lg border-2 px-2.5 py-2.5 text-left transition-all ${
+                                mode === 'installment'
+                                    ? 'border-violet-500 bg-violet-500/10 ring-2 ring-violet-500/20'
+                                    : 'border-k-border-subtle bg-glass-bg hover:border-violet-500/40'
+                            }`}
+                        >
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                                <Layers className={`w-3.5 h-3.5 ${mode === 'installment' ? 'text-violet-600 dark:text-violet-400' : 'text-k-text-tertiary'}`} />
+                                <span className={`text-xs font-semibold ${mode === 'installment' ? 'text-violet-700 dark:text-violet-300' : 'text-k-text-primary'}`}>Parcelado</span>
+                            </div>
+                            <p className="text-[11px] text-k-text-tertiary leading-tight">
+                                Dividir no cartão
                             </p>
                         </button>
                         <button
                             type="button"
                             onClick={() => setMode('recurring')}
-                            className={`relative rounded-lg border-2 px-3 py-2.5 pr-7 text-left transition-all ${
+                            className={`relative rounded-lg border-2 px-2.5 py-2.5 text-left transition-all ${
                                 mode === 'recurring'
                                     ? 'border-violet-500 bg-violet-500/10 ring-2 ring-violet-500/20'
                                     : 'border-k-border-subtle bg-glass-bg hover:border-violet-500/40'
                             }`}
                         >
-                            {mode === 'recurring' && (
-                                <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5 text-violet-600 dark:text-violet-400" strokeWidth={3} />
-                            )}
                             <div className="flex items-center gap-1.5 mb-0.5">
                                 <CalendarClock className={`w-3.5 h-3.5 ${mode === 'recurring' ? 'text-violet-600 dark:text-violet-400' : 'text-k-text-tertiary'}`} />
                                 <span className={`text-xs font-semibold ${mode === 'recurring' ? 'text-violet-700 dark:text-violet-300' : 'text-k-text-primary'}`}>Recorrente</span>
                             </div>
                             <p className="text-[11px] text-k-text-tertiary leading-tight">
-                                Cobra automático {selectedPlan ? `(${intervalLabel(selectedPlan.interval)})` : ''}
+                                Cobra automático
                             </p>
                         </button>
                     </div>
                     {mode === 'recurring' && (
                         <p className="mt-2 text-[11px] text-k-text-tertiary leading-snug">
-                            A recorrência é cobrada no <b>cartão de crédito</b> (débito automático todo ciclo).
+                            A recorrência é cobrada no <b>cartão de crédito</b> (débito automático
+                            {selectedPlan ? ` ${intervalLabel(selectedPlan.interval)}` : ''}).
                             Pra PIX ou boleto, use a cobrança avulsa.
                         </p>
                     )}
                 </div>
+
+                {/* Nº de parcelas (modo parcelado) */}
+                {mode === 'installment' && (
+                    <div>
+                        <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">Parcelar em</label>
+                        <select
+                            value={installments}
+                            onChange={e => setInstallments(Number(e.target.value))}
+                            className="w-full rounded-lg border border-k-border-subtle bg-glass-bg px-3 py-2.5 text-sm text-k-text-primary focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all"
+                        >
+                            {Array.from({ length: planInstallmentCap - 1 }, (_, i) => i + 2).map(n => (
+                                <option key={n} value={n}>
+                                    {n}x{selectedPlan ? ` de ${formatBRL(Number(selectedPlan.price) / n)}` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="mt-2 text-[11px] text-k-text-tertiary leading-snug">
+                            Parcelamento é no <b>cartão de crédito</b>. O aluno pode escolher de 1x até {planInstallmentCap}x no checkout.
+                            A 1ª parcela libera o acesso; as demais o Asaas cobra no cartão dele.
+                        </p>
+                    </div>
+                )}
 
                 {/* Vencimento */}
                 <div>

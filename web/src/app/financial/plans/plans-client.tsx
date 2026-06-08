@@ -35,6 +35,7 @@ interface Plan {
     allow_pix?: boolean | null
     allow_credit_card?: boolean | null
     allow_boleto?: boolean | null
+    max_installment_count?: number | null
     created_at: string
 }
 
@@ -267,6 +268,7 @@ export function PlansClient({ trainer, plans: initialPlans, hasStripeConnect, us
                     allow_pix: editingPlan.allow_pix ?? undefined,
                     allow_credit_card: editingPlan.allow_credit_card ?? undefined,
                     allow_boleto: editingPlan.allow_boleto ?? undefined,
+                    max_installment_count: editingPlan.max_installment_count ?? undefined,
                 } : null}
                 hasStripeConnect={hasStripeConnect}
             />

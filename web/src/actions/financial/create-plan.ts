@@ -16,6 +16,8 @@ interface CreatePlanInput {
     allowPix?: boolean
     allowCreditCard?: boolean
     allowBoleto?: boolean
+    /** Nº máximo de parcelas no cartão (Asaas). 1 = sem parcelamento. */
+    maxInstallmentCount?: number
 }
 
 export async function createPlan(input: CreatePlanInput) {
@@ -110,6 +112,10 @@ export async function createPlan(input: CreatePlanInput) {
         allow_pix: input.allowPix ?? true,
         allow_credit_card: input.allowCreditCard ?? true,
         allow_boleto: input.allowBoleto ?? false,
+        // Parcelamento só faz sentido no cartão; sanitiza pra >=1.
+        max_installment_count: input.allowCreditCard === false
+            ? 1
+            : Math.max(1, Math.floor(input.maxInstallmentCount ?? 1)),
     })
 
     if (insertError) {

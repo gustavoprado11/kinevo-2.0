@@ -20,6 +20,8 @@ export interface FinancialStudent {
     access_blocked_at: string | null
     /** Motivo do bloqueio em PT-BR. */
     access_blocked_reason: string | null
+    /** Nº de parcelas da cobrança (Asaas INSTALLMENT). NULL/1 = à vista. */
+    installment_count: number | null
 }
 
 export type DisplayStatus =

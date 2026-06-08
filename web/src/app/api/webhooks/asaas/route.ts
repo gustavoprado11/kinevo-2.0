@@ -187,11 +187,43 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
         }
     }
 
+    // Resolve o contrato pra REGISTRO mesmo quando não houve transição de
+    // status. Caso típico: parcelas 2..N de uma cobrança parcelada (INSTALLMENT)
+    // — cada parcela chega com um payment.id novo, mas o contrato já está
+    // 'active' (a 1ª parcela ativou). Sem isso, a receita das parcelas seguintes
+    // se perderia. Faz SELECT (não muda status) por payment_id e por paymentLink.
+    let recordContractId: string | null =
+        matchedContracts.size > 0 ? Array.from(matchedContracts)[0] : null
+    if (!recordContractId && payment.id) {
+        const { data } = await supabaseAdmin
+            .from('student_contracts')
+            .select('id, student_id')
+            .eq('asaas_payment_id', payment.id)
+            .limit(1)
+        const row = data?.[0]
+        if (row) {
+            recordContractId = row.id as string
+            if (row.student_id) studentIdsToUnblock.add(row.student_id as string)
+        }
+    }
+    if (!recordContractId && payment.paymentLink) {
+        const { data } = await supabaseAdmin
+            .from('student_contracts')
+            .select('id, student_id')
+            .eq('asaas_payment_link_id', payment.paymentLink)
+            .limit(1)
+        const row = data?.[0]
+        if (row) {
+            recordContractId = row.id as string
+            if (row.student_id) studentIdsToUnblock.add(row.student_id as string)
+        }
+    }
+
     // Persiste a transação. UPSERT pra cobrir tanto o caso onde
     // /api/wallet/charges já inseriu uma linha pending (fluxo antigo) quanto
     // o caso novo (Payment Link — nenhuma linha existe ainda).
-    if (matchedContracts.size > 0) {
-        const contractId = Array.from(matchedContracts)[0]
+    if (recordContractId) {
+        const contractId = recordContractId
         const { data: contract } = await supabaseAdmin
             .from('student_contracts')
             .select('trainer_id, student_id')
@@ -232,7 +264,15 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
                     trainerId: contract.trainer_id as string,
                     contractId,
                     eventType: 'payment_received',
-                    metadata: { provider: 'asaas', amount: payment.value, paymentId: payment.id, method: payment.billingType },
+                    metadata: {
+                        provider: 'asaas',
+                        amount: payment.value,
+                        paymentId: payment.id,
+                        method: payment.billingType,
+                        ...(payment.installmentNumber != null
+                            ? { installmentNumber: payment.installmentNumber }
+                            : {}),
+                    },
                 })
             }
         }

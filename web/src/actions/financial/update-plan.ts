@@ -15,6 +15,8 @@ interface UpdatePlanInput {
     allowPix?: boolean
     allowCreditCard?: boolean
     allowBoleto?: boolean
+    /** Nº máximo de parcelas no cartão (Asaas). 1 = sem parcelamento. */
+    maxInstallmentCount?: number
 }
 
 export async function updatePlan(input: UpdatePlanInput) {
@@ -64,6 +66,11 @@ export async function updatePlan(input: UpdatePlanInput) {
         quarter: 3,
         year: 1,
     }
+
+    // Parcelamento só faz sentido no cartão; sanitiza pra >=1.
+    const maxInstallmentCount = input.allowCreditCard === false
+        ? 1
+        : Math.max(1, Math.floor(input.maxInstallmentCount ?? 1))
 
     try {
         // Update Stripe Product if title/description changed
@@ -129,6 +136,7 @@ export async function updatePlan(input: UpdatePlanInput) {
                         allow_pix: input.allowPix ?? true,
                         allow_credit_card: input.allowCreditCard ?? true,
                         allow_boleto: input.allowBoleto ?? false,
+                        max_installment_count: maxInstallmentCount,
                     })
                     .eq('id', input.planId)
 
@@ -151,6 +159,7 @@ export async function updatePlan(input: UpdatePlanInput) {
                 allow_pix: input.allowPix ?? true,
                 allow_credit_card: input.allowCreditCard ?? true,
                 allow_boleto: input.allowBoleto ?? false,
+                max_installment_count: maxInstallmentCount,
             })
             .eq('id', input.planId)
 

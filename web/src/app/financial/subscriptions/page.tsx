@@ -33,7 +33,7 @@ export default async function SubscriptionsPage({
     // Fetch active plans for modals
     const { data: plans } = await supabaseAdmin
         .from('trainer_plans')
-        .select('id, title, price, interval, stripe_price_id, allow_pix, allow_credit_card, allow_boleto')
+        .select('id, title, price, interval, stripe_price_id, allow_pix, allow_credit_card, allow_boleto, max_installment_count')
         .eq('trainer_id', trainer.id)
         .eq('is_active', true)
         .order('title')

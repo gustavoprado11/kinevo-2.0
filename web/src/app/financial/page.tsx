@@ -222,7 +222,7 @@ export default async function FinancialPage() {
 
     const { data: activePlans } = await supabaseAdmin
         .from('trainer_plans')
-        .select('id, title, price, interval, stripe_price_id, allow_pix, allow_credit_card, allow_boleto')
+        .select('id, title, price, interval, stripe_price_id, allow_pix, allow_credit_card, allow_boleto, max_installment_count')
         .eq('trainer_id', trainer.id)
         .eq('is_active', true)
         .order('title')
@@ -256,6 +256,7 @@ export default async function FinancialPage() {
                 allow_pix: p.allow_pix ?? undefined,
                 allow_credit_card: p.allow_credit_card ?? undefined,
                 allow_boleto: p.allow_boleto ?? undefined,
+                max_installment_count: p.max_installment_count ?? undefined,
             }))}
             hasStripeConnect={connectStatus.connected && connectStatus.chargesEnabled}
             walletStatus={walletSummary.status}

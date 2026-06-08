@@ -42,7 +42,15 @@ interface ChargeBody {
     dueDate?: string
     billingType?: AsaasBillingType
     description?: string
+    /**
+     * Nº de parcelas (cartão). >=2 → cobrança parcelada (chargeType INSTALLMENT,
+     * billingType forçado para CREDIT_CARD). Ausente ou 1 → avulsa (DETACHED).
+     */
+    installments?: number
 }
+
+/** Teto absoluto de parcelas aceito (alinhado ao limite do Asaas/UI). */
+const MAX_INSTALLMENTS = 12
 
 function validate(body: ChargeBody): string | null {
     if (!body.studentId) return 'studentId é obrigatório'
@@ -53,6 +61,11 @@ function validate(body: ChargeBody): string | null {
     const allowed: AsaasBillingType[] = ['UNDEFINED', 'PIX', 'CREDIT_CARD', 'BOLETO']
     if (body.billingType && !allowed.includes(body.billingType)) {
         return 'billingType inválido'
+    }
+    if (body.installments !== undefined) {
+        if (!Number.isInteger(body.installments) || body.installments < 1 || body.installments > MAX_INSTALLMENTS) {
+            return `installments deve ser inteiro entre 1 e ${MAX_INSTALLMENTS}`
+        }
     }
     return null
 }
@@ -151,7 +164,12 @@ export async function POST(request: NextRequest) {
             studentName: student.name ?? 'Aluno',
             planTitle: plan?.title ?? 'Consultoria',
         })
-        const billingType = body.billingType ?? deriveBillingType(plan)
+        // Parcelamento: >=2 parcelas → INSTALLMENT no cartão. O aluno escolhe de
+        // 1 a N no checkout. PIX/boleto não parcelam, então força CREDIT_CARD.
+        const isInstallment = (body.installments ?? 1) >= 2
+        const billingType: AsaasBillingType = isInstallment
+            ? 'CREDIT_CARD'
+            : (body.billingType ?? deriveBillingType(plan))
         const dueDateLimitDays = dueDateToLimitDays(body.dueDate!)
 
         // 5. Cria contrato local PRIMEIRO (status=pending_payment) — assim
@@ -167,6 +185,7 @@ export async function POST(request: NextRequest) {
                 billing_type: 'asaas_auto',
                 status: 'pending_payment',
                 start_date: body.dueDate!,
+                installment_count: isInstallment ? body.installments : null,
             })
             .select('id')
             .single()
@@ -185,7 +204,8 @@ export async function POST(request: NextRequest) {
                     description,
                     value: body.value!,
                     billingType,
-                    chargeType: 'DETACHED',
+                    chargeType: isInstallment ? 'INSTALLMENT' : 'DETACHED',
+                    maxInstallmentCount: isInstallment ? body.installments : undefined,
                     dueDateLimitDays,
                     notificationEnabled: false,  // Kinevo controla notif por push
                     split,
@@ -210,7 +230,13 @@ export async function POST(request: NextRequest) {
             trainerId: trainer.id,
             contractId: contract.id,
             eventType: 'contract_created',
-            metadata: { provider: 'asaas', amount: body.value, billingType, kind: 'one_off' },
+            metadata: {
+                provider: 'asaas',
+                amount: body.value,
+                billingType,
+                kind: isInstallment ? 'installment' : 'one_off',
+                ...(isInstallment ? { installments: body.installments } : {}),
+            },
         })
 
         return NextResponse.json({

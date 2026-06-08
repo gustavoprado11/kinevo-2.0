@@ -20,6 +20,7 @@ interface Plan {
     allow_pix?: boolean
     allow_credit_card?: boolean
     allow_boleto?: boolean
+    max_installment_count?: number
 }
 
 interface PlanFormModalProps {
@@ -45,6 +46,8 @@ export function PlanFormModal({
     const [allowPix, setAllowPix] = useState(true)
     const [allowCreditCard, setAllowCreditCard] = useState(true)
     const [allowBoleto, setAllowBoleto] = useState(false)
+    // Parcelamento (só cartão). 1 = sem parcelamento.
+    const [maxInstallments, setMaxInstallments] = useState(1)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
@@ -84,6 +87,7 @@ export function PlanFormModal({
                 setAllowPix(plan.allow_pix ?? true)
                 setAllowCreditCard(plan.allow_credit_card ?? true)
                 setAllowBoleto(plan.allow_boleto ?? false)
+                setMaxInstallments(Math.max(1, plan.max_installment_count ?? 1))
             } else {
                 setTitle('')
                 setPrice('')
@@ -93,6 +97,7 @@ export function PlanFormModal({
                 setAllowPix(true)
                 setAllowCreditCard(true)
                 setAllowBoleto(false)
+                setMaxInstallments(1)
             }
             setError('')
         }
@@ -138,6 +143,7 @@ export function PlanFormModal({
                     allowPix,
                     allowCreditCard,
                     allowBoleto,
+                    maxInstallmentCount: allowCreditCard ? maxInstallments : 1,
                 })
 
                 if (result.error) {
@@ -156,6 +162,7 @@ export function PlanFormModal({
                     allowPix,
                     allowCreditCard,
                     allowBoleto,
+                    maxInstallmentCount: allowCreditCard ? maxInstallments : 1,
                 })
 
                 if (result.error) {
@@ -334,6 +341,32 @@ export function PlanFormModal({
                                 O aluno escolhe entre os métodos que você aceitar.
                             </p>
                         </div>
+
+                        {/* Parcelamento (só cartão de crédito) */}
+                        {allowCreditCard && (
+                            <div>
+                                <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
+                                    Parcelamento no cartão
+                                </label>
+                                <select
+                                    value={maxInstallments}
+                                    onChange={(e) => setMaxInstallments(Number(e.target.value))}
+                                    className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-k-text-primary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
+                                >
+                                    <option value={1}>Não parcelar (à vista)</option>
+                                    {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
+                                        <option key={n} value={n}>
+                                            Em até {n}x
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="mt-1.5 text-[11px] text-k-text-quaternary">
+                                    {maxInstallments > 1
+                                        ? `O aluno poderá dividir no cartão em até ${maxInstallments}x. As parcelas seguintes são cobradas pelo Asaas no cartão dele.`
+                                        : 'Pagamento à vista. Ative para permitir que o aluno divida no cartão.'}
+                                </p>
+                            </div>
+                        )}
 
                         {/* Simulação de taxas */}
                         <FeesSimulationCard

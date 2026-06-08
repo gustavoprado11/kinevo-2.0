@@ -360,6 +360,12 @@ export function StudentFinancialModal({
                                             </span>
                                         ) : null}
                                     </p>
+                                    {s.installment_count && s.installment_count > 1 ? (
+                                        <p className="text-xs text-k-text-secondary mt-0.5">
+                                            Parcelado em até {s.installment_count}x no cartão
+                                            {s.amount ? ` · ${formatCurrency(s.amount / s.installment_count)}/parcela` : ''}
+                                        </p>
+                                    ) : null}
                                     {s.current_period_end && s.display_status !== 'canceling' && (
                                         <p className="text-xs text-k-text-quaternary mt-1">
                                             Vencimento: {formatDate(s.current_period_end)}

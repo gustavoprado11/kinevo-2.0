@@ -64,6 +64,7 @@ interface ModalPlan {
     allow_pix?: boolean
     allow_credit_card?: boolean
     allow_boleto?: boolean
+    max_installment_count?: number
 }
 
 interface FinancialDashboardClientProps {

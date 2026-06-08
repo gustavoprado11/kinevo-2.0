@@ -128,6 +128,10 @@ export interface AsaasPayment {
     paymentLink?: string | null
     /** Se veio de uma assinatura Asaas, vem o id da subscription. */
     subscription?: string | null
+    /** Se veio de um parcelamento (INSTALLMENT), id do grupo de parcelas. */
+    installment?: string | null
+    /** Nº desta parcela dentro do parcelamento (1-based), quando disponível. */
+    installmentNumber?: number | null
 }
 
 // ---------------------------------------------------------------------------

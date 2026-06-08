@@ -2630,6 +2630,7 @@ export type Database = {
           current_period_end: string | null
           end_date: string | null
           id: string
+          installment_count: number | null
           plan_id: string | null
           start_date: string | null
           status: string
@@ -2650,6 +2651,7 @@ export type Database = {
           current_period_end?: string | null
           end_date?: string | null
           id?: string
+          installment_count?: number | null
           plan_id?: string | null
           start_date?: string | null
           status?: string
@@ -2670,6 +2672,7 @@ export type Database = {
           current_period_end?: string | null
           end_date?: string | null
           id?: string
+          installment_count?: number | null
           plan_id?: string | null
           start_date?: string | null
           status?: string
@@ -3073,6 +3076,7 @@ export type Database = {
           interval: string | null
           interval_count: number | null
           is_active: boolean | null
+          max_installment_count: number
           payment_method: string | null
           price: number
           stripe_price_id: string | null
@@ -3089,6 +3093,7 @@ export type Database = {
           interval?: string | null
           interval_count?: number | null
           is_active?: boolean | null
+          max_installment_count?: number
           payment_method?: string | null
           price: number
           stripe_price_id?: string | null
@@ -3105,6 +3110,7 @@ export type Database = {
           interval?: string | null
           interval_count?: number | null
           is_active?: boolean | null
+          max_installment_count?: number
           payment_method?: string | null
           price?: number
           stripe_price_id?: string | null
@@ -3756,6 +3762,7 @@ export type Database = {
           contract_status: string
           current_period_end: string
           display_status: string
+          installment_count: number
           phone: string
           plan_interval: string
           plan_title: string

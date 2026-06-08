@@ -46,6 +46,7 @@ interface Plan {
     allow_pix?: boolean
     allow_credit_card?: boolean
     allow_boleto?: boolean
+    max_installment_count?: number
 }
 
 interface SubscriptionsClientProps {
@@ -395,6 +396,10 @@ export function SubscriptionsClient({
         price: p.price,
         interval: p.interval,
         stripe_price_id: p.stripe_price_id,
+        allow_pix: p.allow_pix ?? undefined,
+        allow_credit_card: p.allow_credit_card ?? undefined,
+        allow_boleto: p.allow_boleto ?? undefined,
+        max_installment_count: p.max_installment_count ?? undefined,
     }))
 
     return (
