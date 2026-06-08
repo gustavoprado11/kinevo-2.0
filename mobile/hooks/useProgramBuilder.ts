@@ -390,7 +390,12 @@ export function useProgramBuilder() {
             };
             if (draft.start_date && draft.assignment_type) {
                 if (draft.assignment_type === "immediate") {
-                    programUpdate.started_at = draft.start_date;
+                    // M11: se a data NÃO mudou, preserva o timestamp original (com
+                    // hora) em vez de gravar só a data (meia-noite UTC), que
+                    // deslocava current_week a cada edição do programa.
+                    const sameDay = !!draft.original_started_at
+                        && draft.original_started_at.split("T")[0] === draft.start_date;
+                    programUpdate.started_at = sameDay ? draft.original_started_at : draft.start_date;
                     programUpdate.scheduled_start_date = null;
                     programUpdate.status = "active";
                 } else {

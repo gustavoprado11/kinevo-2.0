@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     FlatList,
     ActivityIndicator,
+    Alert,
 } from "react-native";
 import { toast } from "@/lib/toast";
 import { X, ChevronRight, AlertTriangle, Check } from "lucide-react-native";
@@ -62,6 +63,33 @@ export function AssignProgramWizard({
 
     const handleConfirm = useCallback(async () => {
         if (!selectedTemplate) return;
+
+        // M12: avisa se o programa não tem dias agendados — sem scheduled_days o
+        // aluno não recebe lembretes. Só alerta quando temos certeza (query ok e
+        // há workouts); erro de rede não bloqueia a atribuição.
+        const { data: wkts, error: wktErr } = await supabase
+            .from("workout_templates")
+            .select("frequency")
+            .eq("program_template_id", selectedTemplate.id);
+        if (!wktErr && wkts && wkts.length > 0) {
+            const hasAnySchedule = wkts.some(
+                (w: any) => Array.isArray(w.frequency) && w.frequency.length > 0
+            );
+            if (!hasAnySchedule) {
+                const proceed = await new Promise<boolean>((resolve) => {
+                    Alert.alert(
+                        "Programa sem dias agendados",
+                        "Nenhum treino tem dias da semana definidos, então o aluno não receberá lembretes. Atribuir mesmo assim?",
+                        [
+                            { text: "Cancelar", style: "cancel", onPress: () => resolve(false) },
+                            { text: "Atribuir mesmo assim", style: "default", onPress: () => resolve(true) },
+                        ],
+                        { cancelable: true, onDismiss: () => resolve(false) },
+                    );
+                });
+                if (!proceed) return;
+            }
+        }
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setIsAssigning(true);

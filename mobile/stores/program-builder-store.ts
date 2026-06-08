@@ -98,6 +98,13 @@ export interface ProgramDraft {
      * isn't an assigned-program edit.
      */
     assignment_type: 'immediate' | 'scheduled' | null;
+    /**
+     * M11: timestamp original COMPLETO (com hora) de `started_at` do programa
+     * carregado para edição. Preservado para que editar o programa sem mudar a
+     * data não trunque `started_at` para meia-noite UTC — o que deslocava
+     * `current_week` a cada save. Undefined fora do fluxo de edição.
+     */
+    original_started_at?: string | null;
     workouts: Workout[];
     studentId: string | null;
     /**
@@ -943,11 +950,13 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     program.scheduled_start_date ? 'scheduled' : 'immediate';
                 const rawStart = program.started_at || program.scheduled_start_date || null;
                 const start_date = rawStart ? rawStart.split('T')[0] : null;
+                const original_started_at = program.started_at ?? null; // M11
                 const draft: ProgramDraft = {
                     name: program.name ?? '',
                     description: program.description ?? '',
                     duration_weeks: program.duration_weeks ?? null,
                     start_date,
+                    original_started_at,
                     assignment_type,
                     studentId,
                     workouts,
@@ -1380,17 +1389,42 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                 const sourceIdx = workout.items.findIndex(it => it.id === itemId);
                 if (sourceIdx === -1) return state;
                 const source = workout.items[sourceIdx];
-                const clone: WorkoutItem = {
-                    ...source,
+
+                const cloneItem = (it: WorkoutItem, overrides: Partial<WorkoutItem>): WorkoutItem => ({
+                    ...it,
                     id: Crypto.randomUUID(),
-                    parent_item_id: null,
-                    set_scheme: source.set_scheme ? source.set_scheme.map(s => ({ ...s })) : null,
-                    substitute_exercise_ids: [...source.substitute_exercise_ids],
-                };
+                    set_scheme: it.set_scheme ? it.set_scheme.map(s => ({ ...s })) : null,
+                    substitute_exercise_ids: [...it.substitute_exercise_ids],
+                    ...overrides,
+                });
+
+                // M10: duplicar respeitando supersets.
+                let clones: WorkoutItem[];
+                let insertAfterIdx = sourceIdx;
+                if (source.item_type === 'superset' && source.parent_item_id === null) {
+                    // Clona o superset INTEIRO: pai + filhos com novos ids e
+                    // parent remapeado (antes o clone vinha sem filhos = bloco vazio).
+                    const newParentId = Crypto.randomUUID();
+                    const parentClone = cloneItem(source, { id: newParentId, parent_item_id: null });
+                    const children = workout.items.filter(it => it.parent_item_id === source.id);
+                    const childClones = children.map(c => cloneItem(c, { parent_item_id: newParentId }));
+                    clones = [parentClone, ...childClones];
+                    const lastChildIdx = children.length
+                        ? Math.max(...children.map(c => workout.items.findIndex(it => it.id === c.id)))
+                        : sourceIdx;
+                    insertAfterIdx = Math.max(sourceIdx, lastChildIdx);
+                } else if (source.parent_item_id) {
+                    // Filho de superset → duplica como outro filho do MESMO superset
+                    // (antes virava exercício solto com parent null).
+                    clones = [cloneItem(source, { parent_item_id: source.parent_item_id })];
+                } else {
+                    clones = [cloneItem(source, { parent_item_id: null })];
+                }
+
                 const inserted = [
-                    ...workout.items.slice(0, sourceIdx + 1),
-                    clone,
-                    ...workout.items.slice(sourceIdx + 1),
+                    ...workout.items.slice(0, insertAfterIdx + 1),
+                    ...clones,
+                    ...workout.items.slice(insertAfterIdx + 1),
                 ].map((it, i) => ({ ...it, order_index: i }));
                 return {
                     draft: {
@@ -1403,17 +1437,38 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                 };
             }),
 
-            reorderItems: (workoutId, newItems) => set((state) => ({
-                draft: {
-                    ...state.draft,
-                    workouts: state.draft.workouts.map(w =>
-                        w.id === workoutId
-                            ? { ...w, items: newItems.map((item, i) => ({ ...item, order_index: i })) }
-                            : w
-                    ),
-                },
-                isDirty: true,
-            })),
+            reorderItems: (workoutId, newItems) => set((state) => {
+                // M10: re-normaliza mantendo cada filho de superset logo após seu
+                // pai — o drag (lista plana) podia separar pai/filhos ou posicionar
+                // o pai depois dos filhos. Itens órfãos (pai sumiu) vão pro fim.
+                const childrenByParent = new Map<string, WorkoutItem[]>();
+                for (const it of newItems) {
+                    if (it.parent_item_id) {
+                        if (!childrenByParent.has(it.parent_item_id)) childrenByParent.set(it.parent_item_id, []);
+                        childrenByParent.get(it.parent_item_id)!.push(it);
+                    }
+                }
+                const ordered: WorkoutItem[] = [];
+                for (const it of newItems) {
+                    if (it.parent_item_id) continue; // filhos entram junto do pai
+                    ordered.push(it);
+                    const kids = childrenByParent.get(it.id);
+                    if (kids) ordered.push(...kids);
+                }
+                const includedIds = new Set(ordered.map(it => it.id));
+                for (const it of newItems) if (!includedIds.has(it.id)) ordered.push(it);
+                return {
+                    draft: {
+                        ...state.draft,
+                        workouts: state.draft.workouts.map(w =>
+                            w.id === workoutId
+                                ? { ...w, items: ordered.map((item, i) => ({ ...item, order_index: i })) }
+                                : w
+                        ),
+                    },
+                    isDirty: true,
+                };
+            }),
 
             setSaving: (isSaving) => set({ isSaving }),
 
