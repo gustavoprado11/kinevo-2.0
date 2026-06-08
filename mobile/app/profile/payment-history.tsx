@@ -26,10 +26,14 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 function formatCurrency(value: number, currency: string = "brl"): string {
-    return new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: currency.toUpperCase(),
-    }).format(value);
+    // M14: currency inválido/vazio fazia o Intl.NumberFormat lançar RangeError e
+    // quebrar a linha. Tenta o código informado e cai em BRL se for inválido.
+    const code = (currency || "brl").toUpperCase();
+    try {
+        return new Intl.NumberFormat("pt-BR", { style: "currency", currency: code }).format(value);
+    } catch {
+        return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+    }
 }
 
 function formatDate(dateStr: string): string {
