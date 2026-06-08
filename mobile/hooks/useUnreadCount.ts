@@ -97,6 +97,10 @@ export function useUnreadCount(): UnreadCounts {
         if (!user) {
             activeStudentId = null;
             initialized = false;
+            // A11: remove os canais Realtime no logout. Sem isto eles ficavam
+            // subscritos com a conta anterior e, no próximo login, novos canais
+            // sobrescreviam o cleanupRef — vazando 2 canais por ciclo de sessão.
+            if (cleanupRef) { cleanupRef(); cleanupRef = null; }
             setSharedState({ messages: 0, notifications: 0 });
             return;
         }

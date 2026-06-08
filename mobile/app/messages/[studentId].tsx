@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View, Text, FlatList, TextInput, Pressable, Image,
-    KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard,
+    KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -54,6 +54,7 @@ export default function TrainerChatScreen() {
     const [student, setStudent] = useState<{ name: string; avatar_url: string | null } | null>(null);
     const [text, setText] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const isSendingRef = useRef(false); // A13: guard síncrono contra duplo-tap
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const flatListRef = useRef<FlatList>(null);
 
@@ -88,19 +89,26 @@ export default function TrainerChatScreen() {
     // Send message
     const handleSend = useCallback(async () => {
         const trimmed = text.trim();
-        if (!trimmed || isSending) return;
+        if (!trimmed) return;
+        if (isSendingRef.current) return; // A13: ignora duplo-tap
+        isSendingRef.current = true;
 
         setIsSending(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        const msg = await sendText(trimmed);
-
-        if (msg) {
-            setText('');
+        try {
+            const msg = await sendText(trimmed);
+            if (msg) {
+                setText('');
+            } else {
+                // A13: falha de envio não pode ser silenciosa.
+                Alert.alert('Não foi possível enviar', 'Verifique sua conexão e tente novamente. Sua mensagem não foi perdida.');
+            }
+        } finally {
+            setIsSending(false);
+            isSendingRef.current = false;
         }
-
-        setIsSending(false);
-    }, [text, isSending, sendText]);
+    }, [text, sendText]);
 
     // ── Render message bubble ──
     const renderMessage = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {

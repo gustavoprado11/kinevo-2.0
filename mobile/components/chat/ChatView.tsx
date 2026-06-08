@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View, Text, FlatList, TextInput, Pressable, Image,
-    KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard,
+    KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -89,18 +89,30 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
     const [isSending, setIsSending] = useState(false);
     const flatListRef = useRef<FlatList>(null);
 
+    // A11: refs estáveis pra fetchMessages/markAsRead. Como deps de effect eles
+    // re-rodavam a cada mensagem (markAsRead muda com unreadCount), causando
+    // refetch total + flash de loading + churn do canal Realtime. Lemos a versão
+    // atual via ref e mantemos os effects presos só a `studentId`.
+    const fetchMessagesRef = useRef(fetchMessages);
+    fetchMessagesRef.current = fetchMessages;
+    const markAsReadRef = useRef(markAsRead);
+    markAsReadRef.current = markAsRead;
+    // A13: guard síncrono contra duplo-tap no envio.
+    const isSendingRef = useRef(false);
+
     // Load initial messages
     useEffect(() => {
         if (!studentId) return;
         setIsLoading(true);
 
-        fetchMessages().then(result => {
+        fetchMessagesRef.current().then(result => {
             setMessages(result.messages);
             setHasMore(result.hasMore);
             setIsLoading(false);
-            markAsRead();
+            markAsReadRef.current();
         });
-    }, [studentId, fetchMessages, markAsRead]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [studentId]);
 
     // Realtime: new messages
     useEffect(() => {
@@ -123,7 +135,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         return [...prev, newMsg];
                     });
                     if (newMsg.sender_type === 'trainer') {
-                        markAsRead();
+                        markAsReadRef.current();
                     }
                 }
             )
@@ -143,7 +155,8 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [studentId, markAsRead]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [studentId]);
 
     // Load more (older messages)
     const loadMore = useCallback(async () => {
@@ -162,31 +175,38 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
     const handleSend = useCallback(async () => {
         const trimmed = text.trim();
         if (!trimmed && !imageUri) return;
-        if (isSending) return;
+        if (isSendingRef.current) return; // A13: ignora duplo-tap (state é assíncrono)
+        isSendingRef.current = true;
 
         setIsSending(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
         let msg: ChatMessage | null = null;
+        try {
+            if (imageUri) {
+                msg = await sendImageMessage(imageUri, trimmed || undefined, imageMimeType);
+            } else {
+                msg = await sendTextMessage(trimmed);
+            }
 
-        if (imageUri) {
-            msg = await sendImageMessage(imageUri, trimmed || undefined, imageMimeType);
-        } else {
-            msg = await sendTextMessage(trimmed);
+            if (msg) {
+                setMessages(prev => {
+                    if (prev.some(m => m.id === msg!.id)) return prev;
+                    return [...prev, msg!];
+                });
+                setText('');
+                setImageUri(null);
+                setImageMimeType(undefined);
+            } else {
+                // A13: falha de envio não pode ser silenciosa — o texto/imagem
+                // continua no input pra reenviar.
+                Alert.alert('Não foi possível enviar', 'Verifique sua conexão e tente novamente. Sua mensagem não foi perdida.');
+            }
+        } finally {
+            setIsSending(false);
+            isSendingRef.current = false;
         }
-
-        if (msg) {
-            setMessages(prev => {
-                if (prev.some(m => m.id === msg!.id)) return prev;
-                return [...prev, msg!];
-            });
-            setText('');
-            setImageUri(null);
-            setImageMimeType(undefined);
-        }
-
-        setIsSending(false);
-    }, [text, imageUri, imageMimeType, isSending, sendTextMessage, sendImageMessage]);
+    }, [text, imageUri, imageMimeType, sendTextMessage, sendImageMessage]);
 
     // Pick image
     const pickImage = useCallback(async () => {
