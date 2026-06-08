@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kinevo",
     "slug": "kinevo",
-    "version": "1.4.0",
+    "version": "1.5.2",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kinevo.mobile",
-      "buildNumber": "33",
+      "buildNumber": "34",
       "appleTeamId": "3D5M22J52M",
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -43,6 +43,7 @@
         "backgroundColor": "#111019"
       },
       "package": "com.kinevo.mobile",
+      "versionCode": 34,
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "permissions": [
