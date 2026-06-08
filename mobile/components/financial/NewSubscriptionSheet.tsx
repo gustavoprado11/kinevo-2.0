@@ -173,8 +173,11 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                     });
                     url = r.url;
                 } else {
-                    // dueDate padrão: hoje + 3 dias (YYYY-MM-DD)
-                    const dueDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+                    // dueDate padrão: hoje + 3 dias (YYYY-MM-DD). B6: usa as
+                    // componentes de data LOCAIS — `toISOString().slice(0,10)` era
+                    // UTC e, à noite em BRT (UTC-3), adiantava o vencimento um dia.
+                    const d = new Date(Date.now() + 3 * 86_400_000);
+                    const dueDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
                     const r = await walletFetch<{ url: string }>("/api/wallet/charges", {
                         method: "POST",
                         body: { studentId: selectedStudent.id, planId: selectedPlan.id, value: selectedPlan.price, dueDate },

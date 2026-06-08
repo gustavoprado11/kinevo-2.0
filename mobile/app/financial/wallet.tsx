@@ -170,7 +170,7 @@ export default function WalletScreen() {
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
                                         <Clock size={13} color="rgba(255,255,255,0.8)" />
                                         <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>
-                                            {formatBRL(balance.pending)} a liberar
+                                            {balance.pending == null ? "Valor a liberar indisponível" : `${formatBRL(balance.pending)} a liberar`}
                                         </Text>
                                     </View>
                                     {balance.error ? (

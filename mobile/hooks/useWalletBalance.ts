@@ -43,8 +43,11 @@ export function useWalletBalance(enabled = true) {
     }, [fetchBalance]);
 
     const available = balance?.balance ?? 0;
-    const total = balance?.totalBalance ?? balance?.balance ?? 0;
-    const pending = Math.max(0, total - available);
+    // B7: sem `totalBalance` não dá pra saber o pendente — retorna null
+    // ("indisponível" na UI) em vez de R$ 0,00, que parecia "nada a liberar".
+    const hasTotal = typeof balance?.totalBalance === "number";
+    const total = hasTotal ? (balance!.totalBalance as number) : available;
+    const pending: number | null = hasTotal ? Math.max(0, total - available) : null;
 
     return {
         balance,
