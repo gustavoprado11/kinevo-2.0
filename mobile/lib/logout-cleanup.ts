@@ -7,6 +7,7 @@
  * lista de alunos (PII), contador de notificações, sessões da sala de treino
  * e rascunhos do usuário anterior.
  */
+import * as SecureStore from "expo-secure-store";
 import { clearAllCache } from "./cache";
 import { clearStoredTokens as clearStravaTokens } from "./strava/oauth";
 import { useNotificationStore } from "../stores/notification-store";
@@ -38,6 +39,15 @@ export function clearUserScopedState(): void {
     // Best-effort assíncrono: o logout não precisa esperar.
     clearStravaTokens().catch((e: unknown) => {
         if (__DEV__) console.warn("[logout] clearStravaTokens falhou:", e);
+    });
+
+    // M15: papel salvo (modo aluno/treinador). MESMA chave de RoleModeContext
+    // (ROLE_KEY = "kinevo-last-role"); não importamos de lá pra evitar ciclo
+    // (logout-cleanup → RoleModeContext → AuthContext → logout-cleanup). Sem
+    // limpar, o próximo usuário dual-role no mesmo aparelho herdaria o papel do
+    // anterior e pularia o role-select. Best-effort.
+    SecureStore.deleteItemAsync("kinevo-last-role").catch((e: unknown) => {
+        if (__DEV__) console.warn("[logout] limpar ROLE_KEY falhou:", e);
     });
 
     // Stores de rascunho sem reset dedicado — limpa o storage persistido.
