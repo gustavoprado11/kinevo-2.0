@@ -23,9 +23,10 @@ export function IntensityBadge({ level }: { level: IntensityLevel }) {
                 paddingHorizontal: 8,
                 paddingVertical: 3,
                 borderRadius: 999,
+                flexShrink: 0, // B2: nunca encolher/cortar o chip ("Inten…")
             }}
         >
-            <Text style={{ fontSize: 10.5, fontWeight: '700', letterSpacing: 0.4, color: v.fg }}>
+            <Text numberOfLines={1} style={{ fontSize: 10.5, fontWeight: '700', letterSpacing: 0.4, color: v.fg }}>
                 {v.label}
             </Text>
         </View>

@@ -475,7 +475,9 @@ function HistoryCard({ session }: { session: HistorySession }) {
                     </View>
                     <View style={{ flex: 1, marginRight: 12 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ fontSize: 17, fontWeight: '700', letterSpacing: -0.2, color: colors.text.primary }}>
+                            {/* B2: nome encolhe/elipsa pra não empurrar o badge de
+                                intensidade pra fora do card (antes saía cortado "Inten…"). */}
+                            <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 17, fontWeight: '700', letterSpacing: -0.2, color: colors.text.primary }}>
                                 {session.workout_name}
                             </Text>
                             <IntensityBadge level={intensity} />
