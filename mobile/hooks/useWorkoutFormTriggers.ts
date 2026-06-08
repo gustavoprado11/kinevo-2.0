@@ -33,10 +33,13 @@ export function useWorkoutFormTriggers(assignedProgramId: string | null): UseWor
 
         let mounted = true;
 
-        async function fetchTriggers() {
-            setIsLoading(true);
-            setError(null);
+        // A9: erro transitório de rede NÃO pode zerar os check-ins permanentemente.
+        // Antes, o catch marcava fetchedRef e o player criava a sessão sem pré/pós
+        // check-in. Agora re-tentamos algumas vezes (mantendo isLoading=true, o que
+        // segura o player) e só desistimos — sem bloquear o treino — após esgotar.
+        const MAX_ATTEMPTS = 3;
 
+        async function attemptFetch(attempt: number): Promise<void> {
             try {
                 const { data, error: rpcError }: { data: any; error: any } = await supabase
                     .rpc('get_active_workout_triggers' as any, {
@@ -47,7 +50,8 @@ export function useWorkoutFormTriggers(assignedProgramId: string | null): UseWor
 
                 const result = data as { ok: boolean; triggers: any[] };
                 if (!result?.ok || !Array.isArray(result.triggers)) {
-                    if (mounted) fetchedRef.current = assignedProgramId;
+                    // Resposta bem-formada "sem triggers" — não é erro, não re-tenta.
+                    if (mounted) { fetchedRef.current = assignedProgramId; setIsLoading(false); }
                     return;
                 }
 
@@ -67,18 +71,28 @@ export function useWorkoutFormTriggers(assignedProgramId: string | null): UseWor
                             : null
                     );
                     fetchedRef.current = assignedProgramId;
+                    setIsLoading(false);
                 }
             } catch (err: any) {
-                if (__DEV__) console.error('[useWorkoutFormTriggers] Error:', err?.message);
-                if (mounted) setError(err);
-                // Still mark as fetched — don't retry on re-render
-                if (mounted) fetchedRef.current = assignedProgramId;
-            } finally {
-                if (mounted) setIsLoading(false);
+                // Re-tenta erros (rede/RPC) antes de liberar o treino sem check-in.
+                if (mounted && attempt < MAX_ATTEMPTS) {
+                    await new Promise((r) => setTimeout(r, 800 * attempt));
+                    if (mounted) await attemptFetch(attempt + 1);
+                    return;
+                }
+                if (__DEV__) console.error('[useWorkoutFormTriggers] Error (após retries):', err?.message);
+                if (mounted) {
+                    setError(err);
+                    // Desiste após N tentativas — não bloqueia o treino.
+                    fetchedRef.current = assignedProgramId;
+                    setIsLoading(false);
+                }
             }
         }
 
-        fetchTriggers();
+        setIsLoading(true);
+        setError(null);
+        attemptFetch(1);
         return () => { mounted = false; };
     }, [assignedProgramId]);
 
