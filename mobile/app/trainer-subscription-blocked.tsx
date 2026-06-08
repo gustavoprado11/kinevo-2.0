@@ -7,7 +7,7 @@ import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useRoleMode } from "../contexts/RoleModeContext";
 import { PressableScale } from "../components/shared/PressableScale";
 import { WEB_URL } from "../lib/config";
-import { useV2Colors } from "../hooks/useV2Colors";
+import { useV2Colors, useIsDark } from "../hooks/useV2Colors";
 
 const SUBSCRIBE_URL = `${WEB_URL}/subscription`;
 
@@ -15,6 +15,9 @@ export default function TrainerSubscriptionBlockedScreen() {
     const { switchToStudent } = useRoleMode();
     const router = useRouter();
     const colors = useV2Colors();
+    // M4: esta tela hardcodava cores claras (#F2F2F7/#fff/#0f172a), então
+    // renderizava light dentro de um app escuro. Agora segue o tema (useV2Colors).
+    const isDark = useIsDark();
 
     const handleSubscribe = () => {
         Linking.openURL(SUBSCRIBE_URL);
@@ -26,8 +29,8 @@ export default function TrainerSubscriptionBlockedScreen() {
     }, [switchToStudent, router]);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }}>
-            <StatusBar barStyle="dark-content" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: "center", alignItems: "center" }}>
                 {/* Lock Icon */}
                 <Animated.View
@@ -36,24 +39,24 @@ export default function TrainerSubscriptionBlockedScreen() {
                         width: 80,
                         height: 80,
                         borderRadius: 24,
-                        backgroundColor: "#fef2f2",
+                        backgroundColor: colors.semantic.danger.bg,
                         alignItems: "center",
                         justifyContent: "center",
                         marginBottom: 24,
                     }}
                 >
-                    <Lock size={36} color="#ef4444" />
+                    <Lock size={36} color={colors.semantic.danger.default} />
                 </Animated.View>
 
                 {/* Message */}
                 <Animated.View entering={FadeInUp.delay(100).duration(400)} style={{ alignItems: "center" }}>
-                    <Text style={{ fontSize: 22, fontWeight: "800", color: "#0f172a", textAlign: "center" }}>
+                    <Text style={{ fontSize: 22, fontWeight: "800", color: colors.text.primary, textAlign: "center" }}>
                         Assinatura necessária
                     </Text>
                     <Text
                         style={{
                             fontSize: 14,
-                            color: "#64748b",
+                            color: colors.text.secondary,
                             marginTop: 12,
                             textAlign: "center",
                             lineHeight: 22,
@@ -93,7 +96,7 @@ export default function TrainerSubscriptionBlockedScreen() {
                         onPress={handleBackToStudent}
                         pressScale={0.97}
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 16,
                             paddingVertical: 16,
                             flexDirection: "row",
@@ -101,11 +104,11 @@ export default function TrainerSubscriptionBlockedScreen() {
                             justifyContent: "center",
                             gap: 8,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.06)",
+                            borderColor: colors.border.default,
                         }}
                     >
-                        <ArrowLeft size={18} color="#64748b" />
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#64748b" }}>
+                        <ArrowLeft size={18} color={colors.text.secondary} />
+                        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.secondary }}>
                             Voltar ao modo aluno
                         </Text>
                     </PressableScale>
