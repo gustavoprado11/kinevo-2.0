@@ -79,11 +79,15 @@ export default function TrainerChatScreen() {
     }, [isLoading]);
 
     // Load more (older messages)
+    // M19: evita que onContentSizeChange role pro fim ao prependar histórico.
+    const isPrependingRef = useRef(false);
     const handleLoadMore = useCallback(async () => {
         if (!hasMore || isLoadingMore) return;
         setIsLoadingMore(true);
+        isPrependingRef.current = true;
         await loadMore();
         setIsLoadingMore(false);
+        setTimeout(() => { isPrependingRef.current = false; }, 50);
     }, [hasMore, isLoadingMore, loadMore]);
 
     // Send message
@@ -290,7 +294,7 @@ export default function TrainerChatScreen() {
                         ) : null
                     }
                     onContentSizeChange={() => {
-                        if (!isLoadingMore) {
+                        if (!isPrependingRef.current) {
                             flatListRef.current?.scrollToEnd({ animated: false });
                         }
                     }}

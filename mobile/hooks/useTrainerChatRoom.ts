@@ -103,12 +103,19 @@ export function useTrainerChatRoom(studentId: string): UseTrainerChatRoomReturn 
             return null;
         }
 
+        const msg = data as unknown as ChatMessage;
+        // M18: append otimista com dedup por id. Antes a própria mensagem do
+        // treinador só aparecia via eco do Realtime; um evento perdido fazia
+        // parecer que o envio falhou (levando a reenvio). O handler INSERT também
+        // dedupa por id, então não duplica.
+        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+
         // Notify student via push (fire-and-forget)
         notifyStudent(studentId, content.trim()).catch((err) => {
             if (__DEV__) console.error('[useTrainerChatRoom] notifyStudent error:', err);
         });
 
-        return data as unknown as ChatMessage;
+        return msg;
     }, [user, studentId]);
 
     // Notify student via web API push route

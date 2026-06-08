@@ -159,6 +159,12 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
     }, [studentId]);
 
     // Load more (older messages)
+    // M19: sinaliza (síncrono) que estamos prependando histórico, pra o
+    // onContentSizeChange NÃO rolar pro fim. O state isLoadingMore já era false
+    // quando o content size mudava (batch no mesmo tick), jogando a lista de volta
+    // pro fim e impedindo ler mensagens antigas.
+    const isPrependingRef = useRef(false);
+
     const loadMore = useCallback(async () => {
         if (!hasMore || isLoadingMore || messages.length === 0) return;
         setIsLoadingMore(true);
@@ -166,9 +172,11 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
         const oldestCreatedAt = messages[0].created_at;
         const result = await fetchMessages(oldestCreatedAt);
 
+        isPrependingRef.current = true;
         setMessages(prev => [...result.messages, ...prev]);
         setHasMore(result.hasMore);
         setIsLoadingMore(false);
+        setTimeout(() => { isPrependingRef.current = false; }, 50);
     }, [hasMore, isLoadingMore, messages, fetchMessages]);
 
     // Send message
@@ -397,7 +405,7 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
                         ) : null
                     }
                     onContentSizeChange={() => {
-                        if (!isLoadingMore) {
+                        if (!isPrependingRef.current) {
                             flatListRef.current?.scrollToEnd({ animated: false });
                         }
                     }}

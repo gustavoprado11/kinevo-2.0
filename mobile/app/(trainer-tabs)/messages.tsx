@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, FlatList, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { MessageCircle, Search, Image as ImageIcon } from 'lucide-react-native';
 import Animated, { FadeIn, FadeInUp, Easing } from 'react-native-reanimated';
 import {
@@ -55,6 +55,21 @@ export default function MessagesScreen() {
     const colors = useV2Colors();
     const router = useRouter();
     const { conversations, totalUnread, isLoading, isRefreshing, refresh } = useTrainerConversations();
+
+    // M17: revalida ao voltar o foco (ex.: depois de ler uma conversa). O hook só
+    // escuta INSERT e não tinha refetch no foco, então o badge/indicador de
+    // não-lida ficava errado até pull-to-refresh. Pula o foco inicial (mount já
+    // carrega).
+    const didInitialFocusRef = useRef(false);
+    useFocusEffect(
+        useCallback(() => {
+            if (!didInitialFocusRef.current) {
+                didInitialFocusRef.current = true;
+                return;
+            }
+            refresh();
+        }, [refresh])
+    );
 
     const [searchText, setSearchText] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');

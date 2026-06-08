@@ -79,6 +79,10 @@ export function ChatImage({
                 height: 160,
                 borderRadius: 12,
                 marginBottom: hasContent ? 6 : 0,
+                // M1: fundo neutro enquanto carrega. Sem isto, a área vazia da
+                // imagem mostrava o fundo do balão (verde, em mensagem própria),
+                // aparecendo como um "bloco verde" até a imagem pintar / em falha.
+                backgroundColor: mutedBg,
             }}
             resizeMode="cover"
             onError={() => setFailed(true)}
