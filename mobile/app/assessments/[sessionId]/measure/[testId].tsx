@@ -167,6 +167,17 @@ export default function MeasureScreen() {
         }
     }, [test, pending, commitNumeric, commitBilateral, commitMulti, goToNextOrBack]);
 
+    // M9: "Anterior" salva o valor digitado-mas-não-confirmado no draft antes de
+    // voltar (o reset de `pending` ao trocar de teste o descartava). Persiste sem
+    // navegar pra frente — diferente dos commit*, que chamam goToNextOrBack.
+    const onWizardPrev = useCallback(() => {
+        if (test && pending) {
+            draft.replaceForTest(test.id, pending.rows);
+            if (pending.kind === 'multi') draft.clearAttempts(test.id);
+        }
+        router.back();
+    }, [test, pending, draft, router]);
+
     // If the remote session vanished, useAssessmentSession already wiped
     // the local draft. Bounce back to /forms — same UX as the checklist.
     React.useEffect(() => {
@@ -224,7 +235,7 @@ export default function MeasureScreen() {
             stepIndex={Math.max(0, stepIndex)}
             totalSteps={Math.max(1, totalSteps)}
             canAdvance={canAdvance}
-            onPrev={() => router.back()}
+            onPrev={onWizardPrev}
             onNext={onWizardNext}
             isLast={isLast}
             rangePrompt={rangePrompt}>

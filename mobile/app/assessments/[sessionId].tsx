@@ -219,22 +219,28 @@ export default function SessionScreen() {
             }
         }
 
+        // M13: computa SEMPRE a partir das medições frescas do store. O closure
+        // `draft.draft.measurements` podia estar desatualizado (sem a última
+        // medição) se o trainer confirmou e tocou Finalizar antes do re-render,
+        // fazendo o cálculo final divergir do que foi de fato salvo via `fresh`.
+        const measurements = fresh?.measurements ?? draft.draft.measurements;
+
         // Step 1: always compute the simple computed metrics declared in the
         // template (BMI, RCQ — independent of any ProtocolTest).
         let metrics: ComputedMetrics = buildComputedMetricsFromSchema(
             schema,
-            draft.draft.measurements,
+            measurements,
         );
 
         // Step 2: run the body-composition engine for body fat % + lean/fat
         // mass when sex/age are captured (CreateSessionModal step 3) and
         // either an explicit `protocol` test or matching skinfolds are
         // present in the measurements.
-        const ctx = readSubjectContext(draft.draft.measurements);
-        const weight = pickWeightKg(draft.draft.measurements);
-        const height = pickHeightM(draft.draft.measurements);
+        const ctx = readSubjectContext(measurements);
+        const weight = pickWeightKg(measurements);
+        const height = pickHeightM(measurements);
         const protocolId = ctx.sex
-            ? detectProtocol(schema, draft.draft.measurements, ctx.sex)
+            ? detectProtocol(schema, measurements, ctx.sex)
             : null;
 
         if (__DEV__) {
@@ -244,14 +250,14 @@ export default function SessionScreen() {
                 age: ctx.age_years,
                 weight,
                 height,
-                skinfoldKeys: draft.draft.measurements
+                skinfoldKeys: measurements
                     .filter((m) => m.metric_key.startsWith('skinfold_'))
                     .map((m) => m.metric_key),
             });
         }
 
         if (protocolId && ctx.sex && ctx.age_years && weight && height) {
-            const skinfolds_mm = extractSkinfoldsForEngine(draft.draft.measurements);
+            const skinfolds_mm = extractSkinfoldsForEngine(measurements);
             const engineInput: BodyCompositionInput = {
                 protocol: protocolId as AssessmentProtocol,
                 anthropometric: {
@@ -286,7 +292,7 @@ export default function SessionScreen() {
         const result = await lifecycle.finalize({
             session_id: sessionId,
             precomputedMetrics: metrics,
-            notes: draft.draft.notes || null,
+            notes: (fresh?.notes ?? draft.draft.notes) || null,
         });
         // The lifecycle hook may return null in two distinct cases:
         //  - genuine error (finalizeError populated)

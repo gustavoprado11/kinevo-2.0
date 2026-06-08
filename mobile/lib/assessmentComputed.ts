@@ -209,17 +209,21 @@ export function detectProtocol(
     const sf = extractSkinfoldsForEngine(measurements);
     const captured = new Set(Object.keys(sf));
     if (captured.size === 0) return null;
-    // Try each protocol; pick the first whose required_sites[sex] are all
-    // present. Iteration order follows declaration in PROTOCOLS, which is
-    // stable.
+    // M8: entre os protocolos cujos required_sites[sex] estão todos presentes,
+    // escolhe o MAIS específico (maior nº de sítios exigidos) — não o primeiro
+    // declarado. Senão um protocolo de 3 dobras podia rodar quando o template
+    // tinha 7 capturadas (fórmula menos precisa que a pretendida).
+    let best: { id: ProtocolId; n: number } | null = null;
     for (const def of Object.values(PROTOCOLS)) {
         const entry = def.required_sites.find((r) => r.sex === sex);
         if (!entry) continue;
         if (entry.sites.every((s) => captured.has(s))) {
-            return def.id;
+            if (!best || entry.sites.length > best.n) {
+                best = { id: def.id, n: entry.sites.length };
+            }
         }
     }
-    return null;
+    return best?.id ?? null;
 }
 
 /**
