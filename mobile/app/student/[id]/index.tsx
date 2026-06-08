@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
     View,
     Text,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { StudentDetailSkeleton } from "../../../components/shared/skeletons/StudentDetailSkeleton";
 import { toast } from "../../../lib/toast";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import {
@@ -63,6 +63,21 @@ export default function StudentProfileScreen({
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { data, isLoading, isRefreshing, refresh } = useStudentDetail(id || null);
+
+    // A7: revalida ao voltar o foco (ex.: depois de atribuir/editar programa pelo
+    // builder/wizard). Sem isto o detalhe ficava stale ("sem programa ativo") e o
+    // treinador podia reatribuir, criando um 2º programa que encerra o 1º. Pula o
+    // foco inicial — o useCachedQuery já carrega no mount.
+    const didInitialFocusRef = useRef(false);
+    useFocusEffect(
+        useCallback(() => {
+            if (!didInitialFocusRef.current) {
+                didInitialFocusRef.current = true;
+                return;
+            }
+            refresh();
+        }, [refresh])
+    );
 
     const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
     const [showResetPassword, setShowResetPassword] = useState(false);

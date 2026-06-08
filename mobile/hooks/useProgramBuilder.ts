@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useProgramBuilderStore, type WorkoutItem } from "../stores/program-builder-store";
 import { supabase } from "../lib/supabase";
 import { toast } from "../lib/toast";
@@ -79,6 +79,14 @@ export type SaveAndAssignResult =
 
 export function useProgramBuilder() {
     const store = useProgramBuilderStore();
+
+    // A8: o save manual cria a árvore de template e DEPOIS chama a Edge Function
+    // `assign-program`. Se o assign falhava, a árvore ficava órfã e cada novo
+    // toque em "Salvar" recriava outra árvore (sem idempotência). Guardamos o
+    // programId criado + uma assinatura do draft; num retry com o MESMO draft,
+    // reaproveitamos a árvore em vez de recriar. Se o treinador editar o draft,
+    // a assinatura muda e criamos uma árvore nova (não reatribui conteúdo velho).
+    const pendingTemplateRef = useRef<{ programId: string; signature: string } | null>(null);
 
     const saveAsTemplate = useCallback(async (): Promise<string> => {
         const { draft } = store;
@@ -288,7 +296,16 @@ export function useProgramBuilder() {
 
         // ── Manual / parsed-text path: save as template, then assign via Edge Function (legacy) ──
         try {
-            const programId = await saveAsTemplate();
+            // A8: num retry com o MESMO draft, reaproveita a árvore já criada em
+            // vez de recriar (cada recriação deixava um template órfão no banco).
+            const signature = JSON.stringify(draft);
+            let programId: string;
+            if (pendingTemplateRef.current && pendingTemplateRef.current.signature === signature) {
+                programId = pendingTemplateRef.current.programId;
+            } else {
+                programId = await saveAsTemplate();
+                pendingTemplateRef.current = { programId, signature };
+            }
 
             const { data: result, error } = await supabase.functions.invoke("assign-program", {
                 body: {
@@ -302,10 +319,14 @@ export function useProgramBuilder() {
             if (error) throw new Error(error.message || "Falha ao atribuir programa");
             if (result?.error) throw new Error(result.error);
 
+            pendingTemplateRef.current = null; // sucesso → não reaproveitar
             toast.success("Programa criado!", `"${draft.name}" foi atribuído ao aluno.`);
             store.reset();
             return { ok: true };
         } catch (err) {
+            // Mantém pendingTemplateRef: o próximo retry (mesmo draft) reaproveita
+            // a árvore criada em vez de gerar outra órfã. Editar o draft muda a
+            // assinatura e força uma árvore nova.
             const message = err instanceof Error ? err.message : "Falha ao salvar programa.";
             toast.error("Erro", message);
             return { ok: false, reason: "ERROR", message };
