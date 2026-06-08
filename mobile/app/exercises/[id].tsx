@@ -14,7 +14,7 @@ import YoutubePlayer from "react-native-youtube-iframe";
 import * as Haptics from "expo-haptics";
 import { ChevronLeft, Pencil, Trash2, Shield } from "lucide-react-native";
 import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../contexts/AuthContext";
+import { useRoleMode } from "../../contexts/RoleModeContext";
 import { useExerciseCrud } from "../../hooks/useExerciseCrud";
 import { useExerciseLibrary, type Exercise } from "../../hooks/useExerciseLibrary";
 import { ExerciseFormModal } from "../../components/trainer/exercises/ExerciseFormModal";
@@ -49,7 +49,8 @@ export default function ExerciseDetailScreen() {
     const colors = useV2Colors();
     const { id } = useLocalSearchParams<{ id: string }>();
     const { width } = useWindowDimensions();
-    const { user } = useAuth();
+    // A6: comparar com trainerId (trainers.id), não user.id (auth) — ver index.tsx.
+    const { trainerId } = useRoleMode();
     const router = useRouter();
     const { muscleGroups } = useExerciseLibrary();
 
@@ -96,7 +97,7 @@ export default function ExerciseDetailScreen() {
         fetchExercise();
     });
 
-    const isOwner = exercise?.owner_id === user?.id;
+    const isOwner = !!trainerId && exercise?.owner_id === trainerId;
     const isSystem = exercise?.owner_id === null;
 
     const handleEdit = useCallback(

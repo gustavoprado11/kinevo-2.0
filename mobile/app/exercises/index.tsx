@@ -18,7 +18,7 @@ import * as Haptics from "expo-haptics";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { useExerciseLibrary, type Exercise } from "../../hooks/useExerciseLibrary";
 import { useExerciseCrud } from "../../hooks/useExerciseCrud";
-import { useAuth } from "../../contexts/AuthContext";
+import { useRoleMode } from "../../contexts/RoleModeContext";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { ExerciseFormModal } from "../../components/trainer/exercises/ExerciseFormModal";
 import { MuscleGroupManagerModal } from "../../components/trainer/exercises/MuscleGroupManagerModal";
@@ -137,7 +137,9 @@ function SwipeableExerciseCard({
 export default function ExercisesListScreen() {
     const colors = useV2Colors();
     const router = useRouter();
-    const { user } = useAuth();
+    // A6: dono do exercício é `trainers.id` (owner_id gravado pelo useExerciseCrud),
+    // não o auth.users.id — comparar com user.id deixava isOwner sempre false.
+    const { trainerId } = useRoleMode();
     const {
         exercises,
         muscleGroups,
@@ -350,7 +352,7 @@ export default function ExercisesListScreen() {
                         renderItem={({ item }) => (
                             <SwipeableExerciseCard
                                 exercise={item}
-                                isOwner={item.owner_id === user?.id}
+                                isOwner={!!trainerId && item.owner_id === trainerId}
                                 onPress={() => router.push({ pathname: "/exercises/[id]", params: { id: item.id } })}
                                 onDelete={() => handleDelete(item)}
                             />
