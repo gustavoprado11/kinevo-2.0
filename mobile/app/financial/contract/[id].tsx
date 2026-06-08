@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import * as Haptics from "expo-haptics";
+import { formatBRL } from "@/lib/currency";
 import {
     View,
     Text,
@@ -58,7 +59,7 @@ const BILLING_LABELS: Record<string, string> = {
 
 function formatCurrency(value: number | null): string {
     if (value === null || value === undefined) return "—";
-    return `R$ ${value.toFixed(2).replace(".", ",")}`;
+    return formatBRL(value);
 }
 
 function formatDate(dateStr: string | null): string {

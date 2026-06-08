@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, ActivityIndicator } from "react-native";
+import { formatBRL } from "@/lib/currency";
 import {
     UserPlus,
     FileText,
@@ -43,7 +44,7 @@ function formatEventDate(dateStr: string): string {
 function getEventDetail(event: ContractEvent): string | null {
     const meta = event.metadata || {};
     if (event.event_type === "payment_received" && meta.amount) {
-        const value = `R$ ${Number(meta.amount).toFixed(2).replace(".", ",")}`;
+        const value = formatBRL(Number(meta.amount));
         return meta.method ? `${value} — ${meta.method}` : value;
     }
     if (event.event_type === "contract_canceled" && meta.canceled_by) {

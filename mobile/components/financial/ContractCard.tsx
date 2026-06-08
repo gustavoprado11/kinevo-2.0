@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react-native";
 import { PressableScale } from "../shared/PressableScale";
 import type { FinancialStudent, DisplayStatus } from "../../types/financial";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { formatBRL } from "@/lib/currency";
 
 const STATUS_CONFIG: Record<DisplayStatus, { bg: string; text: string; label: string }> = {
     courtesy: { bg: "rgba(59,130,246,0.12)", text: "#3b82f6", label: "Cortesia" },
@@ -27,7 +28,7 @@ const BILLING_CONFIG: Record<string, { bg: string; text: string; label: string }
 
 function formatCurrency(value: number | null): string {
     if (value === null || value === undefined) return "—";
-    return `R$ ${value.toFixed(2).replace(".", ",")}`;
+    return formatBRL(value);
 }
 
 function formatDate(dateStr: string | null): string {

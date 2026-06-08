@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     View,
     Text,
@@ -19,6 +19,7 @@ import { useRoleMode } from "../../contexts/RoleModeContext";
 import type { TrainerPlan } from "../../hooks/useTrainerPlans";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 import { toRgba } from "../../lib/brandColor";
+import { formatBRL } from "@/lib/currency";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
@@ -44,7 +45,7 @@ interface NewSubscriptionSheetProps {
 }
 
 function formatCurrency(value: number): string {
-    return `R$ ${value.toFixed(2).replace(".", ",")}`;
+    return formatBRL(value);
 }
 
 const BILLING_OPTIONS: { key: BillingType; label: string; desc: string; icon: any; requiresWallet?: boolean }[] = [
@@ -72,6 +73,9 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
     const [selectedBilling, setSelectedBilling] = useState<BillingType | null>(null);
     const [selectedPlan, setSelectedPlan] = useState<TrainerPlan | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    // A3: guard idempotente síncrono — `submitting` (state) só reflete no próximo
+    // render, então dois toques no mesmo frame disparavam duas cobranças/links.
+    const submittingRef = useRef(false);
 
     // Fetch students on open
     useEffect(() => {
@@ -148,6 +152,8 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
 
     const handleConfirm = useCallback(async () => {
         if (!selectedStudent) return;
+        if (submittingRef.current) return; // A3: ignora duplo-tap
+        submittingRef.current = true;
 
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setSubmitting(true);
@@ -212,6 +218,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
             Alert.alert("Erro", err instanceof Error ? err.message : "Falha na conexão");
         } finally {
             setSubmitting(false);
+            submittingRef.current = false;
         }
     }, [selectedStudent, selectedBilling, selectedPlan, onSuccess, onClose]);
 

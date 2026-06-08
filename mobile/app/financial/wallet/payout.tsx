@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
@@ -44,6 +44,9 @@ export default function PayoutScreen() {
     const [selectedKeyId, setSelectedKeyId] = useState<string | null>(null);
     const [amount, setAmount] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    // A3: guard síncrono contra duplo-tap (state `submitting` só reflete no
+    // próximo render → dois toques rápidos disparavam dois payouts PIX).
+    const submittingRef = useRef(false);
 
     const defaultKeyId = useMemo(() => keys.find((k) => k.is_default)?.id ?? keys[0]?.id ?? null, [keys]);
     const activeKeyId = selectedKeyId ?? defaultKeyId;
@@ -55,6 +58,8 @@ export default function PayoutScreen() {
 
     const handleSubmit = async () => {
         if (!canSubmit || !activeKeyId) return;
+        if (submittingRef.current) return; // A3: ignora duplo-tap
+        submittingRef.current = true;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setSubmitting(true);
         try {
@@ -76,6 +81,7 @@ export default function PayoutScreen() {
             Alert.alert("Não foi possível sacar", err instanceof Error ? err.message : "Tente novamente.");
         } finally {
             setSubmitting(false);
+            submittingRef.current = false;
         }
     };
 

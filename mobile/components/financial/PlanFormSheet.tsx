@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { parseBRL } from "@/lib/currency";
 import {
     View,
     Text,
@@ -61,7 +62,9 @@ export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: Pl
             return;
         }
 
-        const priceNum = parseFloat(price.replace(",", "."));
+        // A5: parse pt-BR robusto — `replace(',', '.')` quebrava com ponto de
+        // milhar ("1.500,00" virava 1.5 → plano ~1000× mais barato).
+        const priceNum = parseBRL(price);
 
         if (!isEditing && (!priceNum || priceNum <= 0)) {
             Alert.alert("Erro", "Digite um valor válido");

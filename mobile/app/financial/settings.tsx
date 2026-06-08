@@ -14,11 +14,12 @@ import { useWallet } from "../../hooks/useWallet";
 import { useHasStripeLegacy } from "../../hooks/useHasStripeLegacy";
 import { walletFetch } from "../../lib/wallet-api";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
+import { formatBRL } from "@/lib/currency";
 
 // Taxas — fonte ÚNICA em @kinevo/shared/lib/asaas/fees.ts (web + mobile importam de lá).
 const FEES = ASAAS_FEES;
 const pct = (p: number) => (p * 100).toFixed(2).replace(".", ",") + "%";
-const brl = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
+const brl = (v: number) => formatBRL(v);
 
 const STATUS_LABEL: Record<KinevoWalletStatus, string> = {
     not_started: "Não ativada",
