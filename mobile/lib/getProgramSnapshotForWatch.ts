@@ -9,6 +9,11 @@
 import { supabase } from './supabase';
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
 import { sortExerciseItems } from '../utils/sortExerciseItems';
+import { hydrateSetPrescriptions } from './hydrateWorkoutSets';
+import { SET_TYPE_BADGE_LABELS } from '@kinevo/shared/lib/prescription/set-type-labels';
+import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels';
+import type { MethodKey, SetType, WorkoutSet } from '@kinevo/shared/types/prescription';
+import type { WatchSetDetail } from '../modules/watch-connectivity/src/WatchConnectivityModule.types';
 
 const EQUIPMENT_LABELS: Record<string, string> = {
   treadmill: 'Esteira',
@@ -60,7 +65,7 @@ export async function getProgramSnapshotForWatch(
       .from('assigned_workouts' as any)
       .select(`
         id, name, order_index, scheduled_days,
-        assigned_workout_items(id, item_type, parent_item_id, exercise_id, exercise_name, exercise_muscle_group, sets, reps, rest_seconds, order_index, item_config)
+        assigned_workout_items(id, item_type, parent_item_id, exercise_id, exercise_name, exercise_muscle_group, sets, reps, rest_seconds, order_index, item_config, method_key, rounds, notes)
       `)
       .eq('assigned_program_id', program.id)
       .order('order_index')
@@ -133,6 +138,58 @@ export async function getProgramSnapshotForWatch(
     }
   }
 
+  // 6b. Per-set prescription rows (advanced methods: pyramid/drop-set/cluster/
+  //     top+backoff/5x5). One round-trip; items without rows fall back to
+  //     uniform sets via hydrateSetPrescriptions. Keyed by item id.
+  const setSchemeByItem = new Map<string, WorkoutSet[]>();
+  if (allItemIds.length > 0) {
+    const { data: setRows, error: setRowsError }: { data: any; error: any } = await supabase
+      .from('assigned_workout_item_sets' as any)
+      .select('assigned_workout_item_id, set_number, set_type, reps, rest_seconds, weight_target_kg, weight_target_pct1rm, rir, tempo, notes, round_number')
+      .in('assigned_workout_item_id', allItemIds);
+    if (setRowsError && __DEV__) {
+      console.warn('[getProgramSnapshot] set rows query failed:', setRowsError?.message);
+    }
+    for (const row of setRows || []) {
+      const list = setSchemeByItem.get(row.assigned_workout_item_id) ?? [];
+      list.push({
+        set_number: row.set_number,
+        set_type: row.set_type,
+        reps: row.reps,
+        rest_seconds: row.rest_seconds,
+        weight_target_kg: row.weight_target_kg,
+        weight_target_pct1rm: row.weight_target_pct1rm,
+        rir: row.rir,
+        tempo: row.tempo,
+        notes: row.notes,
+        round_number: row.round_number ?? null,
+      });
+      setSchemeByItem.set(row.assigned_workout_item_id, list);
+    }
+  }
+
+  /** Build the Watch per-set detail array for one exercise item. */
+  const buildSetDetails = (item: any): WatchSetDetail[] => {
+    const assignedSets = setSchemeByItem.get(item.id) ?? null;
+    const prescriptions = hydrateSetPrescriptions({
+      assignedSets,
+      aggregateSets: item.sets || 3,
+      aggregateReps: item.reps || '10',
+      aggregateRestSeconds: item.rest_seconds || 60,
+    });
+    return prescriptions.map((p) => ({
+      setNumber: p.set_number,
+      setType: p.set_type,
+      setTypeLabel: SET_TYPE_BADGE_LABELS[p.set_type as SetType] ?? '',
+      repsTarget: p.reps_target,
+      restSeconds: p.rest_seconds,
+      weightTargetKg: p.weight_target_kg,
+      weightTargetPct1rm: p.weight_target_pct1rm,
+      roundNumber: p.round_number,
+      notes: p.notes?.trim() ? p.notes.trim() : null,
+    }));
+  };
+
   // 7. Determine schedule mode
   const hasScheduledDays = workouts.some(
     (w: any) => w.scheduled_days && w.scheduled_days.length > 0,
@@ -177,17 +234,25 @@ export async function getProgramSnapshotForWatch(
         supersetIndex = pos;
         supersetTotal = supersetGroupSize.get(item.parent_item_id);
       }
+      const setDetails = buildSetDetails(item);
+      const methodKey = (item.method_key as MethodKey | null) ?? null;
       return {
         id: item.id,
         name: item.exercise_name || `Exercício ${idx + 1}`,
         muscleGroup: item.exercise_muscle_group || undefined,
-        sets: item.sets || 3,
+        // Keep aggregate fields for backward compatibility; sets count follows
+        // the per-set details when present (advanced methods may expand rounds).
+        sets: setDetails.length || item.sets || 3,
         reps: parseInt(item.reps || '0', 10) || 0,
         weight: weightMap.get(item.id) ?? null,
         restTime: item.rest_seconds || 60,
         targetReps: item.reps || null,
         lastWeight: weightMap.get(item.id) ?? null,
         lastReps: repsMap.get(item.id) ?? null,
+        methodKey,
+        methodLabel: getMethodChipLabel(methodKey),
+        setDetails,
+        notes: typeof item.notes === 'string' && item.notes.trim() ? item.notes.trim() : null,
         ...(supersetIndex !== undefined ? { supersetIndex, supersetTotal } : {}),
       };
     });
@@ -214,6 +279,12 @@ export async function getProgramSnapshotForWatch(
       };
     });
 
+    // Level B — standalone trainer note blocks for this workout day (item_type='note').
+    const workoutNotes: string[] = allItems
+      .filter((i: any) => i.item_type === 'note' && typeof i.notes === 'string' && i.notes.trim())
+      .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
+      .map((i: any) => i.notes.trim());
+
     return {
       workoutId: w.id,
       workoutName: w.name,
@@ -223,6 +294,7 @@ export async function getProgramSnapshotForWatch(
       lastCompletedAt: lastCompletedMap.get(w.id) ?? null,
       exercises,
       ...(cardioItems.length > 0 ? { cardioItems } : {}),
+      ...(workoutNotes.length > 0 ? { notes: workoutNotes } : {}),
     };
   });
 

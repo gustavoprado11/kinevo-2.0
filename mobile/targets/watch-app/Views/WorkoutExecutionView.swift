@@ -57,6 +57,9 @@ struct WorkoutExecutionView: View {
   @State private var carouselPage: Int = 0
   @State private var checkmarkScale: CGFloat = 0.01
   @State private var autoDismissTask: Task<Void, Never>?
+  @State private var showBriefing = false
+  @State private var verticalPage: Int = 0          // 0 = cards, 1 = metrics, 2 = now playing
+  @State private var didApplyInitialPage = false
 
   var body: some View {
     let sm = sessionManager
@@ -109,6 +112,16 @@ struct WorkoutExecutionView: View {
       }
       // Sync carousel page with exercise index
       carouselPage = store.state?.exerciseIndex ?? 0
+
+      // For a phone-initiated (mirrored) workout, open on the metrics page so the
+      // Watch shows time/calories/HR first — the user executes on the phone and can
+      // still swipe down to the cards. Applied once; afterwards the user paginates freely.
+      if !didApplyInitialPage {
+        didApplyInitialPage = true
+        if store.state?.startedRemotely == true {
+          verticalPage = 1
+        }
+      }
     }
     .navigationBarTitleDisplayMode(.inline)
     .toolbar(.hidden, for: .navigationBar)
@@ -144,7 +157,7 @@ struct WorkoutExecutionView: View {
       }
     )
 
-    return TabView {
+    return TabView(selection: $verticalPage) {
       // Page 0: Exercise + Cardio carousel
       TabView(selection: carouselIndexBinding) {
         ForEach(Array(state.exercises.indices), id: \.self) { index in
@@ -223,15 +236,19 @@ struct WorkoutExecutionView: View {
         }
       }
       .tabViewStyle(.page(indexDisplayMode: .never))
+      .tag(0)
 
-      // Page 1: Workout dashboard
+      // Page 1: Workout dashboard (metrics)
       WorkoutDashboardView(
         workoutStartDate: state.startedAt,
+        mirroredFromPhone: state.startedRemotely,
         onDiscardWorkout: { showDiscardConfirmation = true }
       )
+      .tag(1)
 
       // Page 2: Media controls
       KinevoNowPlayingView()
+        .tag(2)
     }
     .tabViewStyle(.verticalPage)
   }
@@ -239,30 +256,57 @@ struct WorkoutExecutionView: View {
   // MARK: - Start View
 
   private func startView(sm: WatchSessionManager, hk: HealthKitManager, store: WorkoutExecutionStore) -> some View {
-    VStack(spacing: 12) {
-      Image(systemName: "figure.run")
-        .font(.title2)
-        .foregroundStyle(Color.kinevoViolet)
-      Text(workout.workoutName)
-        .font(.headline)
-        .foregroundStyle(.white)
-        .multilineTextAlignment(.center)
-        .lineLimit(2)
-        .minimumScaleFactor(0.75)
-      Text(workoutItemsSummary)
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-      Button("Iniciar treino") {
-        NSLog("[KinevoWatch] Iniciar treino tapped — workoutId=%@, exercises=%d", workout.workoutId, workout.exercises.count)
-        hk.startWorkout()
-        sm.sendStartWorkout(workoutId: workout.workoutId)
-        store.markStarted()
-        WKInterfaceDevice.current().play(.start)
+    ScrollView {
+      VStack(spacing: 12) {
+        Image(systemName: "figure.run")
+          .font(.title2)
+          .foregroundStyle(Color.kinevoViolet)
+        Text(workout.workoutName)
+          .font(.headline)
+          .foregroundStyle(.white)
+          .multilineTextAlignment(.center)
+          .lineLimit(2)
+          .minimumScaleFactor(0.75)
+        Text(workoutItemsSummary)
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+
+        // Level B — trainer briefing for the workout day. Tap to read in full.
+        if !workout.notes.isEmpty {
+          Button { showBriefing = true } label: {
+            HStack(alignment: .top, spacing: 6) {
+              Image(systemName: "text.bubble.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(.cyan)
+              Text(workout.notes.joined(separator: "\n"))
+                .font(.system(size: 11))
+                .foregroundStyle(Color(white: 0.82))
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.cyan.opacity(0.08)))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.cyan.opacity(0.22), lineWidth: 1))
+          }
+          .buttonStyle(.plain)
+        }
+
+        Button("Iniciar treino") {
+          NSLog("[KinevoWatch] Iniciar treino tapped — workoutId=%@, exercises=%d", workout.workoutId, workout.exercises.count)
+          hk.startWorkout()
+          sm.sendStartWorkout(workoutId: workout.workoutId)
+          store.markStarted()
+          WKInterfaceDevice.current().play(.start)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(Color.kinevoViolet)
       }
-      .buttonStyle(.borderedProminent)
-      .tint(Color.kinevoViolet)
+      .padding()
     }
-    .padding()
+    .sheet(isPresented: $showBriefing) {
+      TrainerNoteSheet(title: "Recado do treino", text: workout.notes.joined(separator: "\n\n"))
+    }
   }
 
   private var workoutItemsSummary: String {
@@ -334,14 +378,15 @@ struct WorkoutExecutionView: View {
           rpe: Int(workoutRpe),
           startedAt: state.startedAt,
           exercises: exercisesPayload,
-          cardio: cardioPayload
+          cardio: cardioPayload,
+          sessionId: state.sessionId
         )
 
         // Fase 13 — Exporta agregados de HR/calorias coletados durante o treino.
         // Snapshot ANTES de endWorkout() pra capturar valores estáveis; a função
         // só retorna não-nil quando houve >= 1 sample de HR coletado.
         if let healthSamples = hk.exportHealthSamples() {
-          sm.sendHealthSamples(workoutId: state.workoutId, samples: healthSamples)
+          sm.sendHealthSamples(workoutId: state.workoutId, samples: healthSamples, sessionId: state.sessionId)
         }
 
         hk.endWorkout()
@@ -378,10 +423,12 @@ struct WorkoutExecutionView: View {
               checkmarkScale = 1.0
             }
 
-            // Auto-dismiss after 4 seconds — covers the case where SYNC_SUCCESS
+            // Auto-dismiss after 12 seconds — covers the case where SYNC_SUCCESS
             // arrives but the sheet doesn't close, or ACK is never delivered.
+            // 12s (not 4s) gives the iPhone room for a cold RN start + token refresh
+            // before we give up waiting for the ACK and force-clear locally.
             autoDismissTask = Task { @MainActor in
-              try? await Task.sleep(nanoseconds: 4_000_000_000)
+              try? await Task.sleep(nanoseconds: 12_000_000_000)
               guard !Task.isCancelled else { return }
               if isFinishingWorkout {
                 NSLog("[KinevoWatch] Auto-dismissing finish sheet after timeout")
@@ -485,6 +532,7 @@ private struct ExerciseExecutionPage: View {
   @State private var weightChangeDebounce: Task<Void, Never>?
   @State private var repsChangeDebounce: Task<Void, Never>?
   @State private var pendingRestTimerTask: Task<Void, Never>?
+  @State private var showNote = false
   @FocusState private var focusedInput: CrownInputFocus?
 
   private var exercise: WorkoutExecutionState.ExerciseState? {
@@ -550,7 +598,7 @@ private struct ExerciseExecutionPage: View {
                 title: "Reps",
                 value: "\(currentReps(exercise))",
                 unit: "rep",
-                subtitle: exercise.targetReps.map { "Meta: \($0)" },
+                subtitle: currentRepsTarget(exercise).map { "Meta: \($0)" },
                 isFocused: focusedInput == .reps,
                 compact: compact,
                 isAbovePrevious: exercise.lastReps != nil && currentReps(exercise) > exercise.lastReps!
@@ -588,6 +636,24 @@ private struct ExerciseExecutionPage: View {
               insertion: .move(edge: .bottom).combined(with: .opacity),
               removal: .move(edge: .top).combined(with: .opacity)
             ))
+
+            // Level C — trainer note for the current set (e.g. "última série até a falha").
+            if let setNote = currentSetNote(exercise) {
+              HStack(alignment: .top, spacing: 5) {
+                Image(systemName: "text.bubble.fill")
+                  .font(.system(size: 8))
+                  .foregroundStyle(.cyan)
+                  .padding(.top, 1)
+                Text(setNote)
+                  .font(.system(size: 10))
+                  .foregroundStyle(Color(white: 0.8))
+                  .lineLimit(2)
+                  .minimumScaleFactor(0.85)
+                  .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+              }
+              .padding(.top, 4)
+            }
 
             Spacer(minLength: compact ? 6 : 8)
 
@@ -665,6 +731,9 @@ private struct ExerciseExecutionPage: View {
         focusedInput = .reps
       }
     }
+    .sheet(isPresented: $showNote) {
+      TrainerNoteSheet(title: exercise?.name ?? "", text: exercise?.notes ?? "")
+    }
   }
 
   private func headerView(exercise: WorkoutExecutionState.ExerciseState, compact: Bool) -> some View {
@@ -691,6 +760,36 @@ private struct ExerciseExecutionPage: View {
           .lineLimit(1)
           .minimumScaleFactor(0.7)
           .padding(.trailing, 34)
+
+        // Method chip on its OWN line so the full method name (e.g. "Top + backoff")
+        // is never truncated by the set-type / note chips sharing the row.
+        if let method = exercise.methodLabel {
+          chipLabel(method, color: Color.kinevoViolet)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.trailing, 34)
+        }
+
+        // Current set-type badge + tappable trainer-note chip.
+        if currentSetTypeLabel(exercise) != nil || exercise.notes != nil {
+          HStack(spacing: 4) {
+            if let setType = currentSetTypeLabel(exercise) {
+              chipLabel(setType, color: setTypeColor(exercise))
+            }
+            if exercise.notes != nil {
+              Button { showNote = true } label: {
+                HStack(spacing: 3) {
+                  Image(systemName: "text.bubble.fill").font(.system(size: 8))
+                  Text("Nota").font(.system(size: 9, weight: .bold))
+                }
+                .foregroundStyle(.cyan)
+                .padding(.horizontal, 5).padding(.vertical, 1)
+                .background(Capsule().fill(Color.cyan.opacity(0.16)))
+              }
+              .buttonStyle(.plain)
+            }
+          }
+          .padding(.trailing, 34)
+        }
 
         // Previous performance + progression (hidden in compact mode)
         if !compact, let lw = exercise.lastWeight, let lr = exercise.lastReps {
@@ -737,7 +836,10 @@ private struct ExerciseExecutionPage: View {
     // Capture values BEFORE mutation
     let reps = exercise.sets[setIndex].reps
     let weight = exercise.sets[setIndex].weight
-    let restTime = exercise.restTime
+    // Per-set rest (advanced methods) takes precedence; fall back to the
+    // exercise-level rest for standard/legacy sets (restSeconds == 0).
+    let setRest = exercise.sets[setIndex].restSeconds
+    let restTime = setRest > 0 ? setRest : exercise.restTime
     let hasNextSet = setIndex < (exercise.sets.count - 1)
 
     // Send set completion to iPhone
@@ -958,6 +1060,58 @@ private struct ExerciseExecutionPage: View {
     guard !exercise.sets.isEmpty else { return 0 }
     let index = min(max(currentSetIndex, 0), exercise.sets.count - 1)
     return exercise.sets[index].weight
+  }
+
+  /// Rep target for the current set (advanced methods) falling back to the
+  /// exercise-level target for standard sets.
+  private func currentRepsTarget(_ exercise: WorkoutExecutionState.ExerciseState) -> String? {
+    guard !exercise.sets.isEmpty else { return exercise.targetReps }
+    let index = min(max(currentSetIndex, 0), exercise.sets.count - 1)
+    if let t = exercise.sets[index].repsTarget, !t.isEmpty { return t }
+    return exercise.targetReps
+  }
+
+  /// Non-empty set-type badge for the current set (e.g. "Drop", "Top"). nil for normal.
+  private func currentSetTypeLabel(_ exercise: WorkoutExecutionState.ExerciseState) -> String? {
+    guard !exercise.sets.isEmpty else { return nil }
+    let index = min(max(currentSetIndex, 0), exercise.sets.count - 1)
+    let label = exercise.sets[index].setTypeLabel
+    return label.isEmpty ? nil : label
+  }
+
+  /// Trainer note for the current set, if any (Level C).
+  private func currentSetNote(_ exercise: WorkoutExecutionState.ExerciseState) -> String? {
+    guard !exercise.sets.isEmpty else { return nil }
+    let index = min(max(currentSetIndex, 0), exercise.sets.count - 1)
+    if let n = exercise.sets[index].notes, !n.isEmpty { return n }
+    return nil
+  }
+
+  /// Color for the current set-type badge, by set type.
+  private func setTypeColor(_ exercise: WorkoutExecutionState.ExerciseState) -> Color {
+    guard !exercise.sets.isEmpty else { return .gray }
+    let index = min(max(currentSetIndex, 0), exercise.sets.count - 1)
+    switch exercise.sets[index].setType {
+    case "drop": return .orange
+    case "top": return Color.kinevoViolet
+    case "backoff": return .blue
+    case "failure": return .red
+    case "warmup": return .gray
+    case "cluster": return .cyan
+    case "amrap": return .green
+    default: return Color.kinevoViolet
+    }
+  }
+
+  @ViewBuilder
+  private func chipLabel(_ text: String, color: Color) -> some View {
+    Text(text)
+      .font(.system(size: 9, weight: .bold))
+      .foregroundStyle(color)
+      .lineLimit(1)
+      .padding(.horizontal, 5)
+      .padding(.vertical, 1)
+      .background(Capsule().fill(color.opacity(0.15)))
   }
 }
 
@@ -1189,6 +1343,53 @@ private struct RestTimerSheet: View {
     let elapsed = timerState.seconds - remainingSeconds
     let progress = Double(elapsed) / Double(timerState.seconds)
     return CGFloat(min(max(progress, 0), 1))
+  }
+}
+
+// MARK: - Trainer Note Sheet
+
+/// Scrollable sheet that shows a trainer note in full (technique cues, set notes,
+/// or the workout-day briefing). Digital Crown scrolls long text.
+private struct TrainerNoteSheet: View {
+  let title: String
+  let text: String
+  @Environment(\.dismiss) private var dismiss
+
+  var body: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 6) {
+          Image(systemName: "text.bubble.fill")
+            .font(.system(size: 12))
+            .foregroundStyle(.cyan)
+          Text("Nota do treinador")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.cyan)
+        }
+
+        if !title.isEmpty {
+          Text(title)
+            .font(.system(size: 13, weight: .bold))
+            .foregroundStyle(.white)
+        }
+
+        Text(text)
+          .font(.system(size: 14))
+          .foregroundStyle(Color(white: 0.86))
+          .fixedSize(horizontal: false, vertical: true)
+          .frame(maxWidth: .infinity, alignment: .leading)
+
+        Button("Fechar") { dismiss() }
+          .font(.system(size: 14))
+          .buttonStyle(.bordered)
+          .tint(.gray)
+          .padding(.top, 4)
+      }
+      .padding(.horizontal, 12)
+      .padding(.vertical, 8)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .background(Color.black.ignoresSafeArea())
   }
 }
 

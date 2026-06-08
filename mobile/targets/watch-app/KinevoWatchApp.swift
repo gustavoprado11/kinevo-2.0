@@ -29,23 +29,50 @@ struct KinevoWatchApp: App {
 
                 // Wire WORKOUT_FINISHED_FROM_PHONE — iPhone finished the workout,
                 // clear Watch state if the same workout is active.
-                sessionManager.onRemoteFinish = { [weak workoutStore] workoutId in
-                    workoutStore?.handleRemoteFinish(workoutId: workoutId)
+                sessionManager.onRemoteFinish = { [weak workoutStore, weak healthKitManager] workoutId in
+                    let cleared = workoutStore?.handleRemoteFinish(workoutId: workoutId) ?? false
+                    // End & save the mirrored HealthKit session so the workout is
+                    // recorded in Apple Activity. No-op if the Watch wasn't running one.
+                    if cleared {
+                        healthKitManager?.endWorkout()
+                    }
+                }
+
+                // Wire WORKOUT_DISCARDED_FROM_PHONE — iPhone abandoned the workout,
+                // discard the mirrored HK session WITHOUT saving (no Activity credit).
+                sessionManager.onRemoteDiscard = { [weak workoutStore, weak healthKitManager] workoutId in
+                    let cleared = workoutStore?.handleRemoteDiscard(workoutId: workoutId) ?? false
+                    if cleared {
+                        healthKitManager?.discardWorkout()
+                    }
                 }
 
                 // Wire START_WORKOUT_FROM_PHONE — iPhone started a workout,
                 // find it in the program cache and auto-start on Watch.
-                sessionManager.onRemoteStartWorkout = { [weak workoutStore, weak sessionManager] workoutId in
-                    workoutStore?.handleRemoteStart(
+                sessionManager.onRemoteStartWorkout = { [weak workoutStore, weak sessionManager, weak healthKitManager] workoutId in
+                    let started = workoutStore?.handleRemoteStart(
                         workoutId: workoutId,
                         programSnapshot: sessionManager?.programSnapshot
-                    )
+                    ) ?? false
+                    // When the iPhone starts the workout and the Watch app is active,
+                    // mirror it with a live HealthKit workout session so the Watch shows
+                    // real-time time/calories/HR and credits the Apple Activity rings —
+                    // just like starting "Iniciar treino" on the Watch itself.
+                    if started {
+                        healthKitManager?.startWorkout()
+                    }
                 }
 
                 // Wire program updates — when new applicationContext arrives,
                 // update exercise order for the active workout (if any).
                 sessionManager.onProgramUpdated = { [weak workoutStore] snapshot in
                     workoutStore?.reconcileProgram(snapshot)
+                }
+
+                // Wire SESSION_SYNC — iPhone tells the Watch the canonical session id
+                // so FINISH/health payloads can carry it back (no mapping heuristic).
+                sessionManager.onSessionSync = { [weak workoutStore] workoutId, sessionId in
+                    workoutStore?.setSessionId(workoutId: workoutId, sessionId: sessionId)
                 }
 
                 // Wire direct exercise order updates from iPhone (immediate delivery via sendMessage).

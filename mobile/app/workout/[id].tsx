@@ -274,12 +274,13 @@ export default function WorkoutPlayerScreen() {
     useEffect(() => {
         if (!isLoading && exercises.length > 0 && !watchStartSentRef.current && Platform.OS === 'ios') {
             watchStartSentRef.current = true;
-            const { sendMessage } = require('../../modules/watch-connectivity/src/WatchConnectivityModule');
-            sendMessage({
+            const { sendReliableToWatch } = require('../../modules/watch-connectivity/src/WatchConnectivityModule');
+            // Reliable: delivered immediately when the Watch app is reachable (so it
+            // starts the live workout session right away), and queued via
+            // transferUserInfo otherwise (so it auto-starts when the user next opens it).
+            sendReliableToWatch({
                 type: 'START_WORKOUT_FROM_PHONE',
                 payload: { workoutId: id as string },
-            }).catch((e: any) => {
-                if (__DEV__) console.log('[WorkoutScreen] Could not notify Watch to start:', e?.message);
             });
         }
     }, [isLoading, exercises, id]);
@@ -424,7 +425,20 @@ export default function WorkoutPlayerScreen() {
                     {
                         text: 'Descartar e Sair',
                         style: 'destructive',
-                        onPress: () => navigation.dispatch(e.data.action),
+                        onPress: () => {
+                            // Tell the Watch to end its mirrored HealthKit session
+                            // WITHOUT saving (workout was abandoned, not completed).
+                            if (Platform.OS === 'ios') {
+                                try {
+                                    const { sendReliableToWatch } = require('../../modules/watch-connectivity/src/WatchConnectivityModule');
+                                    sendReliableToWatch({
+                                        type: 'WORKOUT_DISCARDED_FROM_PHONE',
+                                        payload: { workoutId: id as string },
+                                    });
+                                } catch { /* Watch not available — non-critical */ }
+                            }
+                            navigation.dispatch(e.data.action);
+                        },
                     },
                 ]
             );

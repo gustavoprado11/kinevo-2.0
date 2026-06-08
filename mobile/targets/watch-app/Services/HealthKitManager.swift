@@ -6,8 +6,6 @@ import Combine
 /// tracks heart rate & active calories in real-time, and saves the workout
 /// to Apple Health on completion (appears as "Musculação" in the Saúde app).
 class HealthKitManager: NSObject, ObservableObject {
-    static let shared = HealthKitManager()
-
     private let healthStore = HKHealthStore()
     private var workoutSession: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
@@ -25,6 +23,12 @@ class HealthKitManager: NSObject, ObservableObject {
     private var heartRateSampleCount: Int = 0
     private var heartRateSum: Double = 0
     private let seriesIntervalSeconds: TimeInterval = 60
+
+    // A-2 — HR aggregates live in memory only, so a crash/relaunch mid-workout would
+    // lose them even though the workout state and HKWorkoutSession are recovered. We
+    // snapshot them to UserDefaults at each series sample (~60s) so recovery restores
+    // average/min/max/series for the export to the iPhone.
+    private let healthBufferKey = "kinevo_watch_health_buffer"
 
     override init() {
         super.init()
@@ -89,6 +93,9 @@ class HealthKitManager: NSObject, ObservableObject {
             session.delegate = self
             self.builder?.delegate = self
 
+            // Restore HR aggregates persisted before the crash/relaunch.
+            self.restoreHealthBuffers()
+
             DispatchQueue.main.async {
                 self.isWorkoutActive = (session.state == .running)
             }
@@ -108,6 +115,11 @@ class HealthKitManager: NSObject, ObservableObject {
             print("[HealthKit] Workout session already active — skipping startWorkout")
             return
         }
+
+        // Defensive: ensure authorization was requested. On a very first launch the
+        // request from the list screen may not have completed yet; this is idempotent
+        // (the system prompt is shown at most once) and lets the session collect HR.
+        requestAuthorization()
 
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .traditionalStrengthTraining
@@ -265,6 +277,43 @@ class HealthKitManager: NSObject, ObservableObject {
         maxHeartRate = 0
         heartRateSampleCount = 0
         heartRateSum = 0
+        UserDefaults.standard.removeObject(forKey: healthBufferKey)
+    }
+
+    /// Snapshot the running HR aggregates to UserDefaults for crash recovery.
+    private func persistHealthBuffers() {
+        let series: [[String: Any]] = heartRateSeriesBuffer.map {
+            ["ts": $0.timestamp.timeIntervalSince1970, "bpm": $0.bpm]
+        }
+        let snapshot: [String: Any] = [
+            "sum": heartRateSum,
+            "count": heartRateSampleCount,
+            "min": minHeartRate == .infinity ? -1 : minHeartRate,
+            "max": maxHeartRate,
+            "lastSeriesAt": lastSeriesSampleAt?.timeIntervalSince1970 ?? -1,
+            "series": series,
+        ]
+        UserDefaults.standard.set(snapshot, forKey: healthBufferKey)
+    }
+
+    /// Restore HR aggregates after recovering a workout session post-crash.
+    private func restoreHealthBuffers() {
+        guard let snapshot = UserDefaults.standard.dictionary(forKey: healthBufferKey) else { return }
+
+        heartRateSum = snapshot["sum"] as? Double ?? 0
+        heartRateSampleCount = snapshot["count"] as? Int ?? 0
+        let restoredMin = snapshot["min"] as? Double ?? -1
+        minHeartRate = restoredMin < 0 ? .infinity : restoredMin
+        maxHeartRate = snapshot["max"] as? Double ?? 0
+        let lastAt = snapshot["lastSeriesAt"] as? Double ?? -1
+        lastSeriesSampleAt = lastAt < 0 ? nil : Date(timeIntervalSince1970: lastAt)
+        if let series = snapshot["series"] as? [[String: Any]] {
+            heartRateSeriesBuffer = series.compactMap { entry in
+                guard let ts = entry["ts"] as? Double, let bpm = entry["bpm"] as? Double else { return nil }
+                return (timestamp: Date(timeIntervalSince1970: ts), bpm: bpm)
+            }
+        }
+        print("[HealthKit] Restored HR buffers — \(heartRateSampleCount) samples, \(heartRateSeriesBuffer.count) series points")
     }
 }
 
@@ -316,6 +365,8 @@ extension HealthKitManager: HKLiveWorkoutBuilderDelegate {
                         if lastSeriesSampleAt == nil || now.timeIntervalSince(lastSeriesSampleAt!) >= seriesIntervalSeconds {
                             heartRateSeriesBuffer.append((timestamp: now, bpm: value))
                             lastSeriesSampleAt = now
+                            // Snapshot aggregates for crash recovery (~once per minute).
+                            persistHealthBuffers()
                         }
                     }
 

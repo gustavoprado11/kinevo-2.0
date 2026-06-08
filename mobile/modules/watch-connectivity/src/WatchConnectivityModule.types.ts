@@ -49,6 +49,29 @@ export interface WatchWorkoutPayload {
 
 // ── v2 types (program snapshot) ──
 
+/**
+ * Per-set prescription detail for advanced methods (pyramid, drop-set, cluster,
+ * top+backoff, 5x5…). Mirrors `assigned_workout_item_sets` / SetPrescription.
+ * When present on a WatchProgramExercise, the Watch builds one set per entry
+ * (with its own reps target, rest and load), instead of N uniform sets.
+ */
+export interface WatchSetDetail {
+  setNumber: number;
+  /** 'warmup' | 'normal' | 'top' | 'backoff' | 'drop' | 'failure' | 'cluster' | 'amrap' */
+  setType: string;
+  /** pt-BR badge label (e.g. "Drop", "Top", "Aquecimento"). Empty for 'normal'. */
+  setTypeLabel: string;
+  /** Free-form rep target: "8", "8-12", "AMRAP", "8+4+2" (cluster). */
+  repsTarget: string;
+  restSeconds: number;
+  weightTargetKg: number | null;
+  weightTargetPct1rm: number | null;
+  /** 1-based round for compound methods (drop-set/cluster). null otherwise. */
+  roundNumber: number | null;
+  /** Trainer note for this specific set (e.g. "última série até a falha"). */
+  notes?: string | null;
+}
+
 export interface WatchProgramExercise {
   id: string;
   name: string;
@@ -62,6 +85,14 @@ export interface WatchProgramExercise {
   lastReps: number | null;
   supersetIndex?: number;  // 0-based position within superset group
   supersetTotal?: number;  // total exercises in superset group
+  /** Method key (pyramid_down, drop_set, …) or null/'standard' for simple sets. */
+  methodKey?: string | null;
+  /** pt-BR method chip label (e.g. "Drop-set"). null when standard/none. */
+  methodLabel?: string | null;
+  /** Per-set prescription. Absent/empty → uniform sets (legacy behaviour). */
+  setDetails?: WatchSetDetail[];
+  /** Trainer note for this exercise (technique cues). */
+  notes?: string | null;
 }
 
 export interface WatchCardioItem {
@@ -93,6 +124,8 @@ export interface WatchProgramWorkout {
   lastCompletedAt: string | null;
   exercises: WatchProgramExercise[];
   cardioItems?: WatchCardioItem[];
+  /** Standalone trainer note blocks for this workout day (briefing). */
+  notes?: string[];
 }
 
 export interface WatchProgramPayload {

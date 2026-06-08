@@ -25,6 +25,9 @@ interface WatchCardioData {
 
 export interface WatchFinishPayload {
   workoutId: string;
+  /** Canonical workout_session_id from the iPhone (SESSION_SYNC). When present,
+   *  the exact session is updated instead of resolving by workout + time window. */
+  sessionId?: string;
   rpe: number;
   startedAt?: string;
   exercises?: WatchExerciseData[];
@@ -58,9 +61,12 @@ async function savePendingWorkout(payload: WatchFinishPayload): Promise<void> {
   try {
     const raw = await SecureStore.getItemAsync(PENDING_KEY, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK }).catch(() => SecureStore.getItemAsync(PENDING_KEY).catch(() => null));
     const pending: (WatchFinishPayload & { queuedAt: string })[] = raw ? JSON.parse(raw) : [];
-    pending.push({ ...payload, queuedAt: new Date().toISOString() });
-    await SecureStore.setItemAsync(PENDING_KEY, JSON.stringify(pending), { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK });
-    if (__DEV__) console.log(`[finishWorkoutFromWatch] Saved to pending queue. Total: ${pending.length}`);
+    // Idempotent: replace any existing entry for the same workout instead of
+    // stacking duplicates (a retry that fails again must not grow the queue).
+    const deduped = pending.filter((p) => p.workoutId !== payload.workoutId);
+    deduped.push({ ...payload, queuedAt: new Date().toISOString() });
+    await SecureStore.setItemAsync(PENDING_KEY, JSON.stringify(deduped), { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK });
+    if (__DEV__) console.log(`[finishWorkoutFromWatch] Saved to pending queue. Total: ${deduped.length}`);
   } catch (e: any) {
     if (__DEV__) console.error('[finishWorkoutFromWatch] Failed to save to pending queue:', e?.message);
   }
@@ -93,7 +99,11 @@ export async function processPendingWatchWorkouts(): Promise<void> {
       try {
         const { queuedAt, ...payload } = entry;
         const sessionId = await finishWorkoutFromWatch(payload);
-        if (sessionId) {
+        // Only a real session id means done. 'pending' (re-queued on transient
+        // failure) and null (permanent failure) both keep the entry for later.
+        // NOTE: on 'pending', finishWorkoutFromWatch already re-saved this entry
+        // (deduped) — keeping it in `remaining` converges to the same single copy.
+        if (sessionId && sessionId !== 'pending') {
           if (__DEV__) console.log(`[finishWorkoutFromWatch] Pending workout processed: ${sessionId}`);
         } else {
           remaining.push(entry);
@@ -159,8 +169,14 @@ export async function finishWorkoutFromWatch(
     .eq('auth_user_id', user.id)
     .single();
 
-  if (studentError || !student) {
-    if (__DEV__) console.error('[finishWorkoutFromWatch] Step 3 FAILED: Student not found:', studentError?.message, studentError?.details, studentError?.hint);
+  if (studentError) {
+    // Transient (network/DB) failure — queue for retry instead of dropping the workout.
+    console.error('[finishWorkoutFromWatch] Step 3 ERROR (queuing for retry):', studentError?.message, studentError?.details, studentError?.hint);
+    await savePendingWorkout(payload);
+    return 'pending';
+  }
+  if (!student) {
+    if (__DEV__) console.error('[finishWorkoutFromWatch] Step 3 FAILED: Student not found (permanent)');
     return null;
   }
 
@@ -173,8 +189,13 @@ export async function finishWorkoutFromWatch(
     .eq('id', workoutId)
     .single();
 
-  if (workoutError || !workout) {
-    if (__DEV__) console.error('[finishWorkoutFromWatch] Step 4 FAILED: Workout not found:', workoutError?.message, workoutError?.details);
+  if (workoutError) {
+    console.error('[finishWorkoutFromWatch] Step 4 ERROR (queuing for retry):', workoutError?.message, workoutError?.details);
+    await savePendingWorkout(payload);
+    return 'pending';
+  }
+  if (!workout) {
+    if (__DEV__) console.error('[finishWorkoutFromWatch] Step 4 FAILED: Workout not found (permanent)');
     return null;
   }
 
@@ -202,8 +223,32 @@ export async function finishWorkoutFromWatch(
   // Safety cap: >6h (21600s) = likely stale timestamp, discard
   const safeDuration = (rawDuration !== null && rawDuration <= 21600) ? rawDuration : null;
 
-  // 6. Find existing session OR reuse recently completed OR create new
+  // 6. Resolve the session. Preferred path: the Watch echoed the canonical
+  //    sessionId (SESSION_SYNC). Otherwise fall back to the resolve-by-workout
+  //    heuristic (6a/6b/6c) for older Watch builds.
   let sessionId: string;
+
+  if (payload.sessionId) {
+    sessionId = payload.sessionId;
+    if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 6: Using canonical session id from Watch — ${sessionId}`);
+
+    const { error: directUpdateError } = await supabase
+      .from('workout_sessions' as any)
+      .update({
+        status: 'completed',
+        ...(parsedStartedAt ? { started_at: parsedStartedAt.toISOString() } : {}),
+        completed_at: now.toISOString(),
+        duration_seconds: safeDuration,
+        rpe: rpe || null,
+      })
+      .eq('id', sessionId);
+
+    if (directUpdateError) {
+      console.error('[finishWorkoutFromWatch] Step 6 ERROR updating canonical session (queuing for retry):', directUpdateError.message, directUpdateError.details);
+      await savePendingWorkout(payload);
+      return 'pending';
+    }
+  } else {
 
   // 6a. Check for existing in_progress session
   const { data: existingSession }: { data: any; error: any } = await supabase
@@ -234,8 +279,9 @@ export async function finishWorkoutFromWatch(
       .eq('id', sessionId);
 
     if (updateError) {
-      if (__DEV__) console.error('[finishWorkoutFromWatch] Step 6a FAILED: Update session error:', updateError.message, updateError.details);
-      return null;
+      console.error('[finishWorkoutFromWatch] Step 6a ERROR (queuing for retry):', updateError.message, updateError.details);
+      await savePendingWorkout(payload);
+      return 'pending';
     }
   } else {
     // 6b. Check for recently completed session (idempotency — prevents duplicate inserts)
@@ -280,13 +326,15 @@ export async function finishWorkoutFromWatch(
           .single();
 
       if (sessionError || !newSession) {
-        if (__DEV__) console.error('[finishWorkoutFromWatch] Step 6c FAILED: Create session error:', sessionError?.message, sessionError?.details, sessionError?.hint);
-        return null;
+        console.error('[finishWorkoutFromWatch] Step 6c ERROR (queuing for retry):', sessionError?.message, sessionError?.details, sessionError?.hint);
+        await savePendingWorkout(payload);
+        return 'pending';
       }
 
       sessionId = newSession.id;
     }
   }
+  } // end fallback resolve-by-workout branch (no canonical sessionId)
 
   if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 6: Session ready — ${sessionId}`);
 

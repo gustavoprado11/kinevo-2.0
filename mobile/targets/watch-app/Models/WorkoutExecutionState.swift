@@ -26,6 +26,13 @@ struct WorkoutExecutionState: Codable, Equatable {
     var lastPersistedAt: Date
     var finishState: FinishState
     var cardioStates: [CardioExecutionState]
+    /// Canonical workout_session_id provided by the iPhone via SESSION_SYNC.
+    /// Echoed back in FINISH/health payloads so the phone maps to the exact
+    /// session instead of guessing by assigned_workout_id + time window.
+    var sessionId: String?
+    /// True when the workout was started from the iPhone (the Watch is mirroring it
+    /// for activity tracking). Drives opening on the metrics page instead of the cards.
+    var startedRemotely: Bool = false
 
     /// Custom decoding to support older persisted state that lacks finishState.
     init(from decoder: Decoder) throws {
@@ -39,6 +46,8 @@ struct WorkoutExecutionState: Codable, Equatable {
         lastPersistedAt = try container.decode(Date.self, forKey: .lastPersistedAt)
         finishState = try container.decodeIfPresent(FinishState.self, forKey: .finishState) ?? .none
         cardioStates = try container.decodeIfPresent([CardioExecutionState].self, forKey: .cardioStates) ?? []
+        sessionId = try container.decodeIfPresent(String.self, forKey: .sessionId)
+        startedRemotely = try container.decodeIfPresent(Bool.self, forKey: .startedRemotely) ?? false
     }
 
     init(
@@ -50,7 +59,9 @@ struct WorkoutExecutionState: Codable, Equatable {
         exercises: [ExerciseState],
         lastPersistedAt: Date,
         finishState: FinishState = .none,
-        cardioStates: [CardioExecutionState] = []
+        cardioStates: [CardioExecutionState] = [],
+        sessionId: String? = nil,
+        startedRemotely: Bool = false
     ) {
         self.workoutId = workoutId
         self.workoutName = workoutName
@@ -61,6 +72,8 @@ struct WorkoutExecutionState: Codable, Equatable {
         self.lastPersistedAt = lastPersistedAt
         self.finishState = finishState
         self.cardioStates = cardioStates
+        self.sessionId = sessionId
+        self.startedRemotely = startedRemotely
     }
 
     struct ExerciseState: Codable, Equatable, Identifiable {
@@ -72,6 +85,9 @@ struct WorkoutExecutionState: Codable, Equatable {
         let lastReps: Int?
         let supersetIndex: Int?   // 0-based position within superset group
         let supersetTotal: Int?   // total exercises in superset group
+        let methodKey: String?    // advanced method (pyramid_down, drop_set…) or nil
+        let methodLabel: String?  // pt-BR method chip label, nil when standard/none
+        let notes: String?        // trainer note for this exercise (technique cues)
         var sets: [SetState]
         var currentSetIndex: Int
 
@@ -79,6 +95,53 @@ struct WorkoutExecutionState: Codable, Equatable {
             var reps: Int
             var weight: Double
             var isCompleted: Bool
+            // Advanced-method fields. Defaulted so older persisted state (which
+            // lacks them) decodes cleanly into a plain "normal" set.
+            var setType: String = "normal"
+            var setTypeLabel: String = ""       // pt-BR badge ("Drop", "Top"…), empty = none
+            var repsTarget: String? = nil       // e.g. "8-12", "AMRAP", "8+4+2"
+            var restSeconds: Int = 0            // rest AFTER this set; 0 → use exercise restTime
+            var weightTargetKg: Double? = nil   // suggested load hint
+            var roundNumber: Int? = nil         // 1-based round for drop-set/cluster
+            var notes: String? = nil            // trainer note for this set
+
+            init(
+                reps: Int,
+                weight: Double,
+                isCompleted: Bool,
+                setType: String = "normal",
+                setTypeLabel: String = "",
+                repsTarget: String? = nil,
+                restSeconds: Int = 0,
+                weightTargetKg: Double? = nil,
+                roundNumber: Int? = nil,
+                notes: String? = nil
+            ) {
+                self.reps = reps
+                self.weight = weight
+                self.isCompleted = isCompleted
+                self.setType = setType
+                self.setTypeLabel = setTypeLabel
+                self.repsTarget = repsTarget
+                self.restSeconds = restSeconds
+                self.weightTargetKg = weightTargetKg
+                self.roundNumber = roundNumber
+                self.notes = notes
+            }
+
+            init(from decoder: Decoder) throws {
+                let c = try decoder.container(keyedBy: CodingKeys.self)
+                reps = try c.decode(Int.self, forKey: .reps)
+                weight = try c.decode(Double.self, forKey: .weight)
+                isCompleted = try c.decode(Bool.self, forKey: .isCompleted)
+                setType = try c.decodeIfPresent(String.self, forKey: .setType) ?? "normal"
+                setTypeLabel = try c.decodeIfPresent(String.self, forKey: .setTypeLabel) ?? ""
+                repsTarget = try c.decodeIfPresent(String.self, forKey: .repsTarget)
+                restSeconds = try c.decodeIfPresent(Int.self, forKey: .restSeconds) ?? 0
+                weightTargetKg = try c.decodeIfPresent(Double.self, forKey: .weightTargetKg)
+                roundNumber = try c.decodeIfPresent(Int.self, forKey: .roundNumber)
+                notes = try c.decodeIfPresent(String.self, forKey: .notes)
+            }
         }
 
         /// Custom decoding to support persisted state that lacks lastWeight/lastReps/superset fields.
@@ -92,6 +155,9 @@ struct WorkoutExecutionState: Codable, Equatable {
             lastReps = try container.decodeIfPresent(Int.self, forKey: .lastReps)
             supersetIndex = try container.decodeIfPresent(Int.self, forKey: .supersetIndex)
             supersetTotal = try container.decodeIfPresent(Int.self, forKey: .supersetTotal)
+            methodKey = try container.decodeIfPresent(String.self, forKey: .methodKey)
+            methodLabel = try container.decodeIfPresent(String.self, forKey: .methodLabel)
+            notes = try container.decodeIfPresent(String.self, forKey: .notes)
             sets = try container.decode([SetState].self, forKey: .sets)
             currentSetIndex = try container.decode(Int.self, forKey: .currentSetIndex)
         }
@@ -105,6 +171,9 @@ struct WorkoutExecutionState: Codable, Equatable {
             lastReps: Int?,
             supersetIndex: Int? = nil,
             supersetTotal: Int? = nil,
+            methodKey: String? = nil,
+            methodLabel: String? = nil,
+            notes: String? = nil,
             sets: [SetState],
             currentSetIndex: Int
         ) {
@@ -116,36 +185,77 @@ struct WorkoutExecutionState: Codable, Equatable {
             self.lastReps = lastReps
             self.supersetIndex = supersetIndex
             self.supersetTotal = supersetTotal
+            self.methodKey = methodKey
+            self.methodLabel = methodLabel
+            self.notes = notes
             self.sets = sets
             self.currentSetIndex = currentSetIndex
         }
     }
 
-    /// Create execution state from an iPhone-provided snapshot.
-    static func from(snapshot: WatchWorkoutSnapshot) -> WorkoutExecutionState {
-        let exercises = snapshot.exercises.map { ex in
-            let initialWeight = ex.weight ?? 0
-            let sets = (0..<ex.sets).map { index in
+    /// Build one ExerciseState from a snapshot exercise — per-set aware (advanced
+    /// methods) with a uniform-sets fallback. Shared by `from(snapshot:)` and the
+    /// program reconcile path (so exercises added mid-workout get correct state).
+    static func makeExercise(from ex: WatchExerciseSnapshot) -> ExerciseState {
+        let initialWeight = ex.weight ?? 0
+        let sets: [ExerciseState.SetState]
+
+        if !ex.setDetails.isEmpty {
+            // Advanced method — one set per prescribed detail, each with its own
+            // reps target, rest, type and suggested load.
+            sets = ex.setDetails.enumerated().map { index, detail in
+                let startReps = WorkoutExecutionState.startingReps(
+                    from: detail.repsTarget,
+                    fallback: ex.lastReps ?? (ex.reps > 0 ? ex.reps : 10)
+                )
+                let startWeight = detail.weightTargetKg ?? ex.lastWeight ?? initialWeight
+                return ExerciseState.SetState(
+                    reps: startReps,
+                    weight: startWeight,
+                    isCompleted: index < ex.completedSets,
+                    setType: detail.setType,
+                    setTypeLabel: detail.setTypeLabel,
+                    repsTarget: detail.repsTarget.isEmpty ? nil : detail.repsTarget,
+                    restSeconds: detail.restSeconds,
+                    weightTargetKg: detail.weightTargetKg,
+                    roundNumber: detail.roundNumber,
+                    notes: detail.notes
+                )
+            }
+        } else {
+            // Legacy / standard — N uniform sets.
+            sets = (0..<ex.sets).map { index in
                 ExerciseState.SetState(
                     reps: ex.reps,
                     weight: initialWeight,
-                    isCompleted: index < ex.completedSets
+                    isCompleted: index < ex.completedSets,
+                    repsTarget: ex.targetReps,
+                    restSeconds: ex.restTime
                 )
             }
-            let firstIncomplete = sets.firstIndex(where: { !$0.isCompleted }) ?? max(sets.count - 1, 0)
-            return ExerciseState(
-                id: ex.id,
-                name: ex.name,
-                restTime: ex.restTime,
-                targetReps: ex.targetReps,
-                lastWeight: ex.lastWeight,
-                lastReps: ex.lastReps,
-                supersetIndex: ex.supersetIndex,
-                supersetTotal: ex.supersetTotal,
-                sets: sets,
-                currentSetIndex: firstIncomplete
-            )
         }
+
+        let firstIncomplete = sets.firstIndex(where: { !$0.isCompleted }) ?? max(sets.count - 1, 0)
+        return ExerciseState(
+            id: ex.id,
+            name: ex.name,
+            restTime: ex.restTime,
+            targetReps: ex.targetReps,
+            lastWeight: ex.lastWeight,
+            lastReps: ex.lastReps,
+            supersetIndex: ex.supersetIndex,
+            supersetTotal: ex.supersetTotal,
+            methodKey: ex.methodKey,
+            methodLabel: ex.methodLabel,
+            notes: ex.notes,
+            sets: sets,
+            currentSetIndex: firstIncomplete
+        )
+    }
+
+    /// Create execution state from an iPhone-provided snapshot.
+    static func from(snapshot: WatchWorkoutSnapshot) -> WorkoutExecutionState {
+        let exercises = snapshot.exercises.map { makeExercise(from: $0) }
 
         let startDate = WatchDateParser.parseISO8601(snapshot.startedAt)
             ?? WatchDateParser.parseISO8601(snapshot.updatedAt)
@@ -168,6 +278,21 @@ struct WorkoutExecutionState: Codable, Equatable {
             lastPersistedAt: Date(),
             cardioStates: cardioStates
         )
+    }
+
+    /// Extract the first integer in a rep target string as the starting reps:
+    /// "8-12" → 8, "8+4+2" → 8, "10" → 10. Non-numeric ("AMRAP") → fallback.
+    static func startingReps(from target: String, fallback: Int) -> Int {
+        var digits = ""
+        for ch in target {
+            if ch.isNumber {
+                digits.append(ch)
+            } else if !digits.isEmpty {
+                break
+            }
+        }
+        if let n = Int(digits), n > 0 { return n }
+        return fallback
     }
 
     /// Build the exercises payload for sendFinishWorkout.

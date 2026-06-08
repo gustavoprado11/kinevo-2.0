@@ -13,6 +13,7 @@ interface UseWatchConnectivityProps {
   onWatchStartWorkout?: (event: WatchStartWorkoutEvent) => void;
   onWatchFinishWorkout?: (event: {
     workoutId: string;
+    sessionId?: string;
     rpe: number;
     startedAt?: string;
     exercises?: Array<{
@@ -28,6 +29,7 @@ interface UseWatchConnectivityProps {
 
 export interface WatchHealthSamplesEvent {
   workoutId: string;
+  sessionId?: string;
   avgHeartRate: number | null;
   maxHeartRate: number | null;
   minHeartRate: number | null;
@@ -103,6 +105,7 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
 
       if (event.type === 'FINISH_WORKOUT' && event.payload) {
         const workoutId = typeof event.payload.workoutId === 'string' ? event.payload.workoutId : null;
+        const sessionId = typeof event.payload.sessionId === 'string' ? event.payload.sessionId : undefined;
         const rpe = Number(event.payload.rpe ?? 0);
         const startedAt = typeof event.payload.startedAt === 'string' ? event.payload.startedAt : undefined;
         const exercises = Array.isArray(event.payload.exercises)
@@ -131,8 +134,8 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
             }))
           : undefined;
 
-        if (__DEV__) console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises, ${cardio?.length ?? 0} cardio`);
-        finishWorkoutRef.current?.({ workoutId, rpe, startedAt, exercises, cardio });
+        if (__DEV__) console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises, ${cardio?.length ?? 0} cardio, session ${sessionId ?? 'none'}`);
+        finishWorkoutRef.current?.({ workoutId, sessionId, rpe, startedAt, exercises, cardio });
       }
 
       if (event.type === 'CARDIO_COMPLETE' && event.payload) {
@@ -158,6 +161,7 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
         }
         const parsed: WatchHealthSamplesEvent = {
           workoutId,
+          sessionId: typeof p.sessionId === 'string' ? p.sessionId : undefined,
           avgHeartRate: typeof p.avgHeartRate === 'number' ? p.avgHeartRate : null,
           maxHeartRate: typeof p.maxHeartRate === 'number' ? p.maxHeartRate : null,
           minHeartRate: typeof p.minHeartRate === 'number' ? p.minHeartRate : null,

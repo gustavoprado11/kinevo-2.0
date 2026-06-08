@@ -1293,17 +1293,19 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
             if (__DEV__) console.log(`[useWorkoutSession] Workout finished. Session: ${currentSessionId}, sets: ${setLogs.length}`);
 
-            // Notify Watch that workout was finished from iPhone
+            // Notify Watch that workout was finished from iPhone so it clears its
+            // mirrored state AND ends the HealthKit session it may have started.
+            // Reliable: queued via transferUserInfo if the Watch isn't reachable
+            // right now (it still has background runtime while its HK session runs).
             if (Platform.OS === 'ios') {
               try {
-                const { sendMessage } = require('../modules/watch-connectivity/src/WatchConnectivityModule');
-                await sendMessage({
+                const { sendReliableToWatch } = require('../modules/watch-connectivity/src/WatchConnectivityModule');
+                sendReliableToWatch({
                   type: 'WORKOUT_FINISHED_FROM_PHONE',
                   payload: { workoutId },
                 });
                 if (__DEV__) console.log('[useWorkoutSession] Notified Watch of finish');
               } catch (e: any) {
-                // Watch may not be reachable — not critical
                 if (__DEV__) console.log('[useWorkoutSession] Could not notify Watch:', e?.message);
               }
             }

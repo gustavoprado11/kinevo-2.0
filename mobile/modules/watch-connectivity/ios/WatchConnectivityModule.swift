@@ -427,6 +427,13 @@ public class WatchConnectivityModule: Module {
       self.sendAckToWatch(workoutId: workoutId)
     }
 
+    // Reliable fire-and-forget message: sendMessage when reachable, falling back
+    // to transferUserInfo (queued/guaranteed) otherwise. Used for UPDATE_EXERCISE_ORDER
+    // and SESSION_SYNC where the message must not be silently dropped.
+    Function("sendReliableToWatch") { (message: [String: Any]) in
+      self.sendReliableToWatch(message: message)
+    }
+
     // MARK: Debug Logs
 
     // AsyncFunction so NativeModulesProxy resolves the value correctly (sync Function
@@ -637,6 +644,26 @@ public class WatchConnectivityModule: Module {
     } else {
       session.transferUserInfo(message)
       NSLog("[WatchConnectivity] 📤 SYNC_SUCCESS queued via transferUserInfo (watch not reachable) for \(workoutId)")
+    }
+  }
+
+  private func sendReliableToWatch(message: [String: Any]) {
+    guard let session = wcSession, session.activationState == .activated else {
+      NSLog("[WatchConnectivity] ❌ sendReliableToWatch: session not activated")
+      return
+    }
+
+    let type = (message["type"] as? String) ?? "unknown"
+    if session.isReachable {
+      session.sendMessage(message, replyHandler: { _ in
+        NSLog("[WatchConnectivity] ✅ \(type) delivered via sendMessage")
+      }, errorHandler: { error in
+        NSLog("[WatchConnectivity] ⚠️ sendMessage failed for \(type), falling back to transferUserInfo: \(error.localizedDescription)")
+        session.transferUserInfo(message)
+      })
+    } else {
+      session.transferUserInfo(message)
+      NSLog("[WatchConnectivity] 📤 \(type) queued via transferUserInfo (watch not reachable)")
     }
   }
 

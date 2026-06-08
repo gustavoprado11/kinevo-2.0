@@ -24,6 +24,10 @@
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>com.kinevo.mobile</string>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
 	<key>NSHealthShareUsageDescription</key>
 	<string>O Kinevo Watch usa dados de saúde para mostrar frequência cardíaca e calorias durante o treino.</string>
 	<key>NSHealthUpdateUsageDescription</key>

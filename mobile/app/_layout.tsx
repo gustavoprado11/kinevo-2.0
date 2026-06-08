@@ -49,7 +49,7 @@ function WatchBridge() {
     const { useWatchConnectivity } = require("../hooks/useWatchConnectivity");
     const { useWorkoutHealthUpload } = require("../hooks/useWorkoutHealthUpload");
     const { finishWorkoutFromWatch, watchFinishState, processPendingWatchWorkouts } = require("../lib/finishWorkoutFromWatch");
-    const { sendAckToWatch, syncProgramToWatch, sendMessage } = require("../modules/watch-connectivity");
+    const { sendAckToWatch, syncProgramToWatch, sendMessage, sendReliableToWatch } = require("../modules/watch-connectivity");
     const { appEvents, WORKOUT_COMPLETED, WATCH_WORKOUT_FINISHED } = require("../lib/events");
     const { supabase } = require("../lib/supabase");
     const { getProgramSnapshotForWatch } = require("../lib/getProgramSnapshotForWatch");
@@ -84,10 +84,12 @@ function WatchBridge() {
                     const workoutData = freshPayload?.workouts?.find((w: any) => w.workoutId === workoutId);
                     if (workoutData?.exercises?.length) {
                         const exerciseIds = workoutData.exercises.map((e: any) => e.id);
-                        sendMessage({
+                        // Reliable: sendMessage when reachable, transferUserInfo fallback
+                        // when not — so the correct order is never silently dropped.
+                        sendReliableToWatch({
                             type: 'UPDATE_EXERCISE_ORDER',
                             payload: { workoutId, exerciseIds },
-                        }).catch(() => {});  // fire-and-forget, Watch may not be reachable
+                        });
                     }
                 }
             } catch (syncErr: any) {
@@ -113,6 +115,8 @@ function WatchBridge() {
                             .eq('student_id', student.id)
                             .eq('status', 'in_progress')
                             .maybeSingle();
+
+                        let sessionId: string | null = existing?.id ?? null;
 
                         if (!existing) {
                             const { data: workout }: { data: any } = await supabase
@@ -143,11 +147,22 @@ function WatchBridge() {
                                 if (error) {
                                     if (__DEV__) console.error('[Layout] Failed to pre-create session:', error);
                                 } else {
+                                    sessionId = session.id;
                                     if (__DEV__) console.log(`[Layout] Pre-created in_progress session: ${session.id}`);
                                 }
                             }
                         } else {
                             if (__DEV__) console.log(`[Layout] Session already exists for ${workoutId}: ${existing.id}`);
+                        }
+
+                        // Tell the Watch the canonical session id so its FINISH and
+                        // health-sample payloads carry it back — eliminating the
+                        // 15-min assigned_workout_id mapping heuristic (M-2).
+                        if (sessionId) {
+                            sendReliableToWatch({
+                                type: 'SESSION_SYNC',
+                                payload: { workoutId, sessionId },
+                            });
                         }
                     }
                 }
@@ -167,8 +182,9 @@ function WatchBridge() {
     );
 
     const onWatchFinishWorkout = React.useCallback(
-        async ({ workoutId, rpe, startedAt, exercises, cardio }: {
+        async ({ workoutId, sessionId: watchSessionId, rpe, startedAt, exercises, cardio }: {
             workoutId: string;
+            sessionId?: string;
             rpe: number;
             startedAt?: string;
             exercises?: any[];
@@ -190,6 +206,7 @@ function WatchBridge() {
             try {
                 const sessionId = await finishWorkoutFromWatch({
                     workoutId,
+                    sessionId: watchSessionId,
                     rpe,
                     startedAt,
                     exercises,

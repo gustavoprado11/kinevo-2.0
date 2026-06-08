@@ -65,7 +65,10 @@ async function resolveSessionId(assignedWorkoutId: string): Promise<string | nul
 export function useWorkoutHealthUpload(): UseWorkoutHealthUploadResult {
   const uploadHealthSamples = useCallback(async (event: WatchHealthSamplesEvent) => {
     try {
-      const sessionId = await resolveSessionId(event.workoutId);
+      // Prefer the canonical session id echoed by the Watch (SESSION_SYNC) — it is
+      // unambiguous. Fall back to the assigned_workout_id + time-window heuristic
+      // only for older Watch builds that don't send it.
+      const sessionId = event.sessionId ?? (await resolveSessionId(event.workoutId));
       if (!sessionId) {
         if (__DEV__) console.warn(`[useWorkoutHealthUpload] No workout_session found for assigned_workout ${event.workoutId} — skipping upload`);
         return { ok: false, reason: 'session_not_found' };

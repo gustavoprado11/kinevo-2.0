@@ -3,6 +3,7 @@ export {
   syncProgramToWatch,
   sendWorkoutState,
   sendMessage,
+  sendReliableToWatch,
   sendAckToWatch,
   addWatchMessageListener,
   isWatchReachable,

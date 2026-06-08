@@ -92,6 +92,22 @@ export function sendAckToWatch(workoutId: string): void {
 }
 
 /**
+ * Send a message to the Watch reliably: sendMessage when reachable, falling back
+ * to transferUserInfo (queued/guaranteed delivery) otherwise. Use for messages
+ * that must not be silently dropped (UPDATE_EXERCISE_ORDER, SESSION_SYNC).
+ */
+export function sendReliableToWatch(message: any): void {
+  if (!WatchConnectivityModule || !WatchConnectivityModule.sendReliableToWatch) {
+    // Fallback to best-effort sendMessage if the native function is unavailable.
+    if (WatchConnectivityModule?.sendMessage) {
+      WatchConnectivityModule.sendMessage(message).catch(() => {});
+    }
+    return;
+  }
+  WatchConnectivityModule.sendReliableToWatch(message);
+}
+
+/**
  * Check if Apple Watch is paired and reachable
  */
 export function isWatchReachable(): boolean {

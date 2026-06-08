@@ -22,6 +22,10 @@ class WorkoutExecutionStore: ObservableObject {
 
     private var persistDebounceTask: Task<Void, Never>?
 
+    /// Canonical session ids received via SESSION_SYNC, keyed by workoutId. Cached
+    /// so a SESSION_SYNC that arrives before the workout is loaded still applies.
+    private var sessionIdByWorkout: [String: String] = [:]
+
     init() {
         // Attempt to restore from disk on launch
         if let restored = WorkoutStatePersistence.load() {
@@ -49,7 +53,7 @@ class WorkoutExecutionStore: ObservableObject {
 
     /// Start a new workout from an iPhone snapshot.
     /// Ignored if a workout is already in progress.
-    func startWorkout(from snapshot: WatchWorkoutSnapshot) {
+    func startWorkout(from snapshot: WatchWorkoutSnapshot, startedRemotely: Bool = false) {
         if let existing = state {
             print("[WorkoutStore] WARNING: startWorkout called but workout \(existing.workoutId) is already active — ignoring")
             return
@@ -59,9 +63,11 @@ class WorkoutExecutionStore: ObservableObject {
         newState.hasStarted = true
         newState.startedAt = Date()
         newState.lastPersistedAt = Date()
+        newState.sessionId = sessionIdByWorkout[newState.workoutId]
+        newState.startedRemotely = startedRemotely
         state = newState
         persistImmediate()
-        print("[WorkoutStore] Started workout \(newState.workoutId) with \(newState.exercises.count) exercises")
+        print("[WorkoutStore] Started workout \(newState.workoutId) with \(newState.exercises.count) exercises (remote: \(startedRemotely))")
     }
 
     /// Initialize state from snapshot WITHOUT starting (for pre-start screen).
@@ -75,10 +81,22 @@ class WorkoutExecutionStore: ObservableObject {
             print("[WorkoutStore] WARNING: loadWorkout replacing active workout \(existing.workoutId) with \(snapshot.workoutId)")
         }
 
-        let newState = WorkoutExecutionState.from(snapshot: snapshot)
+        var newState = WorkoutExecutionState.from(snapshot: snapshot)
+        newState.sessionId = sessionIdByWorkout[newState.workoutId]
         state = newState
         persistImmediate()
         print("[WorkoutStore] Loaded workout \(newState.workoutId) with \(newState.exercises.count) exercises (not started)")
+    }
+
+    /// Apply the canonical workout_session_id from the iPhone (SESSION_SYNC).
+    func setSessionId(workoutId: String, sessionId: String) {
+        sessionIdByWorkout[workoutId] = sessionId
+        if var s = state, s.workoutId == workoutId, s.sessionId != sessionId {
+            s.sessionId = sessionId
+            state = s
+            persistImmediate()
+            print("[WorkoutStore] Applied session id for \(workoutId): \(sessionId)")
+        }
     }
 
     /// Mark the current workout as started (user tapped "Iniciar treino").
@@ -123,24 +141,52 @@ class WorkoutExecutionStore: ObservableObject {
     }
 
     /// Handle workout finished from iPhone — clear state if matching workout is active.
-    func handleRemoteFinish(workoutId: String) {
+    /// Returns `true` when an active workout was actually cleared, so the caller can
+    /// also end the mirrored HealthKit session (save it to Apple Activity).
+    @discardableResult
+    func handleRemoteFinish(workoutId: String) -> Bool {
         guard let current = state else {
             print("[WorkoutStore] handleRemoteFinish ignored — no active state")
-            return
+            return false
         }
 
         guard current.workoutId == workoutId else {
             print("[WorkoutStore] handleRemoteFinish ignored — workoutId mismatch (current: \(current.workoutId), remote: \(workoutId))")
-            return
+            return false
         }
 
         print("[WorkoutStore] WORKOUT_FINISHED_FROM_PHONE for \(workoutId) — clearing workout")
         WKInterfaceDevice.current().play(.success)
         clearWorkout()
+        return true
+    }
+
+    /// Handle workout discarded from iPhone (user abandoned on the phone).
+    /// Returns `true` when an active workout was cleared, so the caller can discard
+    /// the mirrored HealthKit session WITHOUT saving it.
+    @discardableResult
+    func handleRemoteDiscard(workoutId: String) -> Bool {
+        guard let current = state else {
+            print("[WorkoutStore] handleRemoteDiscard ignored — no active state")
+            return false
+        }
+
+        guard current.workoutId == workoutId else {
+            print("[WorkoutStore] handleRemoteDiscard ignored — workoutId mismatch (current: \(current.workoutId), remote: \(workoutId))")
+            return false
+        }
+
+        print("[WorkoutStore] WORKOUT_DISCARDED_FROM_PHONE for \(workoutId) — discarding workout")
+        WKInterfaceDevice.current().play(.failure)
+        clearWorkout()
+        return true
     }
 
     /// Handle workout started from iPhone — find workout in program cache and start it.
-    func handleRemoteStart(workoutId: String, programSnapshot: WatchProgramSnapshot?) {
+    /// Returns `true` when a new workout was actually started (so the caller can also
+    /// begin the HealthKit workout session for live time/calories + Apple Activity).
+    @discardableResult
+    func handleRemoteStart(workoutId: String, programSnapshot: WatchProgramSnapshot?) -> Bool {
         // Guard: if already in a workout, ignore
         if let existing = state {
             if existing.workoutId == workoutId {
@@ -148,7 +194,7 @@ class WorkoutExecutionStore: ObservableObject {
             } else {
                 print("[WorkoutStore] handleRemoteStart — different workout \(existing.workoutId) active, ignoring remote start for \(workoutId)")
             }
-            return
+            return false
         }
 
         // Find workout in the synced program snapshot
@@ -156,14 +202,15 @@ class WorkoutExecutionStore: ObservableObject {
               let workoutSummary = snapshot.workouts.first(where: { $0.workoutId == workoutId })
         else {
             print("[WorkoutStore] handleRemoteStart — workout \(workoutId) not found in program cache")
-            return
+            return false
         }
 
         let workoutSnapshot = workoutSummary.toWorkoutSnapshot()
-        startWorkout(from: workoutSnapshot)
+        startWorkout(from: workoutSnapshot, startedRemotely: true)
         WKInterfaceDevice.current().play(.start)
         remoteStartWorkoutId = workoutId
         print("[WorkoutStore] handleRemoteStart — started workout \(workoutId) from iPhone")
+        return true
     }
 
     /// Clear workout state (finished or discarded). Deletes persisted file.
@@ -192,14 +239,70 @@ class WorkoutExecutionStore: ObservableObject {
         }
 
         guard let matchingWorkout = snapshot.workouts.first(where: { $0.workoutId == current.workoutId }) else {
-            print("[WorkoutStore] reconcileProgram — active workout \(current.workoutId) not in program, clearing")
-            clearWorkout()
+            // Active workout no longer in the synced program. Do NOT destroy an
+            // in-progress session (trainer edited the program mid-workout). Keep it
+            // until the user finishes or the explicit remote-finish path clears it.
+            if current.hasStarted {
+                print("[WorkoutStore] reconcileProgram — active workout \(current.workoutId) not in program but started — keeping local state")
+            } else {
+                print("[WorkoutStore] reconcileProgram — active workout \(current.workoutId) not in program (not started), clearing")
+                clearWorkout()
+            }
             return
         }
 
-        let newOrder = matchingWorkout.exercises.map(\.id)
-        print("[WorkoutStore] reconcileProgram — updating exercise order for \(current.workoutId)")
-        updateExerciseOrder(from: newOrder)
+        print("[WorkoutStore] reconcileProgram — merging exercises for \(current.workoutId)")
+        mergeProgramExercises(matchingWorkout.exercises)
+    }
+
+    /// Reconcile the active workout's exercises against the fresh program summary,
+    /// preserving progress for existing exercises, reordering to the canonical
+    /// order, and ADDING exercises the trainer inserted mid-session (built with
+    /// full per-set data). Existing exercises no longer in the program are kept
+    /// (so completed work is never silently dropped).
+    private func mergeProgramExercises(_ summaries: [WatchProgramExerciseSummary]) {
+        guard var s = state else { return }
+        guard !summaries.isEmpty else { return }
+
+        let summaryIds = summaries.map(\.id)
+        if s.exercises.map(\.id) == summaryIds { return } // already aligned
+
+        let currentExerciseId = s.exerciseIndex < s.exercises.count
+            ? s.exercises[s.exerciseIndex].id
+            : nil
+
+        var existingById: [String: WorkoutExecutionState.ExerciseState] = [:]
+        for ex in s.exercises { existingById[ex.id] = ex }
+
+        var rebuilt: [WorkoutExecutionState.ExerciseState] = []
+        var addedNew = false
+        for summary in summaries {
+            if let existing = existingById[summary.id] {
+                rebuilt.append(existing) // preserve progress
+            } else {
+                rebuilt.append(WorkoutExecutionState.makeExercise(from: summary.toExerciseSnapshot()))
+                addedNew = true
+            }
+        }
+
+        // Keep any current exercise not present in the new program (defensive —
+        // never drop the user's in-progress/completed work).
+        let summaryIdSet = Set(summaryIds)
+        for ex in s.exercises where !summaryIdSet.contains(ex.id) {
+            rebuilt.append(ex)
+        }
+
+        // Keep the user viewing the same exercise.
+        if let targetId = currentExerciseId, let idx = rebuilt.firstIndex(where: { $0.id == targetId }) {
+            s.exerciseIndex = idx
+        } else {
+            s.exerciseIndex = min(s.exerciseIndex, max(rebuilt.count - 1, 0))
+        }
+
+        s.exercises = rebuilt
+        state = s
+        persistImmediate()
+        print("[WorkoutStore] mergeProgramExercises — \(rebuilt.count) exercises (addedNew: \(addedNew))")
     }
 
     // MARK: - Exercise Order Update
@@ -276,10 +379,24 @@ class WorkoutExecutionStore: ObservableObject {
 
         s.exercises[exerciseIndex].sets[setIndex].isCompleted = true
 
-        // Copy weight/reps to subsequent incomplete sets
+        // Carry the just-used weight/reps forward to later incomplete sets so the
+        // user doesn't re-enter the same load every set.
+        //   • Standard exercise → carry both (uniform sets, expected UX).
+        //   • Advanced method (pyramid, drop-set, top+backoff, 5x5, cluster…) →
+        //     each set has its OWN prescribed load/reps, so DON'T clobber them
+        //     (e.g. a 95 kg top set must not inherit the 40 kg warmup). Weight is
+        //     only filled into sets that have no explicit per-set target; reps are
+        //     never overwritten (each advanced set keeps its own rep target).
+        let methodKey = s.exercises[exerciseIndex].methodKey
+        let isAdvanced = methodKey != nil && methodKey != "standard"
         let setsCount = s.exercises[exerciseIndex].sets.count
         for i in (setIndex + 1)..<setsCount {
-            if !s.exercises[exerciseIndex].sets[i].isCompleted {
+            guard !s.exercises[exerciseIndex].sets[i].isCompleted else { continue }
+            if isAdvanced {
+                if s.exercises[exerciseIndex].sets[i].weightTargetKg == nil {
+                    s.exercises[exerciseIndex].sets[i].weight = weight
+                }
+            } else {
                 s.exercises[exerciseIndex].sets[i].reps = reps
                 s.exercises[exerciseIndex].sets[i].weight = weight
             }
@@ -378,8 +495,11 @@ class WorkoutExecutionStore: ObservableObject {
         let version = dict["schemaVersion"] as? Int ?? 1
 
         switch version {
-        case 2:
-            // v2 program envelope — reconcile active workout if it still exists in the program
+        case 2...:
+            // v2+ program envelope — reconcile active workout if it still exists in the program.
+            // Forward-compatible: an unknown newer schema is treated as v2 (program-based)
+            // rather than falling back to the legacy single-workout path, which would
+            // incorrectly clear the program.
             guard let hasProgram = dict["hasProgram"] as? Bool else { return }
             if !hasProgram {
                 clearIfNotPending(reason: "iPhone reports no program")
@@ -427,10 +547,19 @@ class WorkoutExecutionStore: ObservableObject {
         guard let current = state else { return }
         if current.finishState == .pending {
             print("[WorkoutStore] \(reason) but finish is pending — keeping state until ACK")
-        } else {
-            print("[WorkoutStore] \(reason) — clearing local state")
-            clearWorkout()
+            return
         }
+        // Never discard a workout the user has actively started on the Watch.
+        // Program-level reconciliation (a fresh applicationContext) must not destroy
+        // in-progress local progress — e.g. the trainer edits/reorders/deactivates the
+        // program on the web while the student is mid-workout. Only the explicit
+        // WORKOUT_FINISHED_FROM_PHONE and SYNC_SUCCESS paths may clear a started workout.
+        if current.hasStarted {
+            print("[WorkoutStore] \(reason) but workout is in progress (started) — keeping local state until finished/acked")
+            return
+        }
+        print("[WorkoutStore] \(reason) — clearing local state")
+        clearWorkout()
     }
 
     private func reconcileWithSnapshot(_ snapshot: WatchWorkoutSnapshot) {
@@ -461,9 +590,14 @@ class WorkoutExecutionStore: ObservableObject {
             state = merged
             persistImmediate()
         } else {
-            // Different workout — iPhone moved on
-            print("[WorkoutStore] iPhone sent different workout \(snapshot.workoutId) — clearing local \(current.workoutId)")
-            clearWorkout()
+            // Different workout — iPhone moved on. Preserve a started session;
+            // only replace when the local workout was never started.
+            if current.hasStarted {
+                print("[WorkoutStore] iPhone sent different workout \(snapshot.workoutId) but local \(current.workoutId) is in progress — keeping local state")
+            } else {
+                print("[WorkoutStore] iPhone sent different workout \(snapshot.workoutId) — clearing local \(current.workoutId)")
+                clearWorkout()
+            }
         }
     }
 

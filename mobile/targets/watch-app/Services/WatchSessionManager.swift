@@ -4,8 +4,6 @@ import Combine
 
 /// Manages WatchConnectivity session for the Apple Watch app
 class WatchSessionManager: NSObject, ObservableObject {
-  static let shared = WatchSessionManager()
-
   @Published var currentWorkout: [String: Any]?
   @Published var programSnapshot: WatchProgramSnapshot?
   @Published var isConnected: Bool = false
@@ -14,9 +12,11 @@ class WatchSessionManager: NSObject, ObservableObject {
   /// Set by KinevoWatchApp to forward acknowledgements to WorkoutExecutionStore.
   var onSyncSuccess: ((_ workoutId: String) -> Void)?
   var onRemoteFinish: ((_ workoutId: String) -> Void)?
+  var onRemoteDiscard: ((_ workoutId: String) -> Void)?
   var onRemoteStartWorkout: ((_ workoutId: String) -> Void)?
   var onProgramUpdated: ((_ snapshot: WatchProgramSnapshot) -> Void)?
   var onExerciseOrderUpdate: ((_ workoutId: String, _ exerciseIds: [String]) -> Void)?
+  var onSessionSync: ((_ workoutId: String, _ sessionId: String) -> Void)?
 
   private var wcSession: WCSession?
 
@@ -56,8 +56,17 @@ class WatchSessionManager: NSObject, ObservableObject {
             "scheduledDays": [1, 3, 5],
             "isCompletedToday": false,
             "lastCompletedAt": nil as Any?,
+            "notes": ["Foco em controle hoje, sem pressa. Capricha no aquecimento de ombro antes de começar."],
             "exercises": [
-              ["id": "ex1", "name": "Supino Reto com Barra", "muscleGroup": "Peito", "sets": 4, "reps": 10, "weight": 80.0, "restTime": 90, "targetReps": "8-12"],
+              ["id": "ex1", "name": "Supino Reto com Barra", "muscleGroup": "Peito", "sets": 4, "reps": 10, "weight": 80.0, "restTime": 90, "targetReps": "8-12",
+                "methodKey": "top_backoff", "methodLabel": "Top + backoff",
+                "notes": "Escápulas retraídas e pés firmes no chão. Cadência 3-1-1 (desce em 3s). Se passar de 6 reps na série Top, sobe 2,5 kg na próxima semana. Qualquer dor no ombro, troca pelo supino com halteres.",
+                "setDetails": [
+                  ["setNumber": 1, "setType": "warmup", "setTypeLabel": "Aquecimento", "repsTarget": "10", "restSeconds": 60, "weightTargetKg": 40.0],
+                  ["setNumber": 2, "setType": "top", "setTypeLabel": "Top", "repsTarget": "5", "restSeconds": 120, "weightTargetKg": 95.0, "notes": "Série pesada — pode pedir ajuda na última repetição."],
+                  ["setNumber": 3, "setType": "backoff", "setTypeLabel": "Backoff", "repsTarget": "8-10", "restSeconds": 90, "weightTargetKg": 75.0],
+                  ["setNumber": 4, "setType": "backoff", "setTypeLabel": "Backoff", "repsTarget": "8-10", "restSeconds": 90, "weightTargetKg": 75.0],
+                ]],
               ["id": "ex2", "name": "Supino Inclinado Halteres", "muscleGroup": "Peito", "sets": 3, "reps": 12, "weight": 28.0, "restTime": 60, "targetReps": "10-12"],
               ["id": "ex3", "name": "Crucifixo Máquina", "muscleGroup": "Peito", "sets": 3, "reps": 12, "weight": 40.0, "restTime": 60, "targetReps": "12"],
               ["id": "ex4", "name": "Tríceps Pulley", "muscleGroup": "Tríceps", "sets": 3, "reps": 12, "weight": 25.0, "restTime": 60, "targetReps": "10-12"],
@@ -147,31 +156,6 @@ class WatchSessionManager: NSObject, ObservableObject {
 
   // MARK: - Send to iPhone
 
-  func sendSetComplete(exerciseIndex: Int, setIndex: Int) {
-    guard let session = wcSession, session.activationState == .activated else {
-      print("[WatchSessionManager] Session not activated")
-      return
-    }
-
-    let message: [String: Any] = [
-      "type": "SET_COMPLETE",
-      "payload": [
-        "exerciseIndex": exerciseIndex,
-        "setIndex": setIndex
-      ]
-    ]
-
-    if session.isReachable {
-      session.sendMessage(message, replyHandler: { reply in
-        print("[WatchSessionManager] Set completion acknowledged: \(reply)")
-      }, errorHandler: { error in
-        print("[WatchSessionManager] Error sending set completion: \(error)")
-      })
-    } else {
-      print("[WatchSessionManager] iPhone not reachable")
-    }
-  }
-
   /// Enriched set completion with exercise data (used by WorkoutExecutionView).
   func sendSetCompletion(
     workoutId: String,
@@ -211,7 +195,7 @@ class WatchSessionManager: NSObject, ObservableObject {
   /// Send FINISH_WORKOUT with RPE, start time, completed exercises, and cardio results.
   /// Uses sendReliable (sendMessage first, transferUserInfo fallback) for immediate delivery
   /// when iPhone is reachable — transferUserInfo alone may not wake the JS runtime.
-  func sendFinishWorkout(workoutId: String, rpe: Int, startedAt: Date, exercises: [[String: Any]], cardio: [[String: Any]] = []) {
+  func sendFinishWorkout(workoutId: String, rpe: Int, startedAt: Date, exercises: [[String: Any]], cardio: [[String: Any]] = [], sessionId: String? = nil) {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
@@ -223,6 +207,9 @@ class WatchSessionManager: NSObject, ObservableObject {
     ]
     if !cardio.isEmpty {
         payload["cardio"] = cardio
+    }
+    if let sessionId {
+        payload["sessionId"] = sessionId
     }
 
     let message: [String: Any] = [
@@ -237,9 +224,12 @@ class WatchSessionManager: NSObject, ObservableObject {
   /// Fase 13 — Envia agregados de HR + calorias do Apple Watch ao iPhone via
   /// transferUserInfo (queued/guaranteed delivery). Chamado pós-FINISH_WORKOUT.
   /// `samples` é o payload retornado por HealthKitManager.exportHealthSamples().
-  func sendHealthSamples(workoutId: String, samples: [String: Any]) {
+  func sendHealthSamples(workoutId: String, samples: [String: Any], sessionId: String? = nil) {
     var payload = samples
     payload["workoutId"] = workoutId
+    if let sessionId {
+        payload["sessionId"] = sessionId
+    }
 
     let message: [String: Any] = [
       "type": "WORKOUT_HEALTH_SAMPLES",
@@ -364,7 +354,9 @@ extension WatchSessionManager: WCSessionDelegate {
     let version = dict["schemaVersion"] as? Int ?? 1
 
     switch version {
-    case 2:
+    case 2...:
+      // v2+ program envelope. Forward-compatible: an unknown newer schema is treated
+      // as v2 (program-based) instead of the legacy v1 path, which would clear the program.
       if let hasProgram = dict["hasProgram"] as? Bool, hasProgram {
         programSnapshot = WatchProgramSnapshot.parse(from: dict)
         if let snapshot = programSnapshot {
@@ -439,6 +431,19 @@ extension WatchSessionManager: WCSessionDelegate {
         self.onSyncSuccess?(workoutId)
       }
 
+    case "SESSION_SYNC":
+      guard let payload = message["payload"] as? [String: Any],
+            let workoutId = payload["workoutId"] as? String,
+            let sessionId = payload["sessionId"] as? String
+      else {
+        print("[WatchSessionManager] SESSION_SYNC missing workoutId/sessionId")
+        return
+      }
+      print("[WatchSessionManager] SESSION_SYNC for \(workoutId): \(sessionId)")
+      DispatchQueue.main.async {
+        self.onSessionSync?(workoutId, sessionId)
+      }
+
     case "START_WORKOUT_FROM_PHONE":
       guard let payload = message["payload"] as? [String: Any],
             let workoutId = payload["workoutId"] as? String
@@ -463,6 +468,19 @@ extension WatchSessionManager: WCSessionDelegate {
       print("[WatchSessionManager] WORKOUT_FINISHED_FROM_PHONE for workoutId: \(workoutId)")
       DispatchQueue.main.async {
         self.onRemoteFinish?(workoutId)
+      }
+
+    case "WORKOUT_DISCARDED_FROM_PHONE":
+      guard let payload = message["payload"] as? [String: Any],
+            let workoutId = payload["workoutId"] as? String
+      else {
+        print("[WatchSessionManager] WORKOUT_DISCARDED_FROM_PHONE missing workoutId")
+        return
+      }
+
+      print("[WatchSessionManager] WORKOUT_DISCARDED_FROM_PHONE for workoutId: \(workoutId)")
+      DispatchQueue.main.async {
+        self.onRemoteDiscard?(workoutId)
       }
 
     case "UPDATE_EXERCISE_ORDER":

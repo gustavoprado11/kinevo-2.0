@@ -5,6 +5,10 @@ import WatchKit
 /// Displayed as a vertical page below the exercise carousel.
 struct WorkoutDashboardView: View {
   let workoutStartDate: Date
+  /// When true the workout is being executed on the iPhone and the Watch is just
+  /// mirroring activity — local set progress would be stale, so we show a mirror
+  /// banner instead of the progress bar.
+  var mirroredFromPhone: Bool = false
   var onDiscardWorkout: (() -> Void)? = nil
   @EnvironmentObject private var healthKitManager: HealthKitManager
   @EnvironmentObject private var workoutStore: WorkoutExecutionStore
@@ -13,8 +17,12 @@ struct WorkoutDashboardView: View {
 
   var body: some View {
     VStack(spacing: 6) {
-      // Workout progress
-      progressSection
+      // Mirror banner (phone-driven) or local progress bar.
+      if mirroredFromPhone {
+        mirrorBanner
+      } else {
+        progressSection
+      }
 
       // Heart Rate + Calories (side by side)
       HStack(spacing: 6) {
@@ -126,6 +134,36 @@ struct WorkoutDashboardView: View {
     }
     .padding(.horizontal, 10)
     .padding(.vertical, 6)
+    .background(
+      RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .fill(Color.kinevoCard)
+    )
+  }
+
+  // MARK: - Mirror Banner (phone-driven workout)
+
+  private var mirrorBanner: some View {
+    HStack(spacing: 8) {
+      Image(systemName: "iphone.gen3")
+        .font(.system(size: 14))
+        .foregroundStyle(Color.kinevoViolet)
+      VStack(alignment: .leading, spacing: 1) {
+        Text("Executando no celular")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(.white)
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
+        Text("Acompanhando sua atividade")
+          .font(.system(size: 10))
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
+      }
+      Spacer(minLength: 0)
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 7)
+    .frame(maxWidth: .infinity)
     .background(
       RoundedRectangle(cornerRadius: 10, style: .continuous)
         .fill(Color.kinevoCard)

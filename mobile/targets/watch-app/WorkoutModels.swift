@@ -74,6 +74,38 @@ struct WatchExercise {
     }
 }
 
+// MARK: - Per-Set Detail (advanced methods)
+
+/// One prescribed set for advanced methods (pyramid/drop-set/cluster/top+backoff/5x5).
+/// Mirrors the iPhone `WatchSetDetail` bridge type. When an exercise carries these,
+/// the Watch builds one set per entry with its own reps target, rest and load.
+struct WatchSetDetail: Hashable {
+    let setNumber: Int
+    let setType: String          // warmup|normal|top|backoff|drop|failure|cluster|amrap
+    let setTypeLabel: String     // pt-BR badge label ("Drop", "Top"…), empty for normal
+    let repsTarget: String       // "8", "8-12", "AMRAP", "8+4+2"
+    let restSeconds: Int
+    let weightTargetKg: Double?
+    let weightTargetPct1rm: Double?
+    let roundNumber: Int?
+    let notes: String?          // trainer note for this specific set
+
+    static func parse(from dict: [String: Any]) -> WatchSetDetail? {
+        guard let setNumber = (dict["setNumber"] as? NSNumber)?.intValue else { return nil }
+        return WatchSetDetail(
+            setNumber: setNumber,
+            setType: dict["setType"] as? String ?? "normal",
+            setTypeLabel: dict["setTypeLabel"] as? String ?? "",
+            repsTarget: dict["repsTarget"] as? String ?? "",
+            restSeconds: (dict["restSeconds"] as? NSNumber)?.intValue ?? 0,
+            weightTargetKg: (dict["weightTargetKg"] as? NSNumber)?.doubleValue,
+            weightTargetPct1rm: (dict["weightTargetPct1rm"] as? NSNumber)?.doubleValue,
+            roundNumber: (dict["roundNumber"] as? NSNumber)?.intValue,
+            notes: dict["notes"] as? String
+        )
+    }
+}
+
 // MARK: - Snapshot Types (used by WorkoutExecutionView)
 
 /// Extended exercise model with targetReps for the execution UI.
@@ -90,6 +122,48 @@ struct WatchExerciseSnapshot: Identifiable, Hashable {
     let lastReps: Int?
     let supersetIndex: Int?   // 0-based position within superset group
     let supersetTotal: Int?   // total exercises in superset group
+    let methodKey: String?    // advanced method (pyramid_down, drop_set…) or nil
+    let methodLabel: String?  // pt-BR method chip label, nil when standard/none
+    let setDetails: [WatchSetDetail]  // per-set prescription; empty → uniform sets
+    let notes: String?        // trainer note for this exercise (technique cues)
+
+    /// Explicit init with the advanced-method fields defaulted so existing
+    /// call sites that predate per-set support keep compiling unchanged.
+    init(
+        id: String,
+        name: String,
+        sets: Int,
+        reps: Int,
+        weight: Double?,
+        restTime: Int,
+        completedSets: Int,
+        targetReps: String?,
+        lastWeight: Double?,
+        lastReps: Int?,
+        supersetIndex: Int? = nil,
+        supersetTotal: Int? = nil,
+        methodKey: String? = nil,
+        methodLabel: String? = nil,
+        setDetails: [WatchSetDetail] = [],
+        notes: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.sets = sets
+        self.reps = reps
+        self.weight = weight
+        self.restTime = restTime
+        self.completedSets = completedSets
+        self.targetReps = targetReps
+        self.lastWeight = lastWeight
+        self.lastReps = lastReps
+        self.supersetIndex = supersetIndex
+        self.supersetTotal = supersetTotal
+        self.methodKey = methodKey
+        self.methodLabel = methodLabel
+        self.setDetails = setDetails
+        self.notes = notes
+    }
 
     static func from(_ exercise: WatchExercise) -> WatchExerciseSnapshot {
         WatchExerciseSnapshot(
@@ -111,6 +185,7 @@ struct WatchExerciseSnapshot: Identifiable, Hashable {
     static func parse(from dict: [String: Any]) -> WatchExerciseSnapshot? {
         guard let exercise = WatchExercise.parse(from: dict) else { return nil }
         let targetReps = dict["targetReps"] as? String
+        let setDetails = (dict["setDetails"] as? [[String: Any]])?.compactMap { WatchSetDetail.parse(from: $0) } ?? []
         return WatchExerciseSnapshot(
             id: exercise.id,
             name: exercise.name,
@@ -123,7 +198,11 @@ struct WatchExerciseSnapshot: Identifiable, Hashable {
             lastWeight: dict["lastWeight"] as? Double,
             lastReps: (dict["lastReps"] as? NSNumber)?.intValue,
             supersetIndex: (dict["supersetIndex"] as? NSNumber)?.intValue,
-            supersetTotal: (dict["supersetTotal"] as? NSNumber)?.intValue
+            supersetTotal: (dict["supersetTotal"] as? NSNumber)?.intValue,
+            methodKey: dict["methodKey"] as? String,
+            methodLabel: dict["methodLabel"] as? String,
+            setDetails: setDetails,
+            notes: dict["notes"] as? String
         )
     }
 }
@@ -139,6 +218,31 @@ struct WatchWorkoutSnapshot: Hashable {
     let isActive: Bool
     let startedAt: String?
     let updatedAt: String?
+    let notes: [String]   // workout-day trainer briefing blocks (Level B)
+
+    init(
+        workoutId: String,
+        workoutName: String,
+        studentName: String,
+        exercises: [WatchExerciseSnapshot],
+        cardioItems: [WatchCardioItem],
+        currentExerciseIndex: Int,
+        isActive: Bool,
+        startedAt: String?,
+        updatedAt: String?,
+        notes: [String] = []
+    ) {
+        self.workoutId = workoutId
+        self.workoutName = workoutName
+        self.studentName = studentName
+        self.exercises = exercises
+        self.cardioItems = cardioItems
+        self.currentExerciseIndex = currentExerciseIndex
+        self.isActive = isActive
+        self.startedAt = startedAt
+        self.updatedAt = updatedAt
+        self.notes = notes
+    }
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(workoutId)
@@ -180,6 +284,7 @@ struct WatchWorkoutSnapshot: Hashable {
         let workoutName = dict["workoutName"] as? String ?? ""
         let startedAt = dict["startedAt"] as? String
         let updatedAt = dict["updatedAt"] as? String
+        let notes = (dict["notes"] as? [Any])?.compactMap { $0 as? String } ?? []
 
         return WatchWorkoutSnapshot(
             workoutId: workoutId,
@@ -190,7 +295,8 @@ struct WatchWorkoutSnapshot: Hashable {
             currentExerciseIndex: currentExerciseIndex,
             isActive: isActive,
             startedAt: startedAt,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            notes: notes
         )
     }
 }
@@ -305,6 +411,46 @@ struct WatchProgramExerciseSummary {
     let lastReps: Int?
     let supersetIndex: Int?   // 0-based position within superset group
     let supersetTotal: Int?   // total exercises in superset group
+    let methodKey: String?
+    let methodLabel: String?
+    let setDetails: [WatchSetDetail]
+    let notes: String?
+
+    init(
+        id: String,
+        name: String,
+        muscleGroup: String?,
+        sets: Int,
+        reps: Int,
+        weight: Double?,
+        restTime: Int,
+        targetReps: String?,
+        lastWeight: Double?,
+        lastReps: Int?,
+        supersetIndex: Int? = nil,
+        supersetTotal: Int? = nil,
+        methodKey: String? = nil,
+        methodLabel: String? = nil,
+        setDetails: [WatchSetDetail] = [],
+        notes: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.muscleGroup = muscleGroup
+        self.sets = sets
+        self.reps = reps
+        self.weight = weight
+        self.restTime = restTime
+        self.targetReps = targetReps
+        self.lastWeight = lastWeight
+        self.lastReps = lastReps
+        self.supersetIndex = supersetIndex
+        self.supersetTotal = supersetTotal
+        self.methodKey = methodKey
+        self.methodLabel = methodLabel
+        self.setDetails = setDetails
+        self.notes = notes
+    }
 
     static func parse(from dict: [String: Any]) -> WatchProgramExerciseSummary? {
         guard
@@ -313,6 +459,8 @@ struct WatchProgramExerciseSummary {
         else {
             return nil
         }
+
+        let setDetails = (dict["setDetails"] as? [[String: Any]])?.compactMap { WatchSetDetail.parse(from: $0) } ?? []
 
         return WatchProgramExerciseSummary(
             id: id,
@@ -326,7 +474,34 @@ struct WatchProgramExerciseSummary {
             lastWeight: dict["lastWeight"] as? Double,
             lastReps: (dict["lastReps"] as? NSNumber)?.intValue,
             supersetIndex: (dict["supersetIndex"] as? NSNumber)?.intValue,
-            supersetTotal: (dict["supersetTotal"] as? NSNumber)?.intValue
+            supersetTotal: (dict["supersetTotal"] as? NSNumber)?.intValue,
+            methodKey: dict["methodKey"] as? String,
+            methodLabel: dict["methodLabel"] as? String,
+            setDetails: setDetails,
+            notes: dict["notes"] as? String
+        )
+    }
+
+    /// Convert to a per-exercise snapshot (fresh execution — completedSets = 0).
+    /// Used to build state for exercises added to an active workout mid-session.
+    func toExerciseSnapshot() -> WatchExerciseSnapshot {
+        WatchExerciseSnapshot(
+            id: id,
+            name: name,
+            sets: sets,
+            reps: reps,
+            weight: weight,
+            restTime: restTime,
+            completedSets: 0,
+            targetReps: targetReps,
+            lastWeight: lastWeight,
+            lastReps: lastReps,
+            supersetIndex: supersetIndex,
+            supersetTotal: supersetTotal,
+            methodKey: methodKey,
+            methodLabel: methodLabel,
+            setDetails: setDetails,
+            notes: notes
         )
     }
 }
@@ -343,6 +518,7 @@ struct WatchProgramWorkoutSummary: Identifiable {
     let lastCompletedAt: Date?
     let exercises: [WatchProgramExerciseSummary]
     let cardioItems: [WatchCardioItem]
+    var notes: [String] = []   // workout-day trainer briefing blocks (Level B)
 
     /// Whether this workout is scheduled for today.
     var isScheduledToday: Bool {
@@ -368,6 +544,7 @@ struct WatchProgramWorkoutSummary: Identifiable {
         let isCompletedToday = dict["isCompletedToday"] as? Bool ?? false
         let lastCompletedAtStr = dict["lastCompletedAt"] as? String
         let lastCompletedAt = lastCompletedAtStr.flatMap { WatchDateParser.parseISO8601($0) }
+        let notes = (dict["notes"] as? [Any])?.compactMap { $0 as? String } ?? []
 
         return WatchProgramWorkoutSummary(
             workoutId: workoutId,
@@ -377,7 +554,8 @@ struct WatchProgramWorkoutSummary: Identifiable {
             isCompletedToday: isCompletedToday,
             lastCompletedAt: lastCompletedAt,
             exercises: exercises,
-            cardioItems: cardioItems
+            cardioItems: cardioItems,
+            notes: notes
         )
     }
 
@@ -397,7 +575,11 @@ struct WatchProgramWorkoutSummary: Identifiable {
                 lastWeight: ex.lastWeight,
                 lastReps: ex.lastReps,
                 supersetIndex: ex.supersetIndex,
-                supersetTotal: ex.supersetTotal
+                supersetTotal: ex.supersetTotal,
+                methodKey: ex.methodKey,
+                methodLabel: ex.methodLabel,
+                setDetails: ex.setDetails,
+                notes: ex.notes
             )
         }
 
@@ -410,7 +592,8 @@ struct WatchProgramWorkoutSummary: Identifiable {
             currentExerciseIndex: 0,
             isActive: false,
             startedAt: nil,
-            updatedAt: nil
+            updatedAt: nil,
+            notes: notes
         )
     }
 }

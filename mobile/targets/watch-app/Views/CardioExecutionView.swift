@@ -16,6 +16,15 @@ struct CardioExecutionView: View {
     @State private var isPaused: Bool = false
     @State private var timerCancellable: AnyCancellable?
 
+    // Wall-clock anchors — the timer is driven by absolute dates, not by counting
+    // ticks. This keeps interval timing and elapsed time correct even when the
+    // watch screen sleeps (wrist down / Always-On) and the runloop stops firing:
+    // the first tick after resume catches up through every phase that elapsed.
+    @State private var phaseDeadline: Date?       // absolute end of the current timed phase
+    @State private var cardioStartedAt: Date?     // when work first began (after countdown)
+    @State private var pausedAt: Date?            // when the user paused (continuous only)
+    @State private var pausedAccumulated: TimeInterval = 0
+
     private enum CardioPhase {
         case idle, countdown, work, rest, completed
     }
@@ -310,32 +319,58 @@ struct CardioExecutionView: View {
         return CGFloat(min(max(Double(elapsed) / Double(total), 0), 1))
     }
 
-    // MARK: - Timer Logic
+    // MARK: - Timer Logic (wall-clock driven)
+
+    /// Seconds remaining in the current timed phase, derived from the absolute deadline.
+    private func remaining(at now: Date = Date()) -> Int {
+        guard let deadline = phaseDeadline else { return 0 }
+        return max(0, Int(deadline.timeIntervalSince(now).rounded(.up)))
+    }
+
+    /// Total active cardio time (work + rest), computed from wall-clock so it stays
+    /// correct across suspensions. Excludes the countdown and any paused time.
+    private func computeTotalElapsed(at now: Date = Date()) -> Int {
+        guard let start = cardioStartedAt else { return 0 }
+        let livePause = pausedAt.map { now.timeIntervalSince($0) } ?? 0
+        return max(0, Int(now.timeIntervalSince(start) - pausedAccumulated - livePause))
+    }
 
     private func startCountdown() {
         phase = .countdown
         countdownValue = 5
+        cardioStartedAt = nil
+        pausedAt = nil
+        pausedAccumulated = 0
+        phaseDeadline = Date().addingTimeInterval(5)
         startTimer()
     }
 
     private func togglePause() {
-        isPaused.toggle()
         if isPaused {
-            timerCancellable?.cancel()
-        } else {
+            // Resume — fold the paused span into the accumulator and push the deadline.
+            isPaused = false
+            if let pAt = pausedAt {
+                let span = Date().timeIntervalSince(pAt)
+                pausedAccumulated += span
+                if let d = phaseDeadline { phaseDeadline = d.addingTimeInterval(span) }
+                pausedAt = nil
+            }
             startTimer()
+        } else {
+            isPaused = true
+            pausedAt = Date()
+            timerCancellable?.cancel()
         }
     }
 
     private func skipPhase() {
-        switch phase {
-        case .work where item.isInterval:
-            transitionToRest()
-        case .rest:
-            transitionToNextWork()
-        default:
-            break
-        }
+        guard item.isInterval, phase == .work || phase == .rest else { return }
+        // Collapse the current phase and advance immediately, chaining from now.
+        phaseDeadline = Date()
+        advancePhase()
+        let now = Date()
+        timeRemaining = remaining(at: now)
+        totalElapsed = computeTotalElapsed(at: now)
     }
 
     private func startTimer() {
@@ -348,43 +383,68 @@ struct CardioExecutionView: View {
     }
 
     private func tick() {
+        guard !isPaused else { return }
+        let now = Date()
+
+        // Catch up through every phase whose deadline has already passed. A single
+        // suspended interval can span multiple work/rest rounds; this loop advances
+        // through all of them so currentRound and elapsed time stay accurate.
+        while phase != .completed, let deadline = phaseDeadline, now >= deadline {
+            advancePhase()
+        }
+        if phase == .completed { return }
+
+        let newRemaining = remaining(at: now)
+        if phase == .countdown {
+            if newRemaining != countdownValue {
+                countdownValue = newRemaining
+                if newRemaining > 0 { WKInterfaceDevice.current().play(.click) }
+            }
+        }
+        timeRemaining = newRemaining
+        totalElapsed = computeTotalElapsed(at: now)
+    }
+
+    /// Advance to the next phase, chaining the new deadline off the previous one so
+    /// absolute timing never drifts, even after long suspensions.
+    private func advancePhase() {
+        let base = phaseDeadline ?? Date()
+        let totalRounds = item.config.rounds ?? 8
+
         switch phase {
         case .countdown:
-            if countdownValue <= 1 {
-                // Start the actual cardio
-                if item.isInterval {
-                    phase = .work
-                    timeRemaining = item.config.workSeconds ?? 30
-                } else {
-                    phase = .work
-                    timeRemaining = item.totalDurationSeconds
-                }
-                WKInterfaceDevice.current().play(.start)
+            cardioStartedAt = base
+            phase = .work
+            if item.isInterval {
+                currentRound = 1
+                phaseDeadline = base.addingTimeInterval(Double(item.config.workSeconds ?? 30))
             } else {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    countdownValue -= 1
-                }
-                WKInterfaceDevice.current().play(.click)
+                phaseDeadline = base.addingTimeInterval(Double(item.totalDurationSeconds))
             }
+            WKInterfaceDevice.current().play(.start)
+
+        case .work where item.isInterval:
+            if currentRound >= totalRounds {
+                finalizeCompleted()
+                return
+            }
+            phase = .rest
+            phaseDeadline = base.addingTimeInterval(Double(item.config.restSeconds ?? 15))
+            WKInterfaceDevice.current().play(.directionUp)
 
         case .work:
-            totalElapsed += 1
-            if timeRemaining <= 1 {
-                if item.isInterval {
-                    transitionToRest()
-                } else {
-                    completeCardio()
-                }
-            } else {
-                timeRemaining -= 1
-            }
+            // Continuous mode finished.
+            finalizeCompleted()
 
         case .rest:
-            totalElapsed += 1
-            if timeRemaining <= 1 {
-                transitionToNextWork()
+            let nextRound = currentRound + 1
+            if nextRound > totalRounds {
+                finalizeCompleted()
             } else {
-                timeRemaining -= 1
+                currentRound = nextRound
+                phase = .work
+                phaseDeadline = base.addingTimeInterval(Double(item.config.workSeconds ?? 30))
+                WKInterfaceDevice.current().play(.start)
             }
 
         default:
@@ -392,35 +452,19 @@ struct CardioExecutionView: View {
         }
     }
 
-    private func transitionToRest() {
-        let totalRounds = item.config.rounds ?? 8
-        if currentRound >= totalRounds {
-            completeCardio()
-            return
-        }
-        phase = .rest
-        timeRemaining = item.config.restSeconds ?? 15
-        WKInterfaceDevice.current().play(.directionUp)
-    }
-
-    private func transitionToNextWork() {
-        let totalRounds = item.config.rounds ?? 8
-        let nextRound = currentRound + 1
-        if nextRound > totalRounds {
-            completeCardio()
-        } else {
-            currentRound = nextRound
-            phase = .work
-            timeRemaining = item.config.workSeconds ?? 30
-            WKInterfaceDevice.current().play(.start)
-        }
-    }
-
+    /// Manual "Concluir" tap.
     private func completeCardio() {
+        finalizeCompleted()
+    }
+
+    private func finalizeCompleted() {
+        let elapsed = computeTotalElapsed()
         phase = .completed
+        phaseDeadline = nil
         timerCancellable?.cancel()
+        totalElapsed = elapsed
         WKInterfaceDevice.current().play(.success)
-        onComplete(totalElapsed)
+        onComplete(elapsed)
     }
 
     // MARK: - Formatting
