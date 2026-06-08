@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
     View,
     Text,
@@ -27,6 +27,7 @@ const WEB_URL =
 export default function ForgotPasswordScreen() {
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
+    const inFlightRef = useRef(false); // B5: evita reenvio por duplo-tap / "send" do teclado
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isEmailFocused, setIsEmailFocused] = useState(false);
@@ -43,6 +44,8 @@ export default function ForgotPasswordScreen() {
             return;
         }
 
+        if (inFlightRef.current) return; // B5
+        inFlightRef.current = true;
         setError(null);
         setLoading(true);
 
@@ -54,6 +57,7 @@ export default function ForgotPasswordScreen() {
         );
 
         setLoading(false);
+        inFlightRef.current = false;
 
         if (resetError) {
             // Mantém o pattern do web — não revelamos se o email existe

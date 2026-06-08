@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
     View,
     Text,
@@ -50,10 +50,13 @@ export default function EnterCodeScreen() {
     }, [cooldown]);
 
     // ── Verificar código OTP ────────────────────────────────────────────────
+    const inFlightRef = useRef(false);
     const handleVerify = useCallback(
         async (otp?: string) => {
             const token = otp || code;
             if (token.length !== 6) return;
+            if (inFlightRef.current) return; // B5: evita dupla submissão (auto-complete + toque)
+            inFlightRef.current = true;
 
             setLoading(true);
             setError(null);
@@ -65,6 +68,7 @@ export default function EnterCodeScreen() {
             });
 
             setLoading(false);
+            inFlightRef.current = false;
 
             if (verifyError) {
                 if (__DEV__) console.error("[EnterCode] Erro ao verificar OTP:", verifyError.message);
