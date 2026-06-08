@@ -68,6 +68,12 @@ export function MultiAttemptInput({
 
     const allFilled = validValues.length === attempts;
 
+    // best_max/best_min: o valor final É uma das tentativas (marca a própria).
+    // mean/median: o agregado não coincide com nenhuma tentativa crua → precisa
+    // de uma linha selecionada à parte carregando o valor calculado (C5).
+    const aggregateIsAttempt =
+        selection_strategy === 'best_max' || selection_strategy === 'best_min';
+
     const finalValue = useMemo(() => {
         if (!allFilled) return null;
         return applyStrategy(validValues, selection_strategy);
@@ -104,17 +110,38 @@ export function MultiAttemptInput({
     const handleCommit = useCallback(() => {
         if (!allFilled || finalValue === null) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        const rows: MeasurementInput[] = parsed.map((v, i) => ({
+        const attemptRows: MeasurementInput[] = parsed.map((v, i) => ({
             metric_key,
             value_numeric: v as number,
             value_unit: unit,
             side: null,
             attempt_number: i + 1,
-            is_selected: i === selectedIndex,
+            // mean/median: tentativas viram histórico (is_selected=false); o valor
+            // final vai na linha agregada abaixo. best_max/best_min: marca a tentativa.
+            is_selected: aggregateIsAttempt && i === selectedIndex,
             raw_input: { test_id, selection_strategy },
         }));
+
+        const rows: MeasurementInput[] = aggregateIsAttempt
+            ? attemptRows
+            : [
+                ...attemptRows,
+                {
+                    // C5: persiste a média/mediana CALCULADA como a linha selecionada.
+                    // Sem isto, pickNumeric/extractSkinfolds liam uma tentativa crua
+                    // (a mais próxima) em vez do valor final exibido — corrompendo
+                    // % gordura / IMC / RCQ silenciosamente.
+                    metric_key,
+                    value_numeric: finalValue,
+                    value_unit: unit,
+                    side: null,
+                    attempt_number: attempts + 1,
+                    is_selected: true,
+                    raw_input: { test_id, selection_strategy, aggregate: true },
+                },
+            ];
         onCommit(rows);
-    }, [allFilled, finalValue, parsed, metric_key, unit, test_id, selectedIndex, selection_strategy, onCommit]);
+    }, [allFilled, finalValue, parsed, metric_key, unit, test_id, selectedIndex, selection_strategy, aggregateIsAttempt, attempts, onCommit]);
 
     return (
         <View style={{ gap: 12 }}>
@@ -149,7 +176,7 @@ export function MultiAttemptInput({
                         onChange={(t) => updateSlot(i, t)}
                         unit={unit}
                         valid={parsed[i] !== null}
-                        isSelected={i === selectedIndex && allFilled}
+                        isSelected={aggregateIsAttempt && i === selectedIndex && allFilled}
                     />
                 ))}
             </View>
