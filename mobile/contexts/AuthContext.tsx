@@ -4,6 +4,7 @@ import React, {
     useEffect,
     useState,
     useCallback,
+    useRef,
     type ReactNode,
 } from "react";
 import { Platform, View, Text, ActivityIndicator, TouchableOpacity, AppState } from "react-native";
@@ -39,6 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // A12: o listener de AppState é registrado uma vez (deps [loadSession] estável),
+    // então capturava `error` no valor do 1º render (null) e o auto-retry de keychain
+    // nunca disparava. Lemos o valor atual via ref.
+    const errorRef = useRef<string | null>(error);
+    errorRef.current = error;
 
     if (__DEV__) console.log("[AuthProvider] Renderizando, isLoading:", isLoading);
 
@@ -89,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Auto-retry when app comes to foreground (covers Watch background launch)
         const appStateSub = AppState.addEventListener("change", (state) => {
-            if (state === "active" && error === "keychain_locked") {
+            if (state === "active" && errorRef.current === "keychain_locked") {
                 if (__DEV__) console.log("[AuthProvider] App foregrounded — retrying session load");
                 loadSession();
             }

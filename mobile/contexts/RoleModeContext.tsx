@@ -17,7 +17,18 @@ import { useBrandStore } from "../stores/brandStore";
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Role = "student" | "trainer" | null;
-type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "none" | null;
+export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "none" | null;
+
+/**
+ * A2: o gate de assinatura do treinador só deve bloquear quando o status é
+ * CONHECIDO e não-ativo ("none"/"canceled"/"past_due"). `null` significa
+ * DESCONHECIDO (erro transitório de rede ou ainda resolvendo) — nesse caso NÃO
+ * bloqueia, pra não barrar um treinador pagante por um blip de rede. Se o status
+ * real for inativo, o próximo resolve (mount/foreground) corrige.
+ */
+export function isTrainerSubscriptionBlocked(status: SubscriptionStatus): boolean {
+    return status != null && status !== "active" && status !== "trialing";
+}
 
 export type TrainerModalityFocus = "presencial" | "online" | "ambos";
 

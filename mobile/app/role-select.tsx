@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Dumbbell, Users } from "lucide-react-native";
 import Animated, { FadeInUp, FadeIn } from "react-native-reanimated";
-import { useRoleMode } from "../contexts/RoleModeContext";
+import { useRoleMode, isTrainerSubscriptionBlocked } from "../contexts/RoleModeContext";
 import { PressableScale } from "../components/shared/PressableScale";
 import { useV2Colors, useIsDark } from "../hooks/useV2Colors";
 
@@ -21,7 +21,7 @@ export default function RoleSelectScreen() {
 
     const handleTrainer = useCallback(() => {
         switchToTrainer();
-        if (subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
+        if (isTrainerSubscriptionBlocked(subscriptionStatus)) {
             router.replace("/trainer-subscription-blocked");
         } else {
             router.replace("/(trainer-tabs)/dashboard");

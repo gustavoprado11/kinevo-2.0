@@ -3,7 +3,7 @@ import { Tabs, usePathname, useRouter, Redirect } from "expo-router";
 import { LayoutDashboard, Users, MessageCircle, ClipboardList, MoreHorizontal } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, AppState } from "react-native";
-import { useRoleMode } from "../../contexts/RoleModeContext";
+import { useRoleMode, isTrainerSubscriptionBlocked } from "../../contexts/RoleModeContext";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { usePendingSubmissionsCount } from "../../hooks/usePendingSubmissionsCount";
 import { useTrainerConversations } from "../../hooks/useTrainerConversations";
@@ -137,7 +137,7 @@ export default function TrainerTabsLayout() {
 
     // Gate reativo de assinatura: se deixou de ser válida, bloqueia na hora
     // (espelha a checagem do app/index.tsx, mas continua valendo dentro das tabs).
-    if (!isLoadingRole && isTrainer && subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
+    if (!isLoadingRole && isTrainer && isTrainerSubscriptionBlocked(subscriptionStatus)) {
         return <Redirect href="/trainer-subscription-blocked" />;
     }
 

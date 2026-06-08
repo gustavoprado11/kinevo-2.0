@@ -10,7 +10,7 @@ import Animated, {
     Easing,
 } from "react-native-reanimated";
 import { useAuth } from "../contexts/AuthContext";
-import { useRoleMode } from "../contexts/RoleModeContext";
+import { useRoleMode, isTrainerSubscriptionBlocked } from "../contexts/RoleModeContext";
 
 export default function IndexScreen() {
     const { session, isLoading, isEmailVerified } = useAuth();
@@ -68,7 +68,7 @@ export default function IndexScreen() {
 
     // 5. Trainer mode — check subscription gate
     if (role === "trainer") {
-        if (subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
+        if (isTrainerSubscriptionBlocked(subscriptionStatus)) {
             return <Redirect href="/trainer-subscription-blocked" />;
         }
         return <Redirect href="/(trainer-tabs)/dashboard" />;

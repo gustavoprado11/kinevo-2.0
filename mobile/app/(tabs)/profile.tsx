@@ -4,7 +4,7 @@ import Constants from "expo-constants";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import { useStudentProfile } from "../../hooks/useStudentProfile";
-import { useRoleMode } from "../../contexts/RoleModeContext";
+import { useRoleMode, isTrainerSubscriptionBlocked } from "../../contexts/RoleModeContext";
 import { AvatarPicker } from "../../components/profile/AvatarPicker";
 import { useRouter } from "expo-router";
 import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
@@ -323,7 +323,7 @@ export default function ProfileScreen() {
                         <PressableScale
                             onPress={() => {
                                 switchToTrainer();
-                                if (subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
+                                if (isTrainerSubscriptionBlocked(subscriptionStatus)) {
                                     router.replace("/trainer-subscription-blocked");
                                 } else {
                                     router.replace("/(trainer-tabs)/dashboard");
