@@ -288,18 +288,20 @@ export default function ReportScreen() {
 
     const handleRegenerate = useCallback(() => {
         if (!report) return;
+        // A10: o fluxo aqui apenas REMOVE o relatório (a regeneração é feita
+        // depois, server-side, a partir da tela do programa). Não há preservação
+        // de observações — o texto antigo prometia "observações preservadas", o
+        // que era enganoso (o relatório, incluindo trainer_notes, é apagado).
         Alert.alert(
-            "Regenerar métricas",
-            "As métricas serão recalculadas. Suas observações serão preservadas. Deseja continuar?",
+            "Remover e regerar relatório",
+            "O relatório atual será REMOVIDO, incluindo suas observações. Depois gere um novo a partir da tela do programa do aluno. Deseja continuar?",
             [
                 { text: "Cancelar", style: "cancel" },
                 {
-                    text: "Regenerar",
+                    text: "Remover",
+                    style: "destructive",
                     onPress: async () => {
                         setIsRegenerating(true);
-                        // Save notes, delete, re-fetch
-                        const savedNotes = notes;
-                        const programId = report.assigned_program_id;
 
                         const { error: delError } = await (supabase as any)
                             .from("program_reports")
