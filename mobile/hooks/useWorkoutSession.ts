@@ -136,6 +136,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const programStartedAtRef = useRef<string | null>(null);
     const programDurationWeeksRef = useRef<number | null>(null);
     const [startTime] = useState(() => Date.now());
+    // A14: started_at REAL da sessão quando ela é REANEXADA (retomada). Sem isto,
+    // retomar uma sessão antiga e finalizar gravava duração = (agora - mount) e
+    // sobrescrevia started_at com o mount atual — corrompendo data/duração.
+    const sessionStartedAtRef = useRef<string | null>(null);
     const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -474,7 +478,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 // An existing in_progress session is still reattached.
                 const { data: existingSession }: { data: any; error: any } = await supabase
                     .from('workout_sessions' as any)
-                    .select('id')
+                    .select('id, started_at')
                     .eq('assigned_workout_id', workoutId)
                     .eq('student_id', currentStudentId)
                     .eq('status', 'in_progress')
@@ -484,6 +488,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                 if (existingSession) {
                     if (__DEV__) console.log(`[useWorkoutSession] Found existing in_progress session: ${existingSession.id}`);
+                    sessionStartedAtRef.current = existingSession.started_at ?? null; // A14
                     if (mounted) setSessionId(existingSession.id);
                 } else if (!options?.deferSessionCreation) {
                     // Get trainer_id from student
@@ -1122,7 +1127,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         setIsSubmitting(true);
 
         try {
-            const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
+            // A14: base a duração no started_at real da sessão (quando reanexada),
+            // não no mount desta tela.
+            const parsedStart = sessionStartedAtRef.current ? Date.parse(sessionStartedAtRef.current) : NaN;
+            const sessionStartMs = Number.isFinite(parsedStart) ? parsedStart : startTime;
+            const durationSeconds = Math.max(0, Math.floor((Date.now() - sessionStartMs) / 1000));
             const now = new Date().toISOString();
 
             // Use existing session (created on workout start) or create one as fallback
@@ -1181,7 +1190,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 // Update existing in_progress session to completed
                 const updatePayload: Record<string, any> = {
                     status: 'completed',
-                    started_at: new Date(startTime).toISOString(), // Correct to actual workout start
+                    // A14: preserva o started_at real da sessão reanexada; só usa o
+                    // mount como fallback para sessões criadas nesta montagem.
+                    started_at: sessionStartedAtRef.current ?? new Date(startTime).toISOString(),
                     completed_at: now,
                     duration_seconds: durationSeconds,
                     rpe: rpe || null,

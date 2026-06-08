@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -68,9 +68,18 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm, summary }: W
     const [rpe, setRpe] = useState<number | null>(null);
     const [feedback, setFeedback] = useState('');
     const [isFocused, setIsFocused] = useState(false);
+    // B9: o botão segue tocável durante a animação de fechamento — guarda contra
+    // duplo-tap que dispararia onConfirm (e a finalização) duas vezes. Reseta a
+    // cada reabertura do modal.
+    const submittedRef = useRef(false);
+    useEffect(() => {
+        if (visible) submittedRef.current = false;
+    }, [visible]);
 
     const handleConfirm = () => {
         if (rpe === null) return;
+        if (submittedRef.current) return;
+        submittedRef.current = true;
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         onConfirm(rpe, feedback);
         setRpe(null);
