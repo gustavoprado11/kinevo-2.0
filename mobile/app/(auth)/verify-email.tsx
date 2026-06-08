@@ -89,11 +89,11 @@ export default function VerifyEmailScreen() {
             return;
         }
 
-        // 2. Atualizar e-mail na tabela students (manter consistência)
+        // 2. Atualizar e-mail na tabela students (manter consistência).
+        // M3: via RPC — students não tem policy de UPDATE pro aluno (o .update
+        // direto falhava em silêncio).
         const { error: dbError } = await supabase
-            .from("students")
-            .update({ email: trimmed })
-            .eq("auth_user_id", user!.id);
+            .rpc("update_student_self_email" as any, { p_email: trimmed });
 
         if (dbError) {
             if (__DEV__) console.error("[VerifyEmail] Erro ao atualizar students:", dbError.message);

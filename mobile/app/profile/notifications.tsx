@@ -59,10 +59,10 @@ export default function NotificationSettings() {
     const save = useCallback(async (updated: NotificationPreferences) => {
         if (!user) return;
         setSaving(true);
+        // M3: via RPC SECURITY DEFINER — students não tem policy de UPDATE pro
+        // aluno, então o .update direto afetava 0 linhas sem erro (não salvava).
         const { error } = await supabase
-            .from("students" as any)
-            .update({ notification_preferences: updated } as any)
-            .eq("auth_user_id", user.id);
+            .rpc("update_student_notification_preferences" as any, { p_prefs: updated });
 
         if (error) {
             Alert.alert("Erro", "Não foi possível salvar as preferências.");
