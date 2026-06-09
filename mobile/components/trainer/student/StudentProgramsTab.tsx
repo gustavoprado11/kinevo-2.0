@@ -33,7 +33,7 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
     );
     const handleContinueDraft = useCallback(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push({ pathname: "/program-builder", params: { studentId: data.student.id } } as any);
+        router.push({ pathname: "/program-builder", params: { studentId: data.student.id, resume: "1" } } as any);
     }, [router, data.student.id]);
     const handleDiscardDraft = useCallback(() => {
         Alert.alert(

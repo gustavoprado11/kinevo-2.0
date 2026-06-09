@@ -60,7 +60,7 @@ export default function ProgramBuilderScreen() {
     const colors = useV2Colors();
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const params = useLocalSearchParams<{ studentId?: string; mode?: string }>();
+    const params = useLocalSearchParams<{ studentId?: string; mode?: string; resume?: string }>();
     const [showExercisePicker, setShowExercisePicker] = useState(false);
     const [showAISheet, setShowAISheet] = useState(false);
     const [showTextSheet, setShowTextSheet] = useState(false);
@@ -135,13 +135,28 @@ export default function ProgramBuilderScreen() {
         // `initFromAiSnapshot` / `initFromAssignedProgram`); don't blow it
         // away.
         if (params.mode === "from-text" || params.mode === "from-ai" || params.mode === "edit" || params.mode === "edit-template") return;
-        // Plain create flow (sem mode): retoma um rascunho guardado deste
-        // contexto, se existir, em vez de começar do zero.
+        // Plain create flow (sem mode): se existe um rascunho guardado deste
+        // contexto, "Continuar montando" (resume=1) retoma direto; abrir pelo
+        // hub de criar pergunta — continuar o rascunho ou começar do zero.
         if (!params.mode) {
             const key = params.studentId ? studentDraftKey(params.studentId) : "template:new";
             const saved = getProgramDraft(key);
             if (saved && isProgramDraftMeaningful(saved)) {
-                loadDraft(saved);
+                if (params.resume === "1") {
+                    loadDraft(saved);
+                    return;
+                }
+                // Começa em branco (default visível) e pergunta o que fazer.
+                initNewProgram(params.studentId);
+                Alert.alert(
+                    "Rascunho em andamento",
+                    "Você tem um rascunho não salvo deste aluno. Deseja continuar de onde parou ou começar um novo programa do zero?",
+                    [
+                        { text: "Cancelar", style: "cancel", onPress: () => router.back() },
+                        { text: "Começar do zero", style: "destructive", onPress: () => removeProgramDraft(key) },
+                        { text: "Continuar rascunho", style: "default", onPress: () => loadDraft(saved) },
+                    ],
+                );
                 return;
             }
         }
