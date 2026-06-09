@@ -33,6 +33,7 @@ import type { PrescriptionData } from '@/actions/prescription/get-prescription-d
 import { usePrescriptionGenerationStream } from '@/hooks/use-prescription-generation-stream'
 import { consumePrescriptionAnimateFlag, setPrescriptionAnimateFlag } from './helpers/prescription-animate-flag'
 import { useBuilderDraft, buildDraftKey } from './helpers/use-builder-draft'
+import { WorkoutCardKebab } from './workout-card/WorkoutCardKebab'
 import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
 
 // Code-split the heaviest on-demand panels: each only renders for a specific
@@ -675,15 +676,20 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [isCanvasScrolled, setIsCanvasScrolled] = useState(false)
     const [isHeaderHidden, setIsHeaderHidden] = useState(false)
     const lastScrollTopRef = useRef(0)
-    const accumulatedScrollRef = useRef(0)
-    const lastDirectionRef = useRef<'up' | 'down' | null>(null)
     const headerTransitionRef = useRef(false)
+    const canvasScrollRef = useRef<HTMLDivElement>(null)
 
     const setHeaderHiddenSafe = useCallback((hidden: boolean) => {
         if (hidden === isHeaderHidden || headerTransitionRef.current) return
         headerTransitionRef.current = true
         setIsHeaderHidden(hidden)
-        setTimeout(() => { headerTransitionRef.current = false }, 200)
+        setTimeout(() => {
+            headerTransitionRef.current = false
+            // Alternar o header redimensiona a área de scroll e pode deslocar o
+            // scrollTop; re-baseia para que esse deslocamento induzido não seja
+            // lido como um novo movimento (o que travava o reaparecimento).
+            if (canvasScrollRef.current) lastScrollTopRef.current = canvasScrollRef.current.scrollTop
+        }, 280)
     }, [isHeaderHidden])
     const [previewScale, setPreviewScale] = useState(0.82)
     // Fase 4.5k: SSR-safe init (mesmo padrão do EditAssignedProgramClient).
@@ -783,7 +789,6 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         markPristine(d)
         dismissPending()
     }, [pendingDraft, streamAnimate, markPristine, dismissPending])
-    const canvasScrollRef = useRef<HTMLDivElement>(null)
     // Sensors for tab drag-and-drop (distance constraint allows click without triggering drag)
     const tabSensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -1859,78 +1864,160 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         >
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
                 {/* Compact Header — auto-hides on scroll down, reappears on scroll up */}
-                <div className={`flex-shrink-0 bg-white dark:bg-surface-primary backdrop-blur-md border-b border-[#E8E8ED] dark:border-k-border-primary flex items-center gap-2 lg:gap-4 px-4 lg:px-6 z-sticky transition-all duration-250 ease-in-out overflow-hidden ${isHeaderHidden ? 'max-h-0 py-0 border-b-0 opacity-0' : isCanvasScrolled ? 'max-h-20 py-1.5 opacity-100' : 'max-h-20 py-3 opacity-100'}`}>
-                    {/* Left: Back + Name — flex-1 below lg, fixed (non-shrinking) responsive widths from lg up. The wider layout (with "Salvar Modelo" / "Gerar com IA" labels / px-5 buttons) only kicks in at min-[1700px]; below that we keep a compact configuration so the action buttons never get clipped by the header's overflow-hidden. */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1 lg:flex-none lg:w-[210px] xl:w-[230px] min-[1700px]:w-[280px]">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleBack}
-                            className="w-9 h-9 rounded-full hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-all flex-shrink-0"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                        </Button>
-
+                <div className={`flex-shrink-0 bg-white dark:bg-surface-primary backdrop-blur-md border-b border-[#E8E8ED] dark:border-k-border-primary flex flex-col gap-y-2 px-4 lg:px-6 z-sticky transition-all duration-250 ease-in-out overflow-hidden ${isHeaderHidden ? 'max-h-0 py-0 border-b-0 opacity-0' : isCanvasScrolled ? 'max-h-32 py-1.5 opacity-100' : 'max-h-32 py-3 opacity-100'}`}>
+                    {/* ── Camada 1: identidade + ação de finalizar ── */}
+                    <div className="flex items-center gap-3 w-full min-w-0">
+                        {/* Back + Name */}
                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => {
-                                    setName(e.target.value)
-                                    if (error) setError(null)
-                                }}
-                                placeholder="Nome do programa"
-                                className={`bg-transparent border-none text-lg font-bold text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:ring-0 p-0 w-full min-w-0 truncate transition-all cursor-text hover:border-b hover:border-dashed hover:border-[#AEAEB2] dark:hover:border-k-text-quaternary focus:border-b focus:border-solid focus:border-[#7C3AED] dark:focus:border-violet-500 ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
-                                    } ${error && !name.trim() ? 'placeholder:text-[#FF3B30]/60 dark:placeholder:text-red-400/60' : ''}`}
-                            />
-                            <button
-                                onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
-                                className={`p-1 rounded-md transition-all shrink-0 ${isDescriptionOpen ? 'bg-[#7C3AED]/10 text-[#7C3AED] dark:bg-violet-500/20 dark:text-violet-400' : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-tertiary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
-                                    }`}
-                                title="Editar descrição"
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleBack}
+                                className="w-9 h-9 rounded-full hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-all flex-shrink-0"
                             >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
-                                </svg>
-                            </button>
+                                <ChevronLeft className="w-5 h-5" />
+                            </Button>
+
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => {
+                                        setName(e.target.value)
+                                        if (error) setError(null)
+                                    }}
+                                    placeholder="Nome do programa"
+                                    className={`bg-transparent border-none text-lg font-bold text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:ring-0 p-0 w-full min-w-0 truncate transition-all cursor-text hover:border-b hover:border-dashed hover:border-[#AEAEB2] dark:hover:border-k-text-quaternary focus:border-b focus:border-solid focus:border-[#7C3AED] dark:focus:border-violet-500 ${nameShake ? 'animate-[shake_0.5s_ease-in-out]' : ''
+                                        } ${error && !name.trim() ? 'placeholder:text-[#FF3B30]/60 dark:placeholder:text-red-400/60' : ''}`}
+                                />
+                                <button
+                                    onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
+                                    className={`p-1 rounded-md transition-all shrink-0 ${isDescriptionOpen ? 'bg-[#7C3AED]/10 text-[#7C3AED] dark:bg-violet-500/20 dark:text-violet-400' : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-tertiary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                                        }`}
+                                    title="Editar descrição"
+                                >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Ações: secundária + primária + overflow ("⋯" com Salvar como modelo) */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            {isStudentContext ? (
+                                <>
+                                    <Button
+                                        onClick={() => saveProgram('scheduled')}
+                                        disabled={saving}
+                                        variant="outline"
+                                        className="rounded-full px-3 sm:px-5 py-2 h-9 text-sm font-medium transition-all whitespace-nowrap"
+                                    >
+                                        Agendar na Fila
+                                    </Button>
+                                    <div data-onboarding="program-save">
+                                        <Button
+                                            onClick={() => {
+                                                // Validate name first — before the archive-confirm modal, so we
+                                                // never ask the trainer to confirm archiving the current program
+                                                // for an activation that can't proceed.
+                                                if (!name.trim()) {
+                                                    setError('Por favor, preencha o nome do programa.')
+                                                    setNameShake(true)
+                                                    setTimeout(() => setNameShake(false), 600)
+                                                    return
+                                                }
+                                                // Block activation if any workout has no scheduled days
+                                                const missing = workoutsWithoutDays
+                                                if (missing.length > 0) {
+                                                    setActivationBlock({ workoutNames: missing.map(w => w.name) })
+                                                    return
+                                                }
+                                                if (studentContext?.activeProgramName) {
+                                                    setShowActivateConfirm(true)
+                                                } else {
+                                                    saveProgram('immediate')
+                                                }
+                                            }}
+                                            disabled={saving}
+                                            className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full px-3 sm:px-5 py-2 h-9 text-sm font-medium transition-all whitespace-nowrap"
+                                        >
+                                            {saving ? (
+                                                <Loader2 className="animate-spin w-4 h-4" />
+                                            ) : (
+                                                'Ativar como Atual'
+                                            )}
+                                        </Button>
+                                    </div>
+                                    <WorkoutCardKebab
+                                        align="end"
+                                        items={[{
+                                            label: 'Salvar como modelo',
+                                            icon: FileText,
+                                            disabled: saving,
+                                            onClick: () => {
+                                                setTemplateName(name)
+                                                setAlsoActivate(false)
+                                                setShowTemplateDialog(true)
+                                            },
+                                        }]}
+                                    />
+                                </>
+                            ) : (
+                                <div data-onboarding="program-save">
+                                    <Button
+                                        onClick={() => saveProgram()}
+                                        disabled={saving}
+                                        className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all min-w-[130px]"
+                                    >
+                                        {saving ? (
+                                            <Loader2 className="animate-spin w-4 h-4" />
+                                        ) : (
+                                            'Salvar'
+                                        )}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Center: Condensed timeline (only in student context, hidden on scroll). Compacts at lg, expands at xl. */}
-                    {isStudentContext && (
-                        <div className={`hidden lg:flex items-center gap-1.5 2xl:gap-2 text-xs text-muted-foreground border-x border-k-border-subtle px-2 lg:px-3 2xl:px-5 min-w-0 transition-all duration-200 overflow-hidden ${isCanvasScrolled ? 'max-w-0 opacity-0 px-0 border-0' : 'max-w-[600px] opacity-100'}`}>
-                            <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-                            <span className="hidden 2xl:inline text-[10px] text-muted-foreground">Início</span>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => handleStartDateChange(e.target.value)}
-                                className="bg-transparent border-none text-xs font-medium text-k-text-secondary focus:ring-0 p-0 [color-scheme:dark] w-[90px] 2xl:w-[104px] shrink-0"
-                            />
-                            <span className="text-k-border-subtle">→</span>
-                            <span className="hidden 2xl:inline text-[10px] text-muted-foreground">Fim</span>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => handleEndDateChange(e.target.value)}
-                                className={`bg-transparent border-none text-xs font-medium focus:ring-0 p-0 [color-scheme:dark] w-[90px] 2xl:w-[104px] shrink-0 transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-secondary'}`}
-                            />
-                            <span className="text-k-border-subtle">·</span>
-                            <div className="flex items-center gap-1 shrink-0">
+                    {/* ── Camada 2: barra de contexto (agenda + ferramentas), discreta ── */}
+                    <div className="flex items-center gap-2 w-full min-w-0 border-t border-[#F0F0F2] dark:border-k-border-subtle/40 pt-2">
+                        {/* Agenda / duração (somente contexto de aluno) */}
+                        {isStudentContext && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 flex-shrink overflow-hidden">
+                                <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                                <span className="hidden sm:inline text-[10px] text-muted-foreground">Início</span>
                                 <input
-                                    type="number"
-                                    value={durationWeeks}
-                                    onChange={(e) => handleWeeksChange(e.target.value)}
-                                    min="0"
-                                    className="bg-transparent border-none text-xs font-bold text-violet-400 focus:ring-0 p-0 w-6 text-center"
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => handleStartDateChange(e.target.value)}
+                                    className="bg-transparent border-none text-xs font-medium text-k-text-secondary focus:ring-0 p-0 [color-scheme:dark] w-[96px] shrink-0"
                                 />
-                                <span className="text-muted-foreground"><span className="2xl:hidden">sem</span><span className="hidden 2xl:inline">semanas</span></span>
+                                <span className="text-k-border-subtle">→</span>
+                                <span className="hidden sm:inline text-[10px] text-muted-foreground">Fim</span>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => handleEndDateChange(e.target.value)}
+                                    className={`bg-transparent border-none text-xs font-medium focus:ring-0 p-0 [color-scheme:dark] w-[96px] shrink-0 transition-colors ${isEndDateFixed ? 'text-violet-400' : 'text-k-text-secondary'}`}
+                                />
+                                <span className="text-k-border-subtle">·</span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <input
+                                        type="number"
+                                        value={durationWeeks}
+                                        onChange={(e) => handleWeeksChange(e.target.value)}
+                                        min="0"
+                                        className="bg-transparent border-none text-xs font-bold text-violet-400 focus:ring-0 p-0 w-6 text-center"
+                                    />
+                                    <span className="text-muted-foreground">sem</span>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* View mode icons — Check-in · Preview · Compare */}
-                    <div className="flex items-center gap-1 ml-auto flex-shrink-0 mr-3">
+                        {/* Ferramentas — IA · Check-in · Preview · Compare · Texto · Preferências */}
+                        <div className="flex items-center gap-1 ml-auto flex-shrink-0">
                         {aiPanelAvailable && (
                             <>
                                 <button
@@ -2015,86 +2102,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 </button>
                             </>
                         )}
-                    </div>
-
-                    {/* Actions — context-aware save buttons */}
-                    <div className="flex items-center gap-1.5 lg:gap-3 flex-shrink-0">
-                        {isStudentContext ? (
-                            <>
-                                {/* Terciário: Salvar Modelo — ghost text. Only shown at min-[1700px] since at narrower widths its ~120px would push the primary action buttons off-screen (2xl alone isn't wide enough — at 1536-1700px the layout still overflows). */}
-                                <button
-                                    onClick={() => {
-                                        setTemplateName(name)
-                                        setAlsoActivate(false)
-                                        setShowTemplateDialog(true)
-                                    }}
-                                    disabled={saving}
-                                    className="hidden min-[1700px]:inline px-3 py-2 h-9 text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors disabled:opacity-50"
-                                >
-                                    Salvar Modelo
-                                </button>
-
-                                {/* Secundário: Agendar na Fila — outline. Compact padding at xl-down to keep both action buttons on screen. */}
-                                <Button
-                                    onClick={() => saveProgram('scheduled')}
-                                    disabled={saving}
-                                    variant="outline"
-                                    className="rounded-full px-3 min-[1700px]:px-5 py-2 h-9 text-sm font-medium transition-all whitespace-nowrap"
-                                >
-                                    Agendar na Fila
-                                </Button>
-
-                                {/* Primário: Ativar como Atual — roxo sólido */}
-                                <div data-onboarding="program-save">
-                                    <Button
-                                        onClick={() => {
-                                            // Validate name first — before the archive-confirm modal, so we
-                                            // never ask the trainer to confirm archiving the current program
-                                            // for an activation that can't proceed.
-                                            if (!name.trim()) {
-                                                setError('Por favor, preencha o nome do programa.')
-                                                setNameShake(true)
-                                                setTimeout(() => setNameShake(false), 600)
-                                                return
-                                            }
-                                            // Block activation if any workout has no scheduled days
-                                            const missing = workoutsWithoutDays
-                                            if (missing.length > 0) {
-                                                setActivationBlock({ workoutNames: missing.map(w => w.name) })
-                                                return
-                                            }
-                                            if (studentContext?.activeProgramName) {
-                                                setShowActivateConfirm(true)
-                                            } else {
-                                                saveProgram('immediate')
-                                            }
-                                        }}
-                                        disabled={saving}
-                                        className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full px-3 min-[1700px]:px-5 py-2 h-9 text-sm font-medium transition-all whitespace-nowrap"
-                                    >
-                                        {saving ? (
-                                            <Loader2 className="animate-spin w-4 h-4" />
-                                        ) : (
-                                            'Ativar como Atual'
-                                        )}
-                                    </Button>
-                                </div>
-                            </>
-                        ) : (
-                            <div data-onboarding="program-save">
-                                <Button
-                                    onClick={() => saveProgram()}
-                                    disabled={saving}
-                                    className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all min-w-[130px]"
-                                >
-                                    {saving ? (
-                                        <Loader2 className="animate-spin w-4 h-4" />
-                                    ) : (
-                                        'Salvar'
-                                    )}
-                                </Button>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 </div>
 
@@ -2267,23 +2275,17 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                             const scrollTop = e.currentTarget.scrollTop
                                             const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
                                             if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
-                                            // Auto-hide header: accumulate distance in same direction
+                                            // Esconde ao descer; reaparece ao subir (qualquer movimento)
+                                            // ou perto do topo.
                                             if (!headerTransitionRef.current) {
-                                                const dir = scrollTop > lastScrollTopRef.current ? 'down' : 'up'
-                                                const absDelta = Math.abs(scrollTop - lastScrollTopRef.current)
-                                                if (dir !== lastDirectionRef.current) {
-                                                    accumulatedScrollRef.current = 0
-                                                    lastDirectionRef.current = dir
-                                                }
-                                                accumulatedScrollRef.current += absDelta
-                                                if (dir === 'down' && scrollTop > 60 && accumulatedScrollRef.current > 40) {
-                                                    setHeaderHiddenSafe(true)
-                                                    accumulatedScrollRef.current = 0
-                                                } else if (dir === 'up' && accumulatedScrollRef.current > 20) {
+                                                const delta = scrollTop - lastScrollTopRef.current
+                                                if (scrollTop <= 10) {
                                                     setHeaderHiddenSafe(false)
-                                                    accumulatedScrollRef.current = 0
+                                                } else if (delta > 6 && scrollTop > 80) {
+                                                    setHeaderHiddenSafe(true)
+                                                } else if (delta < -6) {
+                                                    setHeaderHiddenSafe(false)
                                                 }
-                                                if (scrollTop <= 10) setHeaderHiddenSafe(false)
                                             }
                                             lastScrollTopRef.current = scrollTop
                                         }}
@@ -2474,23 +2476,17 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                             const scrollTop = e.currentTarget.scrollTop
                                             const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
                                             if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
-                                            // Auto-hide header: accumulate distance in same direction
+                                            // Esconde ao descer; reaparece ao subir (qualquer movimento)
+                                            // ou perto do topo.
                                             if (!headerTransitionRef.current) {
-                                                const dir = scrollTop > lastScrollTopRef.current ? 'down' : 'up'
-                                                const absDelta = Math.abs(scrollTop - lastScrollTopRef.current)
-                                                if (dir !== lastDirectionRef.current) {
-                                                    accumulatedScrollRef.current = 0
-                                                    lastDirectionRef.current = dir
-                                                }
-                                                accumulatedScrollRef.current += absDelta
-                                                if (dir === 'down' && scrollTop > 60 && accumulatedScrollRef.current > 40) {
-                                                    setHeaderHiddenSafe(true)
-                                                    accumulatedScrollRef.current = 0
-                                                } else if (dir === 'up' && accumulatedScrollRef.current > 20) {
+                                                const delta = scrollTop - lastScrollTopRef.current
+                                                if (scrollTop <= 10) {
                                                     setHeaderHiddenSafe(false)
-                                                    accumulatedScrollRef.current = 0
+                                                } else if (delta > 6 && scrollTop > 80) {
+                                                    setHeaderHiddenSafe(true)
+                                                } else if (delta < -6) {
+                                                    setHeaderHiddenSafe(false)
                                                 }
-                                                if (scrollTop <= 10) setHeaderHiddenSafe(false)
                                             }
                                             lastScrollTopRef.current = scrollTop
                                         }}
