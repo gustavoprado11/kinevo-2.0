@@ -33,6 +33,9 @@ struct WorkoutExecutionState: Codable, Equatable {
     /// True when the workout was started from the iPhone (the Watch is mirroring it
     /// for activity tracking). Drives opening on the metrics page instead of the cards.
     var startedRemotely: Bool = false
+    /// Cardio item configs, persisted so a workout with cardio can be fully resumed
+    /// after the app is relaunched (without depending on the iPhone re-syncing).
+    var cardioItems: [WatchCardioItem] = []
 
     /// Custom decoding to support older persisted state that lacks finishState.
     init(from decoder: Decoder) throws {
@@ -48,6 +51,7 @@ struct WorkoutExecutionState: Codable, Equatable {
         cardioStates = try container.decodeIfPresent([CardioExecutionState].self, forKey: .cardioStates) ?? []
         sessionId = try container.decodeIfPresent(String.self, forKey: .sessionId)
         startedRemotely = try container.decodeIfPresent(Bool.self, forKey: .startedRemotely) ?? false
+        cardioItems = try container.decodeIfPresent([WatchCardioItem].self, forKey: .cardioItems) ?? []
     }
 
     init(
@@ -61,7 +65,8 @@ struct WorkoutExecutionState: Codable, Equatable {
         finishState: FinishState = .none,
         cardioStates: [CardioExecutionState] = [],
         sessionId: String? = nil,
-        startedRemotely: Bool = false
+        startedRemotely: Bool = false,
+        cardioItems: [WatchCardioItem] = []
     ) {
         self.workoutId = workoutId
         self.workoutName = workoutName
@@ -74,6 +79,7 @@ struct WorkoutExecutionState: Codable, Equatable {
         self.cardioStates = cardioStates
         self.sessionId = sessionId
         self.startedRemotely = startedRemotely
+        self.cardioItems = cardioItems
     }
 
     struct ExerciseState: Codable, Equatable, Identifiable {
@@ -276,7 +282,50 @@ struct WorkoutExecutionState: Codable, Equatable {
             exerciseIndex: startIndex,
             exercises: exercises,
             lastPersistedAt: Date(),
-            cardioStates: cardioStates
+            cardioStates: cardioStates,
+            cardioItems: snapshot.cardioItems
+        )
+    }
+
+    /// Rebuild a navigable snapshot from the persisted state, so the execution screen
+    /// can be re-entered after an app relaunch WITHOUT depending on the iPhone re-syncing
+    /// the program. Includes cardio (now persisted); workout-day briefing notes are not
+    /// restored (pre-workout only).
+    func toResumeSnapshot() -> WatchWorkoutSnapshot {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let snapshotExercises = exercises.map { ex -> WatchExerciseSnapshot in
+            WatchExerciseSnapshot(
+                id: ex.id,
+                name: ex.name,
+                sets: ex.sets.count,
+                reps: ex.sets.first?.reps ?? 0,
+                weight: ex.sets.first?.weight,
+                restTime: ex.restTime,
+                completedSets: ex.sets.filter(\.isCompleted).count,
+                targetReps: ex.targetReps,
+                lastWeight: ex.lastWeight,
+                lastReps: ex.lastReps,
+                supersetIndex: ex.supersetIndex,
+                supersetTotal: ex.supersetTotal,
+                methodKey: ex.methodKey,
+                methodLabel: ex.methodLabel,
+                setDetails: [],   // execution reads store.state directly; not needed here
+                notes: ex.notes
+            )
+        }
+
+        return WatchWorkoutSnapshot(
+            workoutId: workoutId,
+            workoutName: workoutName,
+            studentName: "",
+            exercises: snapshotExercises,
+            cardioItems: cardioItems,
+            currentExerciseIndex: exerciseIndex,
+            isActive: hasStarted,
+            startedAt: formatter.string(from: startedAt),
+            updatedAt: nil
         )
     }
 

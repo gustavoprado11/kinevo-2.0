@@ -8,6 +8,7 @@ struct KinevoWatchApp: App {
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var navigationPath = NavigationPath()
+    @State private var didAutoResumeNav = false
 
     var body: some Scene {
         WindowGroup {
@@ -83,6 +84,21 @@ struct KinevoWatchApp: App {
                     else { return }
                     store.updateExerciseOrder(from: exerciseIds)
                 }
+
+                // Wire SET_COMPLETE_FROM_PHONE — mirror set completions logged on the
+                // iPhone so the Watch advances in step instead of staying on set 1.
+                sessionManager.onRemoteSetComplete = { [weak workoutStore] workoutId, exerciseId, setIndex, reps, weight in
+                    workoutStore?.applyRemoteSetComplete(workoutId: workoutId, exerciseId: exerciseId, setIndex: setIndex, reps: reps, weight: weight)
+                }
+
+                resumeNavigationIfNeeded()
+            }
+            // When the program snapshot arrives (cached applicationContext read on
+            // launch), restore navigation into an active workout — the NavigationPath
+            // @State is reset whenever watchOS relaunches the app, which was kicking
+            // the user out of the workout screen mid-session.
+            .onReceive(sessionManager.$programSnapshot) { _ in
+                resumeNavigationIfNeeded()
             }
         }
         .onChange(of: workoutStore.remoteStartWorkoutId) { _, newId in
@@ -108,5 +124,18 @@ struct KinevoWatchApp: App {
                 print("[KinevoWatchApp] Scene phase → \(newPhase) — flushed workout state")
             }
         }
+    }
+
+    /// Re-enter the active workout's execution screen after a cold launch/relaunch.
+    /// watchOS resets the NavigationPath @State when it relaunches the app, which
+    /// dropped the user back to the list mid-workout. Runs once per launch; manual
+    /// back-navigation afterwards is preserved (didAutoResumeNav stays true).
+    private func resumeNavigationIfNeeded() {
+        guard !didAutoResumeNav, navigationPath.isEmpty else { return }
+        guard let active = workoutStore.state, active.hasStarted else { return }
+        didAutoResumeNav = true
+        // Rebuild from the persisted state — no dependency on the iPhone re-syncing.
+        navigationPath.append(active.toResumeSnapshot())
+        print("[KinevoWatchApp] Restored navigation into active workout \(active.workoutId)")
     }
 }

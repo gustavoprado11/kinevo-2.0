@@ -17,12 +17,12 @@ struct WorkoutDashboardView: View {
 
   var body: some View {
     VStack(spacing: 6) {
-      // Mirror banner (phone-driven) or local progress bar.
+      // Mirror banner when phone-driven; progress now syncs from the phone so it's
+      // shown in both modes.
       if mirroredFromPhone {
         mirrorBanner
-      } else {
-        progressSection
       }
+      progressSection
 
       // Heart Rate + Calories (side by side)
       HStack(spacing: 6) {

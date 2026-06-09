@@ -182,6 +182,33 @@ class WorkoutExecutionStore: ObservableObject {
         return true
     }
 
+    /// Apply a set completion that happened on the iPhone so the Watch mirror advances
+    /// in step (marks the set done with the phone's reps/weight, advances the current
+    /// set, and follows the exercise being worked). Fixes the Watch staying on set 1
+    /// while the user logs on the phone.
+    func applyRemoteSetComplete(workoutId: String, exerciseId: String, setIndex: Int, reps: Int, weight: Double) {
+        guard var s = state, s.workoutId == workoutId else { return }
+        guard let exIdx = s.exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
+        guard setIndex >= 0, setIndex < s.exercises[exIdx].sets.count else { return }
+
+        s.exercises[exIdx].sets[setIndex].reps = reps
+        s.exercises[exIdx].sets[setIndex].weight = weight
+        s.exercises[exIdx].sets[setIndex].isCompleted = true
+
+        if let nextIncomplete = s.exercises[exIdx].sets.firstIndex(where: { !$0.isCompleted }) {
+            s.exercises[exIdx].currentSetIndex = nextIncomplete
+        } else {
+            s.exercises[exIdx].currentSetIndex = max(s.exercises[exIdx].sets.count - 1, 0)
+        }
+
+        // Follow the exercise being worked on the phone.
+        s.exerciseIndex = exIdx
+
+        state = s
+        persistImmediate()
+        print("[WorkoutStore] applyRemoteSetComplete — exercise \(exerciseId) set \(setIndex) (\(reps)x\(weight))")
+    }
+
     /// Handle workout started from iPhone — find workout in program cache and start it.
     /// Returns `true` when a new workout was actually started (so the caller can also
     /// begin the HealthKit workout session for live time/calories + Apple Activity).

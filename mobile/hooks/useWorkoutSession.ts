@@ -383,6 +383,18 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         } catch (err: any) {
             if (__DEV__) console.error(`[useWorkoutSession] persistSetLog exception: ${err?.message}`);
         }
+
+        // Mirror the set completion to the Apple Watch so it advances in step with the
+        // phone (otherwise the Watch stays stuck on set 1 while the user logs on the phone).
+        if (Platform.OS === 'ios') {
+            try {
+                const { sendReliableToWatch } = require('../modules/watch-connectivity/src/WatchConnectivityModule');
+                sendReliableToWatch({
+                    type: 'SET_COMPLETE_FROM_PHONE',
+                    payload: { workoutId, exerciseId: exercise.id, setIndex, reps: repsCompleted, weight },
+                });
+            } catch { /* Watch not available — non-critical */ }
+        }
     };
 
     // C2: ao desmarcar uma série, remove o registro já persistido. Sem isto a
@@ -1229,10 +1241,13 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     setLogs.push({
                         workout_session_id: currentSessionId,
                         assigned_workout_item_id: exercise.id,
-                        planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
-                        executed_exercise_id: exercise.exercise_id,
+                        // Cardio items have no library exercise — coalesce empty ids to
+                        // NULL so the UUID columns don't reject '' (was breaking finish
+                        // whenever a completed cardio was in the workout).
+                        planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id || null,
+                        executed_exercise_id: exercise.exercise_id || null,
                         swap_source: exercise.swap_source || 'none',
-                        exercise_id: exercise.exercise_id,
+                        exercise_id: exercise.exercise_id || null,
                         set_number: 1,
                         weight: 0,
                         reps_completed: 1,

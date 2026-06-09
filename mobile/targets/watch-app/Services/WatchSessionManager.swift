@@ -14,6 +14,7 @@ class WatchSessionManager: NSObject, ObservableObject {
   var onRemoteFinish: ((_ workoutId: String) -> Void)?
   var onRemoteDiscard: ((_ workoutId: String) -> Void)?
   var onRemoteStartWorkout: ((_ workoutId: String) -> Void)?
+  var onRemoteSetComplete: ((_ workoutId: String, _ exerciseId: String, _ setIndex: Int, _ reps: Int, _ weight: Double) -> Void)?
   var onProgramUpdated: ((_ snapshot: WatchProgramSnapshot) -> Void)?
   var onExerciseOrderUpdate: ((_ workoutId: String, _ exerciseIds: [String]) -> Void)?
   var onSessionSync: ((_ workoutId: String, _ sessionId: String) -> Void)?
@@ -481,6 +482,21 @@ extension WatchSessionManager: WCSessionDelegate {
       print("[WatchSessionManager] WORKOUT_DISCARDED_FROM_PHONE for workoutId: \(workoutId)")
       DispatchQueue.main.async {
         self.onRemoteDiscard?(workoutId)
+      }
+
+    case "SET_COMPLETE_FROM_PHONE":
+      guard let payload = message["payload"] as? [String: Any],
+            let workoutId = payload["workoutId"] as? String,
+            let exerciseId = payload["exerciseId"] as? String,
+            let setIndex = (payload["setIndex"] as? NSNumber)?.intValue
+      else {
+        print("[WatchSessionManager] SET_COMPLETE_FROM_PHONE missing fields")
+        return
+      }
+      let reps = (payload["reps"] as? NSNumber)?.intValue ?? 0
+      let weight = (payload["weight"] as? NSNumber)?.doubleValue ?? 0
+      DispatchQueue.main.async {
+        self.onRemoteSetComplete?(workoutId, exerciseId, setIndex, reps, weight)
       }
 
     case "UPDATE_EXERCISE_ORDER":
