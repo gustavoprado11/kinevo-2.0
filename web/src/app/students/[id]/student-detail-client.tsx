@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { AppLayout } from '@/components/layout'
@@ -23,9 +23,11 @@ import { FinancialSidebarCard } from '@/components/students/financial-sidebar-ca
 import { HealthMetricsCard } from '@/components/students/health-metrics-card'
 import { SmartBanner } from '@/components/students/smart-banner'
 import { pickBanner, type BannerContext } from '@/components/students/smart-banner-rules'
-import { AlertCircle, Dumbbell, Clock } from 'lucide-react'
+import { AlertCircle, Dumbbell, Clock, FileText } from 'lucide-react'
 import { QuickMessageCard } from '@/components/students/quick-message-card'
 import { StudentInsightsCard } from '@/components/students/student-insights-card'
+import { ProgramDraftEntry } from '@/components/students/program-draft-entry'
+import { buildDraftKey, readDraftSummary, removeBuilderDraft, type BuilderDraftSummary } from '@/components/programs/helpers/use-builder-draft'
 import { KeyboardShortcuts } from '@/components/students/keyboard-shortcuts'
 import { StudentStatusBar } from '@/components/students/student-status-bar'
 import { useCommunicationStore } from '@/stores/communication-store'
@@ -230,6 +232,52 @@ export function StudentDetailClient({
     }, [openPanel, openConversation, initialStudent.id])
 
     const [student, setStudent] = useState<Student>(initialStudent)
+
+    // Rascunho de programa deste aluno (autosave do builder, localStorage).
+    // Lido após o mount para não quebrar a hidratação.
+    const [studentDraft, setStudentDraft] = useState<BuilderDraftSummary | null>(null)
+    useEffect(() => {
+        const key = buildDraftKey({
+            trainerId: trainer.id,
+            isEditing: false,
+            isStudentContext: true,
+            studentId: initialStudent.id,
+        })
+        setStudentDraft(key ? readDraftSummary(key, trainer.id) : null)
+    }, [trainer.id, initialStudent.id])
+    const discardStudentDraft = useCallback(() => {
+        setStudentDraft(prev => {
+            if (prev) removeBuilderDraft(prev.key)
+            return null
+        })
+    }, [])
+
+    // "Criar Novo" colide com um rascunho existente (mesmo slot por aluno).
+    // Quando há rascunho, perguntamos: continuar o rascunho ou começar do zero
+    // (descartando-o). `createChoice.freshUrl` guarda a rota do "começar do zero"
+    // (agendado ou imediato).
+    const [createChoice, setCreateChoice] = useState<{ freshUrl: string } | null>(null)
+    const startNewProgram = useCallback((scheduled: boolean) => {
+        const freshUrl = scheduled
+            ? `/students/${initialStudent.id}/program/new?scheduled=true`
+            : `/students/${initialStudent.id}/program/new`
+        if (studentDraft) {
+            setCreateChoice({ freshUrl })
+            return
+        }
+        router.push(freshUrl)
+    }, [initialStudent.id, studentDraft, router])
+    const continueDraftFromChoice = useCallback(() => {
+        setCreateChoice(null)
+        if (studentDraft) router.push(studentDraft.route)
+    }, [studentDraft, router])
+    const startFreshFromChoice = useCallback(() => {
+        const url = createChoice?.freshUrl
+        discardStudentDraft()
+        setCreateChoice(null)
+        if (url) router.push(url)
+    }, [createChoice, discardStudentDraft, router])
+
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
     const [assignModalMode, setAssignModalMode] = useState<'immediate' | 'scheduled'>('immediate')
     const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false)
@@ -252,7 +300,7 @@ export function StudentDetailClient({
     }
 
     const handleCreateScheduled = () => {
-        router.push(`/students/${student.id}/program/new?scheduled=true`)
+        startNewProgram(true)
     }
 
     const handleEditProgram = () => {
@@ -299,7 +347,7 @@ export function StudentDetailClient({
     }
 
     const handleCreateProgram = () => {
-        router.push(`/students/${student.id}/program/new`)
+        startNewProgram(false)
     }
 
     // --- Student Actions ---
@@ -562,6 +610,7 @@ export function StudentDetailClient({
                                 ? (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks) / activeProgram.duration_weeks
                                 : 0
                             const shouldShow =
+                                !!studentDraft ||
                                 (scheduledPrograms && scheduledPrograms.length > 0) ||
                                 !activeProgram ||
                                 (activeProgram.status as string) === 'expired' ||
@@ -591,6 +640,12 @@ export function StudentDetailClient({
                                     </div>
                                 )}
                             </div>
+
+                            {studentDraft && (
+                                <div className="mb-3">
+                                    <ProgramDraftEntry draft={studentDraft} onDiscard={discardStudentDraft} />
+                                </div>
+                            )}
 
                             {!scheduledPrograms || scheduledPrograms.length === 0 ? (
                                 <div className="text-center py-4">
@@ -860,6 +915,42 @@ export function StudentDetailClient({
                         >
                             Entendi
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Criar Novo com rascunho existente — continuar ou começar do zero */}
+            {createChoice && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCreateChoice(null)} />
+                    <div className="relative bg-surface-card border border-k-border-primary rounded-2xl shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
+                        <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                            <FileText className="w-6 h-6 text-amber-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-white text-center mb-2">Há um rascunho em andamento</h3>
+                        <p className="text-sm text-k-text-tertiary text-center mb-6">
+                            Você tem um rascunho não salvo deste aluno{studentDraft?.name?.trim() ? ` ("${studentDraft.name.trim()}")` : ''}. Deseja continuar de onde parou ou começar um novo programa do zero?
+                        </p>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={continueDraftFromChoice}
+                                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-full transition-colors"
+                            >
+                                Continuar rascunho
+                            </button>
+                            <button
+                                onClick={startFreshFromChoice}
+                                className="w-full py-3 bg-transparent hover:bg-[#FF3B30]/10 text-[#FF3B30] dark:text-red-400 text-sm font-bold rounded-full transition-colors border border-[#FF3B30]/20 dark:border-red-500/20"
+                            >
+                                Começar do zero (descarta o rascunho)
+                            </button>
+                            <button
+                                onClick={() => setCreateChoice(null)}
+                                className="w-full py-3 bg-transparent hover:bg-glass-bg-active text-k-text-tertiary text-sm font-bold rounded-full transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -32,6 +32,7 @@ import type { FormTemplateOption } from '@/actions/programs/get-form-templates-f
 import type { PrescriptionData } from '@/actions/prescription/get-prescription-data'
 import { usePrescriptionGenerationStream } from '@/hooks/use-prescription-generation-stream'
 import { consumePrescriptionAnimateFlag, setPrescriptionAnimateFlag } from './helpers/prescription-animate-flag'
+import { useBuilderDraft, buildDraftKey } from './helpers/use-builder-draft'
 import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
 
 // Code-split the heaviest on-demand panels: each only renders for a specific
@@ -699,6 +700,89 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     })
     const [checkinExpanded, setCheckinExpanded] = useState(false)
     const formTriggerCount = (formTriggers.preWorkout ? 1 : 0) + (formTriggers.postWorkout ? 1 : 0)
+
+    // ── Rascunho local (anti-perda de trabalho) ──
+    // Persiste o programa em construção em localStorage para que refresh,
+    // sessão expirada, erro ou fechamento de aba não apaguem o treino.
+    const draftStorageKey = useMemo(() => buildDraftKey({
+        trainerId: trainer.id,
+        isEditing,
+        programId: program?.id,
+        isStudentContext,
+        studentId: studentContext?.id,
+    }), [trainer.id, isEditing, program?.id, isStudentContext, studentContext])
+
+    const draftSnapshot = useMemo(() => ({
+        name,
+        description,
+        durationWeeks,
+        activeWorkoutId,
+        workouts,
+        formTriggers,
+    }), [name, description, durationWeeks, activeWorkoutId, workouts, formTriggers])
+
+    const isDraftMeaningful = useCallback(
+        (s: typeof draftSnapshot) =>
+            s.name.trim() !== '' || s.workouts.some(w => (w.items?.length ?? 0) > 0),
+        [],
+    )
+
+    // Não salvar/avisar enquanto a animação de revelação da IA roda (antes do
+    // handoff para edição manual); aí o stream é a fonte da verdade.
+    const draftEnabled = !streamAnimate || stream.isDone
+
+    const { pendingDraft, dismissPending, clearDraft, isDirty, flush, markPristine } = useBuilderDraft({
+        storageKey: draftStorageKey,
+        snapshot: draftSnapshot,
+        enabled: draftEnabled,
+        isMeaningful: isDraftMeaningful,
+    })
+
+    // Rota de "voltar" do header, resolvida pelo contexto.
+    const backRoute = isStudentContext && studentContext
+        ? `/students/${studentContext.id}`
+        : '/programs'
+    const [showExitConfirm, setShowExitConfirm] = useState(false)
+
+    // "Salvar como rascunho": garante a escrita e sai.
+    const saveDraftAndLeave = useCallback(() => {
+        flush()
+        router.push(backRoute)
+    }, [flush, router, backRoute])
+
+    // "Descartar": apaga o rascunho autosalvo e sai.
+    const discardAndLeave = useCallback(() => {
+        clearDraft()
+        router.push(backRoute)
+    }, [clearDraft, router, backRoute])
+
+    const handleBack = useCallback(() => {
+        if (isDirty) {
+            setShowExitConfirm(true)
+            return
+        }
+        router.push(backRoute)
+    }, [isDirty, router, backRoute])
+
+    // Auto-restaura o rascunho assim que o builder monta — sem banner. O
+    // conteúdo restaurado vira o estado "limpo" (markPristine), então sair sem
+    // editar não dispara aviso. Suprimido durante a animação de IA.
+    const autoRestoredRef = useRef(false)
+    useEffect(() => {
+        if (autoRestoredRef.current) return
+        if (streamAnimate) return
+        if (!pendingDraft) return
+        autoRestoredRef.current = true
+        const d = pendingDraft.data
+        setName(d.name)
+        setDescription(d.description)
+        setDurationWeeks(d.durationWeeks)
+        setWorkouts(d.workouts)
+        setActiveWorkoutId(d.activeWorkoutId ?? d.workouts[0]?.id ?? null)
+        setFormTriggers(d.formTriggers)
+        markPristine(d)
+        dismissPending()
+    }, [pendingDraft, streamAnimate, markPristine, dismissPending])
     const canvasScrollRef = useRef<HTMLDivElement>(null)
     // Sensors for tab drag-and-drop (distance constraint allows click without triggering drag)
     const tabSensors = useSensors(
@@ -1613,10 +1697,12 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 useOnboardingStore.getState().completeMilestone('first_program_created')
                 useOnboardingStore.getState().completeMilestone('first_program_assigned')
 
+                clearDraft()
                 router.push(`/students/${studentContext.id}`)
             } else {
                 // Template saved (no assignment)
                 useOnboardingStore.getState().completeMilestone('first_program_created')
+                clearDraft()
                 router.push('/programs')
             }
             router.refresh()
@@ -1779,10 +1865,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => isStudentContext && studentContext
-                                ? router.push(`/students/${studentContext.id}`)
-                                : router.push('/programs')
-                            }
+                            onClick={handleBack}
                             className="w-9 h-9 rounded-full hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-all flex-shrink-0"
                         >
                             <ChevronLeft className="w-5 h-5" />
@@ -2523,6 +2606,48 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 className="flex-1 py-3 bg-[#F5F5F7] dark:bg-glass-bg hover:bg-[#ECECF0] dark:hover:bg-glass-bg-active text-[#6E6E73] dark:text-k-text-secondary text-xs font-bold rounded-full transition-colors border border-[#D2D2D7] dark:border-k-border-subtle"
                             >
                                 Salvar assim mesmo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Exit confirmation — unsaved changes when leaving via back */}
+            {showExitConfirm && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm" onClick={() => setShowExitConfirm(false)} />
+                    <div className="relative bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
+                        <div className="w-12 h-12 bg-[#FF9500]/10 dark:bg-amber-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                            <AlertCircle className="w-6 h-6 text-[#FF9500] dark:text-amber-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-[#1D1D1F] dark:text-white text-center mb-2">Sair sem salvar?</h3>
+                        <p className="text-sm text-[#6E6E73] dark:text-k-text-tertiary text-center mb-6">
+                            Você tem alterações não salvas neste treino. Salve como rascunho para continuar depois{isStudentContext ? ' no card "Próximos Programas" do aluno' : ''}, ou descarte as alterações.
+                        </p>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => {
+                                    setShowExitConfirm(false)
+                                    saveDraftAndLeave()
+                                }}
+                                className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-full transition-colors"
+                            >
+                                Salvar como rascunho
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowExitConfirm(false)
+                                    discardAndLeave()
+                                }}
+                                className="w-full py-3 bg-transparent hover:bg-[#FF3B30]/10 text-[#FF3B30] dark:text-red-400 text-xs font-bold rounded-full transition-colors border border-[#FF3B30]/20 dark:border-red-500/20"
+                            >
+                                Descartar alterações
+                            </button>
+                            <button
+                                onClick={() => setShowExitConfirm(false)}
+                                className="w-full py-3 bg-transparent hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active text-[#6E6E73] dark:text-k-text-tertiary text-xs font-bold rounded-full transition-colors"
+                            >
+                                Continuar editando
                             </button>
                         </div>
                     </div>
