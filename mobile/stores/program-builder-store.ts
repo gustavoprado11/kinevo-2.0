@@ -377,6 +377,9 @@ interface ProgramBuilderState {
     // Persistence
     setSaving: (saving: boolean) => void;
     reset: () => void;
+    /** Carrega um rascunho salvo (prateleira `lib/program-drafts`) no buffer
+     *  ativo, para retomar a montagem. Não marca como dirty. */
+    loadDraft: (draft: ProgramDraft) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -1475,6 +1478,13 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
             reset: () => set({
                 draft: createEmptyDraft(),
                 currentWorkoutId: null,
+                isDirty: false,
+                isSaving: false,
+            }),
+
+            loadDraft: (draft: ProgramDraft) => set({
+                draft,
+                currentWorkoutId: draft.workouts[0]?.id ?? null,
                 isDirty: false,
                 isSaving: false,
             }),

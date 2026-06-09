@@ -47,6 +47,14 @@ import { isCompoundMethod } from "@kinevo/shared/lib/prescription/set-scheme-pre
 import { useProgramBuilderStore } from "@/stores/program-builder-store";
 import type { AgentResult } from "@/hooks/useAIPrescriptionAgent";
 import { toast } from "@/lib/toast";
+import {
+    saveProgramDraft,
+    removeProgramDraft,
+    getProgramDraft,
+    isProgramDraftMeaningful,
+    draftKeyFor,
+    studentDraftKey,
+} from "@/lib/program-drafts";
 
 export default function ProgramBuilderScreen() {
     const colors = useV2Colors();
@@ -63,6 +71,7 @@ export default function ProgramBuilderScreen() {
     const [editingCardioItemId, setEditingCardioItemId] = useState<string | null>(null);
     const { isTablet } = useResponsive();
     const initFromAiSnapshot = useProgramBuilderStore((s) => s.initFromAiSnapshot);
+    const loadDraft = useProgramBuilderStore((s) => s.loadDraft);
     const setSetScheme = useProgramBuilderStore((s) => s.setSetScheme);
     const addNote = useProgramBuilderStore((s) => s.addNote);
     const addWarmup = useProgramBuilderStore((s) => s.addWarmup);
@@ -126,10 +135,31 @@ export default function ProgramBuilderScreen() {
         // `initFromAiSnapshot` / `initFromAssignedProgram`); don't blow it
         // away.
         if (params.mode === "from-text" || params.mode === "from-ai" || params.mode === "edit" || params.mode === "edit-template") return;
+        // Plain create flow (sem mode): retoma um rascunho guardado deste
+        // contexto, se existir, em vez de começar do zero.
+        if (!params.mode) {
+            const key = params.studentId ? studentDraftKey(params.studentId) : "template:new";
+            const saved = getProgramDraft(key);
+            if (saved && isProgramDraftMeaningful(saved)) {
+                loadDraft(saved);
+                return;
+            }
+        }
         // mode=ai opens the AI sheet on a fresh draft, but only after we
         // make sure the draft is initialized.
         initNewProgram(params.studentId);
     }, []);
+
+    // Autosave-to-shelf: persiste o rascunho de CRIAÇÃO na prateleira
+    // (lib/program-drafts) a cada alteração relevante, para que ele apareça na
+    // aba Programas do aluno e sobreviva à saída. Edição de existente é
+    // ignorada (mantém o reset-on-exit). MMKV é síncrono e rápido.
+    useEffect(() => {
+        if (isEditingExisting) return;
+        if (!isDirty) return;
+        if (!isProgramDraftMeaningful(draft)) return;
+        saveProgramDraft(draft);
+    }, [draft, isDirty, isEditingExisting]);
 
     // mode=ai: auto-open AI sheet on mount when a student is selected.
     useEffect(() => {
@@ -187,6 +217,7 @@ export default function ProgramBuilderScreen() {
             if (params.studentId) {
                 const result = await saveAndAssign(params.studentId);
                 if (result.ok) {
+                    removeProgramDraft(studentDraftKey(params.studentId));
                     router.back();
                     return;
                 }
@@ -203,6 +234,7 @@ export default function ProgramBuilderScreen() {
                                     clearSupersets();
                                     const r2 = await saveAndAssign(params.studentId!);
                                     if (r2.ok) {
+                                        removeProgramDraft(studentDraftKey(params.studentId!));
                                         reset();
                                         router.back();
                                     }
@@ -213,7 +245,10 @@ export default function ProgramBuilderScreen() {
                                 style: "destructive",
                                 onPress: async () => {
                                     const r2 = await saveAsNewProgramDiscardingAi(params.studentId!);
-                                    if (r2.ok) router.back();
+                                    if (r2.ok) {
+                                        removeProgramDraft(studentDraftKey(params.studentId!));
+                                        router.back();
+                                    }
                                 },
                             },
                         ],
@@ -223,6 +258,7 @@ export default function ProgramBuilderScreen() {
                 // ERROR — toast already shown by the hook.
             } else {
                 await saveAsTemplate();
+                removeProgramDraft("template:new");
                 reset();
                 router.back();
             }
@@ -352,17 +388,35 @@ export default function ProgramBuilderScreen() {
         }
         if (isDirty) {
             Alert.alert(
-                "Descartar rascunho?",
-                "As alterações não salvas serão perdidas.",
+                "Sair sem salvar?",
+                "Você tem alterações não salvas neste treino. Salve como rascunho para continuar depois na aba Programas do aluno, ou descarte.",
                 [
-                    { text: "Cancelar", style: "cancel" },
-                    { text: "Descartar", style: "destructive", onPress: () => { reset(); router.back(); } },
+                    { text: "Continuar editando", style: "cancel" },
+                    {
+                        text: "Descartar",
+                        style: "destructive",
+                        onPress: () => {
+                            const key = draftKeyFor(draft);
+                            if (key) removeProgramDraft(key);
+                            reset();
+                            router.back();
+                        },
+                    },
+                    {
+                        text: "Salvar como rascunho",
+                        style: "default",
+                        onPress: () => {
+                            saveProgramDraft(draft);
+                            reset();
+                            router.back();
+                        },
+                    },
                 ]
             );
         } else {
             router.back();
         }
-    }, [isDirty, reset, router, isEditingExisting]);
+    }, [isDirty, draft, reset, router, isEditingExisting]);
 
     const handleDeleteWorkout = useCallback((workoutId: string, workoutName: string) => {
         if (draft.workouts.length <= 1) {

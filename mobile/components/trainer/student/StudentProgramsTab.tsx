@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActionSheetIOS, Platform } from "react-native";
-import { Calendar, Sparkles, FileText, Pencil, MoreHorizontal } from "lucide-react-native";
+import { Calendar, Sparkles, FileText, Pencil, MoreHorizontal, Trash2 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { getStudentDraftSummary, removeProgramDraft, type ProgramDraftSummary } from "../../../lib/program-drafts";
 import { supabase } from "../../../lib/supabase";
 import { toast } from "../../../lib/toast";
 import { getProgramWeek } from "@kinevo/shared/utils/schedule-projection";
@@ -21,6 +22,36 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
     const colors = useV2Colors();
     const router = useRouter();
     const [isMutating, setIsMutating] = useState(false);
+
+    // Rascunho de programa em andamento deste aluno (prateleira MMKV). Relido a
+    // cada foco da aba para refletir saídas/descartes feitos no builder.
+    const [draftSummary, setDraftSummary] = useState<ProgramDraftSummary | null>(null);
+    useFocusEffect(
+        useCallback(() => {
+            setDraftSummary(getStudentDraftSummary(data.student.id));
+        }, [data.student.id])
+    );
+    const handleContinueDraft = useCallback(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push({ pathname: "/program-builder", params: { studentId: data.student.id } } as any);
+    }, [router, data.student.id]);
+    const handleDiscardDraft = useCallback(() => {
+        Alert.alert(
+            "Descartar rascunho?",
+            "O rascunho não salvo deste programa será removido.",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Descartar",
+                    style: "destructive",
+                    onPress: () => {
+                        if (draftSummary) removeProgramDraft(draftSummary.key);
+                        setDraftSummary(null);
+                    },
+                },
+            ]
+        );
+    }, [draftSummary]);
 
     const completeProgram = useCallback(async (programId: string, studentId: string) => {
         if (isMutating) return;
@@ -165,6 +196,44 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
             contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
         >
+            {/* Rascunho não salvo (prateleira MMKV) — retomar montagem */}
+            {draftSummary && (
+                <View style={{ backgroundColor: "rgba(245,158,11,0.10)", borderColor: "rgba(245,158,11,0.30)", borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 20 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <FileText size={16} color="#D97706" />
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text.primary, flexShrink: 1 }} numberOfLines={1}>
+                            {draftSummary.name.trim() || "Programa sem nome"}
+                        </Text>
+                        <View style={{ backgroundColor: "rgba(245,158,11,0.18)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                            <Text style={{ fontSize: 10, fontWeight: "700", color: "#D97706" }}>Rascunho</Text>
+                        </View>
+                    </View>
+                    <Text style={{ fontSize: 12, color: colors.text.secondary, marginBottom: 12 }}>
+                        {(draftSummary.workoutCount > 0 ? `${draftSummary.workoutCount} ${draftSummary.workoutCount === 1 ? "treino" : "treinos"} · ` : "") + "não salvo"}
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <TouchableOpacity
+                            onPress={handleContinueDraft}
+                            activeOpacity={0.85}
+                            accessibilityRole="button"
+                            accessibilityLabel="Continuar montando"
+                            style={{ flex: 1, backgroundColor: "#F59E0B", borderRadius: 12, paddingVertical: 10, alignItems: "center" }}
+                        >
+                            <Text style={{ fontSize: 13, fontWeight: "700", color: "#FFFFFF" }}>Continuar montando</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={handleDiscardDraft}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                            accessibilityLabel="Descartar rascunho"
+                            style={{ padding: 10, borderRadius: 12 }}
+                        >
+                            <Trash2 size={18} color="#D97706" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+
             {/* Active Program */}
             {data.activeProgram ? (
                 <>
