@@ -243,7 +243,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         // 4. Expired contracts (canceled + period ended)
         supabaseAdmin
             .from('student_contracts')
-            .select('id, student_id, plan_title, current_period_end, students!inner(name, avatar_url)')
+            .select('id, student_id, current_period_end, students!inner(name, avatar_url), trainer_plans(title)')
             .eq('trainer_id', trainerId)
             .eq('status', 'canceled')
             .not('current_period_end', 'is', null)
@@ -428,7 +428,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             studentId: c.student_id,
             studentName: (c.students as unknown as { name: string; avatar_url: string | null })?.name || 'Aluno',
             studentAvatar: (c.students as unknown as { name: string; avatar_url: string | null })?.avatar_url || null,
-            planTitle: c.plan_title,
+            planTitle: (c.trainer_plans as unknown as { title: string | null } | null)?.title ?? null,
             expiredAt: c.current_period_end!,
         }))
 
