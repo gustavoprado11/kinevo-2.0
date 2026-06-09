@@ -17,18 +17,40 @@ const SECURE_STORE_OPTIONS: SecureStore.SecureStoreOptions = {
     keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
 };
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 const ExpoSecureStoreAdapter = {
+    // CRITICAL (auth restore on cold start): a missing key resolves to `null` WITHOUT
+    // throwing, while a keychain *access* failure (e.g. "User interaction is not allowed"
+    // right after launch, before the keychain is ready) THROWS. The old code swallowed
+    // both as `null`, so a transient read failure looked like "no session" and logged
+    // the user out — they reopened the app and it was logged in again (keychain ready by
+    // then). We now retry the read a few times (the keychain becomes ready within a few
+    // hundred ms) so the persisted session is found on the first launch.
     getItem: async (key: string): Promise<string | null> => {
-        try {
-            return await SecureStore.getItemAsync(key, SECURE_STORE_OPTIONS);
-        } catch {
-            // Fallback: try without options (reads items stored with old accessibility)
+        const maxAttempts = 5;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
             try {
-                return await SecureStore.getItemAsync(key);
-            } catch {
-                return null;
+                return await SecureStore.getItemAsync(key, SECURE_STORE_OPTIONS);
+            } catch (errWithOptions) {
+                // Items stored with old accessibility — retry once without options.
+                try {
+                    return await SecureStore.getItemAsync(key);
+                } catch (errPlain) {
+                    if (attempt < maxAttempts - 1) {
+                        // Keychain not ready yet — wait briefly and retry instead of
+                        // returning null (which would spuriously log the user out).
+                        await sleep(150 * (attempt + 1));
+                        continue;
+                    }
+                    // Exhausted retries — last resort. Surfacing null here keeps the
+                    // previous behaviour for genuinely unreadable keychains.
+                    if (__DEV__) console.warn(`[Supabase] SecureStore read failed for "${key}" after ${maxAttempts} attempts`);
+                    return null;
+                }
             }
         }
+        return null;
     },
     setItem: async (key: string, value: string): Promise<void> => {
         await SecureStore.setItemAsync(key, value, SECURE_STORE_OPTIONS);
