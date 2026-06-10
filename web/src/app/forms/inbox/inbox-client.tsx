@@ -11,6 +11,7 @@ import { AssignFormModal } from '@/components/forms/assign-form-modal'
 import { SubmissionDetailSheet } from '@/components/forms/submission-detail-sheet'
 import { sendFormFeedback } from '@/actions/forms/send-form-feedback'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/toast'
 import {
     Search,
     Send,
@@ -121,6 +122,7 @@ function submissionStatusForSheet(submission: Submission) {
 export function InboxClient({ trainer, submissions: initialSubmissions, students, templates }: InboxClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const { toast } = useToast()
     const supabase = useMemo(() => createBrowserClient(), [])
 
     const [submissionRows, setSubmissionRows] = useState(initialSubmissions)
@@ -255,7 +257,7 @@ export function InboxClient({ trainer, submissions: initialSubmissions, students
         try {
             const result = await sendFormFeedback({ submissionId: activeSubmissionId, message })
             if (!result.success) {
-                alert(result.error || 'Erro ao enviar feedback.')
+                toast({ message: result.error || 'Erro ao enviar feedback.', type: 'error' })
                 return
             }
             router.refresh()

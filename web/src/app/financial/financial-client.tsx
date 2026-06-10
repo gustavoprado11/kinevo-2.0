@@ -20,6 +20,7 @@ import { FinancialOnboardingModal } from '@/components/financial/financial-onboa
 import { EmptyState } from '@/components/financial/empty-state'
 import { CobrarCarteiraModal } from '@/components/financial/cobrar-carteira-modal'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { useToast } from '@/components/ui/toast'
 import type { FinancialStudent, DisplayStatus } from '@/types/financial'
 import type { KinevoWalletStatus, KinevoWalletMode } from '@/lib/asaas'
 
@@ -225,6 +226,7 @@ export function FinancialDashboardClient({
     awaitingAuthPayouts,
 }: FinancialDashboardClientProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const searchParams = useSearchParams()
     const [showOnboarding, setShowOnboarding] = useState(initialShowOnboarding)
     const [connectSyncing, setConnectSyncing] = useState(false)
@@ -578,12 +580,12 @@ export function FinancialDashboardClient({
                                                         if (b.statusLocal === 'completed') {
                                                             router.refresh()
                                                         } else if (b.statusLocal === 'awaiting_authorization') {
-                                                            alert('Ainda aguardando. Confirme no painel da Asaas e tente de novo.')
+                                                            toast({ message: 'Ainda aguardando. Confirme no painel da Asaas e tente de novo.', type: 'error' })
                                                         } else {
                                                             router.refresh()
                                                         }
                                                     } catch {
-                                                        alert('Erro ao sincronizar')
+                                                        toast({ message: 'Erro ao sincronizar', type: 'error' })
                                                     }
                                                 }}
                                                 className="text-[11px] font-medium text-amber-700 dark:text-amber-300 hover:underline whitespace-nowrap"

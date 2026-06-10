@@ -10,6 +10,7 @@ import { AssignFormModal } from '@/components/forms/assign-form-modal'
 import { SubmissionDetailSheet } from '@/components/forms/submission-detail-sheet'
 import { sendFormFeedback } from '@/actions/forms/send-form-feedback'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
+import { useToast } from '@/components/ui/toast'
 import {
     Plus, Check, FileText, Send, ChevronRight,
     ClipboardList, CheckCircle2, MessageSquare, Loader2,
@@ -180,6 +181,7 @@ export function FormsDashboardClient({
 }: FormsDashboardClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const { toast } = useToast()
     const [filter, setFilter] = useState<FilterType>('all')
     const [isAssignOpen, setIsAssignOpen] = useState(false)
     const [preselectedTemplateId, setPreselectedTemplateId] = useState<string | null>(null)
@@ -261,7 +263,7 @@ export function FormsDashboardClient({
         try {
             const result = await sendFormFeedback({ submissionId: activeSubmission.id, message })
             if (!result.success) {
-                alert(result.error || 'Erro ao enviar feedback.')
+                toast({ message: result.error || 'Erro ao enviar feedback.', type: 'error' })
                 return
             }
             const supabase = createBrowserClient()
@@ -279,7 +281,7 @@ export function FormsDashboardClient({
         } finally {
             setIsSendingFeedback(false)
         }
-    }, [activeSubmission, feedbackMessage, router])
+    }, [activeSubmission, feedbackMessage, router, toast])
 
     const activeQuestions = useMemo(
         () => Array.isArray(activeSubmission?.schema_snapshot_json?.questions)

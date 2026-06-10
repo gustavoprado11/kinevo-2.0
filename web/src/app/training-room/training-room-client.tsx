@@ -19,6 +19,7 @@ import { WorkoutFormInline } from '@/components/training-room/workout-form-inlin
 import { finishTrainingRoomWorkout } from '@/actions/training-room/finish-training-room-workout'
 import type { SubstituteOption } from '@/actions/training-room/get-substitute-exercises'
 import { useOnboardingStore } from '@/stores/onboarding-store'
+import { useToast } from '@/components/ui/toast'
 
 interface TrainingRoomClientProps {
     trainerId: string
@@ -44,6 +45,7 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
     const completePostCheckin = useTrainingRoomStore((s) => s.completePostCheckin)
     const skipCheckin = useTrainingRoomStore((s) => s.skipCheckin)
 
+    const { toast } = useToast()
     const [isPickerOpen, setIsPickerOpen] = useState(false)
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -108,7 +110,7 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
         setIsSubmitting(false)
 
         if (result.error) {
-            alert(`Erro ao salvar: ${result.error}`)
+            toast({ message: `Erro ao salvar: ${result.error}`, type: 'error' })
             return
         }
 
@@ -157,10 +159,10 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                 setVideoExerciseName(exercise?.name || '')
                 setVideoUrl(url)
             } else {
-                alert('Este exercício não possui vídeo cadastrado.')
+                toast({ message: 'Este exercício não possui vídeo cadastrado.', type: 'error' })
             }
         },
-        [activeSession],
+        [activeSession, toast],
     )
 
     // Toggle set complete with auto rest timer

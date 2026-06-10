@@ -20,6 +20,7 @@ import { getSubmissionResponses, type SubmissionResponses } from '@/actions/form
 import { sendFormFeedback } from '@/actions/forms/send-form-feedback'
 import { CheckinResponsesViewer } from '@/components/forms/checkin-responses-viewer'
 import { ActiveSchedulesList } from './active-schedules-list'
+import { useToast } from '@/components/ui/toast'
 import { BodyMetricsTrend } from './body-metrics-trend'
 import type { FormScheduleRow } from '@/actions/forms/form-schedules'
 import type { AssessmentSessionListItem } from '@kinevo/shared/types/assessments'
@@ -116,6 +117,7 @@ export function HealthMetricsCard({
     hideReassessmentBanner = false,
 }: HealthMetricsCardProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const [dropdownOpen, setDropdownOpen] = useState(false)
     const [sending, setSending] = useState(false)
     const [schedulesExpanded, setSchedulesExpanded] = useState(false)
@@ -131,10 +133,10 @@ export function HealthMetricsCard({
             if (result.success && result.data) {
                 setViewer(result.data)
             } else {
-                alert(result.error || 'Não foi possível carregar as respostas')
+                toast({ message: result.error || 'Não foi possível carregar as respostas', type: 'error' })
             }
         } catch {
-            alert('Não foi possível carregar as respostas')
+            toast({ message: 'Não foi possível carregar as respostas', type: 'error' })
         } finally {
             setLoadingViewer(false)
         }
@@ -151,10 +153,10 @@ export function HealthMetricsCard({
             if (result.success) {
                 router.refresh()
             } else {
-                alert(result.error || 'Erro ao enviar formulário')
+                toast({ message: result.error || 'Erro ao enviar formulário', type: 'error' })
             }
         } catch {
-            alert('Erro ao enviar formulário')
+            toast({ message: 'Erro ao enviar formulário', type: 'error' })
         } finally {
             setSending(false)
         }

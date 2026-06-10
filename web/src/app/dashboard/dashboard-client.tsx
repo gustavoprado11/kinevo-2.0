@@ -24,6 +24,7 @@ const StudentRankingWidget = lazy(() => import('@/components/dashboard/student-r
 import { CalendarOff, FolderArchive, Loader2 } from 'lucide-react'
 import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { archiveStudent } from '@/actions/financial/archive-student'
+import { useToast } from '@/components/ui/toast'
 import type {
     OnboardingState,
     TrainerModalityFocus,
@@ -81,6 +82,7 @@ function WidgetSkeleton() {
 
 export function DashboardClient({ trainer, data, initialStudents, selfStudentId, formTemplates = [] }: DashboardClientProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const [students, setStudents] = useState<Student[]>(initialStudents)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [archiveConfirm, setArchiveConfirm] = useState<{ id: string; name: string } | null>(null)
@@ -134,7 +136,7 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             setArchiveConfirm(null)
             router.refresh()
         } else {
-            alert(result.error || 'Erro ao arquivar')
+            toast({ message: result.error || 'Erro ao arquivar', type: 'error' })
         }
     }
 
@@ -150,7 +152,7 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
         if (result.success) {
             router.refresh()
         } else {
-            alert(result.error || 'Erro ao arquivar')
+            toast({ message: result.error || 'Erro ao arquivar', type: 'error' })
         }
     }
 

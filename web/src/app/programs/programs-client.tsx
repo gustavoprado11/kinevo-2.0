@@ -12,6 +12,7 @@ import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 import { duplicateProgram } from './actions/duplicate-program'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { useToast } from '@/components/ui/toast'
 
 // --- Helpers ---
 const TIMEZONE = 'America/Sao_Paulo'
@@ -173,6 +174,7 @@ function ApplyToStudentDialog({
     onClose: () => void
     onSuccess: () => void
 }) {
+    const { toast } = useToast()
     const [students, setStudents] = useState<StudentOption[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
@@ -211,7 +213,7 @@ function ApplyToStudentDialog({
             onSuccess()
             onClose()
         } else {
-            alert('Erro ao aplicar programa.')
+            toast({ message: 'Erro ao aplicar programa.', type: 'error' })
         }
     }
 
@@ -343,6 +345,7 @@ interface ProgramsClientProps {
 
 export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsClientProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const [programs, setPrograms] = useState(initialPrograms)
     const [searchQuery, setSearchQuery] = useState('')
     const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -374,7 +377,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
         if (result.success) {
             router.refresh()
         } else {
-            alert('Erro ao duplicar programa.')
+            toast({ message: 'Erro ao duplicar programa.', type: 'error' })
         }
     }
 

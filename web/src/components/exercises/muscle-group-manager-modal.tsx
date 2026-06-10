@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { MuscleGroup } from '@/types/exercise'
 import { useMuscleGroups } from '@/hooks/use-muscle-groups'
+import { useToast } from '@/components/ui/toast'
 import { X, Plus, Search, Loader2, Check, Edit2, Trash2, Lock, AlertTriangle } from 'lucide-react'
 
 interface MuscleGroupManagerModalProps {
@@ -22,6 +23,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
         checkUsageCount
     } = manager
 
+    const { toast } = useToast()
     const [searchQuery, setSearchQuery] = useState('')
     const [newName, setNewName] = useState('')
     const [isCreating, setIsCreating] = useState(false)
@@ -57,7 +59,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
             setEditingId(null)
             setEditName('')
         } else {
-            alert('Erro ao atualizar. Verifique se o nome já existe.')
+            toast({ message: 'Erro ao atualizar. Verifique se o nome já existe.', type: 'error' })
         }
     }
 
@@ -73,7 +75,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
         if (success) {
             setDeletingGroup(null)
         } else {
-            alert('Erro ao excluir grupo.')
+            toast({ message: 'Erro ao excluir grupo.', type: 'error' })
         }
         setIsDeleting(false)
     }

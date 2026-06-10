@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { X, ClipboardCheck, BarChart3, CheckCircle2, Type, MessageSquare, Pencil, Send, Loader2 } from 'lucide-react'
+import { useToast } from '@/components/ui/toast'
 
 interface CheckinResponsesViewerProps {
     title: string // "Check-in Pré-treino" / "Check-in Pós-treino"
@@ -121,6 +122,7 @@ function CompactAnswer({ question, rawValue }: { question: any; rawValue: any })
 // ── Main Component ──
 
 export function CheckinResponsesViewer({ title, date, answers, schema, onClose, workoutName, feedback }: CheckinResponsesViewerProps) {
+    const { toast } = useToast()
     const questions = schema?.questions || []
     const answersMap = answers?.answers || answers || {}
 
@@ -141,10 +143,10 @@ export function CheckinResponsesViewer({ title, date, answers, schema, onClose, 
                 setSentAt(new Date().toISOString())
                 setEditing(false)
             } else {
-                alert(result.error || 'Erro ao enviar feedback.')
+                toast({ message: result.error || 'Erro ao enviar feedback.', type: 'error' })
             }
         } catch {
-            alert('Erro ao enviar feedback.')
+            toast({ message: 'Erro ao enviar feedback.', type: 'error' })
         } finally {
             setSending(false)
         }

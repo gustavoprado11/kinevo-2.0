@@ -30,6 +30,7 @@ import { ProgramDraftEntry } from '@/components/students/program-draft-entry'
 import { buildDraftKey, readDraftSummary, removeBuilderDraft, type BuilderDraftSummary } from '@/components/programs/helpers/use-builder-draft'
 import { KeyboardShortcuts } from '@/components/students/keyboard-shortcuts'
 import { StudentStatusBar } from '@/components/students/student-status-bar'
+import { useToast } from '@/components/ui/toast'
 import { useCommunicationStore } from '@/stores/communication-store'
 import type { InsightItem } from '@/actions/insights'
 import type { DisplayStatus } from '@/types/financial'
@@ -217,6 +218,7 @@ export function StudentDetailClient({
     latestPresencialSession = null,
 }: StudentDetailClientProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const openPanel = useCommunicationStore(s => s.openPanel)
     const openConversation = useCommunicationStore(s => s.openConversation)
 
@@ -320,7 +322,7 @@ export function StudentDetailClient({
         if (result.success) {
             router.refresh()
         } else {
-            alert(result.error || 'Erro ao concluir programa')
+            toast({ message: result.error || 'Erro ao concluir programa', type: 'error' })
         }
         setIsCompleteModalOpen(false)
     }
@@ -331,14 +333,14 @@ export function StudentDetailClient({
         if (!weeksStr) return
         const weeks = parseInt(weeksStr, 10)
         if (isNaN(weeks) || weeks < 1 || weeks > 12) {
-            alert('Informe um número entre 1 e 12.')
+            toast({ message: 'Informe um número entre 1 e 12.', type: 'error' })
             return
         }
         const result = await extendProgram(activeProgram.id, student.id, weeks)
         if (result.success) {
             router.refresh()
         } else {
-            alert(result.error || 'Erro ao prorrogar programa')
+            toast({ message: result.error || 'Erro ao prorrogar programa', type: 'error' })
         }
     }
 
@@ -366,7 +368,7 @@ export function StudentDetailClient({
         if (result.success) {
             router.push('/students')
         } else {
-            alert(result.error || 'Erro ao excluir aluno')
+            toast({ message: result.error || 'Erro ao excluir aluno', type: 'error' })
         }
     }
 
@@ -391,7 +393,7 @@ export function StudentDetailClient({
         setProcessingId(programId)
         try {
             const result = await activateProgram(programId)
-            if (!result.success) alert(result.error)
+            if (!result.success) toast({ message: result.error ?? '', type: 'error' })
         } finally {
             setProcessingId(null)
         }
@@ -403,7 +405,7 @@ export function StudentDetailClient({
         setProcessingId(programId)
         try {
             const result = await deleteProgram(programId)
-            if (!result.success) alert(result.error)
+            if (!result.success) toast({ message: result.error ?? '', type: 'error' })
         } finally {
             setProcessingId(null)
         }

@@ -15,6 +15,7 @@ import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
 import { ProgramFormTriggers, type TriggerSelection, type InitialTrigger } from './program-form-triggers'
+import { useToast } from '@/components/ui/toast'
 
 import type { Exercise } from '@/types/exercise'
 import type { FormTemplateOption } from '@/actions/programs/get-form-templates-for-triggers'
@@ -245,6 +246,7 @@ async function persistAssignedSetSchemeRows(
 export function EditAssignedProgramClient({ trainer, program, exercises, studentId, sourceTemplateId, formTriggers: initialFormTriggers, formTriggerTemplates = [] }: EditAssignedProgramClientProps) {
     const router = useRouter()
     const tabDndId = useId()
+    const { toast } = useToast()
 
     // Program state
     const [name, setName] = useState(program.name)
@@ -1328,7 +1330,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             }
 
             // Success feedback
-            alert('Programa atualizado com sucesso!')
+            toast({ message: 'Programa atualizado com sucesso!', type: 'success' })
 
             // Fire-and-forget: capture edits for AI learning (only processes AI-generated programs)
             capturePostAssignmentEdits(program.id).catch(() => {})
@@ -1446,7 +1448,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             }
 
             setShowTemplateDialog(false)
-            alert('Modelo salvo na biblioteca!')
+            toast({ message: 'Modelo salvo na biblioteca!', type: 'success' })
         } catch (err: any) {
             console.error('Save template error:', err)
             setError(err.message || 'Erro ao salvar modelo')

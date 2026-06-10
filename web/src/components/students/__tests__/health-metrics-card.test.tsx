@@ -7,6 +7,12 @@ vi.mock('@/actions/forms/assign-form', () => ({
     assignFormToStudents: (...args: unknown[]) => assignFormMock(...args),
 }))
 
+// O componente consome useToast(); o mock evita montar o ToastProvider
+// (framer-motion) só para satisfazer o contexto.
+vi.mock('@/components/ui/toast', () => ({
+    useToast: () => ({ toast: vi.fn() }),
+}))
+
 // Actions de avaliação são mockadas: o módulo real importa push-notifications →
 // supabase-admin, que exige SUPABASE_SERVICE_ROLE_KEY (ausente nos testes).
 const getSubmissionResponsesMock = vi.fn()

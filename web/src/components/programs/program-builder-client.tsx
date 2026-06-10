@@ -28,6 +28,7 @@ import type { Exercise } from '@/types/exercise'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 import { ProgramFormTriggers, type TriggerSelection, type InitialTrigger } from './program-form-triggers'
 import { saveProgramFormTriggers } from '@/actions/programs/save-program-form-triggers'
+import { useToast } from '@/components/ui/toast'
 import type { FormTemplateOption } from '@/actions/programs/get-form-templates-for-triggers'
 import type { PrescriptionData } from '@/actions/prescription/get-prescription-data'
 import { usePrescriptionGenerationStream } from '@/hooks/use-prescription-generation-stream'
@@ -296,6 +297,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const router = useRouter()
     const searchParams = useSearchParams()
     const tabDndId = useId()
+    const { toast } = useToast()
     const isEditing = !!program && !!program.id && !program.id.startsWith('temp_')
     const isStudentContext = !!studentContext
 
@@ -1840,7 +1842,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             } else {
                 // Just show success and stay on page
                 setError(null)
-                alert('Modelo salvo na biblioteca!')
+                toast({ message: 'Modelo salvo na biblioteca!', type: 'success' })
             }
         } catch (err: unknown) {
             const message = err instanceof Error

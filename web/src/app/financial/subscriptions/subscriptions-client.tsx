@@ -17,6 +17,7 @@ import { toggleBlockOnFail } from '@/actions/financial/toggle-block-on-fail'
 import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
 import type { FinancialStudent, DisplayStatus } from '@/types/financial'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { useToast } from '@/components/ui/toast'
 import {
     Plus, Search, Users, Loader2, CheckCircle, ArrowLeft, Copy,
     MessageCircle, Settings2,
@@ -142,6 +143,7 @@ export function SubscriptionsClient({
     sellToStudentId,
 }: SubscriptionsClientProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const [financialStudents, setFinancialStudents] = useState(initialStudents)
     const [searchQuery, setSearchQuery] = useState('')
     const [activeTab, setActiveTab] = useState<TabKey>('todos')
@@ -245,12 +247,12 @@ export function SubscriptionsClient({
             })
             if (result.url) {
                 await navigator.clipboard.writeText(result.url)
-                alert('Link de pagamento copiado!')
+                toast({ message: 'Link de pagamento copiado!', type: 'success' })
             } else if (result.error) {
-                alert(result.error)
+                toast({ message: result.error, type: 'error' })
             }
         } catch {
-            alert('Erro ao gerar link')
+            toast({ message: 'Erro ao gerar link', type: 'error' })
         } finally {
             setActionLoading(null)
         }
@@ -291,10 +293,10 @@ export function SubscriptionsClient({
                 setArchiveTarget(null)
                 router.refresh()
             } else {
-                alert(result.error || 'Erro ao arquivar')
+                toast({ message: result.error || 'Erro ao arquivar', type: 'error' })
             }
         } catch {
-            alert('Erro ao arquivar aluno')
+            toast({ message: 'Erro ao arquivar aluno', type: 'error' })
         } finally {
             setArchiveLoading(false)
         }
@@ -313,10 +315,10 @@ export function SubscriptionsClient({
             if (result.success) {
                 router.refresh()
             } else {
-                alert(result.error || 'Erro ao arquivar')
+                toast({ message: result.error || 'Erro ao arquivar', type: 'error' })
             }
         } catch {
-            alert('Erro ao arquivar aluno')
+            toast({ message: 'Erro ao arquivar aluno', type: 'error' })
         } finally {
             setArchiveLoading(false)
         }

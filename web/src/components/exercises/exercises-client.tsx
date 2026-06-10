@@ -17,6 +17,7 @@ import { Plus, Search, Settings2, LayoutGrid, List, ChevronDown, Check } from 'l
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { revalidateMyExerciseLibrary } from '@/actions/exercises/revalidate-library'
+import { useToast } from '@/components/ui/toast'
 
 type ViewMode = 'grid' | 'list'
 
@@ -131,6 +132,7 @@ export function ExercisesClient({
     muscleGroupTree = [],
 }: ExercisesClientProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const [exercises, setExercises] = useState(initialExercises)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
@@ -273,7 +275,7 @@ export function ExercisesClient({
             router.refresh()
         } catch (error) {
             console.error('Error archiving exercise:', error)
-            alert('Erro ao arquivar exercício.')
+            toast({ message: 'Erro ao arquivar exercício.', type: 'error' })
         }
     }
 

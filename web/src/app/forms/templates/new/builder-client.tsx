@@ -9,6 +9,7 @@ import { createFormTemplate } from '@/actions/forms/create-form-template'
 import { updateFormTemplate } from '@/actions/forms/update-form-template'
 import { generateFormDraftWithAI } from '@/actions/forms/generate-form-with-ai'
 import { auditFormQualityWithAI } from '@/actions/forms/audit-form-quality-ai'
+import { useToast } from '@/components/ui/toast'
 import {
     Plus,
     Trash2,
@@ -225,6 +226,7 @@ function SortableQuestionWrapper({ id, children }: { id: string; children: (prop
 
 export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const isEditing = !!existingTemplate
 
     // Step (1: Tipo, 2: Configurar, 3: Editor)
@@ -358,11 +360,11 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
     const handleSave = async () => {
         if (!title.trim()) {
-            alert('Título é obrigatório.')
+            toast({ message: 'Título é obrigatório.', type: 'error' })
             return
         }
         if (questions.length === 0) {
-            alert('Adicione ao menos uma pergunta.')
+            toast({ message: 'Adicione ao menos uma pergunta.', type: 'error' })
             return
         }
 
@@ -379,7 +381,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                     schemaJson,
                 })
                 if (!result.success) {
-                    alert(result.error || 'Erro ao atualizar template.')
+                    toast({ message: result.error || 'Erro ao atualizar template.', type: 'error' })
                     return
                 }
             } else {
@@ -391,7 +393,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                     createdSource: draftSource,
                 })
                 if (!result.success) {
-                    alert(result.error || 'Erro ao criar template.')
+                    toast({ message: result.error || 'Erro ao criar template.', type: 'error' })
                     return
                 }
             }
@@ -416,7 +418,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
             })
 
             if (!result.success || !result.templateDraft) {
-                alert(result.error || 'Erro ao gerar draft com IA.')
+                toast({ message: result.error || 'Erro ao gerar draft com IA.', type: 'error' })
                 return
             }
 
@@ -444,7 +446,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
         try {
             const result = await auditFormQualityWithAI({ schemaJson: JSON.stringify(schema) })
             if (!result.success || !result.audit) {
-                alert(result.error || 'Erro na auditoria.')
+                toast({ message: result.error || 'Erro na auditoria.', type: 'error' })
                 return
             }
             setAiProviderSource(result.source === 'llm' ? 'llm' : 'heuristic')

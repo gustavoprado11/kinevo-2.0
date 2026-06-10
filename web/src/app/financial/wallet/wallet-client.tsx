@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/toast'
 import {
     Wallet, CircleDollarSign, Send, Plus, ArrowDownToLine, KeyRound,
     Check, Loader2, AlertTriangle, RefreshCw, ChevronRight, Copy,
@@ -901,6 +902,7 @@ function PayoutModal(props: {
     onClose: () => void
     onSuccess: () => void
 }) {
+    const { toast } = useToast()
     const [pixKeyId, setPixKeyId] = useState(props.pixKeys.find(k => k.is_default)?.id ?? props.pixKeys[0]?.id ?? '')
     const [valueStr, setValueStr] = useState(props.balance.toFixed(2))
     const [busy, setBusy] = useState(false)
@@ -988,15 +990,15 @@ function PayoutModal(props: {
                                         const r = await fetch(`/api/wallet/payouts/${payoutResult.payoutId}/sync`, { method: 'POST' })
                                         const b = await r.json()
                                         if (b.statusLocal === 'completed') {
-                                            alert('Pagamento confirmado! Atualizando...')
+                                            toast({ message: 'Pagamento confirmado! Atualizando...', type: 'success' })
                                         } else if (b.statusLocal === 'awaiting_authorization') {
-                                            alert('Ainda aguardando autorização. Confirme no painel da Asaas e tente de novo.')
+                                            toast({ message: 'Ainda aguardando autorização. Confirme no painel da Asaas e tente de novo.', type: 'error' })
                                         } else {
-                                            alert(`Status atual: ${b.statusLocal}`)
+                                            toast({ message: `Status atual: ${b.statusLocal}`, type: 'error' })
                                         }
                                         props.onSuccess()
                                     } catch {
-                                        alert('Erro ao sincronizar')
+                                        toast({ message: 'Erro ao sincronizar', type: 'error' })
                                     }
                                 }}
                                 className="w-full"
