@@ -1,0 +1,47 @@
+# CI mínimo — análise noturna 09/06/2026 (achado: 5 testes red por 6 semanas
+# sem ninguém notar, por ausência total de CI).
+#
+# Gates (falham o build): typecheck do web + testes dos 3 workspaces.
+# Lint roda como não-bloqueante por enquanto (599 erros legados — gate só
+# depois da limpeza), para dar visibilidade sem travar todo push.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck (web)
+        run: npm run typecheck --workspace=web
+
+      - name: Tests (shared)
+        run: npm run test --workspace=shared
+
+      - name: Tests (web)
+        run: npm run test:run --workspace=web
+
+      - name: Tests (mobile)
+        run: npm run test --workspace=mobile
+
+      - name: Lint (web) — não-bloqueante
+        run: npm run lint --workspace=web
+        continue-on-error: true
