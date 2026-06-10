@@ -45,18 +45,19 @@ function makeRequest(body: unknown): NextRequest {
 function stubClientForHappyPrelude(opts: {
     trainer?: { id: string } | null
     student?: { id: string } | null
-    template?: { id: string; name: string; description: string | null; duration_weeks: number } | null
-    workouts?: unknown[]
+    template?: { id: string } | null
 } = {}) {
     const trainer = opts.trainer ?? { id: TRAINER_ID }
     const student = opts.student ?? { id: STUDENT_ID }
     const template = opts.template ?? null
-    const workouts = opts.workouts ?? []
 
     const client: any = {
         auth: {
             getUser: vi.fn().mockResolvedValue({ data: { user: { id: TRAINER_AUTH_UID } }, error: null }),
         },
+        // O branch templateId delega toda a escrita à RPC transacional
+        // assign_program_from_template (migration 184).
+        rpc: vi.fn().mockResolvedValue({ data: 'stub-program', error: null }),
         from(table: string) {
             if (table === 'trainers') {
                 return {
@@ -74,35 +75,6 @@ function stubClientForHappyPrelude(opts: {
                 return {
                     select: () => ({
                         eq: () => ({ eq: () => ({ single: () => Promise.resolve({ data: template, error: null }) }) }),
-                    }),
-                }
-            }
-            if (table === 'assigned_programs') {
-                return {
-                    update: () => {
-                        const chain: any = {
-                            eq: () => chain,
-                            in: () => Promise.resolve({ error: null }),
-                            then: (resolve: any) => Promise.resolve({ error: null }).then(resolve),
-                        }
-                        return chain
-                    },
-                    insert: () => ({
-                        select: () => ({ single: () => Promise.resolve({ data: { id: 'stub-program' }, error: null }) }),
-                    }),
-                }
-            }
-            if (table === 'workout_templates') {
-                return {
-                    select: () => ({
-                        eq: () => ({ order: () => Promise.resolve({ data: workouts, error: null }) }),
-                    }),
-                }
-            }
-            if (table === 'assigned_workouts') {
-                return {
-                    insert: () => ({
-                        select: () => ({ single: () => Promise.resolve({ data: { id: 'stub-workout' }, error: null }) }),
                     }),
                 }
             }
@@ -179,13 +151,9 @@ describe('POST /api/programs/assign', () => {
         expect(helperInput).not.toHaveProperty('outputSnapshot')
     })
 
-    it('templateId branch: proceeds without calling assignFromSnapshot', async () => {
-        sbCreate.mockReturnValue(
-            stubClientForHappyPrelude({
-                template: { id: TEMPLATE_ID, name: 'Web Template', description: null, duration_weeks: 4 },
-                workouts: [],
-            }),
-        )
+    it('templateId branch: delegates to the transactional RPC without calling assignFromSnapshot', async () => {
+        const client = stubClientForHappyPrelude({ template: { id: TEMPLATE_ID } })
+        sbCreate.mockReturnValue(client)
 
         const res = await POST(
             makeRequest({ studentId: STUDENT_ID, templateId: TEMPLATE_ID, startDate: new Date().toISOString() }),
@@ -194,16 +162,21 @@ describe('POST /api/programs/assign', () => {
         const body = await res.json()
         expect(body).toMatchObject({ success: true, programId: 'stub-program' })
         expect(assignHelper).not.toHaveBeenCalled()
+        expect(client.rpc).toHaveBeenCalledTimes(1)
+        expect(client.rpc).toHaveBeenCalledWith('assign_program_from_template', {
+            p_trainer_id: TRAINER_ID,
+            p_student_id: STUDENT_ID,
+            p_template_id: TEMPLATE_ID,
+            p_is_scheduled: false,
+            p_scheduled_start_date: null,
+            p_workout_schedule: null,
+            p_prescription_generation_id: null,
+        })
     })
 
     it('both templateId and generationId: templateId wins + warn is logged', async () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-        sbCreate.mockReturnValue(
-            stubClientForHappyPrelude({
-                template: { id: TEMPLATE_ID, name: 'Web Template', description: null, duration_weeks: 4 },
-                workouts: [],
-            }),
-        )
+        sbCreate.mockReturnValue(stubClientForHappyPrelude({ template: { id: TEMPLATE_ID } }))
 
         const res = await POST(
             makeRequest({

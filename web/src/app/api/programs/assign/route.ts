@@ -264,10 +264,10 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 3. Get template (filter by trainer_id to prevent assigning other trainers' templates)
+        // 3. Validate template exists (ownership re-checked in the RPC)
         const { data: template } = await supabase
             .from('program_templates')
-            .select('*')
+            .select('id')
             .eq('id', templateId)
             .eq('trainer_id', trainer.id)
             .single()
@@ -276,203 +276,23 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Template not found' }, { status: 404 })
         }
 
-        // 4. Handle immediate vs scheduled
-        let status = 'active'
-        let scheduledStartDate = null
-        let startedAt: string | null = new Date().toISOString()
+        // 4. Assign atomically — completar o programa vigente, criar o novo,
+        // copiar treinos/itens/séries e aprovar a geração IA acontece numa
+        // transação única no banco (migration 184). Falha em qualquer passo
+        // desfaz tudo; o aluno nunca fica sem programa válido.
+        const { data: programId, error: rpcError } = await supabase.rpc('assign_program_from_template', {
+            p_trainer_id: trainer.id,
+            p_student_id: studentId,
+            p_template_id: templateId,
+            p_is_scheduled: isScheduled,
+            p_scheduled_start_date: isScheduled ? (startDate ?? null) : null,
+            p_workout_schedule: workoutSchedule ?? null,
+            p_prescription_generation_id: prescriptionGenerationId ?? null,
+        })
 
-        if (isScheduled) {
-            status = 'scheduled'
-            scheduledStartDate = startDate
-            startedAt = null
-        } else {
-            // Complete current active program
-            await supabase
-                .from('assigned_programs')
-                .update({
-                    status: 'completed',
-                    completed_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('student_id', studentId)
-                .eq('status', 'active')
-        }
+        if (rpcError) throw rpcError
 
-        // 5. Create assigned program
-        const insertPayload: Record<string, any> = {
-            student_id: studentId,
-            trainer_id: trainer.id,
-            source_template_id: templateId,
-            name: template.name,
-            description: template.description,
-            duration_weeks: template.duration_weeks,
-            status,
-            started_at: startedAt,
-            scheduled_start_date: scheduledStartDate,
-            current_week: 1,
-        }
-
-        if (prescriptionGenerationId) {
-            insertPayload.ai_generated = true
-            insertPayload.prescription_generation_id = prescriptionGenerationId
-        }
-
-        const { data: assignedProgram, error: programError } = await supabase
-            .from('assigned_programs')
-            .insert(insertPayload)
-            .select('id')
-            .single()
-
-        if (programError) throw programError
-
-        // 6. Copy workouts and items
-        const { data: workouts } = await supabase
-            .from('workout_templates')
-            .select('*')
-            .eq('program_template_id', templateId)
-            .order('order_index')
-
-        if (workouts) {
-            for (const workout of workouts) {
-                let scheduledDays: number[] = []
-
-                if (workoutSchedule?.[workout.order_index]) {
-                    scheduledDays = workoutSchedule[workout.order_index]
-                } else if (workout.frequency && Array.isArray(workout.frequency)) {
-                    const dayMap: Record<string, number> = { 'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6 }
-                    scheduledDays = workout.frequency
-                        .map((d: string) => dayMap[d.toLowerCase()])
-                        .filter((d: number) => d !== undefined)
-                }
-
-                const { data: assignedWorkout, error: workoutError } = await supabase
-                    .from('assigned_workouts')
-                    .insert({
-                        assigned_program_id: assignedProgram.id,
-                        source_template_id: workout.id,
-                        name: workout.name,
-                        order_index: workout.order_index,
-                        scheduled_days: scheduledDays
-                    })
-                    .select('id')
-                    .single()
-
-                if (workoutError) throw workoutError
-
-                const { data: items } = await supabase
-                    .from('workout_item_templates')
-                    .select(`
-                        *,
-                        exercises (
-                            id, name, equipment,
-                            exercise_muscle_groups (
-                                muscle_groups (name)
-                            )
-                        )
-                    `)
-                    .eq('workout_template_id', workout.id)
-                    .order('order_index')
-
-                if (items) {
-                    const parentMap = new Map<string, string>()
-
-                    // First pass: root items
-                    const rootItems = items.filter((i: any) => !i.parent_item_id)
-                    for (const item of rootItems) {
-                        const exerciseName = (item as any).exercises?.name || null
-                        const exerciseEquipment = (item as any).exercises?.equipment || null
-                        let exerciseMuscleGroup = null
-                        if ((item as any).exercises?.exercise_muscle_groups) {
-                            const groups = (item as any).exercises.exercise_muscle_groups
-                                .map((emg: any) => emg.muscle_groups?.name)
-                                .filter(Boolean)
-                            if (groups.length > 0) exerciseMuscleGroup = groups.join(', ')
-                        }
-
-                        const { data: assignedItem, error: itemError } = await supabase
-                            .from('assigned_workout_items')
-                            .insert({
-                                assigned_workout_id: assignedWorkout.id,
-                                source_template_id: item.id,
-                                item_type: item.item_type,
-                                order_index: item.order_index,
-                                exercise_id: item.exercise_id,
-                                exercise_name: exerciseName,
-                                exercise_muscle_group: exerciseMuscleGroup,
-                                exercise_equipment: exerciseEquipment,
-                                sets: item.sets,
-                                reps: item.reps,
-                                rest_seconds: item.rest_seconds,
-                                notes: item.notes,
-                                substitute_exercise_ids: item.substitute_exercise_ids || [],
-                                exercise_function: item.exercise_function || null,
-                                item_config: item.item_config || {},
-                                parent_item_id: null
-                            })
-                            .select('id')
-                            .single()
-
-                        if (itemError) throw itemError
-                        parentMap.set(item.id, assignedItem.id)
-                    }
-
-                    // Second pass: child items (supersets)
-                    const childItems = items.filter((i: any) => i.parent_item_id)
-                    for (const item of childItems) {
-                        const parentAssignedId = parentMap.get((item as any).parent_item_id!)
-                        if (!parentAssignedId) continue
-
-                        const exerciseName = (item as any).exercises?.name || null
-                        const exerciseEquipment = (item as any).exercises?.equipment || null
-                        let exerciseMuscleGroup = null
-                        if ((item as any).exercises?.exercise_muscle_groups) {
-                            const groups = (item as any).exercises.exercise_muscle_groups
-                                .map((emg: any) => emg.muscle_groups?.name)
-                                .filter(Boolean)
-                            if (groups.length > 0) exerciseMuscleGroup = groups.join(', ')
-                        }
-
-                        const { error: childError } = await supabase
-                            .from('assigned_workout_items')
-                            .insert({
-                                assigned_workout_id: assignedWorkout.id,
-                                source_template_id: item.id,
-                                item_type: item.item_type,
-                                order_index: item.order_index,
-                                exercise_id: item.exercise_id,
-                                exercise_name: exerciseName,
-                                exercise_muscle_group: exerciseMuscleGroup,
-                                exercise_equipment: exerciseEquipment,
-                                sets: item.sets,
-                                reps: item.reps,
-                                rest_seconds: item.rest_seconds,
-                                notes: item.notes,
-                                substitute_exercise_ids: item.substitute_exercise_ids || [],
-                                exercise_function: item.exercise_function || null,
-                                item_config: item.item_config || {},
-                                parent_item_id: parentAssignedId
-                            })
-
-                        if (childError) throw childError
-                    }
-                }
-            }
-        }
-
-        // 7. Update prescription generation if AI-generated
-        if (prescriptionGenerationId) {
-            await supabase
-                .from('prescription_generations')
-                .update({
-                    status: 'approved',
-                    approved_at: new Date().toISOString(),
-                    assigned_program_id: assignedProgram.id,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', prescriptionGenerationId)
-        }
-
-        return NextResponse.json({ success: true, programId: assignedProgram.id })
+        return NextResponse.json({ success: true, programId })
 
     } catch (error: any) {
         console.error('[API] Error assigning program:', error)

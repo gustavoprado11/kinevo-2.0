@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
         // 5. Get template (only own templates)
         const { data: template } = await supabase
             .from("program_templates")
-            .select("*")
+            .select("id, name")
             .eq("id", templateId)
             .eq("trainer_id", trainer.id)
             .single();
@@ -108,249 +108,47 @@ Deno.serve(async (req: Request) => {
             });
         }
 
-        // 6. Handle immediate vs scheduled
-        let status = "active";
-        let scheduledStartDate: string | null = null;
-        let startedAt: string | null = new Date().toISOString();
+        // 6. Assign atomically — completar o programa vigente, criar o novo e
+        // copiar treinos/itens/séries acontece numa transação única no banco
+        // (migration 184). Falha em qualquer passo desfaz tudo; o aluno nunca
+        // fica sem programa válido nem com programa pela metade.
+        const { data: programId, error: rpcError } = await supabase.rpc(
+            "assign_program_from_template",
+            {
+                p_trainer_id: trainer.id,
+                p_student_id: studentId,
+                p_template_id: templateId,
+                p_is_scheduled: isScheduled,
+                p_scheduled_start_date: isScheduled ? startDate : null,
+                p_workout_schedule: workoutSchedule ?? null,
+            },
+        );
 
-        if (isScheduled) {
-            status = "scheduled";
-            scheduledStartDate = startDate;
-            startedAt = null;
-        } else {
-            // Complete current active program
-            await supabase
-                .from("assigned_programs")
-                .update({
-                    status: "completed",
-                    completed_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                })
-                .eq("student_id", studentId)
-                .eq("status", "active");
-        }
+        if (rpcError) throw rpcError;
 
-        // 7. Create assigned program
-        const expiresAt = startedAt && template.duration_weeks
-            ? new Date(new Date(startedAt).getTime() + template.duration_weeks * 7 * 24 * 60 * 60 * 1000).toISOString()
-            : null;
-
-        const { data: assignedProgram, error: programError } = await supabase
-            .from("assigned_programs")
-            .insert({
-                student_id: studentId,
-                trainer_id: trainer.id,
-                source_template_id: templateId,
-                name: template.name,
-                description: template.description,
-                duration_weeks: template.duration_weeks,
-                status,
-                started_at: startedAt,
-                scheduled_start_date: scheduledStartDate,
-                current_week: 1,
-                expires_at: expiresAt,
-            })
-            .select("id")
-            .single();
-
-        if (programError) throw programError;
-
-        // 8. Copy workouts and items
-        const { data: workouts } = await supabase
-            .from("workout_templates")
-            .select("*")
-            .eq("program_template_id", templateId)
-            .order("order_index");
-
-        if (workouts) {
-            for (const workout of workouts) {
-                let scheduledDays: number[] = [];
-
-                if (workoutSchedule?.[workout.order_index]) {
-                    scheduledDays = workoutSchedule[workout.order_index];
-                } else if (workout.frequency && Array.isArray(workout.frequency)) {
-                    const dayMap: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-                    scheduledDays = workout.frequency
-                        .map((d: string) => dayMap[d.toLowerCase()])
-                        .filter((d: number) => d !== undefined);
-                }
-
-                const { data: assignedWorkout, error: workoutError } = await supabase
-                    .from("assigned_workouts")
-                    .insert({
-                        assigned_program_id: assignedProgram.id,
-                        source_template_id: workout.id,
-                        name: workout.name,
-                        order_index: workout.order_index,
-                        scheduled_days: scheduledDays,
-                    })
-                    .select("id")
-                    .single();
-
-                if (workoutError) throw workoutError;
-
-                // Fetch items with exercise info + per-set scheme rows
-                // (`workout_item_set_templates`). The per-set rows are copied
-                // 1:1 into `assigned_workout_item_sets` after each root item
-                // is inserted. Supersets (V1) keep aggregate-only behaviour —
-                // they have no per-set children by design.
-                const { data: items } = await supabase
-                    .from("workout_item_templates")
-                    .select(`
-                        *,
-                        exercises (
-                            id, name, equipment,
-                            exercise_muscle_groups (
-                                muscle_groups (name)
-                            )
-                        ),
-                        workout_item_set_templates (
-                            set_number,
-                            set_type,
-                            reps,
-                            rest_seconds,
-                            weight_target_kg,
-                            weight_target_pct1rm,
-                            rir,
-                            tempo,
-                            notes,
-                            round_number
-                        )
-                    `)
-                    .eq("workout_template_id", workout.id)
-                    .order("order_index");
-
-                if (items) {
-                    const parentMap = new Map<string, string>();
-
-                    // First pass: root items
-                    const rootItems = items.filter((i: any) => !i.parent_item_id);
-                    for (const item of rootItems) {
-                        const exerciseName = (item as any).exercises?.name || null;
-                        const exerciseEquipment = (item as any).exercises?.equipment || null;
-                        let exerciseMuscleGroup = null;
-                        if ((item as any).exercises?.exercise_muscle_groups) {
-                            const groups = (item as any).exercises.exercise_muscle_groups
-                                .map((emg: any) => emg.muscle_groups?.name)
-                                .filter(Boolean);
-                            if (groups.length > 0) exerciseMuscleGroup = groups.join(", ");
-                        }
-
-                        const { data: assignedItem, error: itemError } = await supabase
-                            .from("assigned_workout_items")
-                            .insert({
-                                assigned_workout_id: assignedWorkout.id,
-                                source_template_id: item.id,
-                                item_type: item.item_type,
-                                order_index: item.order_index,
-                                exercise_id: item.exercise_id,
-                                exercise_name: exerciseName,
-                                exercise_muscle_group: exerciseMuscleGroup,
-                                exercise_equipment: exerciseEquipment,
-                                sets: item.sets,
-                                reps: item.reps,
-                                rest_seconds: item.rest_seconds,
-                                notes: item.notes,
-                                substitute_exercise_ids: item.substitute_exercise_ids || [],
-                                exercise_function: item.exercise_function || null,
-                                item_config: item.item_config || {},
-                                parent_item_id: null,
-                                method_key: (item as any).method_key ?? null,
-                                rounds: (item as any).rounds ?? 1,
-                            })
-                            .select("id")
-                            .single();
-
-                        if (itemError) throw itemError;
-                        parentMap.set(item.id, assignedItem.id);
-
-                        // Copy per-set scheme rows (Fase 4.1 / 4.3). Only
-                        // root items can have per-set rows — supersets (V1)
-                        // keep aggregate-only behaviour. Compound methods
-                        // (drop-set, cluster) ship the already-materialized
-                        // rows from workout_item_set_templates with their
-                        // round_number tag preserved.
-                        const setRows: any[] = (item as any).workout_item_set_templates || [];
-                        if (setRows.length > 0) {
-                            const setsPayload = setRows.map((s: any) => ({
-                                assigned_workout_item_id: assignedItem.id,
-                                set_number: s.set_number,
-                                set_type: s.set_type,
-                                reps: s.reps,
-                                rest_seconds: s.rest_seconds,
-                                weight_target_kg: s.weight_target_kg,
-                                weight_target_pct1rm: s.weight_target_pct1rm,
-                                rir: s.rir,
-                                tempo: s.tempo,
-                                notes: s.notes,
-                                round_number: s.round_number ?? null,
-                            }));
-                            const { error: setsError } = await supabase
-                                .from("assigned_workout_item_sets")
-                                .insert(setsPayload);
-                            if (setsError) throw setsError;
-                        }
-                    }
-
-                    // Second pass: child items (supersets)
-                    const childItems = items.filter((i: any) => i.parent_item_id);
-                    for (const item of childItems) {
-                        const parentAssignedId = parentMap.get((item as any).parent_item_id!);
-                        if (!parentAssignedId) continue;
-
-                        const exerciseName = (item as any).exercises?.name || null;
-                        const exerciseEquipment = (item as any).exercises?.equipment || null;
-                        let exerciseMuscleGroup = null;
-                        if ((item as any).exercises?.exercise_muscle_groups) {
-                            const groups = (item as any).exercises.exercise_muscle_groups
-                                .map((emg: any) => emg.muscle_groups?.name)
-                                .filter(Boolean);
-                            if (groups.length > 0) exerciseMuscleGroup = groups.join(", ");
-                        }
-
-                        const { error: childError } = await supabase
-                            .from("assigned_workout_items")
-                            .insert({
-                                assigned_workout_id: assignedWorkout.id,
-                                source_template_id: item.id,
-                                item_type: item.item_type,
-                                order_index: item.order_index,
-                                exercise_id: item.exercise_id,
-                                exercise_name: exerciseName,
-                                exercise_muscle_group: exerciseMuscleGroup,
-                                exercise_equipment: exerciseEquipment,
-                                sets: item.sets,
-                                reps: item.reps,
-                                rest_seconds: item.rest_seconds,
-                                notes: item.notes,
-                                substitute_exercise_ids: item.substitute_exercise_ids || [],
-                                exercise_function: item.exercise_function || null,
-                                item_config: item.item_config || {},
-                                parent_item_id: parentAssignedId,
-                                method_key: (item as any).method_key ?? null,
-                                rounds: (item as any).rounds ?? 1,
-                            });
-
-                        if (childError) throw childError;
-                    }
-                }
-            }
-        }
-
-        // 9. Notify student
-        if (status === "active") {
-            await supabase.from("student_notifications").insert({
+        // 7. Notify student — best-effort: a atribuição já está commitada,
+        // falha na notificação não deve virar erro para o caller.
+        // Tabela correta é student_inbox_items (o código antigo inseria em
+        // "student_notifications", que NÃO EXISTE — o erro era engolido e
+        // atribuições via mobile nunca notificavam o aluno). O AFTER INSERT
+        // trigger on_student_inbox_item_push dispara o push automaticamente.
+        if (!isScheduled) {
+            const { error: notifyError } = await supabase.from("student_inbox_items").insert({
                 student_id: studentId,
                 trainer_id: trainer.id,
                 type: "program_assigned",
+                status: "unread",
                 title: "Novo programa de treino!",
                 subtitle: `${template.name} está disponível no seu app.`,
-                payload: { program_id: assignedProgram.id, program_name: template.name },
+                payload: { program_id: programId, program_name: template.name },
             });
+            if (notifyError) {
+                console.error("[assign-program] notification failed:", notifyError);
+            }
         }
 
         return new Response(
-            JSON.stringify({ success: true, programId: assignedProgram.id }),
+            JSON.stringify({ success: true, programId }),
             {
                 status: 200,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },

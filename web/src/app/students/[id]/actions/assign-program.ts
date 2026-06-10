@@ -31,248 +31,34 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
 
         if (!trainer) throw new Error('Trainer not found')
 
-        // 2. Validate student ownership
-        const { data: student } = await supabase
-            .from('students')
-            .select('id')
-            .eq('id', studentId)
-            .eq('coach_id', trainer.id)
-            .single()
-
-        if (!student) throw new Error('Student not found or unauthorized')
-
-        // 3. Get template data (filter by trainer_id for security)
+        // 2. Get template name for the notification (ownership re-checked in the RPC)
         const { data: template } = await supabase
             .from('program_templates')
-            .select('*')
+            .select('id, name')
             .eq('id', templateId)
             .eq('trainer_id', trainer.id)
             .single()
 
         if (!template) throw new Error('Template not found')
 
-        // 4. Handle "Immediate" vs "Scheduled"
-        let status = 'active'
-        let scheduledStartDate = null
-        let startedAt: string | null = new Date().toISOString()
+        // 3. Assign atomically — completar o programa vigente, criar o novo,
+        // copiar treinos/itens/séries e aprovar a geração IA acontece numa
+        // transação única no banco (migration 184). Falha em qualquer passo
+        // desfaz tudo; o aluno nunca fica sem programa válido.
+        const { data: programId, error: rpcError } = await supabase.rpc('assign_program_from_template', {
+            p_trainer_id: trainer.id,
+            p_student_id: studentId,
+            p_template_id: templateId,
+            p_is_scheduled: isScheduled,
+            p_scheduled_start_date: isScheduled ? startDate : null,
+            p_workout_schedule: workoutSchedule ?? null,
+            p_prescription_generation_id: prescriptionGenerationId ?? null,
+        })
 
-        if (isScheduled) {
-            status = 'scheduled'
-            scheduledStartDate = startDate
-            startedAt = null // Will be set when activated
-        } else {
-            // Immediate assignment: Complete current active/expired program
-            await supabase
-                .from('assigned_programs')
-                .update({
-                    status: 'completed',
-                    completed_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('student_id', studentId)
-                .in('status', ['active', 'expired'])
-        }
+        if (rpcError) throw rpcError
 
-        // 5. Create Assigned Program
-        // Calculate expires_at for immediate programs with duration
-        const expiresAt = (startedAt && template.duration_weeks)
-            ? new Date(new Date(startedAt).getTime() + template.duration_weeks * 7 * 24 * 60 * 60 * 1000).toISOString()
-            : null
-
-        const insertPayload: Record<string, any> = {
-            student_id: studentId,
-            trainer_id: trainer.id,
-            source_template_id: templateId,
-            name: template.name,
-            description: template.description,
-            duration_weeks: template.duration_weeks,
-            status: status,
-            started_at: startedAt,
-            scheduled_start_date: scheduledStartDate,
-            current_week: 1,
-            expires_at: expiresAt,
-        }
-
-        // AI prescription metadata (columns from migration 036)
-        if (prescriptionGenerationId) {
-            insertPayload.ai_generated = true
-            insertPayload.prescription_generation_id = prescriptionGenerationId
-        }
-
-        const { data: assignedProgram, error: programError } = await supabase
-            .from('assigned_programs')
-            .insert(insertPayload)
-            .select('id')
-            .single()
-
-        if (programError) throw programError
-
-        // 6. Copy Workouts and Items
-        // Fetch original workouts
-        const { data: workouts } = await supabase
-            .from('workout_templates')
-            .select('*')
-            .eq('program_template_id', templateId)
-            .order('order_index')
-
-        if (workouts) {
-            for (const workout of workouts) {
-                // Determine scheduled days
-                let scheduledDays: number[] = []
-
-                // Priority 1: Direct schedule override (if provided)
-                if (workoutSchedule?.[workout.order_index]) {
-                    scheduledDays = workoutSchedule[workout.order_index]
-                }
-                // Priority 2: Template frequency
-                else if (workout.frequency && Array.isArray(workout.frequency)) {
-                    const dayMap: Record<string, number> = { 'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6 }
-                    scheduledDays = workout.frequency
-                        .map((d: string) => dayMap[d.toLowerCase()])
-                        .filter((d: number) => d !== undefined)
-                }
-
-                // Insert assigned workout
-                const { data: assignedWorkout, error: workoutError } = await supabase
-                    .from('assigned_workouts')
-                    .insert({
-                        assigned_program_id: assignedProgram.id,
-                        source_template_id: workout.id,
-                        name: workout.name,
-                        order_index: workout.order_index,
-                        // Keep weekdays in chronological order (0=Sun … 6=Sat) so the
-                        // student app renders them sorted regardless of click order.
-                        scheduled_days: [...scheduledDays].sort((a, b) => a - b)
-                    })
-                    .select('id')
-                    .single()
-
-                if (workoutError) throw workoutError
-
-                // Fetch items for this workout
-                // We fetch all items and reconstruct hierarchy
-                const { data: items } = await supabase
-                    .from('workout_item_templates')
-                    .select(`
-                        *,
-                        exercises (
-                            id, name, equipment,
-                            exercise_muscle_groups (
-                                muscle_groups (name)
-                            )
-                        )
-                    `)
-                    .eq('workout_template_id', workout.id)
-                    .order('order_index')
-
-                if (items) {
-                    // Map to handle parent-child relationships (supersets)
-                    const parentMap = new Map<string, string>()
-
-                    // First pass: Items without parents (Exercises or Superset containers)
-                    const rootItems = items.filter(i => !i.parent_item_id)
-
-                    for (const item of rootItems) {
-                        const exerciseName = item.exercises?.name || null
-                        const exerciseEquipment = item.exercises?.equipment || null
-
-                        // Extract muscle groups string
-                        let exerciseMuscleGroup = null
-                        if (item.exercises?.exercise_muscle_groups) {
-                            const groups = item.exercises.exercise_muscle_groups
-                                .map((emg: any) => emg.muscle_groups?.name)
-                                .filter(Boolean)
-                            if (groups.length > 0) exerciseMuscleGroup = groups.join(', ')
-                        }
-
-                        const { data: assignedItem, error: itemError } = await supabase
-                            .from('assigned_workout_items')
-                            .insert({
-                                assigned_workout_id: assignedWorkout.id,
-                                source_template_id: item.id,
-                                item_type: item.item_type,
-                                order_index: item.order_index,
-                                exercise_id: item.exercise_id,
-                                substitute_exercise_ids: item.substitute_exercise_ids || [],
-                                exercise_name: exerciseName,
-                                exercise_muscle_group: exerciseMuscleGroup,
-                                exercise_equipment: exerciseEquipment,
-                                sets: item.sets,
-                                reps: item.reps,
-                                rest_seconds: item.rest_seconds,
-                                notes: item.notes,
-                                exercise_function: item.exercise_function || null,
-                                item_config: item.item_config || {},
-                                parent_item_id: null
-                            })
-                            .select('id')
-                            .single()
-
-                        if (itemError) throw itemError
-
-                        parentMap.set(item.id, assignedItem.id)
-                    }
-
-                    // Second pass: Child items (items inside supersets)
-                    const childItems = items.filter(i => i.parent_item_id)
-
-                    for (const item of childItems) {
-                        const parentAssignedId = parentMap.get(item.parent_item_id!)
-                        if (!parentAssignedId) continue // Should not happen if data is consistent
-
-                        const exerciseName = item.exercises?.name || null
-                        const exerciseEquipment = item.exercises?.equipment || null
-                        let exerciseMuscleGroup = null
-                        if (item.exercises?.exercise_muscle_groups) {
-                            const groups = item.exercises.exercise_muscle_groups
-                                .map((emg: any) => emg.muscle_groups?.name)
-                                .filter(Boolean)
-                            if (groups.length > 0) exerciseMuscleGroup = groups.join(', ')
-                        }
-
-                        const { error: childItemError } = await supabase
-                            .from('assigned_workout_items')
-                            .insert({
-                                assigned_workout_id: assignedWorkout.id,
-                                source_template_id: item.id,
-                                item_type: item.item_type,
-                                order_index: item.order_index,
-                                exercise_id: item.exercise_id,
-                                substitute_exercise_ids: item.substitute_exercise_ids || [],
-                                exercise_name: exerciseName,
-                                exercise_muscle_group: exerciseMuscleGroup,
-                                exercise_equipment: exerciseEquipment,
-                                sets: item.sets,
-                                reps: item.reps,
-                                rest_seconds: item.rest_seconds,
-                                notes: item.notes,
-                                exercise_function: item.exercise_function || null,
-                                item_config: item.item_config || {},
-                                parent_item_id: parentAssignedId
-                            })
-
-                        if (childItemError) throw childItemError
-                    }
-                }
-            }
-        }
-
-        // 7. Update prescription generation if this was an AI-generated program
-        if (prescriptionGenerationId) {
-            // @ts-ignore — prescription_generations table from migration 035
-            await supabase
-                .from('prescription_generations')
-                .update({
-                    status: 'approved',
-                    approved_at: new Date().toISOString(),
-                    assigned_program_id: assignedProgram.id,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', prescriptionGenerationId)
-        }
-
-        // 8. Notify student (fire-and-forget)
-        if (status === 'active') {
+        // 4. Notify student (fire-and-forget)
+        if (!isScheduled) {
             const programName = template.name
             insertStudentNotification({
                 studentId,
@@ -280,20 +66,20 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
                 type: 'program_assigned',
                 title: 'Novo programa de treino!',
                 subtitle: `${programName} está disponível no seu app.`,
-                payload: { program_id: assignedProgram.id, program_name: programName },
+                payload: { program_id: programId, program_name: programName },
             }).then((inboxItemId) => {
                 sendStudentPush({
                     studentId,
                     title: 'Novo programa de treino!',
                     body: `${programName} está disponível no seu app.`,
                     inboxItemId: inboxItemId ?? undefined,
-                    data: { type: 'program_assigned', program_id: assignedProgram.id },
+                    data: { type: 'program_assigned', program_id: programId },
                 })
             })
         }
 
         revalidatePath(`/students/${studentId}`)
-        return { success: true, programId: assignedProgram.id }
+        return { success: true, programId: programId as string }
 
     } catch (error) {
         console.error('Error assigning program:', error)
