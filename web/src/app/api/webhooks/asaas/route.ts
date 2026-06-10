@@ -257,8 +257,19 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
                     .eq('id', contractId)
                     .is('asaas_subscription_id', null)
             }
-            // Registra no histórico do contrato (timeline do detalhe do aluno)
-            if (contract.student_id) {
+            // Registra no histórico do contrato (timeline do detalhe do aluno).
+            // Dedupe por paymentId: RECEIVED e CONFIRMED chegam como eventos
+            // distintos (ids diferentes) para o MESMO pagamento — o dedupe por
+            // event.id lá em cima não cobre esse caso.
+            const { data: existingEvent } = await supabaseAdmin
+                .from('contract_events')
+                .select('id')
+                .eq('contract_id', contractId)
+                .eq('event_type', 'payment_received')
+                .eq('metadata->>paymentId', payment.id)
+                .limit(1)
+                .maybeSingle()
+            if (contract.student_id && !existingEvent) {
                 await logContractEvent({
                     studentId: contract.student_id as string,
                     trainerId: contract.trainer_id as string,
