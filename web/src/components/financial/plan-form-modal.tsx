@@ -129,6 +129,10 @@ export function PlanFormModal({
             return
         }
 
+        // Clamp pelo valor: parcela mínima do Asaas é R$ 5 (o select já limita,
+        // mas o estado pode reter um valor antigo se o preço foi reduzido depois).
+        const effectiveMaxInstallments = Math.max(1, Math.min(maxInstallments, Math.floor(priceNum / 5)))
+
         setLoading(true)
 
         try {
@@ -143,7 +147,7 @@ export function PlanFormModal({
                     allowPix,
                     allowCreditCard,
                     allowBoleto,
-                    maxInstallmentCount: allowCreditCard ? maxInstallments : 1,
+                    maxInstallmentCount: allowCreditCard ? effectiveMaxInstallments : 1,
                 })
 
                 if (result.error) {
@@ -162,7 +166,7 @@ export function PlanFormModal({
                     allowPix,
                     allowCreditCard,
                     allowBoleto,
-                    maxInstallmentCount: allowCreditCard ? maxInstallments : 1,
+                    maxInstallmentCount: allowCreditCard ? effectiveMaxInstallments : 1,
                 })
 
                 if (result.error) {
@@ -342,31 +346,42 @@ export function PlanFormModal({
                             </p>
                         </div>
 
-                        {/* Parcelamento (só cartão de crédito) */}
-                        {allowCreditCard && (
-                            <div>
-                                <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
-                                    Parcelamento no cartão
-                                </label>
-                                <select
-                                    value={maxInstallments}
-                                    onChange={(e) => setMaxInstallments(Number(e.target.value))}
-                                    className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-k-text-primary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
-                                >
-                                    <option value={1}>Não parcelar (à vista)</option>
-                                    {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
-                                        <option key={n} value={n}>
-                                            Em até {n}x
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="mt-1.5 text-[11px] text-k-text-quaternary">
-                                    {maxInstallments > 1
-                                        ? `O aluno poderá dividir no cartão em até ${maxInstallments}x. As parcelas seguintes são cobradas pelo Asaas no cartão dele.`
-                                        : 'Pagamento à vista. Ative para permitir que o aluno divida no cartão.'}
-                                </p>
-                            </div>
-                        )}
+                        {/* Parcelamento (só cartão de crédito). O Asaas exige
+                            parcela mínima de R$ 5 — o valor do plano limita o
+                            nº de opções (R$ 5,00 não parcela; R$ 20 vai até 4x). */}
+                        {allowCreditCard && (() => {
+                            const priceNum = parseFloat(price.replace(',', '.'))
+                            const byValue = isNaN(priceNum) || priceNum <= 0
+                                ? 12
+                                : Math.floor(priceNum / 5)
+                            const capByValue = Math.min(12, byValue)
+                            return (
+                                <div>
+                                    <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">
+                                        Parcelamento no cartão
+                                    </label>
+                                    <select
+                                        value={Math.min(maxInstallments, Math.max(1, capByValue))}
+                                        onChange={(e) => setMaxInstallments(Number(e.target.value))}
+                                        className="w-full rounded-xl border border-k-border-subtle bg-glass-bg px-4 py-3 text-k-text-primary focus:outline-none focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/20 transition-all text-sm"
+                                    >
+                                        <option value={1}>Não parcelar (à vista)</option>
+                                        {Array.from({ length: Math.max(0, capByValue - 1) }, (_, i) => i + 2).map((n) => (
+                                            <option key={n} value={n}>
+                                                Em até {n}x
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="mt-1.5 text-[11px] text-k-text-quaternary">
+                                        {capByValue < 2
+                                            ? `Valor abaixo de R$ 10,00 não pode ser parcelado (parcela mínima do Asaas: R$ 5,00).`
+                                            : maxInstallments > 1
+                                                ? `O aluno poderá dividir no cartão em até ${Math.min(maxInstallments, capByValue)}x. As parcelas seguintes são cobradas pelo Asaas no cartão dele.`
+                                                : 'Pagamento à vista. Ative para permitir que o aluno divida no cartão.'}
+                                    </p>
+                                </div>
+                            )
+                        })()}
 
                         {/* Simulação de taxas */}
                         <FeesSimulationCard

@@ -40,6 +40,8 @@ type ChargeMode = 'one_off' | 'recurring' | 'installment'
 
 /** Teto absoluto de parcelas suportado pelo Asaas. */
 const MAX_INSTALLMENTS = 12
+/** Parcela mínima aceita pelo Asaas (espelha o guard do /api/wallet/charges). */
+const MIN_INSTALLMENT_VALUE = 5
 
 interface CobrarCarteiraModalProps {
     isOpen: boolean
@@ -113,10 +115,15 @@ export function CobrarCarteiraModal({
 
     // Teto de parcelas do plano selecionado (default do plano, treinador pode
     // ajustar pra baixo). Se o plano não permite parcelar (1), libera até o teto
-    // absoluto pra cobrança ad-hoc.
+    // absoluto pra cobrança ad-hoc. Em qualquer caso, o Asaas exige parcela
+    // mínima de R$ 5 — o valor do plano também limita o nº de parcelas.
     const planInstallmentCap = useMemo(() => {
         const cap = selectedPlan?.max_installment_count ?? 1
-        return cap > 1 ? Math.min(cap, MAX_INSTALLMENTS) : MAX_INSTALLMENTS
+        const byPlan = cap > 1 ? Math.min(cap, MAX_INSTALLMENTS) : MAX_INSTALLMENTS
+        const byValue = selectedPlan
+            ? Math.floor(Number(selectedPlan.price) / MIN_INSTALLMENT_VALUE)
+            : MAX_INSTALLMENTS
+        return Math.max(1, Math.min(byPlan, byValue))
     }, [selectedPlan])
 
     const allowedMethods = useMemo(() => {
@@ -142,7 +149,7 @@ export function CobrarCarteiraModal({
     }, [planId, mode])
 
     const canSubmit = !loading && studentId && planId && dueDate && selectedPlan
-        && (mode !== 'installment' || installments >= 2)
+        && (mode !== 'installment' || (installments >= 2 && planInstallmentCap >= 2))
 
     if (!isOpen) return null
 
@@ -393,7 +400,14 @@ export function CobrarCarteiraModal({
                 </div>
 
                 {/* Nº de parcelas (modo parcelado) */}
-                {mode === 'installment' && (
+                {mode === 'installment' && planInstallmentCap < 2 && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-snug">
+                        {selectedPlan
+                            ? `O valor de ${formatBRL(Number(selectedPlan.price))} não pode ser parcelado — a parcela mínima do Asaas é ${formatBRL(MIN_INSTALLMENT_VALUE)}. Use a cobrança avulsa.`
+                            : 'Selecione um plano para parcelar.'}
+                    </p>
+                )}
+                {mode === 'installment' && planInstallmentCap >= 2 && (
                     <div>
                         <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">Parcelar em</label>
                         <select

@@ -52,6 +52,14 @@ interface ChargeBody {
 /** Teto absoluto de parcelas aceito (alinhado ao limite do Asaas/UI). */
 const MAX_INSTALLMENTS = 12
 
+/**
+ * Valor mínimo de cada parcela aceito pelo Asaas. Confirmado empiricamente
+ * (10/06/2026): POST /paymentLinks com value=5 e maxInstallmentCount=2
+ * retorna 400 "O valor informado (R$ 5,00) só pode ser parcelado em até 1
+ * vezes".
+ */
+const MIN_INSTALLMENT_VALUE = 5
+
 function validate(body: ChargeBody): string | null {
     if (!body.studentId) return 'studentId é obrigatório'
     if (typeof body.value !== 'number' || body.value <= 0) return 'value deve ser número positivo'
@@ -75,6 +83,7 @@ interface PlanRow {
     allow_pix?: boolean | null
     allow_credit_card?: boolean | null
     allow_boleto?: boolean | null
+    max_installment_count?: number | null
 }
 
 /**
@@ -153,7 +162,7 @@ export async function POST(request: NextRequest) {
         if (body.planId) {
             const { data } = await supabaseAdmin
                 .from('trainer_plans')
-                .select('title, allow_pix, allow_credit_card, allow_boleto')
+                .select('title, allow_pix, allow_credit_card, allow_boleto, max_installment_count')
                 .eq('id', body.planId)
                 .eq('trainer_id', trainer.id)
                 .maybeSingle()
@@ -164,10 +173,31 @@ export async function POST(request: NextRequest) {
             studentName: student.name ?? 'Aluno',
             planTitle: plan?.title ?? 'Consultoria',
         })
-        // Parcelamento: >=2 parcelas → INSTALLMENT no cartão. O aluno escolhe de
-        // 1 a N no checkout. PIX/boleto não parcelam, então força CREDIT_CARD.
-        const isInstallment = (body.installments ?? 1) >= 2
-        const billingType: AsaasBillingType = isInstallment
+        // Parcelamento. Duas origens, nesta ordem:
+        //   1. body.installments (modo "Parcelada" explícito no modal) — força
+        //      CREDIT_CARD, comportamento original.
+        //   2. plano com max_installment_count > 1 — o "Em até Nx" configurado
+        //      no plano flui pro link automaticamente. billingType derivado do
+        //      plano (UNDEFINED = aluno escolhe PIX à vista OU cartão em até
+        //      Nx no checkout; combinação INSTALLMENT+UNDEFINED validada na
+        //      API em 10/06/2026).
+        // Em ambos, o Asaas exige parcela mínima de R$ 5 — capamos o nº de
+        // parcelas pelo valor; no modo explícito, valor insuficiente é 400
+        // amigável (em vez do erro críptico do Asaas).
+        const maxByValue = Math.floor(body.value! / MIN_INSTALLMENT_VALUE)
+        const explicitInstallments = (body.installments ?? 1) >= 2
+        if (explicitInstallments && maxByValue < 2) {
+            return NextResponse.json({
+                error: `Valor de R$ ${body.value!.toFixed(2).replace('.', ',')} não pode ser parcelado: a parcela mínima do Asaas é R$ ${MIN_INSTALLMENT_VALUE},00.`,
+            }, { status: 400 })
+        }
+        const planCap = plan?.max_installment_count ?? 1
+        const requestedInstallments = explicitInstallments
+            ? body.installments!
+            : planCap
+        const effectiveInstallments = Math.min(requestedInstallments, maxByValue, MAX_INSTALLMENTS)
+        const isInstallment = effectiveInstallments >= 2
+        const billingType: AsaasBillingType = explicitInstallments
             ? 'CREDIT_CARD'
             : (body.billingType ?? deriveBillingType(plan))
         const dueDateLimitDays = dueDateToLimitDays(body.dueDate!)
@@ -185,7 +215,7 @@ export async function POST(request: NextRequest) {
                 billing_type: 'asaas_auto',
                 status: 'pending_payment',
                 start_date: body.dueDate!,
-                installment_count: isInstallment ? body.installments : null,
+                installment_count: isInstallment ? effectiveInstallments : null,
             })
             .select('id')
             .single()
@@ -205,7 +235,7 @@ export async function POST(request: NextRequest) {
                     value: body.value!,
                     billingType,
                     chargeType: isInstallment ? 'INSTALLMENT' : 'DETACHED',
-                    maxInstallmentCount: isInstallment ? body.installments : undefined,
+                    maxInstallmentCount: isInstallment ? effectiveInstallments : undefined,
                     dueDateLimitDays,
                     notificationEnabled: false,  // Kinevo controla notif por push
                     split,
@@ -235,7 +265,7 @@ export async function POST(request: NextRequest) {
                 amount: body.value,
                 billingType,
                 kind: isInstallment ? 'installment' : 'one_off',
-                ...(isInstallment ? { installments: body.installments } : {}),
+                ...(isInstallment ? { installments: effectiveInstallments } : {}),
             },
         })
 
