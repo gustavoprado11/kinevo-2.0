@@ -39,163 +39,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ambassador_events: {
-        Row: {
-          ambassador_id: string
-          commission_id: string | null
-          created_at: string
-          event_type: string
-          id: string
-          payload: Json
-          payout_id: string | null
-          referral_id: string | null
-        }
-        Insert: {
-          ambassador_id: string
-          commission_id?: string | null
-          created_at?: string
-          event_type: string
-          id?: string
-          payload?: Json
-          payout_id?: string | null
-          referral_id?: string | null
-        }
-        Update: {
-          ambassador_id?: string
-          commission_id?: string | null
-          created_at?: string
-          event_type?: string
-          id?: string
-          payload?: Json
-          payout_id?: string | null
-          referral_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ambassador_events_ambassador_id_fkey"
-            columns: ["ambassador_id"]
-            isOneToOne: false
-            referencedRelation: "ambassadors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ambassador_events_commission_id_fkey"
-            columns: ["commission_id"]
-            isOneToOne: false
-            referencedRelation: "commissions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ambassador_events_payout_id_fkey"
-            columns: ["payout_id"]
-            isOneToOne: false
-            referencedRelation: "ambassador_payouts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ambassador_events_referral_id_fkey"
-            columns: ["referral_id"]
-            isOneToOne: false
-            referencedRelation: "referrals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ambassador_payouts: {
-        Row: {
-          ambassador_id: string
-          amount_cents: number
-          created_at: string
-          failure_reason: string | null
-          id: string
-          paid_at: string | null
-          status: string
-          stripe_transfer_id: string | null
-        }
-        Insert: {
-          ambassador_id: string
-          amount_cents: number
-          created_at?: string
-          failure_reason?: string | null
-          id?: string
-          paid_at?: string | null
-          status?: string
-          stripe_transfer_id?: string | null
-        }
-        Update: {
-          ambassador_id?: string
-          amount_cents?: number
-          created_at?: string
-          failure_reason?: string | null
-          id?: string
-          paid_at?: string | null
-          status?: string
-          stripe_transfer_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ambassador_payouts_ambassador_id_fkey"
-            columns: ["ambassador_id"]
-            isOneToOne: false
-            referencedRelation: "ambassadors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ambassadors: {
-        Row: {
-          commission_rate: number
-          created_at: string
-          display_name: string
-          email_normalized: string
-          id: string
-          instagram_handle: string | null
-          promotion_code: string
-          status: string
-          stripe_connect_account_id: string | null
-          stripe_coupon_id: string
-          stripe_promotion_code_id: string
-          terminated_at: string | null
-          termination_reason: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          commission_rate?: number
-          created_at?: string
-          display_name: string
-          email_normalized: string
-          id?: string
-          instagram_handle?: string | null
-          promotion_code: string
-          status?: string
-          stripe_connect_account_id?: string | null
-          stripe_coupon_id: string
-          stripe_promotion_code_id: string
-          terminated_at?: string | null
-          termination_reason?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          commission_rate?: number
-          created_at?: string
-          display_name?: string
-          email_normalized?: string
-          id?: string
-          instagram_handle?: string | null
-          promotion_code?: string
-          status?: string
-          stripe_connect_account_id?: string | null
-          stripe_coupon_id?: string
-          stripe_promotion_code_id?: string
-          terminated_at?: string | null
-          termination_reason?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       android_tester_queue: {
         Row: {
           added_at: string | null
@@ -863,79 +706,6 @@ export type Database = {
         }
         Relationships: []
       }
-      commissions: {
-        Row: {
-          ambassador_id: string
-          available_at: string
-          commission_amount_cents: number
-          created_at: string
-          gross_amount_cents: number
-          id: string
-          invoice_paid_at: string
-          paid_at: string | null
-          payout_id: string | null
-          referral_id: string
-          reversed_reason: string | null
-          status: string
-          stripe_invoice_id: string
-          stripe_transfer_id: string | null
-        }
-        Insert: {
-          ambassador_id: string
-          available_at: string
-          commission_amount_cents: number
-          created_at?: string
-          gross_amount_cents: number
-          id?: string
-          invoice_paid_at: string
-          paid_at?: string | null
-          payout_id?: string | null
-          referral_id: string
-          reversed_reason?: string | null
-          status?: string
-          stripe_invoice_id: string
-          stripe_transfer_id?: string | null
-        }
-        Update: {
-          ambassador_id?: string
-          available_at?: string
-          commission_amount_cents?: number
-          created_at?: string
-          gross_amount_cents?: number
-          id?: string
-          invoice_paid_at?: string
-          paid_at?: string | null
-          payout_id?: string | null
-          referral_id?: string
-          reversed_reason?: string | null
-          status?: string
-          stripe_invoice_id?: string
-          stripe_transfer_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commissions_ambassador_id_fkey"
-            columns: ["ambassador_id"]
-            isOneToOne: false
-            referencedRelation: "ambassadors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commissions_payout_id_fkey"
-            columns: ["payout_id"]
-            isOneToOne: false
-            referencedRelation: "ambassador_payouts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commissions_referral_id_fkey"
-            columns: ["referral_id"]
-            isOneToOne: false
-            referencedRelation: "referrals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       concierge_requests: {
         Row: {
           channel: string
@@ -1487,10 +1257,16 @@ export type Database = {
           amount_net: number
           asaas_payment_id: string | null
           coach_id: string
+          contract_id: string | null
           created_at: string
+          credit_date: string | null
           currency: string
           description: string | null
+          estimated_credit_date: string | null
           id: string
+          installment_number: number | null
+          installment_total: number | null
+          payment_method: string | null
           processed_at: string | null
           provider: Database["public"]["Enums"]["payment_provider"]
           status: string
@@ -1504,10 +1280,16 @@ export type Database = {
           amount_net: number
           asaas_payment_id?: string | null
           coach_id: string
+          contract_id?: string | null
           created_at?: string
+          credit_date?: string | null
           currency?: string
           description?: string | null
+          estimated_credit_date?: string | null
           id?: string
+          installment_number?: number | null
+          installment_total?: number | null
+          payment_method?: string | null
           processed_at?: string | null
           provider?: Database["public"]["Enums"]["payment_provider"]
           status: string
@@ -1521,10 +1303,16 @@ export type Database = {
           amount_net?: number
           asaas_payment_id?: string | null
           coach_id?: string
+          contract_id?: string | null
           created_at?: string
+          credit_date?: string | null
           currency?: string
           description?: string | null
+          estimated_credit_date?: string | null
           id?: string
+          installment_number?: number | null
+          installment_total?: number | null
+          payment_method?: string | null
           processed_at?: string | null
           provider?: Database["public"]["Enums"]["payment_provider"]
           status?: string
@@ -1533,7 +1321,15 @@ export type Database = {
           student_id?: string | null
           type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "student_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       form_schedules: {
         Row: {
@@ -3004,62 +2800,6 @@ export type Database = {
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      referrals: {
-        Row: {
-          ambassador_id: string
-          created_at: string
-          first_paid_at: string | null
-          flagged_reason: string | null
-          id: string
-          last_invoice_paid_at: string | null
-          promotion_code_used: string
-          referred_user_id: string
-          status: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
-          subscription_canceled_at: string | null
-          updated_at: string
-        }
-        Insert: {
-          ambassador_id: string
-          created_at?: string
-          first_paid_at?: string | null
-          flagged_reason?: string | null
-          id?: string
-          last_invoice_paid_at?: string | null
-          promotion_code_used: string
-          referred_user_id: string
-          status?: string
-          stripe_customer_id: string
-          stripe_subscription_id: string
-          subscription_canceled_at?: string | null
-          updated_at?: string
-        }
-        Update: {
-          ambassador_id?: string
-          created_at?: string
-          first_paid_at?: string | null
-          flagged_reason?: string | null
-          id?: string
-          last_invoice_paid_at?: string | null
-          promotion_code_used?: string
-          referred_user_id?: string
-          status?: string
-          stripe_customer_id?: string
-          stripe_subscription_id?: string
-          subscription_canceled_at?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "referrals_ambassador_id_fkey"
-            columns: ["ambassador_id"]
-            isOneToOne: false
-            referencedRelation: "ambassadors"
             referencedColumns: ["id"]
           },
         ]
@@ -4753,6 +4493,18 @@ export type Database = {
           p_student_ids: string[]
         }
         Returns: Json
+      }
+      assign_program_from_template: {
+        Args: {
+          p_is_scheduled?: boolean
+          p_prescription_generation_id?: string
+          p_scheduled_start_date?: string
+          p_student_id: string
+          p_template_id: string
+          p_trainer_id: string
+          p_workout_schedule?: Json
+        }
+        Returns: string
       }
       assign_program_to_student: {
         Args: {
