@@ -226,7 +226,7 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
         const contractId = recordContractId
         const { data: contract } = await supabaseAdmin
             .from('student_contracts')
-            .select('trainer_id, student_id')
+            .select('trainer_id, student_id, installment_count')
             .eq('id', contractId)
             .maybeSingle()
         if (contract) {
@@ -243,7 +243,17 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
                     type: 'charge',
                     status: 'completed',
                     processed_at: new Date().toISOString(),
-                    description: payment.billingType,
+                    // Campos de clareza pro Financeiro (migration 185):
+                    // método, parcela N de M e quando libera pra saque.
+                    description: payment.description ?? payment.billingType,
+                    payment_method: payment.billingType,
+                    installment_number: payment.installmentNumber ?? null,
+                    installment_total: payment.installmentNumber != null
+                        ? (contract.installment_count ?? null)
+                        : null,
+                    estimated_credit_date: payment.estimatedCreditDate ?? null,
+                    credit_date: payment.creditDate ?? null,
+                    contract_id: contractId,
                 }, { onConflict: 'asaas_payment_id' })
             if (upsertErr) {
                 console.error('[asaas-webhook] upsert transaction failed:', upsertErr)

@@ -75,10 +75,27 @@ export default async function FinancialPage() {
     // Fetch recent transactions
     const { data: recentTransactions } = await supabaseAdmin
         .from('financial_transactions')
-        .select('id, amount_gross, amount_net, currency, type, status, description, created_at, student_id')
+        .select('id, amount_gross, amount_net, currency, type, status, description, created_at, student_id, payment_method, installment_number, installment_total, estimated_credit_date, credit_date, contract_id')
         .eq('coach_id', trainer.id)
         .order('created_at', { ascending: false })
         .limit(10)
+
+    // "A liberar": pagamentos confirmados cujo crédito ainda não liquidou
+    // (cartão libera ~D+30 por parcela; PIX é mesmo dia). Soma o LÍQUIDO —
+    // é o que de fato vai entrar no saldo sacável.
+    const todayISO = new Date().toISOString().slice(0, 10)
+    const { data: pendingReleaseRows } = await supabaseAdmin
+        .from('financial_transactions')
+        .select('amount_net, credit_date')
+        .eq('coach_id', trainer.id)
+        .in('status', ['succeeded', 'completed'])
+        .gt('credit_date', todayISO)
+    const pendingReleaseTotal = (pendingReleaseRows ?? []).reduce(
+        (sum, t) => sum + (t.amount_net ?? 0), 0
+    )
+    const pendingReleaseNextDate = (pendingReleaseRows ?? [])
+        .map(t => t.credit_date as string)
+        .sort()[0] ?? null
 
     // Fetch pending Payment Links (cobrança gerada mas ainda não paga). A
     // gente mostra esses na mesma timeline pra trainer ver "tem 3 cobranças
@@ -126,8 +143,21 @@ export default async function FinancialPage() {
         }
     }
 
+    // Contratos das transações → plan_id (pra mostrar "Aluno · Plano")
+    const txContractIdSet = new Set<string>()
+    for (const t of recentTransactions ?? []) if (t.contract_id) txContractIdSet.add(t.contract_id)
+    const contractPlanMap: Record<string, string | null> = {}
+    if (txContractIdSet.size > 0) {
+        const { data: txContracts } = await supabaseAdmin
+            .from('student_contracts')
+            .select('id, plan_id')
+            .in('id', Array.from(txContractIdSet))
+        if (txContracts) for (const c of txContracts) contractPlanMap[c.id] = c.plan_id
+    }
+
     const planIdSet = new Set<string>()
     for (const c of pendingLinks ?? []) if (c.plan_id) planIdSet.add(c.plan_id)
+    for (const pid of Object.values(contractPlanMap)) if (pid) planIdSet.add(pid)
     const planTitleMap: Record<string, string> = {}
     if (planIdSet.size > 0) {
         const { data: ps } = await supabaseAdmin
@@ -240,6 +270,9 @@ export default async function FinancialPage() {
                 ...(recentTransactions ?? []).map(tx => ({
                     ...tx,
                     studentName: tx.student_id ? studentNameMap[tx.student_id] || null : null,
+                    planTitle: tx.contract_id
+                        ? (contractPlanMap[tx.contract_id] ? planTitleMap[contractPlanMap[tx.contract_id]!] ?? null : null)
+                        : null,
                     paymentLinkUrl: null as string | null,
                     contractId: null as string | null,
                 })),
@@ -262,6 +295,7 @@ export default async function FinancialPage() {
             walletStatus={walletSummary.status}
             walletMode={walletSummary.mode}
             walletBalance={walletBalance}
+            pendingRelease={{ total: pendingReleaseTotal, nextDate: pendingReleaseNextDate }}
             walletRejectionReason={walletSummary.rejectionReason ?? null}
             hasStripeLegacyContracts={hasStripeLegacyContracts}
             awaitingAuthPayouts={awaitingAuthPayouts}

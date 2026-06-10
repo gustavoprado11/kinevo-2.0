@@ -47,6 +47,15 @@ interface Transaction {
     paymentLinkUrl?: string | null
     /** contract_id local pra ações tipo cancelar a cobrança pending. */
     contractId?: string | null
+    /** Título do plano (via contrato) — "Aluno · Plano" na atividade. */
+    planTitle?: string | null
+    /** PIX | CREDIT_CARD | BOLETO (billingType do Asaas). */
+    payment_method?: string | null
+    installment_number?: number | null
+    installment_total?: number | null
+    /** Quando o valor libera pra saque (YYYY-MM-DD). */
+    credit_date?: string | null
+    estimated_credit_date?: string | null
 }
 
 interface ModalStudent {
@@ -81,6 +90,8 @@ interface FinancialDashboardClientProps {
     courtesyCount: number
     attentionStudents: FinancialStudent[]
     recentTransactions: Transaction[]
+    /** Soma líquida confirmada que ainda não liquidou (cartão D+30) + próxima data. */
+    pendingRelease?: { total: number; nextDate: string | null }
     plansCount: number
     students: ModalStudent[]
     activePlans: ModalPlan[]
@@ -150,8 +161,30 @@ function daysOverdue(dateStr: string | null): number {
     return Math.max(0, Math.floor(diff / 86400000))
 }
 
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+    PIX: 'PIX',
+    CREDIT_CARD: 'Cartão',
+    BOLETO: 'Boleto',
+    UNDEFINED: '',
+}
+
+/** "13/07" a partir de YYYY-MM-DD sem sofrer com fuso. */
+function shortDate(iso: string): string {
+    const [, m, d] = iso.split('-')
+    return `${d}/${m}`
+}
+
+/** Linha de liberação pra saque: disponível ✓ ou "libera DD/MM". */
+function releaseInfo(tx: Transaction): { available: boolean; date: string } | null {
+    const credit = tx.credit_date ?? tx.estimated_credit_date
+    if (!credit || tx.type === 'payout') return null
+    const today = new Date().toISOString().slice(0, 10)
+    return { available: credit <= today, date: shortDate(credit) }
+}
+
 function cleanDescription(tx: Transaction): string {
     if (tx.studentName) {
+        if (tx.planTitle) return `${tx.studentName} · ${tx.planTitle}`
         const match = tx.description?.match(/× (.+?) \(/)
         const planName = match ? match[1] : null
         return planName ? `${tx.studentName} — ${planName}` : tx.studentName
@@ -180,6 +213,7 @@ export function FinancialDashboardClient({
     courtesyCount,
     attentionStudents,
     recentTransactions,
+    pendingRelease,
     plansCount,
     students,
     activePlans,
@@ -390,6 +424,15 @@ export function FinancialDashboardClient({
                                 <p className="text-3xl sm:text-4xl font-semibold text-[#1D1D1F] dark:text-k-text-primary tabular-nums tracking-tight">
                                     {walletBalance !== null ? formatCurrency(walletBalance) : '—'}
                                 </p>
+                                {pendingRelease && pendingRelease.total > 0 && (
+                                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-[#6E6E73] dark:text-k-text-secondary">
+                                        <Clock size={11} className="text-[#FF9500] dark:text-amber-400" />
+                                        A liberar: <span className="font-semibold tabular-nums">{formatCurrency(pendingRelease.total)}</span>
+                                        {pendingRelease.nextDate && (
+                                            <span className="text-[#86868B] dark:text-k-text-tertiary">· próxima em {shortDate(pendingRelease.nextDate)}</span>
+                                        )}
+                                    </p>
+                                )}
                                 <Link
                                     href="/financial/wallet"
                                     className="mt-2 inline-flex items-center gap-1 text-xs text-[#86868B] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary"
@@ -654,7 +697,7 @@ export function FinancialDashboardClient({
                                                         <p className="text-sm text-[#1D1D1F] dark:text-k-text-primary truncate">
                                                             {cleanDescription(tx)}
                                                         </p>
-                                                        <p className="text-xs text-[#8E8E93] dark:text-k-text-quaternary mt-0.5 flex items-center gap-1.5">
+                                                        <p className="text-xs text-[#8E8E93] dark:text-k-text-quaternary mt-0.5 flex items-center gap-1.5 flex-wrap">
                                                             {isPendingLink && <Clock size={10} className="text-[#FF9500] dark:text-amber-400" />}
                                                             {isPendingLink ? (
                                                                 <>
@@ -664,7 +707,33 @@ export function FinancialDashboardClient({
                                                                     <span>· {timeAgo(tx.created_at)}</span>
                                                                 </>
                                                             ) : (
-                                                                timeAgo(tx.created_at)
+                                                                <>
+                                                                    {tx.payment_method && PAYMENT_METHOD_LABEL[tx.payment_method] && (
+                                                                        <span>{PAYMENT_METHOD_LABEL[tx.payment_method]} ·</span>
+                                                                    )}
+                                                                    {tx.installment_number != null && (
+                                                                        <span className="font-medium text-[#6E6E73] dark:text-k-text-tertiary">
+                                                                            parcela {tx.installment_number}{tx.installment_total ? ` de ${tx.installment_total}` : ''} ·
+                                                                        </span>
+                                                                    )}
+                                                                    {tx.amount_net != null && tx.amount_net !== tx.amount_gross && tx.type !== 'payout' && (
+                                                                        <span>líquido {formatCurrency(tx.amount_net)} ·</span>
+                                                                    )}
+                                                                    <span>{timeAgo(tx.created_at)}</span>
+                                                                    {(() => {
+                                                                        const rel = releaseInfo(tx)
+                                                                        if (!rel) return null
+                                                                        return rel.available ? (
+                                                                            <span className="inline-flex items-center gap-1 text-[#34C759] dark:text-emerald-400">
+                                                                                <Check size={10} strokeWidth={3} /> disponível
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="inline-flex items-center gap-1 text-[#FF9500] dark:text-amber-400">
+                                                                                <Clock size={10} /> libera {rel.date}
+                                                                            </span>
+                                                                        )
+                                                                    })()}
+                                                                </>
                                                             )}
                                                         </p>
                                                     </div>

@@ -132,6 +132,12 @@ export interface AsaasPayment {
     installment?: string | null
     /** Nº desta parcela dentro do parcelamento (1-based), quando disponível. */
     installmentNumber?: number | null
+    /** Descrição da cobrança no Asaas (ex.: "Parcela 1 de 2. Teste"). */
+    description?: string | null
+    /** Previsão de liberação pra saque (YYYY-MM-DD). Cartão ~D+30/parcela. */
+    estimatedCreditDate?: string | null
+    /** Liberação confirmada pra saque (YYYY-MM-DD). PIX = mesmo dia. */
+    creditDate?: string | null
 }
 
 // ---------------------------------------------------------------------------
