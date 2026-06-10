@@ -14,7 +14,7 @@ vi.mock('@/actions/insights', () => ({
     deletePinnedNote: vi.fn().mockResolvedValue({ success: true }),
 }))
 
-const mockInsights = await import('@/actions/insights') as {
+const mockInsights = await import('@/actions/insights') as unknown as {
     markInsightRead: ReturnType<typeof vi.fn>
     dismissInsight: ReturnType<typeof vi.fn>
     createPinnedNote: ReturnType<typeof vi.fn>

@@ -202,10 +202,12 @@ describe('SetSchemeTable', () => {
         expect(screen.queryByText(/adicionar série/i)).toBeNull()
     })
 
-    it('renders the structure summary pill at the TOP when rounds > 1', () => {
-        // Fase 4.5d §5: footer "Aluno verá: ..." was removed; the same info
-        // (rounds × phases = total) now lives in the summary pill at the top
-        // of the section so the trainer sees it BEFORE editing the table.
+    it('renders the rounds structure at the TOP for compound methods (title + stepper)', () => {
+        // Redesign (519ee80): the summary pill ("3 rodadas × 3 fases · 9 fases
+        // totais") was replaced by a section header. For compound methods the
+        // title reads "Estrutura de uma rodada" and the RoundsStepper shows
+        // the round count — same info (structure visible BEFORE editing),
+        // new presentation.
         render(
             <SetSchemeTable
                 value={initialScheme}
@@ -214,14 +216,21 @@ describe('SetSchemeTable', () => {
                 onChange={() => {}}
             />,
         )
-        // 3 rounds × 3 phases = 9 phases total — pill text reads
-        // "3 rodadas × 3 fases · 9 fases totais"
-        expect(screen.getByText(/3 rodadas × 3 fases · 9 fases totais/i)).toBeTruthy()
-        // Footer text from previous Fase is gone.
+        expect(screen.getByText(/estrutura de uma rodada/i)).toBeTruthy()
+        // Stepper exposes the rounds count (label "Rodadas" + value 3).
+        // Scoped to the stepper container — a bare getByText('3') would also
+        // match the set-number cell of the 3rd row.
+        const stepper = screen.getByText(/^rodadas$/i).closest('div')
+        expect(stepper?.textContent).toContain('3')
+        // Old pill/footer texts are gone.
+        expect(screen.queryByText(/fases totais/i)).toBeNull()
         expect(screen.queryByText(/aluno verá/i)).toBeNull()
     })
 
-    it('renders the structure summary pill for linear customizado (rounds=1, length>1)', () => {
+    it('renders the "Fases" section title (no rounds UI) for linear customizado', () => {
+        // Redesign (519ee80): linear methods no longer show a "N fases" pill;
+        // the section is simply titled "Fases" and has no rounds stepper nor
+        // explanatory tooltip.
         render(
             <SetSchemeTable
                 value={initialScheme}
@@ -230,8 +239,11 @@ describe('SetSchemeTable', () => {
                 onChange={() => {}}
             />,
         )
-        // Linear customizado with 3 phases shows just "N fases".
-        expect(screen.getByText(/^3 fases$/i)).toBeTruthy()
+        expect(screen.getByText(/^fases$/i)).toBeTruthy()
+        expect(screen.queryByText(/^rodadas$/i)).toBeNull()
+        expect(
+            screen.queryByLabelText(/como funciona a estrutura de rodadas/i),
+        ).toBeNull()
     })
 
     it('hides the structure summary pill for single-phase schemes', () => {
@@ -250,7 +262,10 @@ describe('SetSchemeTable', () => {
         expect(screen.queryByText(/^1 fase$/i)).toBeNull()
     })
 
-    it('renders the rounds banner explaining repeated structure for compound methods', () => {
+    it('explains the repeated structure via the Info tooltip for compound methods', () => {
+        // Redesign (519ee80): the inline banner became an Info icon next to
+        // the section title; the explanation now lives in its title attribute
+        // (native tooltip). Same copy, on-demand instead of always visible.
         render(
             <SetSchemeTable
                 value={initialScheme}
@@ -259,9 +274,11 @@ describe('SetSchemeTable', () => {
                 onChange={() => {}}
             />,
         )
-        // Banner mentions "3 fases ... repetida 3 vezes" for the visible scheme.
-        expect(screen.getByText(/repetida 3 vezes/i)).toBeTruthy()
-        expect(screen.getByText(/Cada rodada inteira conta como 1 série efetiva/i)).toBeTruthy()
+        const infoIcon = screen.getByLabelText(/como funciona a estrutura de rodadas/i)
+        const tooltip = infoIcon.getAttribute('title') ?? ''
+        expect(tooltip).toMatch(/3 fases/i)
+        expect(tooltip).toMatch(/repetida 3 vezes/i)
+        expect(tooltip).toMatch(/cada rodada inteira conta como 1 série efetiva/i)
     })
 
     it('does not render the rounds banner for linear methods (rounds=1)', () => {
@@ -276,8 +293,13 @@ describe('SetSchemeTable', () => {
         expect(screen.queryByText(/repetida \d+ vezes/i)).toBeNull()
     })
 
-    it('hides RIR and Cadência columns by default and reveals them when "Prescrever RIR e Cadência" is clicked', () => {
-        // Reset localStorage so the test starts in the default (collapsed) state.
+    it('hides RIR and Cadência columns by default and reveals each via its own toggle chip', () => {
+        // Redesign (519ee80): the single "Prescrever RIR e Cadência" toggle
+        // was split into two independent chips ("RIR" / "Cadência") persisted
+        // in separate localStorage keys. Reset all keys (including the legacy
+        // one, still read on first hydration) so the test starts collapsed.
+        window.localStorage.removeItem('kinevo_setscheme_show_rir')
+        window.localStorage.removeItem('kinevo_setscheme_show_tempo')
         window.localStorage.removeItem('kinevo_setscheme_advanced_fields')
 
         render(
@@ -289,15 +311,18 @@ describe('SetSchemeTable', () => {
             />,
         )
 
-        // Collapsed by default — RIR / Cadência headers are not in the DOM.
-        // Fase 4.5h: header renamed from "Tempo" to "Cadência" (BR jargon).
-        // Fase ajuste-toggle: toggle label renamed from "Mais campos" to
-        //   "Prescrever RIR e Cadência" pra ser autoexplicativo.
+        // Collapsed by default — RIR / Cadência column headers are not in the
+        // DOM (the chips read "+ RIR" / "+ Cadência", so the exact-match
+        // queries below only hit the <th> headers).
         expect(screen.queryByText(/^RIR$/i)).toBeNull()
         expect(screen.queryByText(/^Cadência$/i)).toBeNull()
 
-        fireEvent.click(screen.getByRole('button', { name: /prescrever rir e cadência/i }))
+        // Toggles are independent: enabling RIR must NOT reveal Cadência.
+        fireEvent.click(screen.getByRole('button', { name: /rir/i }))
+        expect(screen.getByText(/^RIR$/i)).toBeTruthy()
+        expect(screen.queryByText(/^Cadência$/i)).toBeNull()
 
+        fireEvent.click(screen.getByRole('button', { name: /cadência/i }))
         expect(screen.getByText(/^RIR$/i)).toBeTruthy()
         expect(screen.getByText(/^Cadência$/i)).toBeTruthy()
     })

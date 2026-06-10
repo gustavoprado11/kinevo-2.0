@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ProgramCalendar } from '../program-calendar'
+import type { ScheduledWorkoutRef } from '@kinevo/shared/utils/schedule-projection'
+import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
 
 // ── Mocks ──
 
@@ -11,32 +13,39 @@ vi.mock('@/app/students/[id]/actions/get-sessions-for-range', () => ({
 }))
 
 // ── Fixtures ──
+// Props migraram para os tipos shared (ScheduledWorkoutRef / RangeSession),
+// que usam snake_case (id/name/scheduled_days) — não os antigos
+// workoutId/workoutName/scheduledDays camelCase.
+
+const scheduledWorkouts: ScheduledWorkoutRef[] = [
+    { id: 'w1', name: 'Treino A', scheduled_days: [1, 3, 5] },
+]
+
+const initialSessions: RangeSession[] = [
+    {
+        id: 'sess-1',
+        assigned_workout_id: 'w1',
+        started_at: '2026-03-24T10:00:00Z',
+        completed_at: '2026-03-24T11:00:00Z',
+        status: 'completed',
+        rpe: 7,
+    },
+    {
+        id: 'sess-2',
+        assigned_workout_id: 'w1',
+        started_at: '2026-03-26T10:00:00Z',
+        completed_at: '2026-03-26T11:00:00Z',
+        status: 'completed',
+        rpe: 8,
+    },
+]
 
 const baseProps = {
     programId: 'prog-1',
     programStartedAt: '2026-03-01T00:00:00Z',
     programDurationWeeks: 8,
-    scheduledWorkouts: [
-        { workoutId: 'w1', workoutName: 'Treino A', scheduledDays: [1, 3, 5] },
-    ],
-    initialSessions: [
-        {
-            id: 'sess-1',
-            assigned_workout_id: 'w1',
-            started_at: '2026-03-24T10:00:00Z',
-            completed_at: '2026-03-24T11:00:00Z',
-            status: 'completed',
-            rpe: 7,
-        },
-        {
-            id: 'sess-2',
-            assigned_workout_id: 'w1',
-            started_at: '2026-03-26T10:00:00Z',
-            completed_at: '2026-03-26T11:00:00Z',
-            status: 'completed',
-            rpe: 8,
-        },
-    ],
+    scheduledWorkouts,
+    initialSessions,
 }
 
 // ── Tests ──
