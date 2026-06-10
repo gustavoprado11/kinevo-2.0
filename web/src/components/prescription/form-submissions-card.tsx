@@ -59,16 +59,16 @@ export function FormSubmissionsCard({
     selectedIds,
     onToggle,
 }: FormSubmissionsCardProps) {
+    const [manuallyToggled, setManuallyToggled] = useState(false)
+    // If the user has touched the chevron, respect that state. Otherwise the
+    // default is "collapsed when all selected".
+    const [userExpanded, setUserExpanded] = useState(false)
+
     if (submissions.length === 0) return null
 
     const selectedSet = new Set(selectedIds)
     const allSelected = submissions.length > 0 && selectedSet.size === submissions.length
     const noneSelected = selectedSet.size === 0
-
-    const [manuallyToggled, setManuallyToggled] = useState(false)
-    // If the user has touched the chevron, respect that state. Otherwise the
-    // default is "collapsed when all selected".
-    const [userExpanded, setUserExpanded] = useState(false)
     const isExpanded = manuallyToggled
         ? userExpanded
         : !allSelected

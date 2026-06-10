@@ -906,6 +906,7 @@ function PayoutModal(props: {
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [done, setDone] = useState(false)
+    const [payoutResult, setPayoutResult] = useState<{ status: string; payoutId: string } | null>(null)
 
     const value = Number(valueStr.replace(',', '.'))
     const canSubmit = pixKeyId && value > 0 && value <= props.balance && !busy
@@ -923,8 +924,6 @@ function PayoutModal(props: {
             </ModalShell>
         )
     }
-
-    const [payoutResult, setPayoutResult] = useState<{ status: string; payoutId: string } | null>(null)
 
     async function submit() {
         setBusy(true); setError(null)
