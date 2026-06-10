@@ -174,13 +174,16 @@ export async function POST(request: NextRequest) {
             planTitle: plan?.title ?? 'Consultoria',
         })
         // Parcelamento. Duas origens, nesta ordem:
-        //   1. body.installments (modo "Parcelada" explícito no modal) — força
-        //      CREDIT_CARD, comportamento original.
-        //   2. plano com max_installment_count > 1 — o "Em até Nx" configurado
-        //      no plano flui pro link automaticamente. billingType derivado do
-        //      plano (UNDEFINED = aluno escolhe PIX à vista OU cartão em até
-        //      Nx no checkout; combinação INSTALLMENT+UNDEFINED validada na
-        //      API em 10/06/2026).
+        //   1. body.installments (modo "Parcelada" explícito no modal)
+        //   2. plano com max_installment_count > 1 — o "Em até Nx" do plano
+        //      flui pro link automaticamente.
+        // Quando parcela, o link sai SÓ NO CARTÃO (decisão de produto,
+        // 10/06/2026): num Payment Link multi-método o Asaas oferece parcelas
+        // em TODOS os métodos, inclusive PIX "parcelado" (promessa sem
+        // garantia da operadora — risco de calote do treinador). Pra PIX à
+        // vista, o treinador gera um link avulso sem parcelas. A alternativa
+        // que separa por método (Asaas Checkout) expira em no máx. 24h —
+        // descartada pro fluxo "manda no WhatsApp, aluno paga depois".
         // Em ambos, o Asaas exige parcela mínima de R$ 5 — capamos o nº de
         // parcelas pelo valor; no modo explícito, valor insuficiente é 400
         // amigável (em vez do erro críptico do Asaas).
@@ -197,7 +200,7 @@ export async function POST(request: NextRequest) {
             : planCap
         const effectiveInstallments = Math.min(requestedInstallments, maxByValue, MAX_INSTALLMENTS)
         const isInstallment = effectiveInstallments >= 2
-        const billingType: AsaasBillingType = explicitInstallments
+        const billingType: AsaasBillingType = isInstallment
             ? 'CREDIT_CARD'
             : (body.billingType ?? deriveBillingType(plan))
         const dueDateLimitDays = dueDateToLimitDays(body.dueDate!)

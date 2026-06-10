@@ -126,16 +126,27 @@ export function CobrarCarteiraModal({
         return Math.max(1, Math.min(byPlan, byValue))
     }, [selectedPlan])
 
+    // Plano parcelado viável: cap > 1 E o valor comporta 2+ parcelas de R$ 5.
+    // Quando true, a cobrança avulsa herda o parcelamento e o link sai
+    // só-cartão (espelha o /api/wallet/charges).
+    const planAutoInstallment = useMemo(() => {
+        const cap = selectedPlan?.max_installment_count ?? 1
+        if (cap < 2 || !selectedPlan) return false
+        return Math.floor(Number(selectedPlan.price) / MIN_INSTALLMENT_VALUE) >= 2
+    }, [selectedPlan])
+
     const allowedMethods = useMemo(() => {
-        // Recorrência e parcelamento são só no cartão.
+        // Recorrência e parcelamento (explícito ou herdado do plano) são só
+        // no cartão.
         if (mode === 'recurring' || mode === 'installment') return ['CREDIT_CARD'] as const
+        if (mode === 'one_off' && planAutoInstallment) return ['CREDIT_CARD'] as const
         if (!selectedPlan) return ['PIX', 'CREDIT_CARD'] as const
         const m: Array<'PIX' | 'CREDIT_CARD' | 'BOLETO'> = []
         if (selectedPlan.allow_pix ?? true) m.push('PIX')
         if (selectedPlan.allow_credit_card ?? true) m.push('CREDIT_CARD')
         if (selectedPlan.allow_boleto) m.push('BOLETO')
         return m.length > 0 ? m : (['PIX', 'CREDIT_CARD'] as const)
-    }, [selectedPlan, mode])
+    }, [selectedPlan, mode, planAutoInstallment])
 
     // Ao entrar no modo parcelado ou trocar de plano, pré-preenche o nº de
     // parcelas com o teto definido no plano (treinador pode ajustar pra baixo).
@@ -426,6 +437,15 @@ export function CobrarCarteiraModal({
                             A 1ª parcela libera o acesso; as demais o Asaas cobra no cartão dele.
                         </p>
                     </div>
+                )}
+
+                {/* Aviso: plano parcelado → link sai só no cartão */}
+                {mode === 'one_off' && planAutoInstallment && (
+                    <p className="text-[11px] text-k-text-tertiary leading-snug">
+                        Este plano parcela em <b>até {Math.min(selectedPlan?.max_installment_count ?? 1, MAX_INSTALLMENTS)}x</b>,
+                        então o link sai só no <b>cartão de crédito</b> (o aluno escolhe de 1x ao máximo).
+                        Pra oferecer PIX/boleto à vista, use um plano sem parcelamento.
+                    </p>
                 )}
 
                 {/* Vencimento */}
