@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
@@ -237,8 +238,22 @@ export default async function TrainerLandingPage({
                             <div className="lt-reveal d3" style={{ position: 'relative' }}>
                                 <div className="lt-portrait-deco" />
                                 <div className="lt-portrait-frame">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={heroImage} alt={trainer.name} />
+                                    {/* LCP da landing: next/image com priority gera preload +
+                                        srcset otimizado. Só para o host permitido em
+                                        next.config (storage do Supabase); host externo cai
+                                        no <img> cru para não quebrar em runtime. */}
+                                    {heroImage.startsWith('https://lylksbtgrihzepbteest.supabase.co/storage/v1/object/public/') ? (
+                                        <Image
+                                            src={heroImage}
+                                            alt={trainer.name}
+                                            fill
+                                            priority
+                                            sizes="(max-width: 900px) 100vw, 560px"
+                                        />
+                                    ) : (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={heroImage} alt={trainer.name} fetchPriority="high" />
+                                    )}
                                 </div>
                             </div>
                         )}
