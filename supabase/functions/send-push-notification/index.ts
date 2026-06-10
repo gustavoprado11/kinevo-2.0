@@ -17,6 +17,17 @@ const supabaseAdmin = createClient(
  */
 Deno.serve(async (req) => {
     try {
+        // Auth: shared secret enviado pelos triggers pg_net (migration 180).
+        // A função roda com verify_jwt=false (o trigger não tem JWT), então
+        // este header é a ÚNICA barreira contra POST anônimo. Fail-closed:
+        // sem secret configurado ou sem header válido, rejeita.
+        const expectedSecret = Deno.env.get("PUSH_WEBHOOK_SECRET");
+        const providedSecret = req.headers.get("x-push-secret");
+        if (!expectedSecret || providedSecret !== expectedSecret) {
+            console.warn("[send-push-notification] Rejected: bad or missing x-push-secret");
+            return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+        }
+
         const payload = await req.json();
 
         // Database webhook sends: { type: "INSERT", table, record, ... }
