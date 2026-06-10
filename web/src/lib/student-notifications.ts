@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import type { Json } from '@kinevo/shared/types/database'
 
 interface StudentNotificationParams {
     studentId: string
@@ -6,7 +7,7 @@ interface StudentNotificationParams {
     type: 'program_assigned' | 'form_request' | 'feedback' | 'system_alert' | 'text_message' | 'program_report_published'
     title: string
     subtitle?: string
-    payload?: Record<string, unknown>
+    payload?: Json
 }
 
 /**

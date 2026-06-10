@@ -284,7 +284,7 @@ export default async function FinancialPage() {
                 id: p.id,
                 title: p.title,
                 price: p.price,
-                interval: p.interval,
+                interval: p.interval ?? 'month',
                 stripe_price_id: p.stripe_price_id,
                 allow_pix: p.allow_pix ?? undefined,
                 allow_credit_card: p.allow_credit_card ?? undefined,

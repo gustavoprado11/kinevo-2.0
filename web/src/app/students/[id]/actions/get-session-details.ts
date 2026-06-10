@@ -248,7 +248,8 @@ export async function getSessionDetails(sessionId: string): Promise<GetSessionDe
         let preCheckin: SessionCheckin | null = null
         let postCheckin: SessionCheckin | null = null
 
-        const submissionIds = [session.pre_workout_submission_id, session.post_workout_submission_id].filter(Boolean)
+        const submissionIds = [session.pre_workout_submission_id, session.post_workout_submission_id]
+            .filter((id): id is string => Boolean(id))
         if (submissionIds.length > 0) {
             const { data: submissions, error: submissionsError } = await supabase
                 .from('form_submissions')
@@ -299,9 +300,9 @@ export async function getSessionDetails(sessionId: string): Promise<GetSessionDe
             success: true,
             data: {
                 id: session.id,
-                started_at: session.started_at,
-                completed_at: session.completed_at,
-                duration_seconds: session.duration_seconds,
+                started_at: session.started_at ?? '',
+                completed_at: session.completed_at ?? '',
+                duration_seconds: session.duration_seconds ?? 0,
                 rpe: session.rpe,
                 feedback: session.feedback,
                 assigned_workouts: session.assigned_workouts as any || { name: 'Treino' },

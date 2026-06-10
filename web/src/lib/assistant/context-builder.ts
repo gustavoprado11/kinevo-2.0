@@ -9,7 +9,7 @@ interface StudentSnapshot {
         training_level: string
         goal: string
         session_duration_minutes: number
-        medical_restrictions: any[]
+        medical_restrictions: unknown[]
     } | null
     enriched: EnrichedStudentContext
     activeProgram: {
@@ -90,7 +90,14 @@ async function buildStudentSnapshot(trainerId: string, studentId: string): Promi
 
     return {
         name: enriched.student_name,
-        profile: profileResult.data || null,
+        profile: profileResult.data
+            ? {
+                ...profileResult.data,
+                medical_restrictions: Array.isArray(profileResult.data.medical_restrictions)
+                    ? profileResult.data.medical_restrictions
+                    : [],
+            }
+            : null,
         enriched,
         activeProgram,
         recentCheckins: (checkinsResult.data || []).map(c => ({
@@ -135,7 +142,7 @@ async function buildGeneralSnapshot(trainerId: string): Promise<GeneralSnapshot>
     // Last session per student
     const lastSession = new Map<string, string>()
     for (const s of sessions) {
-        if (!lastSession.has(s.student_id)) lastSession.set(s.student_id, s.completed_at)
+        if (s.completed_at && !lastSession.has(s.student_id)) lastSession.set(s.student_id, s.completed_at)
     }
 
     // Active program per student

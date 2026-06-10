@@ -9,6 +9,7 @@
 // never want a telemetry write to break the generation pipeline.
 
 import type { createClient } from '@/lib/supabase/server'
+import type { Json } from '@kinevo/shared/types/database'
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 
@@ -39,10 +40,9 @@ export async function logGenerationTelemetry(
             retry_count: payload.retry_count,
             prompt_version: payload.prompt_version,
             rules_violations_count: payload.rules_violations_count,
-            rules_violations_json: payload.rules_violations_json,
+            rules_violations_json: payload.rules_violations_json as Json,
         }
 
-        // @ts-ignore — prescription_generations telemetry columns from migration 104
         const { error } = await supabase
             .from('prescription_generations')
             .update(update)

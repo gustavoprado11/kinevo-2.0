@@ -4,7 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { appointmentMessages } from '@kinevo/shared/constants/notification-messages'
-import type { RecurringAppointment } from '@kinevo/shared/types/appointments'
+import type {
+    AppointmentFrequency,
+    RecurringAppointment,
+} from '@kinevo/shared/types/appointments'
 import {
     buildImmediateInboxItem,
     buildReminderRowsForRule,
@@ -273,7 +276,8 @@ export async function rescheduleOccurrence(
             day_of_week: newDow,
             start_time: payload.newStartTime,
             duration_minutes: rule.duration_minutes,
-            frequency: rule.frequency,
+            // Coluna é TEXT no banco; valores restritos pela aplicação.
+            frequency: rule.frequency as AppointmentFrequency,
             starts_on: payload.newDate,
             ends_on: null,
             status: 'active',

@@ -7,6 +7,7 @@ import { getSessionsTonnage } from './actions/get-sessions-tonnage'
 import { computeDisplayStatus } from '@/lib/utils/financial'
 import { BODY_METRIC_FIELD_MAP, SUPPORTED_METRIC_SYSTEM_KEYS } from '@/lib/constants/body-metrics'
 import { getAssessmentSessionList } from '@/actions/assessments/get-session-list'
+import type { InsightItem, InsightActionMetadata } from '@/actions/insights'
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
@@ -252,6 +253,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     // Calculate sessions this week (Sunday–Saturday) in São Paulo timezone
     const currentWeekRange = getWeekRange(new Date(), 'America/Sao_Paulo')
     const completedThisWeek = sessions?.filter(s => {
+        if (!s.completed_at) return false
         const d = new Date(s.completed_at)
         return d >= currentWeekRange.start && d <= currentWeekRange.end
     }).length || 0
@@ -268,15 +270,16 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     let streak = 0
     let weeklyAdherence: { week: number; rate: number }[] = []
     const programSessions = programSessionsResult.data
-    if (needsProgramSessions && programSessions && programSessions.length > 0) {
+    const activeProgramStartedAt = activeProgram?.started_at ?? null
+    if (needsProgramSessions && programSessions && programSessions.length > 0 && activeProgramStartedAt) {
         const today = new Date()
-        const programStart = new Date(activeProgram!.started_at)
+        const programStart = new Date(activeProgramStartedAt)
         const days = generateCalendarDays(
             programStart,
             today,
             activeProgram!.assigned_workouts as any,
             programSessions as any,
-            activeProgram!.started_at,
+            activeProgramStartedAt,
             activeProgram!.duration_weeks,
         )
 
@@ -327,8 +330,14 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
     const studentInsights = (insightsData || []).map(row => ({
         ...row,
+        category: row.category as InsightItem['category'],
+        priority: row.priority as InsightItem['priority'],
+        status: row.status as InsightItem['status'],
+        source: row.source as InsightItem['source'],
+        insight_key: row.insight_key ?? '',
+        created_at: row.created_at ?? '',
         student_name: student.name,
-        action_metadata: row.action_metadata || {},
+        action_metadata: (row.action_metadata ?? {}) as InsightActionMetadata,
     }))
 
     // Compute financial display status
@@ -441,9 +450,20 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     return (
         <StudentDetailClient
             trainer={trainer}
-            student={student}
+            student={{
+                ...student,
+                status: student.status as 'active' | 'pending' | 'inactive',
+                modality: student.modality as 'online' | 'presential',
+            }}
             activeProgram={activeProgram as any}
-            scheduledPrograms={scheduledPrograms || []}
+            scheduledPrograms={(scheduledPrograms || []).map(p => ({
+                ...p,
+                status: p.status as 'active' | 'scheduled' | 'completed' | 'paused',
+                assigned_workouts: (p.assigned_workouts || []).map(w => ({
+                    ...w,
+                    scheduled_days: w.scheduled_days ?? [],
+                })),
+            }))}
             historySummary={historySummary}
             recentSessions={recentSessions}
             calendarInitialSessions={calendarInitialSessions as any}

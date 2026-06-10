@@ -127,7 +127,9 @@ export async function getTrainingRoomStudents(): Promise<{
 
     // Build response
     const result: TrainingRoomStudent[] = students.map((student) => {
-        const program = programs?.find((p) => p.student_id === student.id) ?? null
+        // started_at é sempre preenchido em programas active; o filtro torna o
+        // invariante explícito para o tipo (started_at: string) do retorno.
+        const program = programs?.find((p) => p.student_id === student.id && p.started_at !== null) ?? null
         const programWorkouts = program
             ? (workouts || []).filter((w) => w.assigned_program_id === program.id)
             : []
@@ -205,7 +207,7 @@ export async function getTrainingRoomStudents(): Promise<{
                 ? {
                     id: program.id,
                     name: program.name,
-                    started_at: program.started_at,
+                    started_at: program.started_at as string,
                     duration_weeks: program.duration_weeks,
                 }
                 : null,

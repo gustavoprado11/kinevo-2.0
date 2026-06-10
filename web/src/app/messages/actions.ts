@@ -108,7 +108,7 @@ export async function getConversations(): Promise<Conversation[]> {
             .is('read_at', null)
 
         // Build maps
-        const lastMessageMap = new Map<string, { content: string | null; image_url: string | null; sender_type: string; created_at: string }>()
+        const lastMessageMap = new Map<string, { content: string | null; image_url: string | null; sender_type: string; created_at: string | null }>()
         for (const m of messages || []) {
             if (!lastMessageMap.has(m.student_id)) {
                 lastMessageMap.set(m.student_id, m)
@@ -137,7 +137,7 @@ export async function getConversations(): Promise<Conversation[]> {
                     content: last.content,
                     image_url: last.image_url,
                     sender_type: last.sender_type as 'trainer' | 'student',
-                    created_at: last.created_at,
+                    created_at: last.created_at ?? '',
                 } : null,
                 unreadCount: unreadCountMap.get(s.id) || 0,
             }

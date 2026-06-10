@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import type { Database } from '@kinevo/shared/types/database'
 import { logContractEvent } from '@/lib/contract-events'
 import { revalidatePath } from 'next/cache'
 
@@ -64,7 +65,7 @@ export async function createContract(input: CreateContractInput) {
     }
 
     // Fetch plan details (optional for courtesy without plan)
-    let plan: { id: string; title: string; price: number; interval: string; trainer_id: string } | null = null
+    let plan: { id: string; title: string; price: number; interval: string | null; trainer_id: string } | null = null
 
     if (input.planId) {
         const { data: planData } = await supabaseAdmin
@@ -95,7 +96,7 @@ export async function createContract(input: CreateContractInput) {
         .in('status', ['active', 'past_due', 'pending'])
 
     const now = new Date()
-    let contractData: Record<string, unknown>
+    let contractData: Database['public']['Tables']['student_contracts']['Insert']
 
     if (input.billingType === 'courtesy') {
         contractData = {
@@ -161,16 +162,6 @@ export async function createContract(input: CreateContractInput) {
             plan_title: plan?.title ?? 'Acesso Gratuito',
         },
     })
-
-    // Update student plan_status
-    await supabaseAdmin
-        .from('students')
-        .update({
-            plan_status: 'active',
-            pending_plan_id: null,
-            current_plan_name: plan?.title ?? 'Acesso Gratuito',
-        })
-        .eq('id', input.studentId)
 
     revalidatePath('/financial')
     revalidatePath('/financial/subscriptions')

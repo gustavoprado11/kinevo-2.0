@@ -64,7 +64,7 @@ export default async function SubscriptionsPage({
             trainer={trainer}
             financialStudents={(financialStudents ?? []) as FinancialStudent[]}
             students={students ?? []}
-            plans={plans ?? []}
+            plans={(plans ?? []).map(p => ({ ...p, interval: p.interval ?? 'month' }))}
             hasStripeConnect={hasStripeConnect}
             walletStatus={walletStatus}
             sellToStudentId={sellToStudentId}

@@ -12,6 +12,12 @@ interface AssignFormInput {
     message?: string
 }
 
+// Shape do Json retornado pela RPC assign_form_to_students
+interface AssignFormRpcResult {
+    assigned_count?: number
+    skipped_count?: number
+}
+
 export async function assignFormToStudents(input: AssignFormInput) {
     const supabase = await createClient()
 
@@ -37,8 +43,8 @@ export async function assignFormToStudents(input: AssignFormInput) {
     const { data, error } = await supabase.rpc('assign_form_to_students', {
         p_form_template_id: input.formTemplateId,
         p_student_ids: normalizedStudentIds,
-        p_due_at: dueAt,
-        p_message: input.message?.trim() || null,
+        p_due_at: dueAt ?? undefined,
+        p_message: input.message?.trim() || undefined,
     })
 
     if (error) {
@@ -46,8 +52,9 @@ export async function assignFormToStudents(input: AssignFormInput) {
         return { success: false, error: error.message || 'Erro ao enviar formulário', assignedCount: 0, skippedCount: 0 }
     }
 
-    const assignedCount = data?.assigned_count ?? 0
-    const skippedCount = data?.skipped_count ?? 0
+    const rpcResult = (data ?? {}) as AssignFormRpcResult
+    const assignedCount = rpcResult.assigned_count ?? 0
+    const skippedCount = rpcResult.skipped_count ?? 0
 
     revalidatePath('/forms')
 

@@ -74,12 +74,6 @@ export async function POST() {
                         })
                         .eq('id', contract.id)
 
-                    // Update student status
-                    await supabaseAdmin
-                        .from('students')
-                        .update({ plan_status: 'active' })
-                        .eq('id', contract.student_id)
-
                     synced++
                 } else if (subscription.status === 'canceled') {
                     await supabaseAdmin
@@ -134,20 +128,9 @@ export async function POST() {
                         .eq('id', contract.id)
 
                     // Update student status
-                    const { data: plan } = await supabaseAdmin
-                        .from('trainer_plans')
-                        .select('title')
-                        .eq('id', contract.plan_id)
-                        .single()
-
                     await supabaseAdmin
                         .from('students')
-                        .update({
-                            plan_status: 'active',
-                            current_plan_name: plan?.title || null,
-                            stripe_subscription_id: sub.id,
-                            pending_plan_id: null,
-                        })
+                        .update({ stripe_subscription_id: sub.id })
                         .eq('id', contract.student_id)
 
                     // Also record the transaction if invoice exists

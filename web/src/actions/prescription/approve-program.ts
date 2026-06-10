@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import type { Json } from '@kinevo/shared/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { computeEditsDiff, convertAssignedToGeneratedWorkouts } from '@/lib/prescription/edits-diff'
 import { refreshTrainerPatterns } from '@/lib/prescription/trainer-patterns'
@@ -187,10 +188,10 @@ export async function approveProgram(
     // 7.5. Save trainer edits diff separately (column from migration 064, may not exist yet)
     if (trainerEditsDiff) {
         try {
-            // @ts-ignore — trainer_edits_diff from migration 064
             await supabase
                 .from('prescription_generations')
-                .update({ trainer_edits_diff: trainerEditsDiff })
+                // jsonb na fronteira: TrainerEditsDiff é estruturalmente compatível com Json
+                .update({ trainer_edits_diff: trainerEditsDiff as unknown as Json })
                 .eq('id', generationId)
         } catch {
             // Column doesn't exist yet — safe to ignore

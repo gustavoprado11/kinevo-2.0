@@ -368,6 +368,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     // Sessions per day of week (sparkline data: [Mon, Tue, ..., Sun])
     const sessionsPerDay = [0, 0, 0, 0, 0, 0, 0]
     for (const s of weekSessions) {
+        if (!s.completed_at) continue
         const day = new Date(s.completed_at).getDay()
         const idx = (day + 6) % 7 // Monday-first: seg=0 … dom=6
         sessionsPerDay[idx]++
@@ -583,6 +584,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     // had at least one completed session. Uses allSessions (already ordered desc).
     const sessionDaysByStudent = new Map<string, Set<string>>()
     for (const s of allSessions) {
+        if (!s.completed_at) continue
         const key = new Date(s.completed_at).toLocaleDateString('en-CA', { timeZone: TZ })
         const set = sessionDaysByStudent.get(s.student_id) ?? new Set<string>()
         set.add(key)

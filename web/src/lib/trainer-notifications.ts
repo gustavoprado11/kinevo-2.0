@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import type { Json } from '@kinevo/shared/types/database'
 
 interface TrainerNotificationParams {
     trainerId: string
@@ -6,7 +7,7 @@ interface TrainerNotificationParams {
     title: string
     message: string
     category?: string
-    metadata?: Record<string, unknown>
+    metadata?: Json
 }
 
 /**

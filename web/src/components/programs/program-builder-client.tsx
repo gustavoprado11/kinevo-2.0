@@ -112,7 +112,7 @@ interface ProgramData {
         id: string
         name: string
         order_index: number
-        frequency?: string[]
+        frequency?: string[] | null
         workout_item_templates?: Array<{
             id: string
             item_type: string
@@ -125,12 +125,25 @@ interface ProgramData {
             rest_seconds: number | null
             notes: string | null
             exercise_function?: string | null
-            item_config?: Record<string, any>
+            // Shape cru do banco: jsonb e set_type sem narrowing. A hidratação
+            // em initializeWorkouts converte pros tipos internos do builder.
+            item_config?: import('@kinevo/shared/types/database').Json | Record<string, unknown>
             method_key?: string | null
             rounds?: number | null
-            workout_item_set_templates?: Array<import('@kinevo/shared/types/prescription').WorkoutSet> | null
+            workout_item_set_templates?: Array<
+                Omit<import('@kinevo/shared/types/prescription').WorkoutSet, 'set_type'> & { set_type: string }
+            > | null
         }>
     }>
+}
+
+type ProgramTemplateInsert =
+    import('@kinevo/shared/types/database').Database['public']['Tables']['program_templates']['Insert']
+
+// item_config chega como Json (banco) ou Record (mapper de IA); o builder
+// trabalha com objeto plano.
+function asItemConfig(v: unknown): Record<string, any> {
+    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, any>) : {}
 }
 
 interface Trainer {
@@ -553,7 +566,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             .filter(c => c.parent_item_id === p.id)
                             .sort((a, b) => a.order_index - b.order_index)
                             .map(c => {
-                                const childHydrated = hydrateSetScheme(c.workout_item_set_templates, c.rounds ?? 1)
+                                // CHECK constraint (migration 111) garante a union de set_type
+                                const childHydrated = hydrateSetScheme(c.workout_item_set_templates as WorkoutSet[] | null | undefined, c.rounds ?? 1)
                                 return {
                                     id: c.id,
                                     item_type: c.item_type as WorkoutItem['item_type'],
@@ -567,14 +581,14 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     rest_seconds: c.rest_seconds,
                                     notes: c.notes,
                                     exercise_function: c.exercise_function || null,
-                                    item_config: c.item_config || {},
+                                    item_config: asItemConfig(c.item_config),
                                     set_scheme: childHydrated.scheme,
                                     method_key: (c.method_key as WorkoutItem['method_key']) ?? null,
                                     rounds: childHydrated.rounds,
                                 }
                             })
 
-                        const parentHydrated = hydrateSetScheme(p.workout_item_set_templates, p.rounds ?? 1)
+                        const parentHydrated = hydrateSetScheme(p.workout_item_set_templates as WorkoutSet[] | null | undefined, p.rounds ?? 1)
                         return {
                             id: p.id,
                             item_type: p.item_type as WorkoutItem['item_type'],
@@ -588,7 +602,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             rest_seconds: p.rest_seconds,
                             notes: p.notes,
                             exercise_function: p.exercise_function || null,
-                            item_config: p.item_config || {},
+                            item_config: asItemConfig(p.item_config),
                             set_scheme: parentHydrated.scheme,
                             method_key: (p.method_key as WorkoutItem['method_key']) ?? null,
                             rounds: parentHydrated.rounds,
@@ -1549,6 +1563,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             let programId = program?.id
 
             if (isEditing) {
+                if (!programId) throw new Error('Programa em edição sem id')
                 // Update existing program
                 const { error: updateError } = await supabase
                     .from('program_templates')
@@ -1573,12 +1588,13 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
                 const { data: newProgram, error: createError } = await supabase
                     .from('program_templates')
+                    // trainer_id é preenchido pelo trigger set_trainer_id (BEFORE INSERT)
                     .insert({
                         name: name.trim(),
                         description: description.trim() || null,
                         duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
                         is_template: isTemplate,
-                    })
+                    } as ProgramTemplateInsert)
                     .select('id')
                     .single()
 
@@ -1755,12 +1771,13 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             // 1. Create template in program_templates with is_template = true
             const { data: newTemplate, error: createError } = await supabase
                 .from('program_templates')
+                // trainer_id é preenchido pelo trigger set_trainer_id (BEFORE INSERT)
                 .insert({
                     name: templateName.trim(),
                     description: description.trim() || null,
                     duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
                     is_template: true,
-                })
+                } as ProgramTemplateInsert)
                 .select('id')
                 .single()
 

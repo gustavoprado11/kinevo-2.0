@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Json } from '@kinevo/shared/types/database'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AppLayout } from '@/components/layout'
 import { BuilderWizardShell } from '@/components/shared/builder-wizard-shell'
@@ -69,7 +70,7 @@ interface ExistingTemplate {
     version: number
     is_active: boolean
     created_source: string
-    schema_json?: Record<string, unknown> | null
+    schema_json?: Json
     created_at: string
     updated_at: string
     trainer_id: string | null
@@ -160,7 +161,7 @@ function generateQuestionId() {
     return `q_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
 }
 
-function parseQuestionsFromSchema(schema: Record<string, unknown> | null | undefined): Question[] {
+function parseQuestionsFromSchema(schema: Json | undefined): Question[] {
     if (!schema) return []
     const questions = (schema as any).questions
     if (!Array.isArray(questions)) return []
@@ -427,7 +428,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
             if (!title) setTitle(result.templateDraft.title)
             if (!description) setDescription(result.templateDraft.description)
             setCategory(result.templateDraft.category as FormCategory)
-            setQuestions(parseQuestionsFromSchema(result.templateDraft.schema as unknown as Record<string, unknown> | null))
+            setQuestions(parseQuestionsFromSchema(result.templateDraft.schema as unknown as Json))
             setDraftSource('ai_assisted')
             setAiProviderSource(result.source === 'llm' ? 'llm' : 'heuristic')
             setAiRuntimeNote(result.runtimeNote || null)

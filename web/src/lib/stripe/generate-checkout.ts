@@ -106,15 +106,6 @@ export async function generateCheckoutCore({
         { stripeAccount: stripeConnectId }
     )
 
-    // Update student pending plan
-    await supabaseAdmin
-        .from('students')
-        .update({
-            pending_plan_id: planId,
-            plan_status: 'pending',
-        })
-        .eq('id', studentId)
-
     // Insert or update the pending contract
     const { data: existingContract } = await supabaseAdmin
         .from('student_contracts')

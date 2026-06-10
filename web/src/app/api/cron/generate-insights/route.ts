@@ -555,7 +555,8 @@ async function detectReadyToProgress(trainerId: string, today: string): Promise<
     for (const [key, sets] of sessionExerciseSets) {
         const [sessionId, exerciseId] = key.split(':')
         const session = sessionMap.get(sessionId)
-        if (!session || !exerciseId) continue
+        // completed_at é nullable no tipo, mas a query filtra status=completed.
+        if (!session || !session.completed_at || !exerciseId) continue
 
         const studentId = session.student_id
         const progressKey = `${studentId}:${exerciseId}`

@@ -14,9 +14,11 @@ export default async function PlansPage() {
         .eq('trainer_id', trainer.id)
         .order('created_at', { ascending: false })
 
-    // Count active contracts per plan
+    // Count active contracts per plan. (A tabela é student_contracts — o
+    // from('contracts') antigo apontava para uma tabela inexistente, a query
+    // falhava em runtime e o uso por plano aparecia sempre zerado.)
     const { data: contractCounts } = await supabase
-        .from('contracts')
+        .from('student_contracts')
         .select('plan_id')
         .eq('trainer_id', trainer.id)
         .in('status', ['active', 'past_due'])
@@ -42,7 +44,13 @@ export default async function PlansPage() {
     return (
         <PlansClient
             trainer={trainer}
-            plans={plans ?? []}
+            plans={(plans ?? []).map(p => ({
+                ...p,
+                // defaults do schema (025): interval 'month', is_active true, created_at now()
+                interval: p.interval ?? 'month',
+                is_active: p.is_active ?? true,
+                created_at: p.created_at ?? '',
+            }))}
             hasStripeConnect={hasStripeConnect}
             usageByPlan={usageByPlan}
         />

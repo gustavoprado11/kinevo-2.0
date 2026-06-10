@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import type { Database } from '@kinevo/shared/types/database'
 import { stripe } from '@/lib/stripe'
 import { logContractEvent } from '@/lib/contract-events'
 import { generateCheckoutCore } from '@/lib/stripe/generate-checkout'
@@ -128,15 +129,10 @@ export async function migrateContract(input: MigrateContractInput): Promise<Migr
     let checkoutUrl: string | undefined
 
     if (input.toBillingType === 'courtesy') {
-        // Courtesy = no new contract, just update student status
-        await supabaseAdmin
-            .from('students')
-            .update({
-                plan_status: 'active',
-                pending_plan_id: null,
-                current_plan_name: 'Acesso Gratuito',
-            })
-            .eq('id', input.studentId)
+        // Courtesy = sem contrato novo. (A escrita de plan_status/current_plan_name
+        // foi removida: essas colunas não existem em students desde o schema 2.0 —
+        // o statement falhava silenciosamente em runtime. O acesso do aluno é
+        // governado por access_blocked_at, não por status de plano.)
     } else if (input.toBillingType === 'stripe_auto') {
         // Stripe: generate checkout link using extracted core
         if (!input.planId) {
@@ -179,19 +175,17 @@ export async function migrateContract(input: MigrateContractInput): Promise<Migr
         }
 
         // Fetch plan for interval if planId provided
-        let planTitle: string | null = null
         let planInterval = 'month'
         let amount = input.amount ?? 0
 
         if (input.planId) {
             const { data: plan } = await supabaseAdmin
                 .from('trainer_plans')
-                .select('id, title, price, interval')
+                .select('id, price, interval')
                 .eq('id', input.planId)
                 .single()
 
             if (plan) {
-                planTitle = plan.title
                 planInterval = plan.interval || 'month'
                 amount = plan.price
             }
@@ -202,7 +196,7 @@ export async function migrateContract(input: MigrateContractInput): Promise<Migr
             ? new Date(input.firstDueDate)
             : addInterval(now, planInterval)
 
-        const contractData: Record<string, unknown> = {
+        const contractData: Database['public']['Tables']['student_contracts']['Insert'] = {
             student_id: input.studentId,
             trainer_id: trainer.id,
             plan_id: input.planId || null,
@@ -239,15 +233,6 @@ export async function migrateContract(input: MigrateContractInput): Promise<Migr
 
         newContractId = newContract.id
 
-        // Update student status
-        await supabaseAdmin
-            .from('students')
-            .update({
-                plan_status: 'active',
-                pending_plan_id: null,
-                current_plan_name: planTitle ?? 'Manual',
-            })
-            .eq('id', input.studentId)
     }
 
     // 6. Log migration event

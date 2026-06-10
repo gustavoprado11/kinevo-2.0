@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { AssessmentTemplateSchema } from '@kinevo/shared/types/assessments'
+import type { Json } from '@kinevo/shared/types/database'
 
 interface UpdateAssessmentTemplateInput {
     templateId: string
@@ -92,7 +93,8 @@ export async function updateAssessmentTemplate(input: UpdateAssessmentTemplateIn
                 title,
                 description: input.description?.trim() || null,
                 category: 'assessment',
-                schema_json: input.schema,
+                // jsonb na fronteira: AssessmentTemplateSchema é estruturalmente compatível com Json
+                schema_json: input.schema as unknown as Json,
                 created_source: 'manual',
             })
             .select('id')
@@ -113,7 +115,8 @@ export async function updateAssessmentTemplate(input: UpdateAssessmentTemplateIn
         .update({
             title,
             description: input.description?.trim() || null,
-            schema_json: input.schema,
+            // jsonb na fronteira: AssessmentTemplateSchema é estruturalmente compatível com Json
+            schema_json: input.schema as unknown as Json,
             version: (existing.version || 1) + 1,
             updated_at: new Date().toISOString(),
         })
@@ -146,7 +149,8 @@ export async function createAssessmentTemplate(input: CreateAssessmentTemplateIn
             title,
             description: input.description?.trim() || null,
             category: 'assessment',
-            schema_json: input.schema,
+            // jsonb na fronteira: AssessmentTemplateSchema é estruturalmente compatível com Json
+            schema_json: input.schema as unknown as Json,
             created_source: 'manual',
         })
         .select('id')

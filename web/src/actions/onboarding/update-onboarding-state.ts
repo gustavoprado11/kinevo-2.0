@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import type { Json } from '@kinevo/shared/types/database'
 import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
@@ -67,7 +68,7 @@ export async function updateOnboardingState(
     }
 
     // Deep merge: incoming state takes precedence, but we union arrays
-    const current = (trainer.onboarding_state as OnboardingState) ?? DEFAULT_ONBOARDING_STATE
+    const current = (trainer.onboarding_state as unknown as OnboardingState) ?? DEFAULT_ONBOARDING_STATE
 
     const incomingTours = sanitizeIds(newState.tours_completed)
     const incomingTips = sanitizeIds(newState.tips_dismissed)
@@ -132,7 +133,7 @@ export async function updateOnboardingState(
 
     const { error: updateError } = await supabase
       .from('trainers')
-      .update({ onboarding_state: merged })
+      .update({ onboarding_state: merged as unknown as Json })
       .eq('id', trainer.id)
 
     if (updateError) {

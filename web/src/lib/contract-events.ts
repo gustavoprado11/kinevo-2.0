@@ -1,12 +1,13 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { ContractEventType } from '@/types/financial'
+import type { Json } from '@kinevo/shared/types/database'
 
 interface LogContractEventParams {
     studentId: string
     trainerId: string
     contractId?: string | null
     eventType: ContractEventType
-    metadata?: Record<string, unknown>
+    metadata?: Json
 }
 
 export async function logContractEvent({

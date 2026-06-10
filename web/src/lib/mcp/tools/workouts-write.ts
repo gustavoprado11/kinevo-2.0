@@ -221,20 +221,32 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         finalOrderIndex = last ? last.order_index + 1 : 0
       }
 
-      const insertData: Record<string, unknown> = {
-        [fkColumn]: program_id,
-        name,
-        order_index: finalOrderIndex,
-      }
-      if (scheduled_days !== undefined) {
-        Object.assign(insertData, scheduleColumn(program_type, scheduled_days))
-      }
+      const sortedDays = scheduled_days !== undefined
+        ? Array.from(new Set(scheduled_days)).sort((a, b) => a - b)
+        : undefined
 
-      const { data, error } = await supabaseAdmin
-        .from(workoutTable)
-        .insert(insertData)
-        .select('id, name, order_index')
-        .single()
+      // Branch por tabela para manter o payload tipado contra o schema gerado
+      const { data, error } = program_type === 'template'
+        ? await supabaseAdmin
+            .from('workout_templates')
+            .insert({
+              program_template_id: program_id,
+              name,
+              order_index: finalOrderIndex,
+              ...(sortedDays !== undefined ? { frequency: sortedDays.map(d => DAY_INT_TO_STR[d]) } : {}),
+            })
+            .select('id, name, order_index')
+            .single()
+        : await supabaseAdmin
+            .from('assigned_workouts')
+            .insert({
+              assigned_program_id: program_id,
+              name,
+              order_index: finalOrderIndex,
+              ...(sortedDays !== undefined ? { scheduled_days: sortedDays } : {}),
+            })
+            .select('id, name, order_index')
+            .single()
 
       if (error || !data) {
         return mcpError(`Erro ao criar sessão de treino: ${error?.message ?? 'desconhecido'}`)
@@ -324,8 +336,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         finalOrderIndex = last ? last.order_index + 1 : 0
       }
 
-      const insertData: Record<string, unknown> = {
-        [fkColumn]: workout_id,
+      const baseItem = {
         item_type: 'exercise',
         exercise_id,
         sets: aggregates.sets,
@@ -338,17 +349,23 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         rounds: effectiveRounds,
       }
 
-      // Assigned items store exercise snapshots
-      if (workout_type === 'assigned') {
-        insertData.exercise_name = exercise.name
-        insertData.exercise_equipment = exercise.equipment
-      }
-
-      const { data, error } = await supabaseAdmin
-        .from(itemTable)
-        .insert(insertData)
-        .select('id, order_index, sets, reps, rest_seconds')
-        .single()
+      // Branch por tabela para manter o payload tipado; assigned guarda snapshots do exercício
+      const { data, error } = workout_type === 'template'
+        ? await supabaseAdmin
+            .from('workout_item_templates')
+            .insert({ ...baseItem, workout_template_id: workout_id })
+            .select('id, order_index, sets, reps, rest_seconds')
+            .single()
+        : await supabaseAdmin
+            .from('assigned_workout_items')
+            .insert({
+              ...baseItem,
+              assigned_workout_id: workout_id,
+              exercise_name: exercise.name,
+              exercise_equipment: exercise.equipment,
+            })
+            .select('id, order_index, sets, reps, rest_seconds')
+            .single()
 
       if (error || !data) {
         return mcpError(`Erro ao adicionar exercício: ${error?.message ?? 'desconhecido'}`)
@@ -642,8 +659,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       }
 
       // 1. Insert the superset container (item_type 'superset', no exercise).
-      const parentInsert: Record<string, unknown> = {
-        [fkColumn]: workout_id,
+      const parentInsert = {
         item_type: 'superset',
         parent_item_id: null,
         exercise_id: null,
@@ -654,41 +670,54 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         method_key: null,
         rounds: 1,
       }
-      const { data: parent, error: parentError } = await supabaseAdmin
-        .from(itemTable)
-        .insert(parentInsert)
-        .select('id, order_index')
-        .single()
+      // Branch por tabela para manter o payload tipado contra o schema gerado
+      const { data: parent, error: parentError } = workout_type === 'template'
+        ? await supabaseAdmin
+            .from('workout_item_templates')
+            .insert({ ...parentInsert, workout_template_id: workout_id })
+            .select('id, order_index')
+            .single()
+        : await supabaseAdmin
+            .from('assigned_workout_items')
+            .insert({ ...parentInsert, assigned_workout_id: workout_id })
+            .select('id, order_index')
+            .single()
 
       if (parentError || !parent) {
         return mcpError(`Erro ao criar superset: ${parentError?.message ?? 'desconhecido'}`)
       }
 
       // 2. Insert the child exercises under the parent.
-      const childRows = exercises.map((e, i) => {
-        const snap = catalog.get(e.exercise_id)!
-        const row: Record<string, unknown> = {
-          [fkColumn]: workout_id,
-          item_type: 'exercise',
-          parent_item_id: parent.id,
-          exercise_id: e.exercise_id,
-          sets: e.sets,
-          reps: e.reps,
-          rest_seconds: 0,
-          notes: e.notes ?? null,
-          exercise_function: e.exercise_function ?? 'main',
-          order_index: i,
-          method_key: null,
-          rounds: 1,
-        }
-        if (workout_type === 'assigned') {
-          row.exercise_name = snap.name
-          row.exercise_equipment = snap.equipment
-        }
-        return row
+      const childBase = (e: typeof exercises[number], i: number) => ({
+        item_type: 'exercise',
+        parent_item_id: parent.id,
+        exercise_id: e.exercise_id,
+        sets: e.sets,
+        reps: e.reps,
+        rest_seconds: 0,
+        notes: e.notes ?? null,
+        exercise_function: e.exercise_function ?? 'main',
+        order_index: i,
+        method_key: null,
+        rounds: 1,
       })
 
-      const { error: childError } = await supabaseAdmin.from(itemTable).insert(childRows)
+      // Branch por tabela para manter o payload tipado; assigned guarda snapshots do exercício
+      const { error: childError } = workout_type === 'template'
+        ? await supabaseAdmin.from('workout_item_templates').insert(
+            exercises.map((e, i) => ({ ...childBase(e, i), workout_template_id: workout_id })),
+          )
+        : await supabaseAdmin.from('assigned_workout_items').insert(
+            exercises.map((e, i) => {
+              const snap = catalog.get(e.exercise_id)!
+              return {
+                ...childBase(e, i),
+                assigned_workout_id: workout_id,
+                exercise_name: snap.name,
+                exercise_equipment: snap.equipment,
+              }
+            }),
+          )
       if (childError) {
         // Roll back the parent (cascade removes any partial children).
         await supabaseAdmin.from(itemTable).delete().eq('id', parent.id)

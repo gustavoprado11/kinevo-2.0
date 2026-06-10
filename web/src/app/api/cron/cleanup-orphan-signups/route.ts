@@ -1,5 +1,20 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+
+// O schema 'auth' fica fora dos tipos gerados (só public/graphql_public),
+// então este cron usa um client admin SEM o generic <Database> apenas para
+// consultar auth.users. Não usar este client para tabelas do schema public.
+const authAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+        },
+    }
+)
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -38,7 +53,7 @@ export async function GET(request: Request) {
     // Pull candidate auth users: created >2h ago.
     // Service-role admin client is required because auth.users isn't
     // exposed via PostgREST to anon / authenticated.
-    const { data: candidates, error: listError } = await supabaseAdmin
+    const { data: candidates, error: listError } = await authAdmin
         .schema('auth')
         .from('users')
         .select('id, email, created_at')

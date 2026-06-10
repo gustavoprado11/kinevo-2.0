@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
         // 4. Fire-and-store at Asaas
         let transferId: string
-        let status: string
+        let status: PayoutLocalStatus
         try {
             const transfer = await createTransfer(apiKey, {
                 value: body.value,

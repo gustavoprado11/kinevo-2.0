@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
 
         // Get trainer id (trainers.id, not auth_user_id)
         const trainerId = student.coach_id
+        if (!trainerId) {
+            return NextResponse.json({ error: 'Student has no trainer' }, { status: 404 })
+        }
 
         const preview = messageContent
             ? (messageContent.length > 100 ? messageContent.slice(0, 100) + '...' : messageContent)

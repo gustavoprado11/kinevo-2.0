@@ -172,14 +172,12 @@ export async function archiveStudent({
             .eq('coach_id', trainer.id)
             .eq('is_current', true)
 
-        // 4. Unlink student from trainer
+        // 4. Unlink student from trainer. (plan_status/current_plan_name não
+        // existem no schema 2.0 e faziam o UPDATE INTEIRO falhar em runtime —
+        // o aluno nunca era desvinculado por este caminho.)
         await supabaseAdmin
             .from('students')
-            .update({
-                coach_id: null,
-                plan_status: 'canceled',
-                current_plan_name: null,
-            })
+            .update({ coach_id: null })
             .eq('id', studentId)
 
         // 5. Push notification to student (fire and forget)

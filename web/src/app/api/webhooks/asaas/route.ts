@@ -10,6 +10,7 @@
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import type { Json } from '@kinevo/shared/types/database'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
     parseWebhookEvent,
@@ -38,8 +39,11 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse body
     let event: AsaasWebhookEvent
+    // Cópia crua do body (já é JSON por vir de request.json()) pra auditoria.
+    let rawPayload: Json
     try {
         const body = await request.json()
+        rawPayload = body as Json
         event = parseWebhookEvent(body)
     } catch (err) {
         console.error('[asaas-webhook] Bad payload:', err)
@@ -53,7 +57,7 @@ export async function POST(request: NextRequest) {
             .insert({
                 event_id: `asaas-${event.id}`,
                 event_type: event.event,
-                metadata: { source: 'asaas', payload: event } as Record<string, unknown>,
+                metadata: { source: 'asaas', payload: rawPayload },
             })
         if (idemErr) {
             if (idemErr.code === '23505') {

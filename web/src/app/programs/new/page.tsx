@@ -83,7 +83,11 @@ export default async function NewProgramPage() {
 
     return (
         <ProgramBuilderClient
-            trainer={trainer}
+            trainer={{
+                ...trainer,
+                // CHECK constraint (migration 021) garante a union
+                theme: trainer.theme as 'light' | 'dark' | 'system',
+            }}
             program={null}
             exercises={mappedExercises}
             formTriggerTemplates={triggerResult.templates || []}

@@ -89,6 +89,7 @@ export default async function StudentsPage() {
     const sessionStats = new Map<string, { lastSession: string | null; thisWeekCount: number }>()
 
     for (const session of allSessions || []) {
+        if (!session.completed_at) continue
         const existing = sessionStats.get(session.student_id)
         const inThisWeek = new Date(session.completed_at) >= weekRange.start && new Date(session.completed_at) <= weekRange.end
         if (!existing) {
@@ -115,6 +116,8 @@ export default async function StudentsPage() {
 
         return {
             ...student,
+            status: student.status as 'active' | 'pending' | 'inactive',
+            modality: student.modality as 'online' | 'presential',
             programName: program?.name || null,
             lastSessionDate: stats?.lastSession || null,
             sessionsThisWeek: stats?.thisWeekCount || 0,

@@ -18,6 +18,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import type {
     RecurringAppointment,
     AppointmentException,
+    AppointmentFrequency,
+    AppointmentStatus,
 } from '@kinevo/shared/types/appointments'
 import type { GoogleEvent } from '@kinevo/shared/types/google-calendar'
 import {
@@ -124,10 +126,10 @@ async function loadRuleWithStudent(
         day_of_week: data.day_of_week,
         start_time: data.start_time,
         duration_minutes: data.duration_minutes,
-        frequency: data.frequency,
+        frequency: data.frequency as AppointmentFrequency,
         starts_on: data.starts_on,
         ends_on: data.ends_on,
-        status: data.status,
+        status: data.status as AppointmentStatus,
         notes: data.notes,
         group_id: data.group_id,
         created_at: data.created_at,

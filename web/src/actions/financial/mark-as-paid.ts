@@ -90,11 +90,6 @@ export async function markAsPaid({ contractId }: { contractId: string }) {
             metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_one_off' },
         })
 
-        await supabaseAdmin
-            .from('students')
-            .update({ plan_status: 'active' })
-            .eq('id', contract.student_id)
-
         revalidatePath('/financial')
         revalidatePath('/financial/subscriptions')
         revalidatePath('/dashboard')
@@ -146,12 +141,6 @@ export async function markAsPaid({ contractId }: { contractId: string }) {
         eventType: 'payment_received',
         metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_recurring' },
     })
-
-    // Update student plan status
-    await supabaseAdmin
-        .from('students')
-        .update({ plan_status: 'active' })
-        .eq('id', contract.student_id)
 
     revalidatePath('/financial')
     revalidatePath('/financial/subscriptions')

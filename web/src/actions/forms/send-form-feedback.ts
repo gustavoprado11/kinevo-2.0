@@ -9,6 +9,11 @@ interface SendFormFeedbackInput {
     message: string
 }
 
+// Shape do Json retornado pela RPC send_submission_feedback
+interface SendFeedbackRpcResult {
+    feedback_inbox_item_id?: string | null
+}
+
 export async function sendFormFeedback(input: SendFormFeedbackInput) {
     const supabase = await createClient()
 
@@ -45,7 +50,7 @@ export async function sendFormFeedback(input: SendFormFeedbackInput) {
         return { success: false, error: 'Erro ao enviar feedback.' }
     }
 
-    const feedbackInboxItemId = data?.feedback_inbox_item_id ?? null
+    const feedbackInboxItemId = ((data ?? {}) as SendFeedbackRpcResult).feedback_inbox_item_id ?? null
 
     // Fire-and-forget: send push to student
     if (submission?.student_id && feedbackInboxItemId) {

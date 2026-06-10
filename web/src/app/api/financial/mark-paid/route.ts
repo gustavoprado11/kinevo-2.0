@@ -116,11 +116,6 @@ export async function POST(request: NextRequest) {
                 metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_one_off' },
             })
 
-            await supabaseAdmin
-                .from('students')
-                .update({ plan_status: 'active' })
-                .eq('id', contract.student_id)
-
             return NextResponse.json({ success: true })
         }
 
@@ -163,11 +158,6 @@ export async function POST(request: NextRequest) {
             eventType: 'payment_received',
             metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_recurring' },
         })
-
-        await supabaseAdmin
-            .from('students')
-            .update({ plan_status: 'active' })
-            .eq('id', contract.student_id)
 
         return NextResponse.json({ success: true })
     } catch (err) {

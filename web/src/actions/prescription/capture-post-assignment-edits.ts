@@ -1,5 +1,6 @@
 'use server'
 
+import type { Json } from '@kinevo/shared/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { computeEditsDiff, convertAssignedToGeneratedWorkouts } from '@/lib/prescription/edits-diff'
 import { refreshTrainerPatterns } from '@/lib/prescription/trainer-patterns'
@@ -95,10 +96,10 @@ export async function capturePostAssignmentEdits(
         }
 
         // 9. Update prescription_generations with new diff
-        // @ts-ignore — trainer_edits_diff from migration 064
         await supabase
             .from('prescription_generations')
-            .update({ trainer_edits_diff: newDiff })
+            // jsonb na fronteira: TrainerEditsDiff é estruturalmente compatível com Json
+            .update({ trainer_edits_diff: newDiff as unknown as Json })
             .eq('id', generationId)
 
         // 10. Log capture

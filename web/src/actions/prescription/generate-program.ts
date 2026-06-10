@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 
+import type { Database, Json } from '@kinevo/shared/types/database'
+
 import type {
     AiMode,
     AiSource,
@@ -43,6 +45,8 @@ import type { FormSubmissionSummary } from '@/actions/prescription/get-prescript
 // ============================================================================
 // Types
 // ============================================================================
+
+type PrescriptionGenerationInsert = Database['public']['Tables']['prescription_generations']['Insert']
 
 type LLMStatus =
     | 'llm_used'
@@ -499,23 +503,22 @@ export async function generateProgram(
                 optimizer_tokens: optimizerResult.tokensUsed,
             }
 
-            // @ts-ignore — table from migration 035
-            const insertPayload: Record<string, unknown> = {
+            // jsonb na fronteira: snapshots/violations são estruturalmente compatíveis com Json
+            const insertPayload: PrescriptionGenerationInsert = {
                 trainer_id: trainer.id,
                 student_id: studentId,
                 assigned_program_id: null,
                 ai_mode_used: aiMode,
                 ai_model: model,
                 ai_source: source,
-                input_snapshot: agentInputSnapshot,
-                output_snapshot: outputSnapshot,
-                rules_violations: allViolations,
+                input_snapshot: agentInputSnapshot as unknown as Json,
+                output_snapshot: outputSnapshot as unknown as Json,
+                rules_violations: allViolations as unknown as Json,
                 status: 'pending_review',
                 generation_time_ms: generationTimeMs,
                 confidence_score: outputSnapshot.reasoning.confidence_score,
             }
 
-            // @ts-ignore — table from migration 035
             const { data: generation, error: genError } = await supabase
                 .from('prescription_generations')
                 .insert(insertPayload)
@@ -638,17 +641,17 @@ export async function generateProgram(
                 web_search_queries: agentState.context_analysis?.web_search_queries || [],
             }
 
-            // @ts-ignore — table from migration 035
-            const insertPayload: Record<string, unknown> = {
+            // jsonb na fronteira: snapshots/violations são estruturalmente compatíveis com Json
+            const insertPayload: PrescriptionGenerationInsert = {
                 trainer_id: trainer.id,
                 student_id: studentId,
                 assigned_program_id: null,
                 ai_mode_used: aiMode,
                 ai_model: model,
                 ai_source: source,
-                input_snapshot: agentInputSnapshot,
-                output_snapshot: outputSnapshot,
-                rules_violations: allViolations,
+                input_snapshot: agentInputSnapshot as unknown as Json,
+                output_snapshot: outputSnapshot as unknown as Json,
+                rules_violations: allViolations as unknown as Json,
                 status: 'pending_review',
                 generation_time_ms: generationTimeMs,
                 confidence_score: outputSnapshot.reasoning.confidence_score,
@@ -657,12 +660,11 @@ export async function generateProgram(
             // Try to use dedicated columns if migration 058 has been applied.
             // If it hasn't, the data is still safe in input_snapshot above.
             try {
-                insertPayload.agent_conversation = agentState.conversation_messages
-                insertPayload.context_analysis = agentState.context_analysis
+                insertPayload.agent_conversation = agentState.conversation_messages as unknown as Json
+                insertPayload.context_analysis = agentState.context_analysis as unknown as Json
                 insertPayload.web_search_queries = agentState.context_analysis?.web_search_queries || []
             } catch { /* ignore if columns don't exist */ }
 
-            // @ts-ignore — table from migration 035
             let { data: generation, error: genError } = await supabase
                 .from('prescription_generations')
                 .insert(insertPayload)
@@ -677,7 +679,6 @@ export async function generateProgram(
                 delete insertPayload.context_analysis
                 delete insertPayload.web_search_queries
 
-                // @ts-ignore
                 const retryResult = await supabase
                     .from('prescription_generations')
                     .insert(insertPayload)
@@ -788,7 +789,7 @@ export async function generateProgram(
     // ── 11. Create prescription_generation (audit trail) ──
     // The output_snapshot is stored here. No assigned_program is created yet —
     // that happens when the trainer publishes from the builder.
-    // @ts-ignore — table from migration 035
+    // jsonb na fronteira: snapshots/violations são estruturalmente compatíveis com Json
     const { data: generation, error: genError } = await supabase
         .from('prescription_generations')
         .insert({
@@ -798,9 +799,9 @@ export async function generateProgram(
             ai_mode_used: aiMode,
             ai_model: source === 'llm' ? model : 'heuristic',
             ai_source: source,
-            input_snapshot: inputSnapshot,
-            output_snapshot: outputSnapshot,
-            rules_violations: allViolations,
+            input_snapshot: inputSnapshot as unknown as Json,
+            output_snapshot: outputSnapshot as unknown as Json,
+            rules_violations: allViolations as unknown as Json,
             status: 'pending_review',
             generation_time_ms: generationTimeMs,
             confidence_score: outputSnapshot.reasoning.confidence_score,

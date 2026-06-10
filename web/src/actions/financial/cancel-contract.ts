@@ -127,15 +127,6 @@ export async function cancelContract({ contractId, cancelAtPeriodEnd }: { contra
             metadata: { canceled_by: 'trainer' },
         })
 
-        // Update student plan status
-        await supabaseAdmin
-            .from('students')
-            .update({
-                plan_status: 'canceled',
-                current_plan_name: null,
-            })
-            .eq('id', contract.student_id)
-
         revalidatePath('/financial')
         revalidatePath('/financial/subscriptions')
 

@@ -155,14 +155,6 @@ export async function POST(request: NextRequest) {
             metadata: { canceled_by: 'trainer' },
         })
 
-        await supabaseAdmin
-            .from('students')
-            .update({
-                plan_status: 'canceled',
-                current_plan_name: null,
-            })
-            .eq('id', contract.student_id)
-
         return NextResponse.json({ success: true })
     } catch (err) {
         console.error('[cancel-contract] Error:', err)

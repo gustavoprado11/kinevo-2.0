@@ -8,6 +8,7 @@
 // See: docs/program-report-spec.md
 
 import { createClient } from '@/lib/supabase/server'
+import type { Json } from '@kinevo/shared/types/database'
 import { buildTrainerNotesDraft } from './program-report-notes-draft'
 import { insertStudentNotification } from '@/lib/student-notifications'
 
@@ -236,7 +237,8 @@ export async function generateReport(
                 program_duration_weeks: duration,
                 program_started_at: ap.started_at,
                 program_completed_at: ap.completed_at,
-                metrics_json: metrics,
+                // ProgramReportMetrics é estruturalmente Json; cast na fronteira de IO
+                metrics_json: metrics as unknown as Json,
                 auto_notes_draft: autoNotesDraft,
                 status: autoPublish ? 'published' : 'draft',
                 published_at: autoPublish ? nowIso : null,
@@ -294,7 +296,7 @@ export async function getReport(
             return null
         }
 
-        return data as ProgramReport
+        return data as unknown as ProgramReport
     } catch (err) {
         console.error('[program-report] Unexpected error in getReport:', err)
         return null
@@ -320,7 +322,7 @@ export async function getReportByProgram(
             return null
         }
 
-        return (data as ProgramReport) ?? null
+        return (data as unknown as ProgramReport) ?? null
     } catch (err) {
         console.error('[program-report] Unexpected error in getReportByProgram:', err)
         return null
@@ -671,14 +673,19 @@ async function computeVolume(
             if (log.assigned_workout_item_id) itemIds.add(log.assigned_workout_item_id)
         }
 
+        // exercises não tem coluna muscle_group (a query antiga falhava em runtime
+        // e o mapa ficava vazio) — o grupo vem da join exercise_muscle_groups.
         const muscleByExercise = new Map<string, string | null>()
         if (exerciseIds.size > 0) {
             const { data: exRows } = await supabase
                 .from('exercises')
-                .select('id, muscle_group')
+                .select('id, exercise_muscle_groups(muscle_groups(name))')
                 .in('id', [...exerciseIds])
             for (const e of exRows ?? []) {
-                muscleByExercise.set(e.id, (e.muscle_group as string | null) ?? null)
+                const names = (e.exercise_muscle_groups ?? [])
+                    .map((emg) => emg.muscle_groups?.name)
+                    .filter((n): n is string => Boolean(n))
+                muscleByExercise.set(e.id, names.length > 0 ? names.join(', ') : null)
             }
         }
 

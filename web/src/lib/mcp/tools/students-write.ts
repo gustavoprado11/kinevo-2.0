@@ -49,7 +49,7 @@ export function registerStudentWriteTools(server: McpServer, trainerId: string) 
           modality,
           objective: objective ?? null,
           status: 'active',
-        } as Record<string, unknown>)
+        })
         .select('id, name, email, status')
         .single()
 
@@ -68,7 +68,7 @@ export function registerStudentWriteTools(server: McpServer, trainerId: string) 
             trainer_id: trainerId,
             training_level: training_level ?? 'beginner',
             medical_restrictions: medical_restrictions ?? [],
-          } as Record<string, unknown>)
+          })
           .then()
       }
 

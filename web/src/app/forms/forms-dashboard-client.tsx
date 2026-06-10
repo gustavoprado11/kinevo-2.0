@@ -242,8 +242,9 @@ export function FormsDashboardClient({
                 return
             }
 
-            setActiveSubmission(data as FullSubmission)
-            setFeedbackMessage(data.trainer_feedback?.message || '')
+            const submission = data as FullSubmission
+            setActiveSubmission(submission)
+            setFeedbackMessage(submission.trainer_feedback?.message || '')
         } finally {
             setLoadingSubmissionId(null)
         }
@@ -274,8 +275,9 @@ export function FormsDashboardClient({
                 .single()
 
             if (data) {
-                setActiveSubmission(data as FullSubmission)
-                setFeedbackMessage(data.trainer_feedback?.message || '')
+                const submission = data as FullSubmission
+                setActiveSubmission(submission)
+                setFeedbackMessage(submission.trainer_feedback?.message || '')
             }
             router.refresh()
         } finally {

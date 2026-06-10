@@ -161,7 +161,7 @@ export default async function SettingsPage() {
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
-            trainerTheme={trainer.theme ?? undefined}
+            trainerTheme={trainer.theme as 'light' | 'dark' | 'system' | null}
         >
             {/* ── Header: breadcrumb + título ── */}
             <div className="mb-10 border-b border-k-border-primary pb-7">

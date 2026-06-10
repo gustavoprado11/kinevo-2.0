@@ -1378,12 +1378,13 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         try {
             const { data: newTemplate, error: createError } = await supabase
                 .from('program_templates')
+                // trainer_id é preenchido pelo trigger set_trainer_id (BEFORE INSERT)
                 .insert({
                     name: templateName.trim(),
                     description: description.trim() || null,
                     duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
                     is_template: true,
-                })
+                } as import('@kinevo/shared/types/database').Database['public']['Tables']['program_templates']['Insert'])
                 .select('id')
                 .single()
 

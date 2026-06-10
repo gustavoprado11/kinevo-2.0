@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import type { Json } from '@kinevo/shared/types/database'
 import { createClient } from '@/lib/supabase/server'
 import {
     KINEVO_DEFAULT_PREFERENCES,
@@ -54,7 +55,8 @@ export async function markWizard(action: MarkWizardAction): Promise<MarkWizardRe
 
     const { error: updateError } = await supabase
         .from('trainers')
-        .update({ prescription_preferences: merged })
+        // jsonb na fronteira: PrescriptionPreferences é estruturalmente compatível com Json
+        .update({ prescription_preferences: merged as unknown as Json })
         .eq('auth_user_id', user.id)
 
     if (updateError) {

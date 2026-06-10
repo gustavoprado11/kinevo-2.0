@@ -15,6 +15,7 @@ import {
     type PushMessage,
 } from '@kinevo/shared/constants/notification-messages'
 import type { RecurringAppointment } from '@kinevo/shared/types/appointments'
+import type { Json } from '@kinevo/shared/types/database'
 import {
     expandAppointments,
     getNextOccurrences,
@@ -70,7 +71,7 @@ export interface ReminderRow {
     scheduled_for: string // ISO
     title: string
     body: string
-    data: Record<string, unknown>
+    data: Json
     source: 'appointment_reminder'
     recurring_appointment_id: string
     occurrence_date: string // YYYY-MM-DD
@@ -143,14 +144,14 @@ export interface ImmediateInboxItem {
     status: 'unread'
     title: string
     subtitle: string
-    payload: Record<string, unknown>
+    payload: Json
 }
 
 export function buildImmediateInboxItem(
     studentId: string,
     trainerId: string,
     msg: PushMessage,
-    payload: Record<string, unknown> = {},
+    payload: Json = {},
 ): ImmediateInboxItem {
     return {
         student_id: studentId,

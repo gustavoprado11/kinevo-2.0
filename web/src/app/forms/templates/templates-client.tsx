@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Json } from '@kinevo/shared/types/database'
 import { AppLayout } from '@/components/layout'
 import { deleteFormTemplate } from '@/actions/forms/delete-form-template'
 import {
@@ -85,7 +86,7 @@ interface FormTemplate {
     version: number
     is_active: boolean
     created_source: string
-    schema_json?: Record<string, unknown> | null
+    schema_json?: Json
     created_at: string
     updated_at: string
     responseCount: number

@@ -12,6 +12,14 @@ import {
 
 // ── Types ──
 
+// Shape conhecido do jsonb action_metadata (campos opcionais por insight_key)
+export interface InsightActionMetadata {
+    days_since_last?: number
+    exercise_name?: string
+    count?: number
+    exercises?: Array<{ name?: string }>
+}
+
 export interface InsightItem {
     id: string
     student_id: string | null
@@ -21,7 +29,7 @@ export interface InsightItem {
     title: string
     body: string
     action_type: string | null
-    action_metadata: Record<string, any>
+    action_metadata: InsightActionMetadata
     status: 'new' | 'read' | 'dismissed' | 'acted'
     source: 'rules' | 'llm' | 'trainer'
     insight_key: string
@@ -74,10 +82,18 @@ export async function getTrainerInsights(): Promise<{ insights: InsightItem[]; e
         studentMap = new Map((students || []).map(s => [s.id, s.name]))
     }
 
+    // Unions/strings do banco -> tipos da UI: valores restritos pelos caminhos
+    // de escrita (cron generate-insights e rules engine); cast na fronteira.
     const insights: InsightItem[] = (data || []).map(row => ({
         ...row,
+        category: row.category as InsightItem['category'],
+        priority: row.priority as InsightItem['priority'],
+        status: row.status as InsightItem['status'],
+        source: row.source as InsightItem['source'],
+        insight_key: row.insight_key ?? '',
+        created_at: row.created_at ?? '',
         student_name: row.student_id ? (studentMap.get(row.student_id) || null) : null,
-        action_metadata: row.action_metadata || {},
+        action_metadata: (row.action_metadata ?? {}) as InsightActionMetadata,
     }))
 
     // Sort by priority DESC, then created_at DESC

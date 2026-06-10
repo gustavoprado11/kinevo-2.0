@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import type { Json } from '@kinevo/shared/types/database'
 import { createClient } from '@/lib/supabase/server'
 
 import type {
@@ -145,7 +146,7 @@ export async function savePrescriptionProfile(
     }
 
     // 6. Upsert (student_id is UNIQUE in the table)
-    // @ts-ignore — table not in generated types yet
+    // jsonb na fronteira: shapes locais são estruturalmente compatíveis com Json
     const { data: profile, error: upsertError } = await supabase
         .from('student_prescription_profiles')
         .upsert(
@@ -159,12 +160,12 @@ export async function savePrescriptionProfile(
                 available_equipment: input.available_equipment,
                 favorite_exercise_ids: input.favorite_exercise_ids,
                 disliked_exercise_ids: input.disliked_exercise_ids,
-                medical_restrictions: input.medical_restrictions,
+                medical_restrictions: input.medical_restrictions as unknown as Json,
                 ai_mode: input.ai_mode,
                 cycle_observation: input.cycle_observation || null,
-                volume_overrides: input.volume_overrides ?? {},
+                volume_overrides: (input.volume_overrides ?? {}) as unknown as Json,
                 ...(input.agent_answers !== undefined
-                    ? { agent_answers: input.agent_answers }
+                    ? { agent_answers: input.agent_answers as unknown as Json }
                     : {}),
             },
             { onConflict: 'student_id' },
@@ -180,5 +181,6 @@ export async function savePrescriptionProfile(
     // 7. Revalidate student page
     revalidatePath(`/students/${input.student_id}`)
 
-    return { success: true, profile: profile as StudentPrescriptionProfile }
+    // jsonb na leitura: Row genérico (Json) → tipo rico do domínio
+    return { success: true, profile: profile as unknown as StudentPrescriptionProfile }
 }

@@ -50,9 +50,9 @@ export async function assignProgram({ studentId, templateId, startDate, isSchedu
             p_student_id: studentId,
             p_template_id: templateId,
             p_is_scheduled: isScheduled,
-            p_scheduled_start_date: isScheduled ? startDate : null,
+            p_scheduled_start_date: isScheduled ? startDate : undefined,
             p_workout_schedule: workoutSchedule ?? null,
-            p_prescription_generation_id: prescriptionGenerationId ?? null,
+            p_prescription_generation_id: prescriptionGenerationId ?? undefined,
         })
 
         if (rpcError) throw rpcError

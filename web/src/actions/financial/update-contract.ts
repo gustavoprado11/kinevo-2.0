@@ -166,9 +166,9 @@ export async function updateContract(input: UpdateContractInput) {
                 eventType: 'plan_changed',
                 metadata: {
                     from_amount: contract.amount,
-                    to_amount: payload.amount ?? contract.amount,
+                    to_amount: (payload.amount as number | undefined) ?? contract.amount,
                     from_plan: contract.plan_id,
-                    to_plan: payload.plan_id ?? contract.plan_id,
+                    to_plan: (payload.plan_id as string | undefined) ?? contract.plan_id,
                     to_plan_title: newPlanTitle,
                 },
             })
@@ -181,14 +181,6 @@ export async function updateContract(input: UpdateContractInput) {
                 contractId: contract.id,
                 eventType: payload.block_on_fail ? 'access_blocked' : 'access_unblocked',
             })
-        }
-
-        // Update student plan name if plan changed
-        if (newPlanTitle !== null) {
-            await supabaseAdmin
-                .from('students')
-                .update({ current_plan_name: newPlanTitle })
-                .eq('id', contract.student_id)
         }
 
         revalidatePath('/financial')

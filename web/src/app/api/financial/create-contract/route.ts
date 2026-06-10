@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { Database } from '@kinevo/shared/types/database'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logContractEvent } from '@/lib/contract-events'
 import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch plan if provided
-    let plan: { id: string; title: string; price: number; interval: string } | null = null
+    let plan: { id: string; title: string; price: number; interval: string | null } | null = null
     if (planId) {
         const { data: planData } = await supabaseAdmin
             .from('trainer_plans')
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
         .in('status', ['active', 'past_due', 'pending'])
 
     const now = new Date()
-    let contractData: Record<string, unknown>
+    let contractData: Database['public']['Tables']['student_contracts']['Insert']
 
     if (billingType === 'courtesy') {
         contractData = {
@@ -177,16 +178,6 @@ export async function POST(request: NextRequest) {
             plan_title: plan?.title ?? 'Acesso Gratuito',
         },
     })
-
-    // Update student plan_status
-    await supabaseAdmin
-        .from('students')
-        .update({
-            plan_status: 'active',
-            pending_plan_id: null,
-            current_plan_name: plan?.title ?? 'Acesso Gratuito',
-        })
-        .eq('id', studentId)
 
     return NextResponse.json({ success: true, contractId: newContract.id })
 }

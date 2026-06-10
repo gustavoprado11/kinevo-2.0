@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import type { Json } from '@kinevo/shared/types/database'
 import { createClient } from '@/lib/supabase/server'
 import {
     KINEVO_DEFAULT_PREFERENCES,
@@ -47,7 +48,8 @@ export async function resetPrescriptionPreferences(): Promise<ResetPrescriptionP
 
     const { error: updateError } = await supabase
         .from('trainers')
-        .update({ prescription_preferences: reset })
+        // jsonb na fronteira: PrescriptionPreferences é estruturalmente compatível com Json
+        .update({ prescription_preferences: reset as unknown as Json })
         .eq('auth_user_id', user.id)
 
     if (updateError) {

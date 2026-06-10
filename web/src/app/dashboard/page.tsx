@@ -64,13 +64,17 @@ export default async function DashboardPage({
         trainer_id: t.trainer_id,
     }))
 
-    const selfStudent = students?.find(s => (s as any).is_trainer_profile) ?? null
+    const selfStudent = students?.find(s => s.is_trainer_profile) ?? null
 
     return (
         <DashboardClient
             trainer={trainer}
             data={data}
-            initialStudents={students || []}
+            initialStudents={(students || []).map(s => ({
+                ...s,
+                // CHECK constraint do schema garante a union
+                status: s.status as 'active' | 'inactive' | 'pending',
+            }))}
             selfStudentId={selfStudent?.id ?? null}
             formTemplates={formTemplates}
         />

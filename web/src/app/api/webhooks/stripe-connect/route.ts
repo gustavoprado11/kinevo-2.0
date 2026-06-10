@@ -257,15 +257,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, connect
         console.log(`[connect-webhook:checkout] Created new contract for student ${studentId}`)
     }
 
-    // Update student status
+    // Update student status (plan_status/pending_plan_id/current_plan_name não
+    // existem no schema 2.0 — escrita removida; só o vínculo Stripe permanece)
     await supabaseAdmin
         .from('students')
-        .update({
-            plan_status: 'active',
-            pending_plan_id: null,
-            current_plan_name: plan?.title || null,
-            stripe_subscription_id: subscriptionId,
-        })
+        .update({ stripe_subscription_id: subscriptionId })
         .eq('id', studentId)
 
     await logContractEvent({
@@ -338,12 +334,6 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, connectedAccountI
             stripe_invoice_id: invoice.id,
             description: `Pagamento automático — ${invoice.lines?.data?.[0]?.description || 'Assinatura'}`,
         })
-
-    // Update student status
-    await supabaseAdmin
-        .from('students')
-        .update({ plan_status: 'active' })
-        .eq('id', contract.student_id)
 
     await logContractEvent({
         studentId: contract.student_id,
@@ -431,12 +421,6 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, connectedAccountId?:
             stripe_invoice_id: invoice.id,
             description: 'Pagamento falhou',
         })
-
-    // Update student status
-    await supabaseAdmin
-        .from('students')
-        .update({ plan_status: 'past_due' })
-        .eq('id', contract.student_id)
 
     await logContractEvent({
         studentId: contract.student_id,
@@ -577,11 +561,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     if (contract) {
         await supabaseAdmin
             .from('students')
-            .update({
-                plan_status: 'canceled',
-                current_plan_name: null,
-                stripe_subscription_id: null,
-            })
+            .update({ stripe_subscription_id: null })
             .eq('id', contract.student_id)
 
         await logContractEvent({
