@@ -37,33 +37,61 @@ export async function getWorkoutTonnageHistory(
 
         if (!workouts || workouts.length === 0) return { success: true, data: [] }
 
+        // 2. Get completed sessions for ALL workouts of the program in one
+        // query, then keep the last 8 per workout client-side. (PostgREST não
+        // expressa "limit 8 por grupo"; o total de sessões de um programa é
+        // pequeno o bastante para filtrar em memória — antes eram até ~36
+        // round-trips em loop, N+1.)
+        const workoutIds = workouts.map(w => w.id)
+        const { data: allSessions } = await supabase
+            .from('workout_sessions')
+            .select('id, completed_at, assigned_workout_id')
+            .in('assigned_workout_id', workoutIds)
+            .eq('assigned_program_id', programId)
+            .eq('status', 'completed')
+            .order('completed_at', { ascending: false })
+
+        const sessionsByWorkout = new Map<string, { id: string; completed_at: string | null }[]>()
+        for (const s of allSessions ?? []) {
+            const list = sessionsByWorkout.get(s.assigned_workout_id) ?? []
+            if (list.length < 8) {
+                list.push({ id: s.id, completed_at: s.completed_at })
+                sessionsByWorkout.set(s.assigned_workout_id, list)
+            }
+        }
+
+        // 3. One query for the set logs of every selected session.
+        const selectedSessionIds = Array.from(sessionsByWorkout.values()).flat().map(s => s.id)
+        const logsBySession = new Map<string, { weight: number | null; reps_completed: number | null; exerciseName: string }[]>()
+        if (selectedSessionIds.length > 0) {
+            const { data: allLogs } = await supabase
+                .from('set_logs')
+                .select('workout_session_id, weight, reps_completed, assigned_workout_items!inner(exercise_name)')
+                .in('workout_session_id', selectedSessionIds)
+            for (const log of allLogs ?? []) {
+                const list = logsBySession.get(log.workout_session_id) ?? []
+                list.push({
+                    weight: log.weight,
+                    reps_completed: log.reps_completed,
+                    exerciseName: (log.assigned_workout_items as any)?.exercise_name || 'Sem nome',
+                })
+                logsBySession.set(log.workout_session_id, list)
+            }
+        }
+
         const result: WorkoutTonnageHistory[] = []
 
         for (const workout of workouts) {
-            // 2. Get last 8 completed sessions for this workout
-            const { data: sessions } = await supabase
-                .from('workout_sessions')
-                .select('id, completed_at')
-                .eq('assigned_workout_id', workout.id)
-                .eq('assigned_program_id', programId)
-                .eq('status', 'completed')
-                .order('completed_at', { ascending: false })
-                .limit(8)
-
+            const sessions = sessionsByWorkout.get(workout.id)
             if (!sessions || sessions.length === 0) continue
 
             // Reverse to chronological order
             const chronoSessions = [...sessions].reverse()
 
-            // 3. For each session, calculate tonnage with exercise breakdown
             const points: WorkoutTonnagePoint[] = []
 
             for (const session of chronoSessions) {
-                // Get set logs with exercise names
-                const { data: logs } = await supabase
-                    .from('set_logs')
-                    .select('weight, reps_completed, assigned_workout_items!inner(exercise_name)')
-                    .eq('workout_session_id', session.id)
+                const logs = logsBySession.get(session.id)
 
                 if (!logs || logs.length === 0) {
                     points.push({
@@ -84,9 +112,7 @@ export async function getWorkoutTonnageHistory(
                     const r = log.reps_completed || 0
                     const t = w * r
                     totalTonnage += t
-
-                    const name = (log.assigned_workout_items as any)?.exercise_name || 'Sem nome'
-                    exerciseMap.set(name, (exerciseMap.get(name) || 0) + t)
+                    exerciseMap.set(log.exerciseName, (exerciseMap.get(log.exerciseName) || 0) + t)
                 }
 
                 // Sort exercises by tonnage descending
