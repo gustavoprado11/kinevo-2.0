@@ -258,7 +258,7 @@ export async function activateWallet(
 
     // Cadastra o webhook Kinevo na subconta — best-effort, não bloqueia
     // onboarding se falhar (trainer pode rodar backfill depois).
-    await tryEnsureSubaccountWebhook(account.apiKey, { trainerId })
+    await tryEnsureSubaccountWebhook(account.apiKey, { trainerId, email: input.email })
 
     const fresh = await getWalletRow(trainerId)
     return summarizeWallet(fresh)
@@ -297,6 +297,19 @@ export async function syncWalletStatus(trainerId: string): Promise<KinevoWalletS
         .update(update)
         .eq('trainer_id', trainerId)
     if (error) throw error
+
+    // Self-heal: garante o webhook da subconta a cada sync (best-effort).
+    // Cobre contas antigas que ficaram sem webhook por falha silenciosa no
+    // onboarding (causa real: Asaas exige email no cadastro — jun/2026).
+    if (newStatus === 'approved' && row.asaas_api_key_encrypted) {
+        try {
+            const blob = row.asaas_api_key_encrypted
+            const buf = Buffer.isBuffer(blob) ? blob : Buffer.from(String(blob).replace(/^\\x/, ''), 'hex')
+            await tryEnsureSubaccountWebhook(decryptApiKey(buf), { trainerId, email: row.email })
+        } catch (err) {
+            console.error('[wallet/sync] webhook self-heal skip:', err)
+        }
+    }
 
     return summarizeWallet({ ...row, ...update } as TrainerPaymentAccountRow)
 }
@@ -454,7 +467,7 @@ export async function linkExistingAccount(
 
     // Modo linked: trainer trouxe a própria chave — cadastra webhook na
     // conta dele pra pagamentos chegarem no Kinevo. Best-effort.
-    await tryEnsureSubaccountWebhook(apiKey, { trainerId })
+    await tryEnsureSubaccountWebhook(apiKey, { trainerId, email: info.email })
 
     const fresh = await getWalletRow(trainerId)
     return summarizeWallet(fresh)

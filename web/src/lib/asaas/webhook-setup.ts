@@ -56,7 +56,9 @@ interface WebhookListResponse {
 function resolveWebhookUrl(): string {
     const explicit = process.env.ASAAS_WEBHOOK_URL
     if (explicit) return explicit
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinevoapp.com'
+    // SEMPRE www: kinevoapp.com sem www responde 307 → webhooks não seguem
+    // redirect (incidente Stripe de abr/2026, ver CLAUDE.md).
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.kinevoapp.com'
     return `${base.replace(/\/$/, '')}/api/webhooks/asaas`
 }
 
@@ -85,9 +87,14 @@ function resolveWebhookToken(): string {
  */
 export async function ensureSubaccountWebhook(
     subaccountApiKey: string,
+    opts?: { email?: string | null },
 ): Promise<{ created: boolean; updated: boolean; webhookId: string }> {
     const url = resolveWebhookUrl()
     const authToken = resolveWebhookToken()
+    // A Asaas EXIGE email no cadastro de webhook (usa pra avisar de fila
+    // interrompida). Sem ele o POST devolve 400 invalid_email — foi a causa
+    // da falha silenciosa que deixou subcontas sem webhook (jun/2026).
+    const email = opts?.email || process.env.ASAAS_WEBHOOK_EMAIL || 'gustavocostap11@gmail.com'
 
     // 1. Lista webhooks existentes da subconta
     const list = await asaasRequest<WebhookListResponse>({
@@ -114,7 +121,7 @@ export async function ensureSubaccountWebhook(
                 body: {
                     name: existing.name ?? 'Kinevo',
                     url,
-                    email: existing.email ?? undefined,
+                    email: existing.email ?? email,
                     enabled: true,
                     interrupted: false,
                     authToken,
@@ -136,6 +143,7 @@ export async function ensureSubaccountWebhook(
         body: {
             name: 'Kinevo',
             url,
+            email,
             enabled: true,
             interrupted: false,
             authToken,
@@ -153,10 +161,10 @@ export async function ensureSubaccountWebhook(
  */
 export async function tryEnsureSubaccountWebhook(
     subaccountApiKey: string,
-    context?: { trainerId?: string },
+    context?: { trainerId?: string; email?: string | null },
 ): Promise<void> {
     try {
-        const result = await ensureSubaccountWebhook(subaccountApiKey)
+        const result = await ensureSubaccountWebhook(subaccountApiKey, { email: context?.email })
         if (result.created) {
             console.log('[asaas-webhook-setup] criou webhook', { ...context, webhookId: result.webhookId })
         } else if (result.updated) {
