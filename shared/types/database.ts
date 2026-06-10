@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ambassador_events: {
@@ -245,6 +270,72 @@ export type Database = {
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_groups: {
+        Row: {
+          capacity: number | null
+          coach_id: string
+          created_at: string
+          day_of_week: number | null
+          duration_minutes: number
+          ends_on: string | null
+          frequency: string
+          id: string
+          organization_id: string
+          start_time: string | null
+          starts_on: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number | null
+          coach_id: string
+          created_at?: string
+          day_of_week?: number | null
+          duration_minutes?: number
+          ends_on?: string | null
+          frequency?: string
+          id?: string
+          organization_id: string
+          start_time?: string | null
+          starts_on?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number | null
+          coach_id?: string
+          created_at?: string
+          day_of_week?: number | null
+          duration_minutes?: number
+          ends_on?: string | null
+          frequency?: string
+          id?: string
+          organization_id?: string
+          start_time?: string | null
+          starts_on?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_groups_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_groups_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -845,6 +936,41 @@ export type Database = {
           },
         ]
       }
+      concierge_requests: {
+        Row: {
+          channel: string
+          id: string
+          notes: string | null
+          requested_at: string
+          source: string
+          trainer_id: string
+        }
+        Insert: {
+          channel?: string
+          id?: string
+          notes?: string | null
+          requested_at?: string
+          source?: string
+          trainer_id: string
+        }
+        Update: {
+          channel?: string
+          id?: string
+          notes?: string | null
+          requested_at?: string
+          source?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "concierge_requests_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_events: {
         Row: {
           contract_id: string | null
@@ -896,6 +1022,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      curso_waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          source?: string
+        }
+        Relationships: []
       }
       daily_activity_samples: {
         Row: {
@@ -1161,6 +1308,7 @@ export type Database = {
           movement_pattern: string | null
           movement_pattern_family: string | null
           name: string
+          organization_id: string | null
           original_system_id: string | null
           owner_id: string | null
           prescription_notes: string | null
@@ -1168,6 +1316,7 @@ export type Database = {
           studio_id: string | null
           thumbnail_url: string | null
           updated_at: string
+          video_source_drive_id: string | null
           video_url: string | null
         }
         Insert: {
@@ -1184,6 +1333,7 @@ export type Database = {
           movement_pattern?: string | null
           movement_pattern_family?: string | null
           name: string
+          organization_id?: string | null
           original_system_id?: string | null
           owner_id?: string | null
           prescription_notes?: string | null
@@ -1191,6 +1341,7 @@ export type Database = {
           studio_id?: string | null
           thumbnail_url?: string | null
           updated_at?: string
+          video_source_drive_id?: string | null
           video_url?: string | null
         }
         Update: {
@@ -1207,6 +1358,7 @@ export type Database = {
           movement_pattern?: string | null
           movement_pattern_family?: string | null
           name?: string
+          organization_id?: string | null
           original_system_id?: string | null
           owner_id?: string | null
           prescription_notes?: string | null
@@ -1214,9 +1366,17 @@ export type Database = {
           studio_id?: string | null
           thumbnail_url?: string | null
           updated_at?: string
+          video_source_drive_id?: string | null
           video_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "exercises_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "exercises_trainer_id_fkey"
             columns: ["owner_id"]
@@ -1325,45 +1485,51 @@ export type Database = {
         Row: {
           amount_gross: number
           amount_net: number
+          asaas_payment_id: string | null
           coach_id: string
           created_at: string
           currency: string
           description: string | null
           id: string
           processed_at: string | null
+          provider: Database["public"]["Enums"]["payment_provider"]
           status: string
           stripe_invoice_id: string | null
-          stripe_payment_id: string
+          stripe_payment_id: string | null
           student_id: string | null
           type: string
         }
         Insert: {
           amount_gross: number
           amount_net: number
+          asaas_payment_id?: string | null
           coach_id: string
           created_at?: string
           currency?: string
           description?: string | null
           id?: string
           processed_at?: string | null
+          provider?: Database["public"]["Enums"]["payment_provider"]
           status: string
           stripe_invoice_id?: string | null
-          stripe_payment_id: string
+          stripe_payment_id?: string | null
           student_id?: string | null
           type: string
         }
         Update: {
           amount_gross?: number
           amount_net?: number
+          asaas_payment_id?: string | null
           coach_id?: string
           created_at?: string
           currency?: string
           description?: string | null
           id?: string
           processed_at?: string | null
+          provider?: Database["public"]["Enums"]["payment_provider"]
           status?: string
           stripe_invoice_id?: string | null
-          stripe_payment_id?: string
+          stripe_payment_id?: string | null
           student_id?: string | null
           type?: string
         }
@@ -1713,6 +1879,178 @@ export type Database = {
           },
         ]
       }
+      mcp_oauth_clients: {
+        Row: {
+          client_id: string
+          client_name: string
+          created_at: string
+          id: string
+          redirect_uris: string[]
+        }
+        Insert: {
+          client_id: string
+          client_name?: string
+          created_at?: string
+          id?: string
+          redirect_uris?: string[]
+        }
+        Update: {
+          client_id?: string
+          client_name?: string
+          created_at?: string
+          id?: string
+          redirect_uris?: string[]
+        }
+        Relationships: []
+      }
+      mcp_oauth_codes: {
+        Row: {
+          client_id: string
+          code: string
+          code_challenge: string
+          code_challenge_method: string
+          created_at: string
+          expires_at: string
+          id: string
+          redirect_uri: string
+          scope: string | null
+          state: string | null
+          trainer_id: string
+          used_at: string | null
+        }
+        Insert: {
+          client_id: string
+          code: string
+          code_challenge: string
+          code_challenge_method?: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          redirect_uri: string
+          scope?: string | null
+          state?: string | null
+          trainer_id: string
+          used_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          code?: string
+          code_challenge?: string
+          code_challenge_method?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          redirect_uri?: string
+          scope?: string | null
+          state?: string | null
+          trainer_id?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_oauth_codes_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_oauth_tokens: {
+        Row: {
+          access_token_hash: string
+          client_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_expires_at: string | null
+          refresh_token_hash: string | null
+          revoked_at: string | null
+          scope: string | null
+          trainer_id: string
+        }
+        Insert: {
+          access_token_hash: string
+          client_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          refresh_expires_at?: string | null
+          refresh_token_hash?: string | null
+          revoked_at?: string | null
+          scope?: string | null
+          trainer_id: string
+        }
+        Update: {
+          access_token_hash?: string
+          client_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_expires_at?: string | null
+          refresh_token_hash?: string | null
+          revoked_at?: string | null
+          scope?: string | null
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_oauth_tokens_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_tool_usage_logs: {
+        Row: {
+          api_key_id: string
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          success: boolean
+          tool_name: string
+          trainer_id: string
+        }
+        Insert: {
+          api_key_id: string
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          success?: boolean
+          tool_name: string
+          trainer_id: string
+        }
+        Update: {
+          api_key_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          success?: boolean
+          tool_name?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_tool_usage_logs_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "trainer_api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_tool_usage_logs_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string | null
@@ -1763,18 +2101,21 @@ export type Database = {
           id: string
           name: string
           owner_id: string | null
+          parent_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           owner_id?: string | null
+          parent_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           owner_id?: string | null
+          parent_id?: string | null
         }
         Relationships: [
           {
@@ -1784,7 +2125,104 @@ export type Database = {
             referencedRelation: "trainers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "muscle_groups_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "muscle_groups"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          invited_email: string | null
+          is_coach: boolean
+          joined_at: string | null
+          organization_id: string
+          role: string
+          status: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_email?: string | null
+          is_coach?: boolean
+          joined_at?: string | null
+          organization_id: string
+          role?: string
+          status?: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_email?: string | null
+          is_coach?: boolean
+          joined_at?: string | null
+          organization_id?: string
+          role?: string
+          status?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          grace_until: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          seat_limit: number | null
+          subscription_status: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          grace_until?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          seat_limit?: number | null
+          subscription_status?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          grace_until?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          seat_limit?: number | null
+          subscription_status?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: []
       }
       payment_settings: {
         Row: {
@@ -1816,6 +2254,159 @@ export type Database = {
           stripe_status?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      payouts: {
+        Row: {
+          amount_cents: number
+          asaas_transfer_id: string | null
+          completed_at: string | null
+          end_to_end_id: string | null
+          failure_reason: string | null
+          id: string
+          pix_key_id: string | null
+          pix_key_snapshot: string
+          pix_key_type_snapshot: Database["public"]["Enums"]["pix_key_type"]
+          requested_at: string
+          status: Database["public"]["Enums"]["payout_status"]
+          trainer_id: string
+        }
+        Insert: {
+          amount_cents: number
+          asaas_transfer_id?: string | null
+          completed_at?: string | null
+          end_to_end_id?: string | null
+          failure_reason?: string | null
+          id?: string
+          pix_key_id?: string | null
+          pix_key_snapshot: string
+          pix_key_type_snapshot: Database["public"]["Enums"]["pix_key_type"]
+          requested_at?: string
+          status?: Database["public"]["Enums"]["payout_status"]
+          trainer_id: string
+        }
+        Update: {
+          amount_cents?: number
+          asaas_transfer_id?: string | null
+          completed_at?: string | null
+          end_to_end_id?: string | null
+          failure_reason?: string | null
+          id?: string
+          pix_key_id?: string | null
+          pix_key_snapshot?: string
+          pix_key_type_snapshot?: Database["public"]["Enums"]["pix_key_type"]
+          requested_at?: string
+          status?: Database["public"]["Enums"]["payout_status"]
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payouts_pix_key_id_fkey"
+            columns: ["pix_key_id"]
+            isOneToOne: false
+            referencedRelation: "pix_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      perfect_weeks: {
+        Row: {
+          achieved_at: string
+          assigned_program_id: string | null
+          completed_count: number
+          created_at: string
+          expected_count: number
+          id: string
+          program_week: number | null
+          student_id: string
+          trainer_id: string | null
+          week_start_date: string
+        }
+        Insert: {
+          achieved_at?: string
+          assigned_program_id?: string | null
+          completed_count: number
+          created_at?: string
+          expected_count: number
+          id?: string
+          program_week?: number | null
+          student_id: string
+          trainer_id?: string | null
+          week_start_date: string
+        }
+        Update: {
+          achieved_at?: string
+          assigned_program_id?: string | null
+          completed_count?: number
+          created_at?: string
+          expected_count?: number
+          id?: string
+          program_week?: number | null
+          student_id?: string
+          trainer_id?: string | null
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfect_weeks_assigned_program_id_fkey"
+            columns: ["assigned_program_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perfect_weeks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perfect_weeks_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pix_keys: {
+        Row: {
+          alias: string
+          bank_name: string | null
+          created_at: string
+          id: string
+          is_default: boolean
+          key_type: Database["public"]["Enums"]["pix_key_type"]
+          owner_name: string | null
+          pix_key: string
+          trainer_id: string
+          validated_at: string | null
+        }
+        Insert: {
+          alias: string
+          bank_name?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          key_type: Database["public"]["Enums"]["pix_key_type"]
+          owner_name?: string | null
+          pix_key: string
+          trainer_id: string
+          validated_at?: string | null
+        }
+        Update: {
+          alias?: string
+          bank_name?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          key_type?: Database["public"]["Enums"]["pix_key_type"]
+          owner_name?: string | null
+          pix_key?: string
+          trainer_id?: string
+          validated_at?: string | null
         }
         Relationships: []
       }
@@ -2092,6 +2683,7 @@ export type Database = {
           is_archived: boolean
           is_template: boolean
           name: string
+          organization_id: string | null
           trainer_id: string
           updated_at: string
         }
@@ -2103,6 +2695,7 @@ export type Database = {
           is_archived?: boolean
           is_template?: boolean
           name: string
+          organization_id?: string | null
           trainer_id: string
           updated_at?: string
         }
@@ -2114,10 +2707,18 @@ export type Database = {
           is_archived?: boolean
           is_template?: boolean
           name?: string
+          organization_id?: string | null
           trainer_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "program_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "program_templates_trainer_id_fkey"
             columns: ["trainer_id"]
@@ -2278,6 +2879,7 @@ export type Database = {
           score_date: string
           sleep_component: number | null
           sleep_minutes: number | null
+          source: string
           student_id: string
         }
         Insert: {
@@ -2289,6 +2891,7 @@ export type Database = {
           score_date: string
           sleep_component?: number | null
           sleep_minutes?: number | null
+          source?: string
           student_id: string
         }
         Update: {
@@ -2300,6 +2903,7 @@ export type Database = {
           score_date?: string
           sleep_component?: number | null
           sleep_minutes?: number | null
+          source?: string
           student_id?: string
         }
         Relationships: [
@@ -2314,6 +2918,7 @@ export type Database = {
       }
       recurring_appointments: {
         Row: {
+          appointment_group_id: string | null
           created_at: string
           day_of_week: number
           duration_minutes: number
@@ -2324,6 +2929,7 @@ export type Database = {
           group_id: string | null
           id: string
           notes: string | null
+          organization_id: string | null
           start_time: string
           starts_on: string
           status: string
@@ -2332,6 +2938,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          appointment_group_id?: string | null
           created_at?: string
           day_of_week: number
           duration_minutes?: number
@@ -2342,6 +2949,7 @@ export type Database = {
           group_id?: string | null
           id?: string
           notes?: string | null
+          organization_id?: string | null
           start_time: string
           starts_on: string
           status?: string
@@ -2350,6 +2958,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          appointment_group_id?: string | null
           created_at?: string
           day_of_week?: number
           duration_minutes?: number
@@ -2360,6 +2969,7 @@ export type Database = {
           group_id?: string | null
           id?: string
           notes?: string | null
+          organization_id?: string | null
           start_time?: string
           starts_on?: string
           status?: string
@@ -2368,6 +2978,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recurring_appointments_appointment_group_id_fkey"
+            columns: ["appointment_group_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_appointments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recurring_appointments_student_id_fkey"
             columns: ["student_id"]
@@ -2621,6 +3245,10 @@ export type Database = {
       student_contracts: {
         Row: {
           amount: number
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
+          asaas_payment_link_id: string | null
+          asaas_subscription_id: string | null
           billing_type: Database["public"]["Enums"]["billing_type"]
           block_on_fail: boolean
           cancel_at_period_end: boolean | null
@@ -2632,6 +3260,7 @@ export type Database = {
           id: string
           installment_count: number | null
           plan_id: string | null
+          provider: Database["public"]["Enums"]["payment_provider"]
           start_date: string | null
           status: string
           stripe_customer_id: string | null
@@ -2642,6 +3271,10 @@ export type Database = {
         }
         Insert: {
           amount: number
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_payment_link_id?: string | null
+          asaas_subscription_id?: string | null
           billing_type?: Database["public"]["Enums"]["billing_type"]
           block_on_fail?: boolean
           cancel_at_period_end?: boolean | null
@@ -2653,6 +3286,7 @@ export type Database = {
           id?: string
           installment_count?: number | null
           plan_id?: string | null
+          provider?: Database["public"]["Enums"]["payment_provider"]
           start_date?: string | null
           status?: string
           stripe_customer_id?: string | null
@@ -2663,6 +3297,10 @@ export type Database = {
         }
         Update: {
           amount?: number
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_payment_link_id?: string | null
+          asaas_subscription_id?: string | null
           billing_type?: Database["public"]["Enums"]["billing_type"]
           block_on_fail?: boolean
           cancel_at_period_end?: boolean | null
@@ -2674,6 +3312,7 @@ export type Database = {
           id?: string
           installment_count?: number | null
           plan_id?: string | null
+          provider?: Database["public"]["Enums"]["payment_provider"]
           start_date?: string | null
           status?: string
           stripe_customer_id?: string | null
@@ -2854,6 +3493,8 @@ export type Database = {
       }
       students: {
         Row: {
+          access_blocked_at: string | null
+          access_blocked_reason: string | null
           auth_user_id: string | null
           avatar_url: string | null
           coach_id: string | null
@@ -2866,6 +3507,7 @@ export type Database = {
           name: string
           notification_preferences: Json | null
           objective: string | null
+          organization_id: string | null
           phone: string | null
           status: string
           stripe_customer_id: string | null
@@ -2874,6 +3516,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_blocked_at?: string | null
+          access_blocked_reason?: string | null
           auth_user_id?: string | null
           avatar_url?: string | null
           coach_id?: string | null
@@ -2886,6 +3530,7 @@ export type Database = {
           name: string
           notification_preferences?: Json | null
           objective?: string | null
+          organization_id?: string | null
           phone?: string | null
           status?: string
           stripe_customer_id?: string | null
@@ -2894,6 +3539,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_blocked_at?: string | null
+          access_blocked_reason?: string | null
           auth_user_id?: string | null
           avatar_url?: string | null
           coach_id?: string | null
@@ -2906,6 +3553,7 @@ export type Database = {
           name?: string
           notification_preferences?: Json | null
           objective?: string | null
+          organization_id?: string | null
           phone?: string | null
           status?: string
           stripe_customer_id?: string | null
@@ -2914,6 +3562,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "students_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "students_trainer_id_fkey"
             columns: ["coach_id"]
@@ -2960,6 +3615,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "subscriptions_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          trainer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          trainer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_api_keys_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
@@ -3021,6 +3717,137 @@ export type Database = {
           },
         ]
       }
+      trainer_financial_settings: {
+        Row: {
+          block_on_overdue: boolean
+          created_at: string
+          default_allow_boleto: boolean
+          default_allow_credit_card: boolean
+          default_allow_pix: boolean
+          id: string
+          notify_on_kyc_alert: boolean
+          notify_on_payment_received: boolean
+          notify_on_payout_completed: boolean
+          notify_on_subscription_canceled: boolean
+          overdue_grace_days: number
+          show_stripe_legacy: boolean
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          block_on_overdue?: boolean
+          created_at?: string
+          default_allow_boleto?: boolean
+          default_allow_credit_card?: boolean
+          default_allow_pix?: boolean
+          id?: string
+          notify_on_kyc_alert?: boolean
+          notify_on_payment_received?: boolean
+          notify_on_payout_completed?: boolean
+          notify_on_subscription_canceled?: boolean
+          overdue_grace_days?: number
+          show_stripe_legacy?: boolean
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          block_on_overdue?: boolean
+          created_at?: string
+          default_allow_boleto?: boolean
+          default_allow_credit_card?: boolean
+          default_allow_pix?: boolean
+          id?: string
+          notify_on_kyc_alert?: boolean
+          notify_on_payment_received?: boolean
+          notify_on_payout_completed?: boolean
+          notify_on_subscription_canceled?: boolean
+          overdue_grace_days?: number
+          show_stripe_legacy?: boolean
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_financial_settings_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: true
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_leads: {
+        Row: {
+          contacted_at: string | null
+          converted_to_student_id: string | null
+          created_at: string
+          email: string
+          goal: string | null
+          id: string
+          ip_hash: string | null
+          level: string | null
+          message: string | null
+          name: string
+          source: string
+          source_slug: string | null
+          status: string
+          trainer_id: string
+          user_agent: string | null
+          whatsapp: string
+        }
+        Insert: {
+          contacted_at?: string | null
+          converted_to_student_id?: string | null
+          created_at?: string
+          email: string
+          goal?: string | null
+          id?: string
+          ip_hash?: string | null
+          level?: string | null
+          message?: string | null
+          name: string
+          source?: string
+          source_slug?: string | null
+          status?: string
+          trainer_id: string
+          user_agent?: string | null
+          whatsapp: string
+        }
+        Update: {
+          contacted_at?: string | null
+          converted_to_student_id?: string | null
+          created_at?: string
+          email?: string
+          goal?: string | null
+          id?: string
+          ip_hash?: string | null
+          level?: string | null
+          message?: string | null
+          name?: string
+          source?: string
+          source_slug?: string | null
+          status?: string
+          trainer_id?: string
+          user_agent?: string | null
+          whatsapp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_leads_converted_to_student_id_fkey"
+            columns: ["converted_to_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_leads_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trainer_notifications: {
         Row: {
           body: string
@@ -3068,8 +3895,86 @@ export type Database = {
           },
         ]
       }
+      trainer_payment_accounts: {
+        Row: {
+          account_mode: string
+          activated_at: string | null
+          address: string | null
+          address_number: string | null
+          asaas_account_id: string | null
+          asaas_api_key_encrypted: string | null
+          asaas_wallet_id: string | null
+          company_type: string | null
+          cpf_cnpj: string | null
+          created_at: string
+          email: string | null
+          id: string
+          income_value: number | null
+          legal_name: string | null
+          mobile_phone: string | null
+          postal_code: string | null
+          province: string | null
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["wallet_status"]
+          trainer_id: string
+          updated_at: string
+          webhook_configured_at: string | null
+        }
+        Insert: {
+          account_mode?: string
+          activated_at?: string | null
+          address?: string | null
+          address_number?: string | null
+          asaas_account_id?: string | null
+          asaas_api_key_encrypted?: string | null
+          asaas_wallet_id?: string | null
+          company_type?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          income_value?: number | null
+          legal_name?: string | null
+          mobile_phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["wallet_status"]
+          trainer_id: string
+          updated_at?: string
+          webhook_configured_at?: string | null
+        }
+        Update: {
+          account_mode?: string
+          activated_at?: string | null
+          address?: string | null
+          address_number?: string | null
+          asaas_account_id?: string | null
+          asaas_api_key_encrypted?: string | null
+          asaas_wallet_id?: string | null
+          company_type?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          income_value?: number | null
+          legal_name?: string | null
+          mobile_phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["wallet_status"]
+          trainer_id?: string
+          updated_at?: string
+          webhook_configured_at?: string | null
+        }
+        Relationships: []
+      }
       trainer_plans: {
         Row: {
+          allow_boleto: boolean
+          allow_credit_card: boolean
+          allow_pix: boolean
           created_at: string | null
           description: string | null
           id: string
@@ -3087,6 +3992,9 @@ export type Database = {
           visibility: string | null
         }
         Insert: {
+          allow_boleto?: boolean
+          allow_credit_card?: boolean
+          allow_pix?: boolean
           created_at?: string | null
           description?: string | null
           id?: string
@@ -3104,6 +4012,9 @@ export type Database = {
           visibility?: string | null
         }
         Update: {
+          allow_boleto?: boolean
+          allow_credit_card?: boolean
+          allow_pix?: boolean
           created_at?: string | null
           description?: string | null
           id?: string
@@ -3182,16 +4093,39 @@ export type Database = {
           auth_user_id: string
           auto_publish_reports: boolean
           avatar_url: string | null
+          brand_color: string | null
+          brand_logo_url: string | null
+          brand_name: string | null
+          brand_show_powered_by: boolean
+          branding_enabled: boolean
           created_at: string
           email: string
           financial_attention_seen_at: string | null
           id: string
+          instagram_handle: string | null
+          landing_bio: string | null
+          landing_certifications: string[] | null
+          landing_city: string | null
+          landing_cref: string | null
+          landing_faq: Json
+          landing_headline: string | null
+          landing_hero_image_url: string | null
+          landing_plans: Json
+          landing_price_label: string | null
+          landing_published: boolean
+          landing_sections: Json
+          landing_specializations: string[] | null
+          landing_stats: Json
+          landing_subheadline: string | null
+          landing_testimonials: Json
+          landing_year_started: number | null
           modality_focus: string | null
           name: string
           notification_preferences: Json | null
           onboarding_state: Json | null
           prescription_patterns: Json | null
           prescription_preferences: Json | null
+          public_slug: string | null
           smart_v2_enabled: boolean
           theme: string
           updated_at: string
@@ -3201,16 +4135,39 @@ export type Database = {
           auth_user_id: string
           auto_publish_reports?: boolean
           avatar_url?: string | null
+          brand_color?: string | null
+          brand_logo_url?: string | null
+          brand_name?: string | null
+          brand_show_powered_by?: boolean
+          branding_enabled?: boolean
           created_at?: string
           email: string
           financial_attention_seen_at?: string | null
           id?: string
+          instagram_handle?: string | null
+          landing_bio?: string | null
+          landing_certifications?: string[] | null
+          landing_city?: string | null
+          landing_cref?: string | null
+          landing_faq?: Json
+          landing_headline?: string | null
+          landing_hero_image_url?: string | null
+          landing_plans?: Json
+          landing_price_label?: string | null
+          landing_published?: boolean
+          landing_sections?: Json
+          landing_specializations?: string[] | null
+          landing_stats?: Json
+          landing_subheadline?: string | null
+          landing_testimonials?: Json
+          landing_year_started?: number | null
           modality_focus?: string | null
           name: string
           notification_preferences?: Json | null
           onboarding_state?: Json | null
           prescription_patterns?: Json | null
           prescription_preferences?: Json | null
+          public_slug?: string | null
           smart_v2_enabled?: boolean
           theme?: string
           updated_at?: string
@@ -3220,16 +4177,39 @@ export type Database = {
           auth_user_id?: string
           auto_publish_reports?: boolean
           avatar_url?: string | null
+          brand_color?: string | null
+          brand_logo_url?: string | null
+          brand_name?: string | null
+          brand_show_powered_by?: boolean
+          branding_enabled?: boolean
           created_at?: string
           email?: string
           financial_attention_seen_at?: string | null
           id?: string
+          instagram_handle?: string | null
+          landing_bio?: string | null
+          landing_certifications?: string[] | null
+          landing_city?: string | null
+          landing_cref?: string | null
+          landing_faq?: Json
+          landing_headline?: string | null
+          landing_hero_image_url?: string | null
+          landing_plans?: Json
+          landing_price_label?: string | null
+          landing_published?: boolean
+          landing_sections?: Json
+          landing_specializations?: string[] | null
+          landing_stats?: Json
+          landing_subheadline?: string | null
+          landing_testimonials?: Json
+          landing_year_started?: number | null
           modality_focus?: string | null
           name?: string
           notification_preferences?: Json | null
           onboarding_state?: Json | null
           prescription_patterns?: Json | null
           prescription_preferences?: Json | null
+          public_slug?: string | null
           smart_v2_enabled?: boolean
           theme?: string
           updated_at?: string
@@ -3323,6 +4303,83 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      wearable_oauth_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string | null
+          external_user_id: string | null
+          id: string
+          refresh_token: string | null
+          scope: string | null
+          source: string
+          student_id: string
+          updated_at: string
+          webhook_subscription_ids: Json
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at?: string | null
+          external_user_id?: string | null
+          id?: string
+          refresh_token?: string | null
+          scope?: string | null
+          source: string
+          student_id: string
+          updated_at?: string
+          webhook_subscription_ids?: Json
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string | null
+          external_user_id?: string | null
+          id?: string
+          refresh_token?: string | null
+          scope?: string | null
+          source?: string
+          student_id?: string
+          updated_at?: string
+          webhook_subscription_ids?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wearable_oauth_tokens_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wearable_provider_config: {
+        Row: {
+          callback_url: string | null
+          client_id: string
+          client_secret: string
+          source: string
+          updated_at: string
+          verification_token: string | null
+        }
+        Insert: {
+          callback_url?: string | null
+          client_id: string
+          client_secret: string
+          source: string
+          updated_at?: string
+          verification_token?: string | null
+        }
+        Update: {
+          callback_url?: string | null
+          client_id?: string
+          client_secret?: string
+          source?: string
+          updated_at?: string
+          verification_token?: string | null
+        }
+        Relationships: []
       }
       webhook_events: {
         Row: {
@@ -3705,6 +4762,21 @@ export type Database = {
         }
         Returns: string
       }
+      block_overdue_students: {
+        Args: never
+        Returns: {
+          days_overdue: number
+          reason: string
+          student_id: string
+          trainer_id: string
+        }[]
+      }
+      block_student_access: {
+        Args: { p_reason?: string; p_student_id: string }
+        Returns: boolean
+      }
+      can_read_student: { Args: { p_student: string }; Returns: boolean }
+      can_write_student: { Args: { p_student: string }; Returns: boolean }
       check_student_access: { Args: { p_student_id: string }; Returns: Json }
       cleanup_stale_sessions: { Args: never; Returns: number }
       create_assessment_session: {
@@ -3716,9 +4788,12 @@ export type Database = {
         }
         Returns: string
       }
+      current_member_org_ids: { Args: never; Returns: string[] }
       current_student_coach_id: { Args: never; Returns: string }
       current_student_id: { Args: never; Returns: string }
+      current_student_id_active: { Args: never; Returns: string }
       current_trainer_id: { Args: never; Returns: string }
+      current_trainer_id_active: { Args: never; Returns: string }
       delete_student_account: { Args: never; Returns: undefined }
       detect_training_gaps: {
         Args: { p_trainer_id: string }
@@ -3728,6 +4803,10 @@ export type Database = {
           student_id: string
           student_name: string
         }[]
+      }
+      duplicate_program_template: {
+        Args: { p_template_id: string }
+        Returns: string
       }
       finalize_assessment_session: {
         Args: {
@@ -3751,6 +4830,8 @@ export type Database = {
       get_financial_students: {
         Args: { p_trainer_id: string }
         Returns: {
+          access_blocked_at: string
+          access_blocked_reason: string
           amount: number
           avatar_url: string
           billing_type: string
@@ -3784,6 +4865,39 @@ export type Database = {
           max_weight: number
           sets_count: number
           workout_session_id: string
+        }[]
+      }
+      get_org_athlete_absences: {
+        Args: { p_days?: number; p_org: string }
+        Returns: {
+          coach_id: string
+          completed: number
+          no_shows: number
+          student_id: string
+          student_name: string
+        }[]
+      }
+      get_org_class_overview: {
+        Args: { p_org: string }
+        Returns: {
+          capacity: number
+          class_id: string
+          coach_id: string
+          coach_name: string
+          day_of_week: number
+          enrolled: number
+          occupancy_pct: number
+          start_time: string
+          title: string
+        }[]
+      }
+      get_org_coach_load: {
+        Args: { p_org: string }
+        Returns: {
+          athletes: number
+          classes: number
+          coach_id: string
+          coach_name: string
         }[]
       }
       get_previous_exercise_sets: {
@@ -3829,6 +4943,8 @@ export type Database = {
       get_trainer_students_list: { Args: never; Returns: Json }
       get_training_room_students: { Args: never; Returns: Json }
       get_unread_notification_count: { Args: never; Returns: number }
+      is_org_manager: { Args: { p_org: string }; Returns: boolean }
+      is_org_member: { Args: { p_org: string }; Returns: boolean }
       is_student: { Args: never; Returns: boolean }
       is_trainer: { Args: never; Returns: boolean }
       mark_all_notifications_read: { Args: never; Returns: undefined }
@@ -3874,8 +4990,20 @@ export type Database = {
         Returns: string
       }
       unaccent: { Args: { "": string }; Returns: string }
+      unblock_student_access: {
+        Args: { p_student_id: string }
+        Returns: boolean
+      }
       update_student_avatar: {
         Args: { p_avatar_url: string }
+        Returns: undefined
+      }
+      update_student_notification_preferences: {
+        Args: { p_prefs: Json }
+        Returns: undefined
+      }
+      update_student_self_email: {
+        Args: { p_email: string }
         Returns: undefined
       }
       upsert_prescription_profile: {
@@ -3891,6 +5019,7 @@ export type Database = {
         }
         Returns: Json
       }
+      wearable_source_priority: { Args: { src: string }; Returns: number }
     }
     Enums: {
       billing_type:
@@ -3898,6 +5027,24 @@ export type Database = {
         | "manual_recurring"
         | "manual_one_off"
         | "courtesy"
+        | "asaas_auto"
+        | "asaas_auto_recurring"
+      payment_provider: "stripe" | "asaas"
+      payout_status:
+        | "requested"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "cancelled"
+        | "awaiting_authorization"
+      pix_key_type: "CPF" | "CNPJ" | "EMAIL" | "PHONE" | "EVP"
+      wallet_status:
+        | "not_started"
+        | "pending"
+        | "awaiting"
+        | "approved"
+        | "rejected"
+        | "blocked"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4023,6 +5170,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       billing_type: [
@@ -4030,6 +5180,26 @@ export const Constants = {
         "manual_recurring",
         "manual_one_off",
         "courtesy",
+        "asaas_auto",
+        "asaas_auto_recurring",
+      ],
+      payment_provider: ["stripe", "asaas"],
+      payout_status: [
+        "requested",
+        "processing",
+        "completed",
+        "failed",
+        "cancelled",
+        "awaiting_authorization",
+      ],
+      pix_key_type: ["CPF", "CNPJ", "EMAIL", "PHONE", "EVP"],
+      wallet_status: [
+        "not_started",
+        "pending",
+        "awaiting",
+        "approved",
+        "rejected",
+        "blocked",
       ],
     },
   },
