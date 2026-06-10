@@ -194,9 +194,11 @@ export async function POST(request: NextRequest) {
                 error: `Valor de R$ ${body.value!.toFixed(2).replace('.', ',')} não pode ser parcelado: a parcela mínima do Asaas é R$ ${MIN_INSTALLMENT_VALUE},00.`,
             }, { status: 400 })
         }
+        // body.installments definido (mesmo =1, "à vista") tem precedência
+        // sobre o default do plano — a UI manda a escolha do treinador.
         const planCap = plan?.max_installment_count ?? 1
-        const requestedInstallments = explicitInstallments
-            ? body.installments!
+        const requestedInstallments = body.installments !== undefined
+            ? body.installments
             : planCap
         const effectiveInstallments = Math.min(requestedInstallments, maxByValue, MAX_INSTALLMENTS)
         const isInstallment = effectiveInstallments >= 2

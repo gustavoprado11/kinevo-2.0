@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
     X, Loader2, AlertCircle, Copy, Check,
-    MessageCircle, Wallet, CalendarClock, Receipt, Layers,
+    MessageCircle, Wallet, CalendarClock, Receipt,
 } from 'lucide-react'
 import { FeesSimulationCard } from './fees-simulation-card'
 
@@ -36,7 +36,7 @@ interface Student {
     email: string
 }
 
-type ChargeMode = 'one_off' | 'recurring' | 'installment'
+type ChargeMode = 'one_off' | 'recurring'
 
 /** Teto absoluto de parcelas suportado pelo Asaas. */
 const MAX_INSTALLMENTS = 12
@@ -126,41 +126,31 @@ export function CobrarCarteiraModal({
         return Math.max(1, Math.min(byPlan, byValue))
     }, [selectedPlan])
 
-    // Plano parcelado viável: cap > 1 E o valor comporta 2+ parcelas de R$ 5.
-    // Quando true, a cobrança avulsa herda o parcelamento e o link sai
-    // só-cartão (espelha o /api/wallet/charges).
-    const planAutoInstallment = useMemo(() => {
-        const cap = selectedPlan?.max_installment_count ?? 1
-        if (cap < 2 || !selectedPlan) return false
-        return Math.floor(Number(selectedPlan.price) / MIN_INSTALLMENT_VALUE) >= 2
-    }, [selectedPlan])
-
     const allowedMethods = useMemo(() => {
-        // Recorrência e parcelamento (explícito ou herdado do plano) são só
-        // no cartão.
-        if (mode === 'recurring' || mode === 'installment') return ['CREDIT_CARD'] as const
-        if (mode === 'one_off' && planAutoInstallment) return ['CREDIT_CARD'] as const
+        // Recorrência e cobrança parcelada (select "Parcelamento") são só no
+        // cartão; à vista (1x) libera os métodos do plano.
+        if (mode === 'recurring') return ['CREDIT_CARD'] as const
+        if (mode === 'one_off' && installments >= 2) return ['CREDIT_CARD'] as const
         if (!selectedPlan) return ['PIX', 'CREDIT_CARD'] as const
         const m: Array<'PIX' | 'CREDIT_CARD' | 'BOLETO'> = []
         if (selectedPlan.allow_pix ?? true) m.push('PIX')
         if (selectedPlan.allow_credit_card ?? true) m.push('CREDIT_CARD')
         if (selectedPlan.allow_boleto) m.push('BOLETO')
         return m.length > 0 ? m : (['PIX', 'CREDIT_CARD'] as const)
-    }, [selectedPlan, mode, planAutoInstallment])
+    }, [selectedPlan, mode, installments])
 
-    // Ao entrar no modo parcelado ou trocar de plano, pré-preenche o nº de
-    // parcelas com o teto definido no plano (treinador pode ajustar pra baixo).
+    // Ao trocar de plano, pré-preenche o parcelamento com o default do plano
+    // ("Em até Nx" configurado lá; 1 = à vista). Treinador pode ajustar.
     useEffect(() => {
-        if (mode !== 'installment') return
-        const planDefault = (selectedPlan?.max_installment_count ?? 0) > 1
-            ? Math.min(selectedPlan!.max_installment_count!, MAX_INSTALLMENTS)
-            : 2
-        setInstallments(planDefault)
+        const cap = selectedPlan?.max_installment_count ?? 1
+        const byValue = selectedPlan
+            ? Math.floor(Number(selectedPlan.price) / MIN_INSTALLMENT_VALUE)
+            : 1
+        setInstallments(cap > 1 ? Math.max(1, Math.min(cap, byValue, MAX_INSTALLMENTS)) : 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [planId, mode])
+    }, [planId])
 
     const canSubmit = !loading && studentId && planId && dueDate && selectedPlan
-        && (mode !== 'installment' || (installments >= 2 && planInstallmentCap >= 2))
 
     if (!isOpen) return null
 
@@ -222,10 +212,9 @@ export function CobrarCarteiraModal({
                     value: selectedPlan.price,
                     dueDate,
                     description: selectedPlan.title,
-                    // Parcelado: envia o nº de parcelas (cartão). Avulsa não envia.
-                    ...(mode === 'installment'
-                        ? { installments: Math.min(installments, planInstallmentCap) }
-                        : {}),
+                    // Sempre envia a escolha do select (1 = à vista explícito,
+                    // vence o default do plano no servidor).
+                    installments: Math.min(installments, planInstallmentCap),
                 }
 
             const res = await fetch(endpoint, {
@@ -345,10 +334,10 @@ export function CobrarCarteiraModal({
                     </select>
                 </div>
 
-                {/* Tipo (avulsa / parcelado / recorrente) */}
+                {/* Tipo (avulsa / recorrente) */}
                 <div>
                     <label className="mb-2 block text-xs font-medium text-k-text-tertiary">Tipo de cobrança</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                         <button
                             type="button"
                             onClick={() => setMode('one_off')}
@@ -364,23 +353,6 @@ export function CobrarCarteiraModal({
                             </div>
                             <p className="text-[11px] text-k-text-tertiary leading-tight">
                                 Cobrança única
-                            </p>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setMode('installment')}
-                            className={`relative rounded-lg border-2 px-2.5 py-2.5 text-left transition-all ${
-                                mode === 'installment'
-                                    ? 'border-violet-500 bg-violet-500/10 ring-2 ring-violet-500/20'
-                                    : 'border-k-border-subtle bg-glass-bg hover:border-violet-500/40'
-                            }`}
-                        >
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                                <Layers className={`w-3.5 h-3.5 ${mode === 'installment' ? 'text-violet-600 dark:text-violet-400' : 'text-k-text-tertiary'}`} />
-                                <span className={`text-xs font-semibold ${mode === 'installment' ? 'text-violet-700 dark:text-violet-300' : 'text-k-text-primary'}`}>Parcelado</span>
-                            </div>
-                            <p className="text-[11px] text-k-text-tertiary leading-tight">
-                                Dividir no cartão
                             </p>
                         </button>
                         <button
@@ -410,42 +382,33 @@ export function CobrarCarteiraModal({
                     )}
                 </div>
 
-                {/* Nº de parcelas (modo parcelado) */}
-                {mode === 'installment' && planInstallmentCap < 2 && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-snug">
-                        {selectedPlan
-                            ? `O valor de ${formatBRL(Number(selectedPlan.price))} não pode ser parcelado — a parcela mínima do Asaas é ${formatBRL(MIN_INSTALLMENT_VALUE)}. Use a cobrança avulsa.`
-                            : 'Selecione um plano para parcelar.'}
-                    </p>
-                )}
-                {mode === 'installment' && planInstallmentCap >= 2 && (
+                {/* Parcelamento (avulsa). Default vem do plano; "À vista" libera
+                    PIX/boleto, 2x+ sai só no cartão (espelha o servidor). */}
+                {mode === 'one_off' && selectedPlan && planInstallmentCap >= 2 && (
                     <div>
-                        <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">Parcelar em</label>
+                        <label className="mb-1.5 block text-xs font-medium text-k-text-tertiary">Parcelamento</label>
                         <select
                             value={installments}
                             onChange={e => setInstallments(Number(e.target.value))}
                             className="w-full rounded-lg border border-k-border-subtle bg-glass-bg px-3 py-2.5 text-sm text-k-text-primary focus:outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 transition-all"
                         >
+                            <option value={1}>À vista ({formatBRL(Number(selectedPlan.price))})</option>
                             {Array.from({ length: planInstallmentCap - 1 }, (_, i) => i + 2).map(n => (
                                 <option key={n} value={n}>
-                                    {n}x{selectedPlan ? ` de ${formatBRL(Number(selectedPlan.price) / n)}` : ''}
+                                    Em até {n}x de {formatBRL(Number(selectedPlan.price) / n)}
                                 </option>
                             ))}
                         </select>
                         <p className="mt-2 text-[11px] text-k-text-tertiary leading-snug">
-                            Parcelamento é no <b>cartão de crédito</b>. O aluno pode escolher de 1x até {planInstallmentCap}x no checkout.
-                            A 1ª parcela libera o acesso; as demais o Asaas cobra no cartão dele.
+                            {installments >= 2 ? (
+                                <>Parcelado sai só no <b>cartão de crédito</b> — o aluno escolhe de 1x até {installments}x no
+                                checkout. A 1ª parcela libera o acesso; as demais o Asaas cobra no cartão dele.
+                                Pra PIX/boleto, escolha &quot;À vista&quot;.</>
+                            ) : (
+                                <>À vista libera os métodos do plano (PIX/cartão/boleto conforme configurado).</>
+                            )}
                         </p>
                     </div>
-                )}
-
-                {/* Aviso: plano parcelado → link sai só no cartão */}
-                {mode === 'one_off' && planAutoInstallment && (
-                    <p className="text-[11px] text-k-text-tertiary leading-snug">
-                        Este plano parcela em <b>até {Math.min(selectedPlan?.max_installment_count ?? 1, MAX_INSTALLMENTS)}x</b>,
-                        então o link sai só no <b>cartão de crédito</b> (o aluno escolhe de 1x ao máximo).
-                        Pra oferecer PIX/boleto à vista, use um plano sem parcelamento.
-                    </p>
                 )}
 
                 {/* Vencimento */}
