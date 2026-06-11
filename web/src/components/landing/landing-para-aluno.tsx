@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import {
     Timer,
     Dumbbell,
@@ -109,7 +109,7 @@ function PhonePanel() {
             {/* Pílulas de features */}
             <div className="flex flex-wrap justify-center gap-2.5 max-w-3xl mx-auto mb-12">
                 {phoneFeatures.map((f, i) => (
-                    <motion.div
+                    <m.div
                         key={f.label}
                         initial={{ opacity: 0, scale: 0.92 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -120,12 +120,12 @@ function PhonePanel() {
                         <span className="font-jakarta text-xs font-medium text-[#1D1D1F]">
                             {f.label}
                         </span>
-                    </motion.div>
+                    </m.div>
                 ))}
             </div>
 
             {/* Mock grande */}
-            <motion.div
+            <m.div
                 initial={{ opacity: 0, y: 24, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
@@ -139,7 +139,7 @@ function PhonePanel() {
                     height={1080}
                     className="w-full h-auto"
                 />
-            </motion.div>
+            </m.div>
 
             <p className="font-jakarta text-sm text-[#86868B] text-center mt-8 max-w-md mx-auto">
                 5 templates de cards para Stories. Cada post é marketing gratuito para você.
@@ -157,17 +157,17 @@ function WatchPanel() {
             <div className="relative max-w-5xl mx-auto px-6 md:px-10 py-14 md:py-16">
                 {/* Mock + features */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, x: -24 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.6 }}
                     >
                         <WatchMockup />
-                    </motion.div>
+                    </m.div>
 
                     <div className="space-y-3">
                         {watchFeatures.map((feature, i) => (
-                            <motion.div
+                            <m.div
                                 key={feature.label}
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -185,7 +185,7 @@ function WatchPanel() {
                                         {feature.detail}
                                     </p>
                                 </div>
-                            </motion.div>
+                            </m.div>
                         ))}
                     </div>
                 </div>
@@ -208,7 +208,7 @@ export function LandingParaAluno() {
         >
             <div className="mx-auto max-w-7xl px-6">
                 {/* Header */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-60px' }}
@@ -229,7 +229,7 @@ export function LandingParaAluno() {
                         O treino chega no app, é executado com timer e cargas automáticas, e
                         sincroniza com o Apple Watch — sem precisar tirar o celular do bolso.
                     </p>
-                </motion.div>
+                </m.div>
 
                 {/* Tabs */}
                 <div className="flex justify-center mb-12">
@@ -243,7 +243,7 @@ export function LandingParaAluno() {
                             }`}
                         >
                             {tab === 'celular' && (
-                                <motion.span
+                                <m.span
                                     layoutId="para-aluno-tab"
                                     className="absolute inset-0 bg-[#1D1D1F] rounded-full"
                                     transition={{ type: 'spring', stiffness: 400, damping: 32 }}
@@ -263,7 +263,7 @@ export function LandingParaAluno() {
                             }`}
                         >
                             {tab === 'watch' && (
-                                <motion.span
+                                <m.span
                                     layoutId="para-aluno-tab"
                                     className="absolute inset-0 bg-[#1D1D1F] rounded-full"
                                     transition={{ type: 'spring', stiffness: 400, damping: 32 }}
@@ -277,7 +277,7 @@ export function LandingParaAluno() {
                 {/* Painel ativo */}
                 <AnimatePresence mode="wait">
                     {tab === 'celular' ? (
-                        <motion.div
+                        <m.div
                             key="celular"
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -285,9 +285,9 @@ export function LandingParaAluno() {
                             transition={{ duration: 0.35 }}
                         >
                             <PhonePanel />
-                        </motion.div>
+                        </m.div>
                     ) : (
-                        <motion.div
+                        <m.div
                             key="watch"
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -295,7 +295,7 @@ export function LandingParaAluno() {
                             transition={{ duration: 0.35 }}
                         >
                             <WatchPanel />
-                        </motion.div>
+                        </m.div>
                     )}
                 </AnimatePresence>
 

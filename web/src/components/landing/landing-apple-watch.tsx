@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { m, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Heart, Check, Timer, RefreshCw, Play, Dumbbell, X } from 'lucide-react'
 
 /* ================================================================== */
@@ -22,7 +22,7 @@ const PHASE_ORDER: Phase[] = ['ready', 'execution', 'completed', 'rest']
 
 function ReadyScreen() {
     return (
-        <motion.div
+        <m.div
             key="ready"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -41,13 +41,13 @@ function ReadyScreen() {
                     <span className="font-jakarta text-[12px] font-bold text-white">Iniciar</span>
                 </div>
             </div>
-        </motion.div>
+        </m.div>
     )
 }
 
 function ExecutionScreen() {
     return (
-        <motion.div
+        <m.div
             key="execution"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -78,28 +78,28 @@ function ExecutionScreen() {
                     <span className="absolute top-1 right-1.5 font-jakarta text-[7px] font-semibold text-[#A78BFA]">
                         10
                     </span>
-                    <motion.span
+                    <m.span
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.15 }}
                         className="font-jakarta text-[22px] font-bold text-[#F1F5F9] tabular-nums leading-none"
                     >
                         80.0
-                    </motion.span>
+                    </m.span>
                     <span className="font-jakarta text-[8px] font-medium text-[#A1A1B8] mt-0.5">
                         Carga (kg)
                     </span>
                 </div>
                 {/* Reps */}
                 <div className="bg-[#1A1A2E] rounded-2xl flex flex-col items-center justify-center px-2 py-1.5 border border-[#1A1A2E]">
-                    <motion.span
+                    <m.span
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.25 }}
                         className="font-jakarta text-[22px] font-bold text-[#F1F5F9] tabular-nums leading-none"
                     >
                         8
-                    </motion.span>
+                    </m.span>
                     <span className="font-jakarta text-[8px] font-medium text-[#A78BFA] mt-0.5">
                         Meta: 8-10
                     </span>
@@ -110,13 +110,13 @@ function ExecutionScreen() {
             <div className="w-full mt-2 rounded-full bg-[#7C3AED] py-2 flex items-center justify-center">
                 <span className="font-jakarta text-[11px] font-bold text-white">Concluir Série</span>
             </div>
-        </motion.div>
+        </m.div>
     )
 }
 
 function CompletedScreen() {
     return (
-        <motion.div
+        <m.div
             key="completed"
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -124,19 +124,19 @@ function CompletedScreen() {
             transition={{ duration: 0.3, ease: 'easeOut' }}
             className="absolute inset-0 flex flex-col items-center justify-center px-3"
         >
-            <motion.div
+            <m.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 18 }}
                 className="w-12 h-12 rounded-full bg-[#7C3AED]/15 border-2 border-[#7C3AED] flex items-center justify-center"
             >
                 <Check className="w-6 h-6 text-[#7C3AED]" strokeWidth={3.5} />
-            </motion.div>
+            </m.div>
             <p className="font-jakarta text-[12px] font-bold text-[#F1F5F9] mt-2.5">
                 Série concluída
             </p>
             <p className="font-jakarta text-[10px] text-[#64748B] mt-0.5 tabular-nums">80 kg × 8</p>
-        </motion.div>
+        </m.div>
     )
 }
 
@@ -162,7 +162,7 @@ function RestScreen({ active }: { active: boolean }) {
     const dashOffset = circumference * (1 - progress)
 
     return (
-        <motion.div
+        <m.div
             key="rest"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -190,7 +190,7 @@ function RestScreen({ active }: { active: boolean }) {
                 <div className="relative w-[88px] h-[88px]">
                     <svg className="absolute inset-0 -rotate-90" viewBox="0 0 88 88">
                         <circle cx="44" cy="44" r={radius} fill="none" stroke="#2A2A3E" strokeWidth="3" />
-                        <motion.circle
+                        <m.circle
                             cx="44"
                             cy="44"
                             r={radius}
@@ -220,7 +220,7 @@ function RestScreen({ active }: { active: boolean }) {
                     Pular descanso
                 </span>
             </div>
-        </motion.div>
+        </m.div>
     )
 }
 
@@ -313,7 +313,7 @@ export function LandingAppleWatch() {
             <div className="relative max-w-7xl mx-auto px-4">
                 {/* Header */}
                 <div className="text-center max-w-3xl mx-auto mb-14 md:mb-16">
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 24 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-80px' }}
@@ -322,9 +322,9 @@ export function LandingAppleWatch() {
                         <span className="inline-flex items-center font-jakarta text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full text-[#A78BFA] bg-[#7C3AED]/15">
                             Apple Watch
                         </span>
-                    </motion.div>
+                    </m.div>
 
-                    <motion.h2
+                    <m.h2
                         initial={{ opacity: 0, y: 24 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-80px' }}
@@ -333,9 +333,9 @@ export function LandingAppleWatch() {
                     >
                         O treino{' '}
                         <span className="text-white/50">no pulso do seu aluno.</span>
-                    </motion.h2>
+                    </m.h2>
 
-                    <motion.p
+                    <m.p
                         initial={{ opacity: 0, y: 24 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-80px' }}
@@ -343,25 +343,25 @@ export function LandingAppleWatch() {
                         className="font-jakarta text-base md:text-lg text-white/55 mt-5 max-w-2xl mx-auto leading-relaxed"
                     >
                         App nativo para Apple Watch. Seu aluno marca série, vê o tempo de descanso e acompanha a frequência cardíaca — sem precisar tirar o celular do bolso.
-                    </motion.p>
+                    </m.p>
                 </div>
 
                 {/* Main layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center max-w-5xl mx-auto">
                     {/* Watch */}
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, x: -24 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true, margin: '-80px' }}
                         transition={{ duration: 0.8 }}
                     >
                         <WatchMockup />
-                    </motion.div>
+                    </m.div>
 
                     {/* Features */}
                     <div className="space-y-3">
                         {features.map((feature, i) => (
-                            <motion.div
+                            <m.div
                                 key={feature.label}
                                 initial={{ opacity: 0, x: 20 }}
                                 whileInView={{ opacity: 1, x: 0 }}
@@ -380,13 +380,13 @@ export function LandingAppleWatch() {
                                         {feature.detail}
                                     </p>
                                 </div>
-                            </motion.div>
+                            </m.div>
                         ))}
                     </div>
                 </div>
 
                 {/* Seal */}
-                <motion.p
+                <m.p
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true, margin: '-40px' }}
@@ -394,7 +394,7 @@ export function LandingAppleWatch() {
                     className="font-jakarta text-sm text-white/40 text-center mt-14 max-w-md mx-auto italic"
                 >
                     Seu aluno treina sem precisar tirar o celular do bolso.
-                </motion.p>
+                </m.p>
             </div>
         </section>
     )

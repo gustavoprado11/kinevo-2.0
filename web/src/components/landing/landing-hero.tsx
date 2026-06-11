@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { m, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
     ArrowRight,
     Play,
@@ -122,7 +122,7 @@ function DashHeader({ assistantOpen, glowing }: { assistantOpen: boolean; glowin
                     }`}
                 >
                     {glowing && (
-                        <motion.div
+                        <m.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: [0, 0.7, 0], scale: [0.9, 1.15, 1.2] }}
                             transition={{ duration: 1.5, ease: 'easeOut' }}
@@ -278,7 +278,7 @@ function AssistantPanel({ open, scene }: { open: boolean; scene: HeroScene }) {
     return (
         <AnimatePresence>
             {open && (
-                <motion.div
+                <m.div
                     initial={{ x: '100%' }}
                     animate={{ x: 0 }}
                     exit={{ x: '100%' }}
@@ -309,7 +309,7 @@ function AssistantPanel({ open, scene }: { open: boolean; scene: HeroScene }) {
                         </div>
                     </div>
                     <div className="flex-1 overflow-hidden px-4 pt-4 space-y-3">
-                        <motion.div
+                        <m.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3, duration: 0.4 }}
@@ -324,8 +324,8 @@ function AssistantPanel({ open, scene }: { open: boolean; scene: HeroScene }) {
                                     </p>
                                 </div>
                             </div>
-                        </motion.div>
-                        <motion.div
+                        </m.div>
+                        <m.div
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.5, duration: 0.4 }}
@@ -337,13 +337,13 @@ function AssistantPanel({ open, scene }: { open: boolean; scene: HeroScene }) {
                                     <span className="font-jakarta text-[9px] font-medium text-violet-700">{chip}</span>
                                 </div>
                             ))}
-                        </motion.div>
+                        </m.div>
 
                         {/* Scene 2 — typing + final reply */}
                         <AnimatePresence>
                             {acting && (
                                 <>
-                                    <motion.div
+                                    <m.div
                                         key="typing"
                                         initial={{ opacity: 0, y: 6 }}
                                         animate={{ opacity: 1, y: 0 }}
@@ -359,8 +359,8 @@ function AssistantPanel({ open, scene }: { open: boolean; scene: HeroScene }) {
                                             <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '150ms' }} />
                                             <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '300ms' }} />
                                         </div>
-                                    </motion.div>
-                                    <motion.div
+                                    </m.div>
+                                    <m.div
                                         key="reply"
                                         initial={{ opacity: 0, y: 8 }}
                                         animate={{ opacity: 1, y: 0 }}
@@ -376,7 +376,7 @@ function AssistantPanel({ open, scene }: { open: boolean; scene: HeroScene }) {
                                                 Rascunhei uma mensagem empática lembrando do treino de hoje. <span className="font-semibold text-violet-700">Revise antes de enviar.</span>
                                             </p>
                                         </div>
-                                    </motion.div>
+                                    </m.div>
                                 </>
                             )}
                         </AnimatePresence>
@@ -389,7 +389,7 @@ function AssistantPanel({ open, scene }: { open: boolean; scene: HeroScene }) {
                             </div>
                         </div>
                     </div>
-                </motion.div>
+                </m.div>
             )}
         </AnimatePresence>
     )
@@ -448,7 +448,7 @@ function AssistantMobileSpotlight({ paused }: { paused: boolean }) {
 
             {/* Conversation */}
             <div className="p-4 space-y-3" style={{ minHeight: 320 }}>
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4 }}
@@ -462,9 +462,9 @@ function AssistantMobileSpotlight({ paused }: { paused: boolean }) {
                             Vi que <span className="font-semibold">Matheus Henrique</span> ainda não realizou nenhum treino esta semana. Como posso ajudar?
                         </p>
                     </div>
-                </motion.div>
+                </m.div>
 
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.3 }}
@@ -476,11 +476,11 @@ function AssistantMobileSpotlight({ paused }: { paused: boolean }) {
                             <span className="font-jakarta text-[10px] font-medium text-violet-700">{chip}</span>
                         </div>
                     ))}
-                </motion.div>
+                </m.div>
 
                 <AnimatePresence mode="wait">
                     {phase === 'typing' && (
-                        <motion.div
+                        <m.div
                             key="typing"
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -496,10 +496,10 @@ function AssistantMobileSpotlight({ paused }: { paused: boolean }) {
                                 <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '150ms' }} />
                                 <span className="w-1.5 h-1.5 rounded-full bg-violet-400/70 animate-bounce" style={{ animationDelay: '300ms' }} />
                             </div>
-                        </motion.div>
+                        </m.div>
                     )}
                     {phase === 'reply' && (
-                        <motion.div
+                        <m.div
                             key="reply"
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -515,7 +515,7 @@ function AssistantMobileSpotlight({ paused }: { paused: boolean }) {
                                     Rascunhei uma mensagem empática lembrando do treino de hoje. <span className="font-semibold text-violet-700">Revise antes de enviar.</span>
                                 </p>
                             </div>
-                        </motion.div>
+                        </m.div>
                     )}
                 </AnimatePresence>
             </div>
@@ -575,7 +575,7 @@ function DashboardReplica({ paused }: { paused: boolean }) {
             <div className="flex h-full">
                 <DashSidebar />
                 <div className="flex-1 overflow-hidden relative">
-                    <motion.div
+                    <m.div
                         animate={{ marginRight: assistantOpen ? 280 : 0 }}
                         transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                         className="h-full overflow-y-auto"
@@ -584,7 +584,7 @@ function DashboardReplica({ paused }: { paused: boolean }) {
                         <DashQuickActions />
                         <DashStatCards />
                         <DashWidgets />
-                    </motion.div>
+                    </m.div>
                     <AssistantPanel open={assistantOpen} scene={scene} />
                 </div>
             </div>
@@ -614,12 +614,12 @@ export function LandingHero() {
                 </>
             ) : (
                 <>
-                    <motion.div
+                    <m.div
                         animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
                         transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
                         className="absolute top-1/4 -left-40 w-96 h-96 bg-[#7C3AED]/[0.06] rounded-full blur-3xl"
                     />
-                    <motion.div
+                    <m.div
                         animate={{ x: [0, -40, 0], y: [0, 30, 0] }}
                         transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
                         className="absolute bottom-1/3 -right-40 w-80 h-80 bg-[#A855F7]/[0.06] rounded-full blur-3xl"
@@ -629,7 +629,7 @@ export function LandingHero() {
 
             <div className="relative mx-auto max-w-5xl px-6 w-full text-center">
                 {/* Badge */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
@@ -641,10 +641,10 @@ export function LandingHero() {
                         </span>
                         Em uso por personal trainers no Brasil
                     </span>
-                </motion.div>
+                </m.div>
 
                 {/* Headline */}
-                <motion.h1
+                <m.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7, delay: 0.08 }}
@@ -655,10 +655,10 @@ export function LandingHero() {
                     <span className="bg-gradient-to-r from-[#7C3AED] to-[#A855F7] bg-clip-text text-transparent">
                         em um só lugar.
                     </span>
-                </motion.h1>
+                </m.h1>
 
                 {/* Sub */}
-                <motion.p
+                <m.p
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.18 }}
@@ -669,10 +669,10 @@ export function LandingHero() {
                     <strong className="font-semibold text-[#1D1D1F]">iPhone</strong>, no{' '}
                     <strong className="font-semibold text-[#1D1D1F]">Android</strong> e até no{' '}
                     <strong className="font-semibold text-[#1D1D1F]">Apple Watch</strong>.
-                </motion.p>
+                </m.p>
 
                 {/* CTAs */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.28 }}
@@ -692,10 +692,10 @@ export function LandingHero() {
                         <Play className="w-3.5 h-3.5 text-[#7C3AED] fill-[#7C3AED]" />
                         Como funciona
                     </a>
-                </motion.div>
+                </m.div>
 
                 {/* Microcopy */}
-                <motion.p
+                <m.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.6, delay: 0.4 }}
@@ -705,11 +705,11 @@ export function LandingHero() {
                     {' • '}
                     <strong className="font-semibold text-[#1D1D1F]">cancele quando quiser</strong>
                     {' • comece em 2 minutos'}
-                </motion.p>
+                </m.p>
             </div>
 
             {/* Product mockup — interactive dashboard replica */}
-            <motion.div
+            <m.div
                 initial={{ opacity: 0, y: 50, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.35 }}
@@ -755,7 +755,7 @@ export function LandingHero() {
                         <div className="bg-[#F5F5F7] hero-skeleton" style={{ height: 520 }} />
                     )}
                 </div>
-            </motion.div>
+            </m.div>
         </section>
     )
 }

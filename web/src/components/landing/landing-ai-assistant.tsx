@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { m, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
     Eye,
     ClipboardEdit,
@@ -96,7 +96,7 @@ function MonitorMock() {
             {alerts.map((a, i) => {
                 const t = toneStyles[a.tone]
                 return (
-                    <motion.div
+                    <m.div
                         key={a.message}
                         initial={{ opacity: 0, x: -12 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -117,7 +117,7 @@ function MonitorMock() {
                             </div>
                         </div>
                         <ChevronRight className="w-4 h-4 text-[#AEAEB2] shrink-0 mt-0.5" />
-                    </motion.div>
+                    </m.div>
                 )
             })}
         </div>
@@ -138,7 +138,7 @@ function PrescribeMock() {
     return (
         <div className="space-y-3">
             {/* Program header */}
-            <motion.div
+            <m.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35 }}
@@ -157,7 +157,7 @@ function PrescribeMock() {
                 </div>
 
                 {workouts.map((w, i) => (
-                    <motion.div
+                    <m.div
                         key={w.name}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -176,12 +176,12 @@ function PrescribeMock() {
                         ) : (
                             <div className="w-4 h-4 rounded-full border-2 border-[#7C3AED] border-t-transparent animate-spin" />
                         )}
-                    </motion.div>
+                    </m.div>
                 ))}
-            </motion.div>
+            </m.div>
 
             {/* AI pattern learned */}
-            <motion.div
+            <m.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5, duration: 0.35 }}
@@ -192,7 +192,7 @@ function PrescribeMock() {
                     <span className="text-[#7C3AED] font-semibold">Aprendi com suas edições</span>
                     <span className="text-[#6E6E73]"> — você prioriza posterior em 80% das prescrições.</span>
                 </p>
-            </motion.div>
+            </m.div>
         </div>
     )
 }
@@ -236,9 +236,9 @@ function ChatMock() {
 
     return (
         <div className="space-y-2.5">
-            {messages.map((m, i) =>
-                m.from === 'user' ? (
-                    <motion.div
+            {messages.map((msg, i) =>
+                msg.from === 'user' ? (
+                    <m.div
                         key={i}
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -246,11 +246,11 @@ function ChatMock() {
                         className="flex justify-end"
                     >
                         <div className="max-w-[85%] bg-[#F5F5F7] border border-[#E8E8ED] rounded-2xl rounded-br-md px-3.5 py-2.5">
-                            <p className="font-jakarta text-[12px] text-[#1D1D1F] leading-snug">{m.text}</p>
+                            <p className="font-jakarta text-[12px] text-[#1D1D1F] leading-snug">{msg.text}</p>
                         </div>
-                    </motion.div>
+                    </m.div>
                 ) : (
-                    <motion.div
+                    <m.div
                         key={i}
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -261,16 +261,16 @@ function ChatMock() {
                             <Sparkles className="w-3 h-3 text-[#34C759]" />
                         </div>
                         <div className="max-w-[85%] bg-white border border-[#E8E8ED] rounded-2xl rounded-bl-md px-3.5 py-2.5">
-                            <p className="font-jakarta text-[12px] text-[#4A4A4E] leading-relaxed">{m.text}</p>
+                            <p className="font-jakarta text-[12px] text-[#4A4A4E] leading-relaxed">{msg.text}</p>
                         </div>
-                    </motion.div>
+                    </m.div>
                 ),
             )}
 
             {/* Typing / reply */}
             <AnimatePresence mode="wait">
                 {!resolved ? (
-                    <motion.div
+                    <m.div
                         key="typing"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -286,9 +286,9 @@ function ChatMock() {
                             <div className="w-1.5 h-1.5 rounded-full bg-[#34C759]/50 animate-bounce" style={{ animationDelay: '150ms' }} />
                             <div className="w-1.5 h-1.5 rounded-full bg-[#34C759]/50 animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
-                    </motion.div>
+                    </m.div>
                 ) : (
-                    <motion.div
+                    <m.div
                         key="reply"
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -305,7 +305,7 @@ function ChatMock() {
                                 <span className="text-[#34C759] font-semibold">Revise antes de aplicar.</span>
                             </p>
                         </div>
-                    </motion.div>
+                    </m.div>
                 )}
             </AnimatePresence>
         </div>
@@ -353,7 +353,7 @@ export function LandingAiAssistant() {
     return (
         <section className="relative bg-[#FAFAFA] py-24 md:py-32 overflow-hidden border-t border-[#EDEDF0]">
             {/* Subtle colored wash at top to echo the active tab */}
-            <motion.div
+            <m.div
                 className="absolute inset-x-0 top-0 h-64 pointer-events-none"
                 animate={{
                     background: `radial-gradient(ellipse 70% 100% at 50% 0%, ${current.color}0D, transparent)`,
@@ -363,7 +363,7 @@ export function LandingAiAssistant() {
 
             <div className="relative mx-auto max-w-6xl px-6">
                 {/* Header */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-80px' }}
@@ -379,7 +379,7 @@ export function LandingAiAssistant() {
                     <p className="font-jakarta text-base md:text-lg text-[#6E6E73] mt-5 max-w-xl mx-auto">
                         Alertas, prescrição e chat — com o contexto real do que acontece no seu treino.
                     </p>
-                </motion.div>
+                </m.div>
 
                 {/* Showcase grid */}
                 <div
@@ -388,7 +388,7 @@ export function LandingAiAssistant() {
                     onMouseLeave={() => setPaused(false)}
                 >
                     {/* Left — tabs + copy */}
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-40px' }}
@@ -410,7 +410,7 @@ export function LandingAiAssistant() {
                                         style={isActive ? { color: tab.color } : undefined}
                                     >
                                         {isActive && (
-                                            <motion.div
+                                            <m.div
                                                 layoutId="ai-tab-pill"
                                                 className="absolute inset-0 rounded-full"
                                                 style={{
@@ -467,10 +467,10 @@ export function LandingAiAssistant() {
                                 </div>
                             ))}
                         </div>
-                    </motion.div>
+                    </m.div>
 
                     {/* Right — real product mock */}
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-40px' }}
@@ -478,7 +478,7 @@ export function LandingAiAssistant() {
                         className="relative bg-white border border-[#E8E8ED] rounded-2xl overflow-hidden shadow-[0_20px_50px_-20px_rgba(0,0,0,0.12)]"
                     >
                         {/* Top color accent line */}
-                        <motion.div
+                        <m.div
                             className="absolute top-0 left-0 right-0 h-[2px]"
                             animate={{
                                 background: `linear-gradient(90deg, transparent, ${current.color}, transparent)`,
@@ -507,7 +507,7 @@ export function LandingAiAssistant() {
                         {/* Mock body */}
                         <div className="p-5 md:p-6 min-h-[320px] bg-[#FBFBFD]">
                             <AnimatePresence mode="wait">
-                                <motion.div
+                                <m.div
                                     key={current.id}
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -515,10 +515,10 @@ export function LandingAiAssistant() {
                                     transition={{ duration: 0.25 }}
                                 >
                                     {mocks[current.id]}
-                                </motion.div>
+                                </m.div>
                             </AnimatePresence>
                         </div>
-                    </motion.div>
+                    </m.div>
                 </div>
             </div>
         </section>

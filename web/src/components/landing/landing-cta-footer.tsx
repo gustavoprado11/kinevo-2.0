@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 
 const footerLinks = {
@@ -40,7 +40,7 @@ export function LandingCtaFooter() {
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,rgba(124,58,237,0.12),transparent)]" />
 
                 <div className="relative mx-auto max-w-4xl px-6 text-center">
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-80px' }}
@@ -52,16 +52,16 @@ export function LandingCtaFooter() {
                         <p className="font-jakarta text-xl md:text-2xl font-medium text-white/40 mt-4">
                             Você merece uma ferramenta à altura do seu trabalho.
                         </p>
-                    </motion.div>
+                    </m.div>
 
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-80px' }}
                         transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
                         className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
                     >
-                        <motion.div
+                        <m.div
                             whileHover={{ scale: 1.04 }}
                             whileTap={{ scale: 0.97 }}
                             transition={{ type: 'spring', stiffness: 400, damping: 17 }}
@@ -73,10 +73,10 @@ export function LandingCtaFooter() {
                                 Criar minha conta grátis
                                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                             </Link>
-                        </motion.div>
-                    </motion.div>
+                        </m.div>
+                    </m.div>
 
-                    <motion.p
+                    <m.p
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
@@ -84,10 +84,10 @@ export function LandingCtaFooter() {
                         className="font-jakarta text-white/25 text-sm mt-5"
                     >
                         7 dias grátis &bull; Setup em 2 minutos &bull; Sem fidelidade &bull; Cancele quando quiser
-                    </motion.p>
+                    </m.p>
 
                     {/* Trust badges */}
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
@@ -102,7 +102,7 @@ export function LandingCtaFooter() {
                                 {badge}
                             </span>
                         ))}
-                    </motion.div>
+                    </m.div>
                 </div>
             </div>
 

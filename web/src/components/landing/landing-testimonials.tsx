@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { Star, Quote } from 'lucide-react'
 
 interface Testimonial {
@@ -54,7 +54,7 @@ export function LandingTestimonials() {
         <section className="bg-[#F5F5F7] py-24 md:py-32">
             <div className="mx-auto max-w-7xl px-6">
                 {/* Header */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 24 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-80px' }}
@@ -64,12 +64,12 @@ export function LandingTestimonials() {
                     <h2 className="font-jakarta text-3xl md:text-5xl font-bold tracking-tight text-[#1D1D1F]">
                         Quem usa, recomenda.
                     </h2>
-                </motion.div>
+                </m.div>
 
                 {/* Testimonial cards — bento grid */}
                 <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-5">
                     {testimonials.map((t, i) => (
-                        <motion.div
+                        <m.div
                             key={t.name}
                             initial={{ opacity: 0, y: 30 }}
                             whileInView={{ opacity: 1, y: 0 }}
@@ -118,7 +118,7 @@ export function LandingTestimonials() {
                                     </div>
                                 </div>
                             </div>
-                        </motion.div>
+                        </m.div>
                     ))}
                 </div>
             </div>

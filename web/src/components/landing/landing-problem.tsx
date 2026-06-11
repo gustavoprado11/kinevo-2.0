@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { ChevronDown, FileText, UserX, MessagesSquare, type LucideIcon } from 'lucide-react'
 
 type PainPoint = {
@@ -39,7 +39,7 @@ export function LandingProblem() {
 
             <div className="relative mx-auto max-w-7xl px-6">
                 {/* Header */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-80px' }}
@@ -50,12 +50,12 @@ export function LandingProblem() {
                         Você é profissional.{' '}
                         <span className="text-white/30">Suas ferramentas também deveriam ser.</span>
                     </h2>
-                </motion.div>
+                </m.div>
 
                 {/* Pain cards — icon-driven, unified violet palette */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
                     {painPoints.map((card, i) => (
-                        <motion.div
+                        <m.div
                             key={card.title}
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
@@ -71,12 +71,12 @@ export function LandingProblem() {
                                 {card.stat}
                             </p>
                             <p className="font-jakarta text-xs text-white/40 mt-2">{card.statLabel}</p>
-                        </motion.div>
+                        </m.div>
                     ))}
                 </div>
 
                 {/* Transition */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true }}
@@ -86,14 +86,14 @@ export function LandingProblem() {
                     <p className="font-jakarta text-xl md:text-2xl font-bold text-white">
                         O Kinevo muda isso.
                     </p>
-                    <motion.div
+                    <m.div
                         animate={{ y: [0, 4, 0] }}
                         transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                         className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#7C3AED]/10 border border-[#7C3AED]/20"
                     >
                         <ChevronDown className="w-5 h-5 text-[#A855F7]" strokeWidth={2} />
-                    </motion.div>
-                </motion.div>
+                    </m.div>
+                </m.div>
             </div>
         </section>
     )

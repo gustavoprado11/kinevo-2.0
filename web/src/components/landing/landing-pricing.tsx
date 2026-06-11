@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { Check, X, Calculator } from 'lucide-react'
 
 const included = [
@@ -47,7 +47,7 @@ export function LandingPricing() {
         <section className="bg-white py-24 md:py-32">
             <div className="mx-auto max-w-7xl px-6">
                 {/* Header */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 24 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-80px' }}
@@ -60,11 +60,11 @@ export function LandingPricing() {
                     <h2 className="font-jakarta text-3xl md:text-5xl font-bold tracking-tight text-[#1D1D1F] mt-4">
                         Tudo isso por menos que uma sessão de treino.
                     </h2>
-                </motion.div>
+                </m.div>
 
                 <div className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     {/* Pricing card */}
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
@@ -109,7 +109,7 @@ export function LandingPricing() {
                                     })}
                                 </ul>
 
-                                <motion.div
+                                <m.div
                                     whileHover={{ scale: 1.03 }}
                                     whileTap={{ scale: 0.97 }}
                                     transition={{ type: 'spring', stiffness: 400, damping: 17 }}
@@ -121,13 +121,13 @@ export function LandingPricing() {
                                     >
                                         Comece grátis agora
                                     </Link>
-                                </motion.div>
+                                </m.div>
                             </div>
                         </div>
-                    </motion.div>
+                    </m.div>
 
                     {/* Economy calculator */}
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
@@ -184,11 +184,11 @@ export function LandingPricing() {
                                 </p>
                             </div>
                         </div>
-                    </motion.div>
+                    </m.div>
                 </div>
 
                 {/* Comparison table */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
@@ -240,7 +240,7 @@ export function LandingPricing() {
                             </tbody>
                         </table>
                     </div>
-                </motion.div>
+                </m.div>
             </div>
         </section>
     )

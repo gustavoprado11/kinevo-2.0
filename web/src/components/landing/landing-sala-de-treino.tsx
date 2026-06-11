@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import { Check, Plus, SkipForward } from 'lucide-react'
 
 /* ================================================================== */
@@ -162,7 +162,7 @@ function RestTimerOverlay({ secondsLeft, total }: { secondsLeft: number; total: 
     const ss = (secondsLeft % 60).toString().padStart(2, '0')
 
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0, y: 12, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.96 }}
@@ -172,7 +172,7 @@ function RestTimerOverlay({ secondsLeft, total }: { secondsLeft: number; total: 
             <div className="relative w-[60px] h-[60px]">
                 <svg className="absolute inset-0 -rotate-90" viewBox="0 0 60 60">
                     <circle cx="30" cy="30" r={radius} fill="none" stroke="#3A3A3C" strokeWidth="4" />
-                    <motion.circle
+                    <m.circle
                         cx="30"
                         cy="30"
                         r={radius}
@@ -211,7 +211,7 @@ function RestTimerOverlay({ secondsLeft, total }: { secondsLeft: number; total: 
                     </button>
                 </div>
             </div>
-        </motion.div>
+        </m.div>
     )
 }
 
@@ -275,7 +275,7 @@ function SetRow({ s }: { s: SetState }) {
 
 function StudentPanel({ student }: { student: StudentLive }) {
     return (
-        <motion.div
+        <m.div
             key={student.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -304,7 +304,7 @@ function StudentPanel({ student }: { student: StudentLive }) {
                 {student.exercises.map((ex, i) => {
                     const completedCount = ex.sets.filter((s) => s.done).length
                     return (
-                        <motion.div
+                        <m.div
                             key={`${student.id}-${ex.name}`}
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -327,11 +327,11 @@ function StudentPanel({ student }: { student: StudentLive }) {
                                     <SetRow key={s.n} s={s} />
                                 ))}
                             </div>
-                        </motion.div>
+                        </m.div>
                     )
                 })}
             </div>
-        </motion.div>
+        </m.div>
     )
 }
 
@@ -390,7 +390,7 @@ export function LandingSalaDeTreino() {
             <div className="max-w-7xl mx-auto px-4">
                 {/* Header */}
                 <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
-                    <motion.div
+                    <m.div
                         initial={{ opacity: 0, y: 24 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-80px' }}
@@ -399,9 +399,9 @@ export function LandingSalaDeTreino() {
                         <span className="inline-flex items-center font-jakarta text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full text-[#7C3AED] bg-[#7C3AED]/10">
                             Sala de Treino
                         </span>
-                    </motion.div>
+                    </m.div>
 
-                    <motion.h2
+                    <m.h2
                         initial={{ opacity: 0, y: 24 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-80px' }}
@@ -410,9 +410,9 @@ export function LandingSalaDeTreino() {
                     >
                         Acompanhe vários alunos na academia,{' '}
                         <span className="text-[#86868B]">sem trocar de tela.</span>
-                    </motion.h2>
+                    </m.h2>
 
-                    <motion.p
+                    <m.p
                         initial={{ opacity: 0, y: 24 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: '-80px' }}
@@ -420,11 +420,11 @@ export function LandingSalaDeTreino() {
                         className="font-jakarta text-base md:text-lg text-[#6E6E73] mt-5 max-w-2xl mx-auto leading-relaxed"
                     >
                         Lance carga, repetição e descanso por cada aluno em tempo real. Alterne entre eles em um toque — quem está ativo, quem está descansando, quem precisa de atenção.
-                    </motion.p>
+                    </m.p>
                 </div>
 
                 {/* Mockup */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-80px' }}
@@ -507,7 +507,7 @@ export function LandingSalaDeTreino() {
                             </AnimatePresence>
                         </div>
                     </div>
-                </motion.div>
+                </m.div>
             </div>
         </section>
     )

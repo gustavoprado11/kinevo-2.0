@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { m, AnimatePresence } from 'framer-motion'
 import {
     Check,
     Smartphone,
@@ -41,7 +41,7 @@ function PasteMock() {
                         <p>Supino Inclinado Halter 3x8-10</p>
                         <p>Puxada Aberta 3x10-12</p>
                         <p>Remada Serrote 3x10</p>
-                        <motion.span
+                        <m.span
                             animate={{ opacity: [1, 0, 1] }}
                             transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
                             className="inline-block w-1.5 h-3.5 bg-[#7C3AED] align-middle ml-0.5"
@@ -50,7 +50,7 @@ function PasteMock() {
                 </div>
 
                 {/* Generate button */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
@@ -58,10 +58,10 @@ function PasteMock() {
                 >
                     <Sparkles className="w-4 h-4" />
                     <span className="font-jakarta text-[13px] font-semibold">Gerar Treino</span>
-                </motion.div>
+                </m.div>
 
                 {/* Results */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
@@ -76,7 +76,7 @@ function PasteMock() {
                         { input: 'Puxada Aberta', match: 'Puxada Aberta na Polia Alta', config: '3 × 10-12' },
                         { input: 'Remada Serrote', match: 'Remada Unilateral com Halter', config: '3 × 10' },
                     ].map((ex, i) => (
-                        <motion.div
+                        <m.div
                             key={ex.match}
                             initial={{ opacity: 0, x: -6 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -88,9 +88,9 @@ function PasteMock() {
                             </div>
                             <span className="font-jakarta text-[12px] text-[#1D1D1F] flex-1 truncate">{ex.match}</span>
                             <span className="font-jakarta text-[11px] text-[#86868B] tabular-nums">{ex.config}</span>
-                        </motion.div>
+                        </m.div>
                     ))}
-                </motion.div>
+                </m.div>
             </div>
         </div>
     )
@@ -222,7 +222,7 @@ function StudentViewMock() {
                                 <span className="text-[#AEAEB2]">Pesquisar exercício para adicionar...</span>
                             )}
                             {phase === 'typing' && (
-                                <motion.span
+                                <m.span
                                     animate={{ opacity: [1, 0, 1] }}
                                     transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
                                     className="inline-block w-[1.5px] h-3 bg-[#7C3AED] align-middle ml-0.5"
@@ -234,7 +234,7 @@ function StudentViewMock() {
                     {/* Search suggestion popup (only during landing) */}
                     <AnimatePresence>
                         {phase === 'landing' && (
-                            <motion.div
+                            <m.div
                                 initial={{ opacity: 0, y: -4 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0 }}
@@ -247,7 +247,7 @@ function StudentViewMock() {
                                 <span className="font-jakarta text-[11px] text-[#1D1D1F] truncate">
                                     {current.name}
                                 </span>
-                            </motion.div>
+                            </m.div>
                         )}
                     </AnimatePresence>
 
@@ -255,7 +255,7 @@ function StudentViewMock() {
                     <div className="space-y-2">
                         <AnimatePresence>
                             {committedExercises.map((ex, i) => (
-                                <motion.div
+                                <m.div
                                     key={`${ex.name}-${i}`}
                                     layout
                                     initial={{ opacity: 0, y: 12, scale: 0.97 }}
@@ -281,7 +281,7 @@ function StudentViewMock() {
                                     <span className="font-jakarta text-[9px] font-semibold text-[#7C3AED] bg-[#7C3AED]/10 px-1.5 py-0.5 rounded shrink-0">
                                         Principal
                                     </span>
-                                </motion.div>
+                                </m.div>
                             ))}
                         </AnimatePresence>
 
@@ -330,7 +330,7 @@ function StudentViewMock() {
                         {/* Progress + sets count */}
                         <div className="px-3 pt-2 pb-1.5 shrink-0">
                             <div className="h-0.5 bg-[#F2F2F5] rounded-full overflow-hidden">
-                                <motion.div
+                                <m.div
                                     animate={{ width: `${(added / SCRIPT_EXERCISES.length) * 100}%` }}
                                     transition={{ duration: 0.4, ease: 'easeOut' }}
                                     className="h-full bg-[#7C3AED]"
@@ -345,7 +345,7 @@ function StudentViewMock() {
                         <div className="flex-1 overflow-hidden px-2.5 py-2 space-y-1.5 bg-[#FBFBFD]">
                             <AnimatePresence>
                                 {committedExercises.length === 0 ? (
-                                    <motion.div
+                                    <m.div
                                         key="empty"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
@@ -355,10 +355,10 @@ function StudentViewMock() {
                                         <p className="font-jakarta text-[9px] text-[#AEAEB2] text-center leading-snug">
                                             Adicione exercícios para visualizar
                                         </p>
-                                    </motion.div>
+                                    </m.div>
                                 ) : (
                                     committedExercises.map((ex, i) => (
-                                        <motion.div
+                                        <m.div
                                             key={`phone-${ex.name}-${i}`}
                                             layout
                                             initial={{ opacity: 0, scale: 0.92, y: 8 }}
@@ -379,7 +379,7 @@ function StudentViewMock() {
                                                     {ex.sets} × {ex.reps}
                                                 </span>
                                             </div>
-                                        </motion.div>
+                                        </m.div>
                                     ))
                                 )}
                             </AnimatePresence>
@@ -454,7 +454,7 @@ function CompareMock() {
                 {rows.map((r, i) => {
                     const style = diffStyles[r.diff]
                     return (
-                        <motion.div
+                        <m.div
                             key={r.ex}
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -478,7 +478,7 @@ function CompareMock() {
                                 </p>
                                 <p className="font-jakarta text-[11px] text-[#7C3AED] tabular-nums font-semibold mt-0.5">{r.new}</p>
                             </div>
-                        </motion.div>
+                        </m.div>
                     )
                 })}
             </div>
@@ -555,7 +555,7 @@ export function LandingPillars() {
         <section className="bg-[#F5F5F7] py-24 md:py-32">
             <div className="mx-auto max-w-7xl px-6">
                 {/* Header */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 24 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-80px' }}
@@ -566,10 +566,10 @@ export function LandingPillars() {
                         Tudo que você precisa para{' '}
                         <span className="text-[#86868B]">prescrever treinos de forma eficiente.</span>
                     </h2>
-                </motion.div>
+                </m.div>
 
                 {/* Tab navigation */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-50px' }}
@@ -588,7 +588,7 @@ export function LandingPillars() {
                                     }`}
                                 >
                                     {isActive && (
-                                        <motion.div
+                                        <m.div
                                             layoutId="pillar-tab-bg"
                                             className="absolute inset-0 rounded-full bg-[#1D1D1F]"
                                             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
@@ -602,12 +602,12 @@ export function LandingPillars() {
                             )
                         })}
                     </div>
-                </motion.div>
+                </m.div>
 
                 {/* Tab content */}
                 <div className="mt-12 md:mt-16">
                     <AnimatePresence mode="wait">
-                        <motion.div
+                        <m.div
                             key={activePillar.id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -632,7 +632,7 @@ export function LandingPillars() {
 
                             {/* Visual */}
                             <div className="flex-1 w-full">{activePillar.mock}</div>
-                        </motion.div>
+                        </m.div>
                     </AnimatePresence>
                 </div>
             </div>

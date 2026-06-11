@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, LazyMotion, domAnimation, m } from 'framer-motion'
 import { AlertCircle, Check } from 'lucide-react'
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { Z } from '@/lib/z-index'
@@ -69,27 +69,32 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 className="fixed bottom-4 right-4 pointer-events-none"
                 style={{ zIndex: Z.TOAST }}
             >
-                <AnimatePresence mode="wait">
-                    {current && (
-                        <motion.div
-                            key={current.id}
-                            role={isError ? 'alert' : 'status'}
-                            aria-live={isError ? 'assertive' : 'polite'}
-                            initial={{ opacity: 0, y: 12, scale: 0.96 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                            transition={{ duration: 0.18, ease: 'easeOut' }}
-                            className="pointer-events-auto flex items-center gap-2 rounded-full border border-k-border-primary bg-surface-card px-4 py-2 text-xs text-k-text-primary shadow-lg"
-                        >
-                            {isError ? (
-                                <AlertCircle className="w-3.5 h-3.5 text-red-500" aria-hidden />
-                            ) : (
-                                <Check className="w-3.5 h-3.5 text-violet-500" aria-hidden />
-                            )}
-                            <span>{current.message}</span>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* LazyMotion local: o toast é montado no root layout (todas as
+                    rotas); usar m + domAnimation evita embarcar a engine
+                    completa do framer-motion no First Load JS de todas elas. */}
+                <LazyMotion features={domAnimation} strict>
+                    <AnimatePresence mode="wait">
+                        {current && (
+                            <m.div
+                                key={current.id}
+                                role={isError ? 'alert' : 'status'}
+                                aria-live={isError ? 'assertive' : 'polite'}
+                                initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                                transition={{ duration: 0.18, ease: 'easeOut' }}
+                                className="pointer-events-auto flex items-center gap-2 rounded-full border border-k-border-primary bg-surface-card px-4 py-2 text-xs text-k-text-primary shadow-lg"
+                            >
+                                {isError ? (
+                                    <AlertCircle className="w-3.5 h-3.5 text-red-500" aria-hidden />
+                                ) : (
+                                    <Check className="w-3.5 h-3.5 text-violet-500" aria-hidden />
+                                )}
+                                <span>{current.message}</span>
+                            </m.div>
+                        )}
+                    </AnimatePresence>
+                </LazyMotion>
             </div>
         </ToastContext.Provider>
     )

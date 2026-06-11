@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { Timer, Dumbbell, Bell, Calendar, Smartphone, WifiOff, Share2, Trophy } from 'lucide-react'
 
 const features = [
@@ -20,7 +20,7 @@ export function LandingStudentApp() {
         <section className="bg-white py-24 md:py-32 overflow-hidden">
             <div className="mx-auto max-w-7xl px-6">
                 {/* Header — centered */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-60px' }}
@@ -36,10 +36,10 @@ export function LandingStudentApp() {
                             o melhor personal.
                         </span>
                     </h2>
-                </motion.div>
+                </m.div>
 
                 {/* Feature pills — horizontal scrollable on mobile */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 12 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-40px' }}
@@ -47,7 +47,7 @@ export function LandingStudentApp() {
                     className="flex flex-wrap justify-center gap-2.5 max-w-3xl mx-auto mb-14"
                 >
                     {features.map((f, i) => (
-                        <motion.div
+                        <m.div
                             key={f.label}
                             initial={{ opacity: 0, scale: 0.9 }}
                             whileInView={{ opacity: 1, scale: 1 }}
@@ -57,12 +57,12 @@ export function LandingStudentApp() {
                         >
                             <f.icon className="w-3.5 h-3.5 text-[#7C3AED]" />
                             <span className="font-jakarta text-xs font-medium text-[#1D1D1F]">{f.label}</span>
-                        </motion.div>
+                        </m.div>
                     ))}
-                </motion.div>
+                </m.div>
 
                 {/* Mockup — large and immersive */}
-                <motion.div
+                <m.div
                     initial={{ opacity: 0, y: 40, scale: 0.97 }}
                     whileInView={{ opacity: 1, y: 0, scale: 1 }}
                     viewport={{ once: true }}
@@ -77,10 +77,10 @@ export function LandingStudentApp() {
                         height={1080}
                         className="w-full h-auto"
                     />
-                </motion.div>
+                </m.div>
 
                 {/* Marketing hook */}
-                <motion.p
+                <m.p
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true }}
@@ -88,7 +88,7 @@ export function LandingStudentApp() {
                     className="font-jakarta text-sm text-[#86868B] text-center mt-8 max-w-md mx-auto"
                 >
                     5 templates de cards para Stories. Cada post é marketing gratuito para você.
-                </motion.p>
+                </m.p>
             </div>
         </section>
     )

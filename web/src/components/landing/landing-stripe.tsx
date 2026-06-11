@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { ShieldCheck, CreditCard, Repeat, Lock } from 'lucide-react'
 import { formatBRL } from '@kinevo/shared/utils/currency'
 
@@ -41,7 +41,7 @@ function ComparisonCard({ variant, title, subtitle, rows, totalLabel, totalValue
     const textAccent = isBad ? 'text-[#FF3B30]' : 'text-[#34C759]'
 
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
@@ -80,7 +80,7 @@ function ComparisonCard({ variant, title, subtitle, rows, totalLabel, totalValue
                     </div>
                 </div>
             </div>
-        </motion.div>
+        </m.div>
     )
 }
 
@@ -99,7 +99,7 @@ export function LandingStripe() {
 
     return (
         <section id="stripe" className="bg-white py-24 md:py-32 scroll-mt-20">
-            <motion.div
+            <m.div
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-80px' }}
@@ -121,7 +121,7 @@ export function LandingStripe() {
                     Cobramos só o plano. As taxas são as do próprio Stripe — as mesmas que qualquer gateway
                     profissional cobra.
                 </p>
-            </motion.div>
+            </m.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto px-4 md:px-6">
                 <ComparisonCard
@@ -141,7 +141,7 @@ export function LandingStripe() {
                 />
             </div>
 
-            <motion.div
+            <m.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
@@ -159,7 +159,7 @@ export function LandingStripe() {
                         {formatBRL(yearlyDiff)} a mais no seu bolso por ano
                     </p>
                 </div>
-            </motion.div>
+            </m.div>
 
             <div className="mt-14 flex flex-wrap justify-center gap-x-8 gap-y-3 px-4 md:px-6">
                 <div className="flex items-center gap-2">
