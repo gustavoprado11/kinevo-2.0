@@ -137,6 +137,7 @@ export default function WorkoutPlayerScreen() {
         searchSubstituteOptions,
         swapExercise,
         finishWorkout,
+        discardWorkout,
         createSession,
         assignedProgramId,
         toggleCardioComplete,
@@ -426,6 +427,12 @@ export default function WorkoutPlayerScreen() {
                         text: 'Descartar e Sair',
                         style: 'destructive',
                         onPress: () => {
+                            // A1: descarta DE VERDADE — apaga os set_logs persistidos e
+                            // abandona a sessão. Fire-and-forget: a navegação não espera
+                            // a rede; se a limpeza falhar (ex. offline), a rehidratação
+                            // do reattach (A2) ao menos torna as séries visíveis em vez
+                            // de contaminarem o próximo finish silenciosamente.
+                            discardWorkout();
                             // Tell the Watch to end its mirrored HealthKit session
                             // WITHOUT saving (workout was abandoned, not completed).
                             if (Platform.OS === 'ios') {

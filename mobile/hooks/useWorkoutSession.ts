@@ -9,6 +9,7 @@ import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription';
 import { sortExerciseItems } from '../utils/sortExerciseItems';
 import { hydrateSetPrescriptions, type SetPrescription } from '../lib/hydrateWorkoutSets';
 import { formatWeightKg } from '@kinevo/shared/lib/prescription/set-scheme';
+import { saveWorkoutState, loadWorkoutState, clearWorkoutState } from '../lib/workoutStatePersistence';
 
 export interface WorkoutSetData {
     weight: string;
@@ -140,6 +141,17 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     // retomar uma sessão antiga e finalizar gravava duração = (agora - mount) e
     // sobrescrevia started_at com o mount atual — corrompendo data/duração.
     const sessionStartedAtRef = useRef<string | null>(null);
+    // A1: depois que o aluno confirma o descarte, nenhuma série pode mais ser
+    // persistida (uma marcação em voo não é cancelável, mas novas são barradas).
+    const isDiscardingRef = useRef(false);
+    // A1: espelho do sessionId p/ funções chamadas de closures antigas (o
+    // beforeRemove da tela captura o discardWorkout do primeiro render, quando
+    // sessionId ainda era null — sem o ref, o descarte viraria no-op).
+    const sessionIdRef = useRef<string | null>(null);
+    useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+    // S4: depois do finish bem-sucedido, o snapshot local já foi limpo — o
+    // effect de save não pode regravá-lo com o estado final da tela.
+    const hasFinishedRef = useRef(false);
     const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -338,6 +350,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         setData: WorkoutSetData
     ) => {
         if (!setData.completed) return;
+        if (isDiscardingRef.current) return; // A1: descarte confirmado — não regrava
 
         // Garante uma sessão ANTES de gravar. Sem isto, marcar séries antes da
         // sessão existir não persistia nada (perda de treino se o app fechasse).
@@ -397,6 +410,37 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         }
     };
 
+    // A1: "Descartar treino" agora descarta DE VERDADE. Antes, o diálogo só
+    // navegava de volta: a sessão ficava in_progress e os set_logs persistidos
+    // incrementalmente sobreviviam — reabrir o treino reanexava tudo e o finish
+    // incluía séries "descartadas" (volume inflado, PR falso). Mesma técnica do
+    // C4 (swap): apaga os set_logs e marca a sessão como abandoned (o guard de
+    // status evita sobrescrever uma sessão que o Watch completou em paralelo).
+    const discardWorkout = async (): Promise<void> => {
+        isDiscardingRef.current = true;
+        clearWorkoutState(workoutId); // S4: snapshot local morre junto
+        const sid = sessionIdRef.current;
+        if (!sid) return; // nada foi persistido ainda
+        try {
+            const { error: logsError } = await supabase
+                .from('set_logs' as any)
+                .delete()
+                .eq('workout_session_id', sid);
+            if (logsError && __DEV__) console.error(`[useWorkoutSession] discard set_logs error: ${logsError.message}`);
+
+            const { error: sessionError } = await supabase
+                .from('workout_sessions' as any)
+                .update({ status: 'abandoned' })
+                .eq('id', sid)
+                .eq('status', 'in_progress');
+            if (sessionError && __DEV__) console.error(`[useWorkoutSession] discard session error: ${sessionError.message}`);
+
+            if (__DEV__) console.log(`[useWorkoutSession] Workout discarded: session ${sid} abandoned, set_logs deleted`);
+        } catch (err: any) {
+            if (__DEV__) console.error(`[useWorkoutSession] discardWorkout exception: ${err?.message}`);
+        }
+    };
+
     // C2: ao desmarcar uma série, remove o registro já persistido. Sem isto a
     // série "removida" continuava valendo no banco (inflando volume / PR falso).
     const deletePersistedSetLog = async (exercise: ExerciseData, setIndex: number) => {
@@ -415,10 +459,14 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         }
     };
 
-    // Timer — timestamp-based so it survives background/lock screen
+    // Timer — timestamp-based so it survives background/lock screen.
+    // M4: em sessão reanexada, o display parte do started_at REAL (lido do ref a
+    // cada tick, pois ele chega async depois do fetch), não do mount da tela.
     useEffect(() => {
         const interval = setInterval(() => {
-            setElapsed(Math.floor((Date.now() - startTime) / 1000));
+            const parsedStart = sessionStartedAtRef.current ? Date.parse(sessionStartedAtRef.current) : NaN;
+            const base = Number.isFinite(parsedStart) ? parsedStart : startTime;
+            setElapsed(Math.max(0, Math.floor((Date.now() - base) / 1000)));
         }, 1000);
         return () => clearInterval(interval);
     }, [startTime]);
@@ -498,10 +546,31 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     .limit(1)
                     .maybeSingle();
 
+                // A2: séries já persistidas da sessão reanexada, indexadas por
+                // item+set_number, para pré-popular o estado (rehidratação).
+                const persistedLogByKey = new Map<string, { weight: number; reps_completed: number; notes: string | null }>();
+
                 if (existingSession) {
                     if (__DEV__) console.log(`[useWorkoutSession] Found existing in_progress session: ${existingSession.id}`);
                     sessionStartedAtRef.current = existingSession.started_at ?? null; // A14
                     if (mounted) setSessionId(existingSession.id);
+
+                    // A2: lê de volta os set_logs gravados incrementalmente. Sem isto,
+                    // app morto/reaberto no meio do treino mostrava "0/N séries" com
+                    // tudo no banco — o aluno re-marcava ou desistia achando que perdeu.
+                    const { data: persistedLogs, error: persistedError }: { data: any; error: any } = await supabase
+                        .from('set_logs' as any)
+                        .select('assigned_workout_item_id, set_number, weight, reps_completed, notes')
+                        .eq('workout_session_id', existingSession.id)
+                        .eq('is_completed', true);
+                    if (persistedError) {
+                        if (__DEV__) console.warn(`[useWorkoutSession] rehydrate set_logs failed: ${persistedError.message}`);
+                    } else {
+                        for (const log of persistedLogs || []) {
+                            persistedLogByKey.set(`${log.assigned_workout_item_id}:${log.set_number}`, log);
+                        }
+                        if (__DEV__ && persistedLogByKey.size > 0) console.log(`[useWorkoutSession] Rehydrated ${persistedLogByKey.size} persisted set(s)`);
+                    }
                 } else if (!options?.deferSessionCreation) {
                     // Get trainer_id from student
                     const { data: studentFull }: { data: any; error: any } = await supabase
@@ -680,7 +749,17 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         video_url: trainerVideoMap.get(item.exercise_id) || item.exercises?.video_url,
                         substitute_exercise_ids: item.substitute_exercise_ids || [],
                         swap_source: 'none',
-                        setsData: createInitialSets(effectiveSetCount || (item.sets || 3)),
+                        // A2: séries da sessão reanexada voltam marcadas com peso/reps
+                        // reais (Map vazio quando a sessão é nova — sem custo).
+                        setsData: createInitialSets(effectiveSetCount || (item.sets || 3)).map((emptySet, i) => {
+                            const log = persistedLogByKey.get(`${item.id}:${i + 1}`);
+                            if (!log) return emptySet;
+                            return {
+                                weight: log.weight > 0 ? String(log.weight) : '',
+                                reps: log.reps_completed > 0 ? String(log.reps_completed) : '',
+                                completed: true,
+                            };
+                        }),
                         previousLoad,
                         previousSets,
                         notes: item.notes || null,
@@ -719,6 +798,56 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     });
                 }
 
+                // S4: snapshot local (MMKV) — restaura o que NÃO chegou ao banco:
+                // pesos/reps digitados sem marcar, séries marcadas offline, swaps
+                // e cardio concluído. Banco (A2) ganha para séries completed.
+                const snapshot = loadWorkoutState(workoutId);
+                if (snapshot) {
+                    const snapshotIsValid = existingSession
+                        ? !snapshot.sessionId || snapshot.sessionId === existingSession.id
+                        : !snapshot.sessionId;
+                    if (!snapshotIsValid) {
+                        // A sessão do snapshot foi finalizada/abandonada por outro
+                        // caminho (ex. Watch) — estado morto, descarta.
+                        clearWorkoutState(workoutId);
+                    } else {
+                        const snapById = new Map(snapshot.exercises.map((e) => [e.id, e]));
+                        for (let idx = 0; idx < exercisesData.length; idx++) {
+                            const built = exercisesData[idx];
+                            const snap = snapById.get(built.id);
+                            if (!snap) continue;
+                            const restored = { ...built };
+                            // Swap feito antes do kill — sem isto a UI mostraria o
+                            // exercício original com os logs do substituto.
+                            if (snap.swap_source !== 'none' && snap.exercise_id && snap.exercise_id !== built.exercise_id) {
+                                restored.exercise_id = snap.exercise_id;
+                                restored.name = snap.name;
+                                restored.video_url = snap.video_url ?? restored.video_url;
+                                restored.swap_source = snap.swap_source;
+                            }
+                            if (built.item_type === 'cardio') {
+                                // Cardio só persiste no banco no finish — o snapshot é
+                                // a única fonte de um cardio concluído antes do kill.
+                                if (snap.setsData[0]?.completed) {
+                                    restored.setsData = [{ weight: '0', reps: '1', completed: true }];
+                                    restored.item_config = { ...(restored.item_config || {}), ...(snap.item_config || {}) };
+                                }
+                            } else if (restored.setsData.length > 0) {
+                                restored.setsData = restored.setsData.map((dbSet, i) => {
+                                    if (dbSet.completed) return dbSet; // A2: banco ganha
+                                    const snapSet = snap.setsData[i];
+                                    if (snapSet && (snapSet.completed || snapSet.weight || snapSet.reps)) {
+                                        return { weight: snapSet.weight, reps: snapSet.reps, completed: snapSet.completed };
+                                    }
+                                    return dbSet;
+                                });
+                            }
+                            exercisesData[idx] = restored;
+                        }
+                        if (__DEV__) console.log('[useWorkoutSession] Local snapshot merged into workout state');
+                    }
+                }
+
                 if (mounted) {
                     setExercises(exercisesData);
                     setWorkoutNotes(noteItems);
@@ -748,6 +877,27 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         fetchWorkout();
         return () => { mounted = false; };
     }, [workoutId, user?.id]);
+
+    // S4: snapshot local a cada mudança de estado (MMKV é síncrono e sub-ms —
+    // sem debounce). É o que sobrevive a um kill do app no meio do treino.
+    useEffect(() => {
+        if (!hasLoadedRef.current || loadedWorkoutIdRef.current !== workoutId) return;
+        if (isDiscardingRef.current || hasFinishedRef.current) return;
+        if (exercises.length === 0) return;
+        saveWorkoutState(workoutId, {
+            sessionId,
+            savedAt: new Date().toISOString(),
+            exercises: exercises.map((e) => ({
+                id: e.id,
+                exercise_id: e.exercise_id,
+                name: e.name,
+                video_url: e.video_url,
+                swap_source: e.swap_source,
+                setsData: e.setsData,
+                item_config: e.item_config,
+            })),
+        });
+    }, [exercises, sessionId, workoutId]);
 
 
     const handleSetChange = (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
@@ -1306,6 +1456,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 }
             }
 
+            // S4: treino durável no banco — o snapshot local cumpriu seu papel.
+            // (No caminho de erro do C3 acima, o snapshot fica vivo de propósito.)
+            hasFinishedRef.current = true;
+            clearWorkoutState(workoutId);
+
             if (__DEV__) console.log(`[useWorkoutSession] Workout finished. Session: ${currentSessionId}, sets: ${setLogs.length}`);
 
             // Notify Watch that workout was finished from iPhone so it clears its
@@ -1375,6 +1530,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         searchSubstituteOptions,
         swapExercise,
         finishWorkout,
+        discardWorkout,
         createSession,
         assignedProgramId,
         toggleCardioComplete,
