@@ -201,9 +201,19 @@ export default function WorkoutPlayerScreen() {
         const sid = await createSession(submissionId);
         if (!sid) {
             sessionCreatedRef.current = false; // libera nova tentativa
+            // A4: mensagem específica quando a causa é falta de rede — o aluno
+            // sabe exatamente o que fazer em vez de um erro genérico.
+            let offline = false;
+            try {
+                const NetInfo = require("@react-native-community/netinfo").default;
+                const state = await NetInfo.fetch();
+                offline = state.isConnected === false;
+            } catch { /* NetInfo indisponível — mantém mensagem genérica */ }
             Alert.alert(
-                "Não foi possível iniciar o treino",
-                "Verifique sua conexão e tente novamente.",
+                offline ? "Sem conexão" : "Não foi possível iniciar o treino",
+                offline
+                    ? "Você está offline. Conecte-se à internet para iniciar o treino — séries de um treino já iniciado ficam guardadas e sincronizam sozinhas."
+                    : "Verifique sua conexão e tente novamente.",
                 [{ text: "Voltar", onPress: () => router.back() }],
             );
         }

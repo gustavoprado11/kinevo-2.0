@@ -455,6 +455,33 @@ function GlobalOverlays() {
         })();
     }, []);
 
+    // A4 — Drena a fila offline de set_logs no boot e quando a conexão volta.
+    // Fica aqui (e não no WatchBridge) porque Android também enfileira.
+    const drainPendingSets = React.useCallback(() => {
+        try {
+            const { drainPendingSetLogs } = require('../lib/pendingSetLogQueue');
+            drainPendingSetLogs();
+        } catch (e: any) {
+            if (__DEV__) console.warn(`[GlobalOverlays] drainPendingSetLogs failed: ${e?.message}`);
+        }
+    }, []);
+
+    React.useEffect(() => {
+        // Cold start: tenta logo e re-tenta em 5s (auth pode estar carregando).
+        drainPendingSets();
+        const timer = setTimeout(drainPendingSets, 5000);
+        return () => clearTimeout(timer);
+    }, [drainPendingSets]);
+
+    const wasConnectedRef = React.useRef(isConnected);
+    React.useEffect(() => {
+        // Transição offline → online: hora de drenar.
+        if (isConnected && !wasConnectedRef.current) {
+            drainPendingSets();
+        }
+        wasConnectedRef.current = isConnected;
+    }, [isConnected, drainPendingSets]);
+
     return (
         <>
             <ConnectionBanner isConnected={isConnected} wasDisconnected={wasDisconnected} />

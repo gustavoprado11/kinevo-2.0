@@ -10,6 +10,7 @@ import { sortExerciseItems } from '../utils/sortExerciseItems';
 import { hydrateSetPrescriptions, type SetPrescription } from '../lib/hydrateWorkoutSets';
 import { formatWeightKg } from '@kinevo/shared/lib/prescription/set-scheme';
 import { saveWorkoutState, loadWorkoutState, clearWorkoutState } from '../lib/workoutStatePersistence';
+import { enqueueSetLogUpsert, enqueueSetLogDelete, clearPendingSetLogsForSession } from '../lib/pendingSetLogQueue';
 
 export interface WorkoutSetData {
     weight: string;
@@ -368,33 +369,39 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         const weight = parseFloat(setData.weight) || 0;
         const repsCompleted = parseInt(setData.reps) || 0;
 
+        const upsertPayload = {
+            workout_session_id: sid,
+            assigned_workout_item_id: exercise.id,
+            planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
+            executed_exercise_id: exercise.exercise_id,
+            swap_source: exercise.swap_source || 'none',
+            exercise_id: exercise.exercise_id,
+            set_number: setIndex + 1,
+            weight,
+            reps_completed: repsCompleted,
+            is_completed: true,
+            completed_at: new Date().toISOString(),
+            weight_unit: 'kg',
+        };
+
         try {
             const { error } = await supabase
                 .from('set_logs' as any)
-                .upsert({
-                    workout_session_id: sid,
-                    assigned_workout_item_id: exercise.id,
-                    planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
-                    executed_exercise_id: exercise.exercise_id,
-                    swap_source: exercise.swap_source || 'none',
-                    exercise_id: exercise.exercise_id,
-                    set_number: setIndex + 1,
-                    weight,
-                    reps_completed: repsCompleted,
-                    is_completed: true,
-                    completed_at: new Date().toISOString(),
-                    weight_unit: 'kg',
-                }, {
+                .upsert(upsertPayload, {
                     onConflict: 'workout_session_id,assigned_workout_item_id,set_number',
                 });
 
             if (error) {
-                if (__DEV__) console.error(`[useWorkoutSession] persistSetLog error: ${error.message} | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`);
+                // A4: rede caiu (ou erro transiente) — entra na fila offline e o
+                // listener de NetInfo do _layout drena quando a conexão voltar.
+                enqueueSetLogUpsert(upsertPayload);
+                if (__DEV__) console.error(`[useWorkoutSession] persistSetLog error (enfileirado): ${error.message} | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`);
             } else {
                 if (__DEV__) console.log(`[useWorkoutSession] Set persisted: exercise=${exercise.name}, set=${setIndex + 1}, ${repsCompleted}reps x ${weight}kg`);
             }
         } catch (err: any) {
-            if (__DEV__) console.error(`[useWorkoutSession] persistSetLog exception: ${err?.message}`);
+            enqueueSetLogUpsert(upsertPayload); // A4
+            if (__DEV__) console.error(`[useWorkoutSession] persistSetLog exception (enfileirado): ${err?.message}`);
         }
 
         // Mirror the set completion to the Apple Watch so it advances in step with the
@@ -421,6 +428,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         clearWorkoutState(workoutId); // S4: snapshot local morre junto
         const sid = sessionIdRef.current;
         if (!sid) return; // nada foi persistido ainda
+        // A4: séries descartadas não podem ressuscitar numa drenagem futura.
+        clearPendingSetLogsForSession(sid);
         try {
             const { error: logsError } = await supabase
                 .from('set_logs' as any)
@@ -446,6 +455,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     const deletePersistedSetLog = async (exercise: ExerciseData, setIndex: number) => {
         const sid = sessionId;
         if (!sid) return; // nada foi persistido ainda
+        const deleteKey = {
+            workout_session_id: sid,
+            assigned_workout_item_id: exercise.id,
+            set_number: setIndex + 1,
+        };
         try {
             const { error } = await supabase
                 .from('set_logs' as any)
@@ -453,9 +467,15 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 .eq('workout_session_id', sid)
                 .eq('assigned_workout_item_id', exercise.id)
                 .eq('set_number', setIndex + 1);
-            if (error && __DEV__) console.error(`[useWorkoutSession] deletePersistedSetLog error: ${error.message}`);
+            if (error) {
+                // A4: desmarcar offline também entra na fila (a remoção substitui
+                // qualquer upsert pendente da mesma série — última operação vence).
+                enqueueSetLogDelete(deleteKey);
+                if (__DEV__) console.error(`[useWorkoutSession] deletePersistedSetLog error (enfileirado): ${error.message}`);
+            }
         } catch (err: any) {
-            if (__DEV__) console.error(`[useWorkoutSession] deletePersistedSetLog exception: ${err?.message}`);
+            enqueueSetLogDelete(deleteKey); // A4
+            if (__DEV__) console.error(`[useWorkoutSession] deletePersistedSetLog exception (enfileirado): ${err?.message}`);
         }
     };
 
@@ -1460,6 +1480,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             // (No caminho de erro do C3 acima, o snapshot fica vivo de propósito.)
             hasFinishedRef.current = true;
             clearWorkoutState(workoutId);
+            // A4: o catch-up idempotente acima re-enviou todas as séries — a fila
+            // desta sessão ficou obsoleta (drenar depois duplicaria trabalho à toa).
+            if (currentSessionId) clearPendingSetLogsForSession(currentSessionId);
 
             if (__DEV__) console.log(`[useWorkoutSession] Workout finished. Session: ${currentSessionId}, sets: ${setLogs.length}`);
 
