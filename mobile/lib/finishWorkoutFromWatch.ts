@@ -392,10 +392,22 @@ export async function finishWorkoutFromWatch(
         });
 
       if (logsError) {
-        if (__DEV__) console.error('[finishWorkoutFromWatch] Step 7b FAILED: Upsert set_logs error:', logsError.message, logsError.details, logsError.hint);
-      } else {
-        if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 7b: Upserted ${setLogs.length} set_logs OK`);
+        // A3: NÃO engolir — a sessão já está completed neste ponto; sem isto o
+        // treino do Watch aparecia concluído com 0 séries, sem retry (perda
+        // silenciosa e permanente). Mesma técnica do C3 do telefone: reverte a
+        // sessão p/ in_progress (best-effort) e re-enfileira o payload — a fila
+        // em SecureStore é idempotente e o retry re-upserta tudo.
+        console.error('[finishWorkoutFromWatch] Step 7b ERROR (reverting session + queuing for retry):', logsError.message, logsError.details, logsError.hint);
+        try {
+          await supabase
+            .from('workout_sessions' as any)
+            .update({ status: 'in_progress', completed_at: null })
+            .eq('id', sessionId);
+        } catch { /* best-effort */ }
+        await savePendingWorkout(payload);
+        return 'pending';
       }
+      if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 7b: Upserted ${setLogs.length} set_logs OK`);
     } else {
       if (__DEV__) console.warn('[finishWorkoutFromWatch] Step 7: No set_logs to upsert');
     }
@@ -468,10 +480,19 @@ export async function finishWorkoutFromWatch(
         });
 
       if (cardioLogsError) {
-        if (__DEV__) console.error('[finishWorkoutFromWatch] Step 8b FAILED: Upsert cardio set_logs error:', cardioLogsError.message, cardioLogsError.details);
-      } else {
-        if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 8b: Upserted ${cardioSetLogs.length} cardio set_logs OK`);
+        // A3: mesmo tratamento do passo 7b — o retry re-upserta os set_logs de
+        // exercício já gravados (idempotente) e completa o cardio que faltou.
+        console.error('[finishWorkoutFromWatch] Step 8b ERROR (reverting session + queuing for retry):', cardioLogsError.message, cardioLogsError.details);
+        try {
+          await supabase
+            .from('workout_sessions' as any)
+            .update({ status: 'in_progress', completed_at: null })
+            .eq('id', sessionId);
+        } catch { /* best-effort */ }
+        await savePendingWorkout(payload);
+        return 'pending';
       }
+      if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 8b: Upserted ${cardioSetLogs.length} cardio set_logs OK`);
     }
   }
 
