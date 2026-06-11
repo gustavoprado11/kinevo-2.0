@@ -10,6 +10,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Json } from '@kinevo/shared/types/database'
 import { buildTrainerNotesDraft } from './program-report-notes-draft'
+import { estimateOneRepMax } from '@kinevo/shared/lib/estimate-one-rep-max'
 import { insertStudentNotification } from '@/lib/student-notifications'
 
 // ============================================================================
@@ -500,19 +501,6 @@ function splitMuscleGroups(mg: string | null | undefined): string[] {
     return out
 }
 
-/**
- * Estimated 1RM from a single set using the best (larger) of Epley and Brzycki.
- * Brzycki is undefined at reps >= 37, so we clamp. Returns 0 for invalid input.
- * Both formulas agree on 1RM when reps == 1.
- */
-function estimateOneRepMax(weight: number, reps: number): number {
-    if (!weight || !reps || weight <= 0 || reps <= 0) return 0
-    const epley = weight * (1 + reps / 30)
-    // Brzycki explodes as reps approaches 37; clamp to a safe ceiling.
-    const brzyckiDen = 37 - Math.min(reps, 36)
-    const brzycki = brzyckiDen > 0 ? weight * (36 / brzyckiDen) : epley
-    return Math.max(epley, brzycki)
-}
 
 /** Compute 1-indexed program week from session date and program start date. */
 function calcProgramWeek(sessionDate: string | null, programStartedAt: string | null): number {

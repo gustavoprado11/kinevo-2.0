@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mcpSuccess, mcpError } from '../types'
+import { estimateOneRepMax } from '@kinevo/shared/lib/estimate-one-rep-max'
 
 export function registerProgressReadTools(server: McpServer, trainerId: string) {
   server.tool(
@@ -122,10 +123,12 @@ export function registerProgressReadTools(server: McpServer, trainerId: string) 
         exerciseProgression = Array.from(bySession.entries())
           .map(([sessionId, sets]) => {
             sets.sort((a, b) => a.set_number - b.set_number)
-            // Epley formula: 1RM = weight * (1 + reps/30)
+            // S5: mesma fórmula do relatório de programa (best-of Epley+Brzycki)
+            // — antes o chat MCP usava Epley puro e mostrava 1RM diferente do
+            // PDF para os mesmos set_logs.
             const bestSet = sets.reduce(
               (best, s) => {
-                const est = s.weight * (1 + s.reps / 30)
+                const est = estimateOneRepMax(s.weight, s.reps)
                 return est > best.est ? { est, weight: s.weight, reps: s.reps } : best
               },
               { est: 0, weight: 0, reps: 0 }
