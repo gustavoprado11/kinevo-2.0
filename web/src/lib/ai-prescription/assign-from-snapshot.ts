@@ -33,12 +33,17 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  *   depth but does NOT reject malformed shapes — they would crash the insert.
  *
  * Atomicity:
- *   Supabase JS does not expose explicit transactions. If any write after the
- *   `assigned_programs` insert fails, the helper best-effort deletes the
- *   partially-created program row. FKs `assigned_workouts.assigned_program_id`
- *   and `assigned_workout_items.assigned_workout_id` have ON DELETE CASCADE
- *   (verified against information_schema on 2026-04-20), so a single delete
- *   on `assigned_programs` cleans up the whole tree.
+ *   All writes happen inside a single DB transaction via the
+ *   `assign_program_from_snapshot` RPC (migration 188, SECURITY DEFINER —
+ *   same pattern as `assign_program_from_template` from migration 184).
+ *   Completing the student's current program, inserting the new program +
+ *   workouts + items and approving the generation either all succeed or all
+ *   roll back — the student can never be left without a valid program. The
+ *   RPC re-checks ownership (triple filter) and idempotency under a row lock
+ *   (`FOR UPDATE`), so concurrent double-taps are serialized at the DB level.
+ *   This file keeps all validation/filtering (shape check, catalog filter,
+ *   substitute sanitization, workoutSchedule override) and sends the RPC a
+ *   pre-filtered snapshot to materialize.
  */
 
 export class GenerationNotFoundError extends Error {
@@ -247,165 +252,103 @@ export async function assignFromSnapshot(
         throw new GenerationSnapshotAllItemsInvalidError()
     }
 
-    // 4. Immediate vs. scheduled — mirrors web server action at
-    //    web/src/app/students/[id]/actions/assign-program.ts:55-74.
-    let status: 'active' | 'scheduled' = 'active'
-    let scheduledStartDate: string | null = null
-    let startedAt: string | null = new Date().toISOString()
-
-    if (input.isScheduled) {
-        status = 'scheduled'
-        scheduledStartDate = input.startDate
-        startedAt = null
-    } else {
-        await supabase
-            .from('assigned_programs')
-            .update({
-                status: 'completed',
-                completed_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            })
-            .eq('student_id', input.studentId)
-            .in('status', ['active', 'expired'])
-    }
-
-    // 5. Program metadata. duration_weeks stays null when the snapshot omits
-    //    it — see 2.5.4 log §5 for the reasoning (NULL beats a fabricated 4).
-    const programName = snapshot.program.name
-    const programDescription = snapshot.program.description ?? null
-    const durationWeeks =
-        typeof snapshot.program.duration_weeks === 'number' && snapshot.program.duration_weeks > 0
-            ? snapshot.program.duration_weeks
-            : null
-
-    const expiresAt =
-        startedAt && durationWeeks
-            ? new Date(new Date(startedAt).getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000).toISOString()
-            : null
-
-    // 6. Create assigned_programs row.
-    const { data: assignedProgram, error: programError } = await supabase
-        .from('assigned_programs')
-        .insert({
-            student_id: input.studentId,
-            trainer_id: input.trainerId,
-            source_template_id: null,
-            name: programName,
-            description: programDescription,
-            duration_weeks: durationWeeks,
-            status,
-            started_at: startedAt,
-            scheduled_start_date: scheduledStartDate,
-            current_week: 1,
-            expires_at: expiresAt,
-            ai_generated: true,
-            prescription_generation_id: input.generationId,
-        })
-        .select('id')
-        .single()
-
-    if (programError || !assignedProgram) {
-        throw programError ?? new Error('Failed to insert assigned_programs')
-    }
-
-    const programId = (assignedProgram as { id: string }).id
-
-    // 7. Walk workouts + items (filtered). If any write fails, best-effort
-    //    delete the assigned_programs row — cascade clears the rest.
-    try {
-        for (const { workout, items } of filteredWorkouts) {
-            const scheduledDays =
+    // 4. Build the FILTERED snapshot the RPC will materialize. Everything
+    //    write-related now happens inside `assign_program_from_snapshot`
+    //    (migration 188) in a single DB transaction:
+    //      - complete current active/expired program (immediate only)
+    //      - insert assigned_programs + assigned_workouts + assigned_workout_items
+    //      - approve the generation + link the program
+    //    The workoutSchedule override and substitute sanitization are applied
+    //    HERE so the RPC receives final values. duration_weeks stays null
+    //    when the snapshot omits it — see 2.5.4 log §5 (NULL beats a
+    //    fabricated 4); the RPC re-applies the same `> 0` guard.
+    //
+    //    Snapshot v2.5 is flat — no parent/child (supersets). If the LLM
+    //    starts emitting `parent_item_id`, extend the RPC with a second pass
+    //    (like migration 184 does for superset children).
+    const rpcSnapshot = {
+        program: {
+            name: snapshot.program.name,
+            description: snapshot.program.description ?? null,
+            duration_weeks:
+                typeof snapshot.program.duration_weeks === 'number' && snapshot.program.duration_weeks > 0
+                    ? snapshot.program.duration_weeks
+                    : null,
+        },
+        workouts: filteredWorkouts.map(({ workout, items }) => ({
+            name: workout.name,
+            order_index: workout.order_index,
+            scheduled_days:
                 input.workoutSchedule?.[workout.order_index] ??
                 workout.scheduled_days ??
-                []
-
-            const { data: assignedWorkout, error: workoutError } = await supabase
-                .from('assigned_workouts')
-                .insert({
-                    assigned_program_id: programId,
-                    source_template_id: null,
-                    name: workout.name,
-                    order_index: workout.order_index,
-                    scheduled_days: scheduledDays,
-                })
-                .select('id')
-                .single()
-
-            if (workoutError || !assignedWorkout) {
-                throw workoutError ?? new Error('Failed to insert assigned_workouts')
-            }
-
-            const assignedWorkoutId = (assignedWorkout as { id: string }).id
-
-            // Snapshot v2.5 is flat — no parent/child (supersets). If the LLM
-            // starts emitting `parent_item_id`, add a second pass here.
-            for (const item of items) {
-                const { error: itemError } = await supabase
-                    .from('assigned_workout_items')
-                    .insert({
-                        assigned_workout_id: assignedWorkoutId,
-                        source_template_id: null,
-                        parent_item_id: null,
-                        item_type: item.item_type,
-                        order_index: item.order_index,
-                        exercise_id: item.exercise_id,
-                        exercise_name: item.exercise_name,
-                        exercise_muscle_group: item.exercise_muscle_group,
-                        exercise_equipment: item.exercise_equipment,
-                        exercise_function: item.exercise_function,
-                        sets: item.sets,
-                        reps: item.reps,
-                        rest_seconds: item.rest_seconds,
-                        notes: item.notes,
-                        substitute_exercise_ids: sanitizeSubstitutes(
-                            item.substitute_exercise_ids ?? [],
-                            {
-                                generationId: input.generationId,
-                                workoutOrderIndex: workout.order_index,
-                                itemOrderIndex: item.order_index,
-                            },
-                        ),
-                        item_config: item.item_config ?? {},
-                    })
-
-                if (itemError) {
-                    throw itemError
-                }
-            }
-        }
-
-        // 8. Mark generation as approved + link. When the trainer persisted
-        //    an edited snapshot, bump trainer_edits_count by 1 as the audit
-        //    signal. We don't (yet) compute trainer_edits_diff here — that
-        //    requires a structural diff between original `output_snapshot`
-        //    and `editedSnapshot`, which lives in a separate concern.
-        //    TODO(unificacao-mobile): compute trainer_edits_diff and persist
-        //    when input.editedSnapshot is present.
-        const baseUpdate: Record<string, unknown> = {
-            status: 'approved',
-            approved_at: new Date().toISOString(),
-            assigned_program_id: programId,
-            updated_at: new Date().toISOString(),
-        }
-        if (input.editedSnapshot) {
-            const prevCount = (generation as { trainer_edits_count?: number | null }).trainer_edits_count ?? 0
-            baseUpdate.trainer_edits_count = prevCount + 1
-        }
-        await supabase
-            .from('prescription_generations')
-            .update(baseUpdate)
-            .eq('id', input.generationId)
-
-        return { programId }
-    } catch (err) {
-        console.error('[assignFromSnapshot] failure after program insert, rolling back', {
-            programId,
-            generationId: input.generationId,
-            err,
-        })
-        await supabase.from('assigned_programs').delete().eq('id', programId)
-        throw err
+                [],
+            items: items.map((item) => ({
+                item_type: item.item_type,
+                order_index: item.order_index,
+                exercise_id: item.exercise_id,
+                exercise_name: item.exercise_name,
+                exercise_muscle_group: item.exercise_muscle_group,
+                exercise_equipment: item.exercise_equipment,
+                exercise_function: item.exercise_function,
+                sets: item.sets,
+                reps: item.reps,
+                rest_seconds: item.rest_seconds,
+                notes: item.notes,
+                substitute_exercise_ids: sanitizeSubstitutes(
+                    item.substitute_exercise_ids ?? [],
+                    {
+                        generationId: input.generationId,
+                        workoutOrderIndex: workout.order_index,
+                        itemOrderIndex: item.order_index,
+                    },
+                ),
+                item_config: item.item_config ?? {},
+            })),
+        })),
     }
+
+    // 5. Single transactional write. `p_bump_edits` bumps
+    //    trainer_edits_count by 1 as the audit signal when the trainer
+    //    persisted an edited snapshot. We don't (yet) compute
+    //    trainer_edits_diff here — that requires a structural diff between
+    //    original `output_snapshot` and `editedSnapshot`, which lives in a
+    //    separate concern.
+    //    TODO(unificacao-mobile): compute trainer_edits_diff and persist
+    //    when input.editedSnapshot is present.
+    const { data: programId, error: rpcError } = await supabase.rpc('assign_program_from_snapshot', {
+        p_generation_id: input.generationId,
+        p_trainer_id: input.trainerId,
+        p_student_id: input.studentId,
+        p_is_scheduled: input.isScheduled,
+        p_start_date: input.isScheduled ? input.startDate : null,
+        p_snapshot: rpcSnapshot,
+        p_bump_edits: !!input.editedSnapshot,
+    })
+
+    if (rpcError) {
+        // The RPC re-checks ownership + idempotency under a row lock and
+        // raises with stable messages (contract in migration 188). Map them
+        // back to the typed errors the route already handles — this covers
+        // the race window between the pre-check above and the write.
+        const message = typeof rpcError.message === 'string' ? rpcError.message : ''
+        if (message.includes('generation_not_found')) {
+            throw new GenerationNotFoundError()
+        }
+        if (message.includes('generation_already_approved')) {
+            throw new GenerationAlreadyApprovedError()
+        }
+        console.error('[assignFromSnapshot] assign_program_from_snapshot RPC failed', {
+            generationId: input.generationId,
+            err: rpcError,
+        })
+        throw rpcError
+    }
+
+    if (typeof programId !== 'string' || programId.length === 0) {
+        throw new Error('assign_program_from_snapshot returned no program id')
+    }
+
+    return { programId }
 }
 
 /**

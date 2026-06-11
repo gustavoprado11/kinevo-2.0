@@ -94,37 +94,35 @@ function allSnapshotExercisesValid(snapshot: ReturnType<typeof makeSnapshot>): A
 // Supabase mock builder
 // ---------------------------------------------------------------------------
 //
-// The helper issues these calls in order (happy path, isScheduled=false):
+// The helper issues these calls in order (happy path):
 //   1) from('prescription_generations').select().eq(id).eq(trainerId).eq(studentId).single()
-//   2) from('assigned_programs').update({status:'completed',...}).eq(student_id).in('status', [...])
-//   3) from('assigned_programs').insert({...}).select('id').single()
-//   4) for each workout: from('assigned_workouts').insert({...}).select('id').single()
-//   5) for each item:    from('assigned_workout_items').insert({...})
-//   6) from('prescription_generations').update({status:'approved',...}).eq(id)
+//   2) from('exercises').select('id, owner_id').in('id', [...])  — catalog pool
+//   3) rpc('assign_program_from_snapshot', { ...filtered snapshot... })
 //
-// The mock uses an outcome script per table. Each table call consumes the
-// next scripted outcome; builders capture what was passed to `.insert`/`.update`
-// so assertions can introspect.
+// All writes (complete current program, insert program/workouts/items,
+// approve generation) live inside the RPC (migration 188) — the mock only
+// needs to script the two reads and the rpc outcome. `capture.rpcCalls`
+// records every rpc invocation for payload assertions.
 
 interface TableScript {
-    /** Ordered list of responses. */
+    /** Ordered list of responses for `.select(...).eq(...).single()`. */
     selectSingle?: Array<{ data: unknown; error?: unknown }>
     /** For `.select(...).in(...)` list queries (e.g. exercises pool check). */
     selectList?: Array<{ data: unknown[] | null; error?: unknown }>
-    insertSingle?: Array<{ data: unknown; error?: unknown }>
-    insertNoReturn?: Array<{ error?: unknown }>
-    updateNoReturn?: Array<{ error?: unknown }>
-    deleteNoReturn?: Array<{ error?: unknown }>
+}
+
+interface MockScript {
+    tables?: Record<string, TableScript>
+    /** Ordered list of rpc outcomes. Defaults to `{ data: 'rpc-program-id', error: null }`. */
+    rpc?: Array<{ data: unknown; error?: { message: string } | null }>
 }
 
 interface MockCapture {
-    inserts: Record<string, unknown[]>
-    updates: Record<string, unknown[]>
-    deletes: Record<string, Array<Record<string, unknown>>>
+    rpcCalls: Array<{ fn: string; args: Record<string, unknown> }>
 }
 
-function makeSupabase(script: Record<string, TableScript>): { client: any; capture: MockCapture } {
-    const capture: MockCapture = { inserts: {}, updates: {}, deletes: {} }
+function makeSupabase(script: MockScript): { client: any; capture: MockCapture } {
+    const capture: MockCapture = { rpcCalls: [] }
     const indexes = new Map<string, number>()
 
     const nextIndex = (key: string) => {
@@ -135,7 +133,7 @@ function makeSupabase(script: Record<string, TableScript>): { client: any; captu
 
     const client = {
         from(table: string) {
-            const t = script[table] ?? {}
+            const t = script.tables?.[table] ?? {}
 
             return {
                 select: (_cols: string) => ({
@@ -155,50 +153,12 @@ function makeSupabase(script: Record<string, TableScript>): { client: any; captu
                         return Promise.resolve(t.selectList?.[i] ?? { data: [], error: null })
                     },
                 }),
-                insert: (payload: unknown) => {
-                    const list = capture.inserts[table] ?? (capture.inserts[table] = [])
-                    list.push(payload)
-
-                    return {
-                        select: (_cols: string) => ({
-                            single: () => {
-                                const i = nextIndex(`${table}:insertSingle`)
-                                return Promise.resolve(t.insertSingle?.[i] ?? { data: null, error: null })
-                            },
-                        }),
-                        // Fire-and-forget insert (items) resolves to { error? }.
-                        then: (resolve: any) => {
-                            const i = nextIndex(`${table}:insertNoReturn`)
-                            return Promise.resolve(t.insertNoReturn?.[i] ?? { error: null }).then(resolve)
-                        },
-                    }
-                },
-                update: (payload: Record<string, unknown>) => {
-                    const list = capture.updates[table] ?? (capture.updates[table] = [])
-                    list.push(payload)
-
-                    return {
-                        eq: function chain(): any {
-                            return {
-                                eq: chain,
-                                in: chain,
-                                then: (resolve: any) => {
-                                    const i = nextIndex(`${table}:updateNoReturn`)
-                                    return Promise.resolve(t.updateNoReturn?.[i] ?? { error: null }).then(resolve)
-                                },
-                            }
-                        },
-                    }
-                },
-                delete: () => ({
-                    eq: (_col: string, val: unknown) => {
-                        const list = capture.deletes[table] ?? (capture.deletes[table] = [])
-                        list.push({ val })
-                        const i = nextIndex(`${table}:deleteNoReturn`)
-                        return Promise.resolve(t.deleteNoReturn?.[i] ?? { error: null })
-                    },
-                }),
             }
+        },
+        rpc(fn: string, args: Record<string, unknown>) {
+            capture.rpcCalls.push({ fn, args })
+            const i = nextIndex('rpc')
+            return Promise.resolve(script.rpc?.[i] ?? { data: 'rpc-program-id', error: null })
         },
     }
 
@@ -221,96 +181,99 @@ describe('assignFromSnapshot', () => {
         vi.restoreAllMocks()
     })
 
-    it('happy path: inserts program + 2 workouts + 3 items, marks generation approved', async () => {
+    it('happy path: calls the transactional RPC with program + 2 workouts + 3 items', async () => {
         const snapshot = makeSnapshot()
         const { client, capture } = makeSupabase({
-            prescription_generations: {
-                selectSingle: [
-                    { data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot, student_id: STUDENT_ID, trainer_id: TRAINER_ID }, error: null },
-                ],
+            tables: {
+                prescription_generations: {
+                    selectSingle: [
+                        { data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot, student_id: STUDENT_ID, trainer_id: TRAINER_ID }, error: null },
+                    ],
+                },
+                exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
             },
-            exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
-            assigned_programs: {
-                insertSingle: [{ data: { id: 'new-program-id' }, error: null }],
-            },
-            assigned_workouts: {
-                insertSingle: [
-                    { data: { id: 'wk-1' }, error: null },
-                    { data: { id: 'wk-2' }, error: null },
-                ],
-            },
+            rpc: [{ data: 'new-program-id', error: null }],
         })
 
         const result = await assignFromSnapshot(client, baseInput())
 
         expect(result).toEqual({ programId: 'new-program-id' })
 
-        // Program insert shape
-        expect(capture.inserts.assigned_programs).toHaveLength(1)
-        expect(capture.inserts.assigned_programs[0]).toMatchObject({
-            student_id: STUDENT_ID,
-            trainer_id: TRAINER_ID,
-            source_template_id: null,
-            ai_generated: true,
-            prescription_generation_id: GENERATION_ID,
+        expect(capture.rpcCalls).toHaveLength(1)
+        const { fn, args } = capture.rpcCalls[0]
+        expect(fn).toBe('assign_program_from_snapshot')
+        expect(args).toMatchObject({
+            p_generation_id: GENERATION_ID,
+            p_trainer_id: TRAINER_ID,
+            p_student_id: STUDENT_ID,
+            p_is_scheduled: false,
+            p_start_date: null,
+            p_bump_edits: false,
+        })
+
+        const payload = args.p_snapshot as {
+            program: Record<string, unknown>
+            workouts: Array<{ name: string; order_index: number; scheduled_days: number[]; items: Array<Record<string, unknown>> }>
+        }
+        expect(payload.program).toEqual({
             name: 'Programa Hipertrofia Intermediário 5x Semana',
+            description: 'Programa de hipertrofia para aluno intermediário.',
             duration_weeks: 8,
-            status: 'active',
-            current_week: 1,
         })
 
-        // 2 workouts inserted
-        expect(capture.inserts.assigned_workouts).toHaveLength(2)
-        expect(capture.inserts.assigned_workouts[0]).toMatchObject({
-            assigned_program_id: 'new-program-id',
-            name: 'Push',
-            order_index: 1,
-            scheduled_days: [1, 4],
-        })
-
-        // 3 items total (2 + 1)
-        expect(capture.inserts.assigned_workout_items).toHaveLength(3)
-        expect(capture.inserts.assigned_workout_items[0]).toMatchObject({
-            assigned_workout_id: 'wk-1',
+        // 2 workouts, 3 items total (2 + 1), scheduled_days from the snapshot.
+        expect(payload.workouts).toHaveLength(2)
+        expect(payload.workouts[0]).toMatchObject({ name: 'Push', order_index: 1, scheduled_days: [1, 4] })
+        expect(payload.workouts[1]).toMatchObject({ name: 'Pull', order_index: 2, scheduled_days: [2, 5] })
+        expect(payload.workouts[0].items).toHaveLength(2)
+        expect(payload.workouts[1].items).toHaveLength(1)
+        expect(payload.workouts[0].items[0]).toEqual({
             item_type: 'exercise',
+            order_index: 0,
+            exercise_id: 'fa921fca-3f70-4d8c-803a-2f30a03d3784',
             exercise_name: 'Supino Reto com Barra',
+            exercise_muscle_group: 'Peito',
+            exercise_equipment: 'barbell',
+            exercise_function: 'main',
+            sets: 4,
+            reps: '8-12',
+            rest_seconds: 90,
+            notes: 'Composto principal',
             substitute_exercise_ids: ['f86432d8-1959-4a15-9444-835cf0c91f51'],
             item_config: {},
-            parent_item_id: null,
-        })
-
-        // Generation marked approved
-        expect(capture.updates.prescription_generations).toHaveLength(1)
-        expect(capture.updates.prescription_generations[0]).toMatchObject({
-            status: 'approved',
-            assigned_program_id: 'new-program-id',
         })
     })
 
-    it('throws GenerationNotFoundError when fetch returns null', async () => {
+    it('throws GenerationNotFoundError when fetch returns null (no RPC call)', async () => {
         const { client, capture } = makeSupabase({
-            prescription_generations: { selectSingle: [{ data: null, error: null }] },
+            tables: {
+                prescription_generations: { selectSingle: [{ data: null, error: null }] },
+            },
         })
 
         await expect(assignFromSnapshot(client, baseInput())).rejects.toBeInstanceOf(GenerationNotFoundError)
-        expect(capture.inserts.assigned_programs).toBeUndefined()
+        expect(capture.rpcCalls).toHaveLength(0)
     })
 
-    it('throws GenerationAlreadyApprovedError when status is already approved', async () => {
+    it('throws GenerationAlreadyApprovedError when status is already approved (no RPC call)', async () => {
         const { client, capture } = makeSupabase({
-            prescription_generations: {
-                selectSingle: [{ data: { id: GENERATION_ID, status: 'approved', output_snapshot: makeSnapshot() }, error: null }],
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'approved', output_snapshot: makeSnapshot() }, error: null }],
+                },
             },
         })
 
         await expect(assignFromSnapshot(client, baseInput())).rejects.toBeInstanceOf(GenerationAlreadyApprovedError)
-        expect(capture.inserts.assigned_programs).toBeUndefined()
+        expect(capture.rpcCalls).toHaveLength(0)
     })
 
     it('throws GenerationSnapshotMissingError when output_snapshot is null', async () => {
         const { client } = makeSupabase({
-            prescription_generations: {
-                selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: null }, error: null }],
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: null }, error: null }],
+                },
             },
         })
 
@@ -320,8 +283,10 @@ describe('assignFromSnapshot', () => {
     it('throws GenerationSnapshotMissingError when snapshot.program.name is missing', async () => {
         const badSnapshot = makeSnapshot({ program: { description: 'no name', duration_weeks: 4 } })
         const { client } = makeSupabase({
-            prescription_generations: {
-                selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: badSnapshot }, error: null }],
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: badSnapshot }, error: null }],
+                },
             },
         })
 
@@ -332,7 +297,9 @@ describe('assignFromSnapshot', () => {
         // Triple-filter in the helper means fetch returns null. Indistinguishable
         // from "generation does not exist at all", by design (no info leak).
         const { client } = makeSupabase({
-            prescription_generations: { selectSingle: [{ data: null, error: null }] },
+            tables: {
+                prescription_generations: { selectSingle: [{ data: null, error: null }] },
+            },
         })
 
         await expect(
@@ -340,7 +307,7 @@ describe('assignFromSnapshot', () => {
         ).rejects.toBeInstanceOf(GenerationNotFoundError)
     })
 
-    it('isScheduled=false replaces active program; isScheduled=true does not', async () => {
+    it('isScheduled=false sends p_start_date=null; isScheduled=true forwards the start date', async () => {
         // Use a minimal valid snapshot (1 workout, 1 item). Fully empty snapshots
         // now abort with GenerationSnapshotAllItemsInvalidError.
         const snapshot = makeSnapshot({
@@ -369,35 +336,76 @@ describe('assignFromSnapshot', () => {
         })
         const validExercisesList = allSnapshotExercisesValid(snapshot)
 
-        // Case A: immediate → update ran.
+        // Case A: immediate → p_is_scheduled=false, p_start_date=null. The
+        // "complete current program" UPDATE happens inside the RPC.
         const a = makeSupabase({
-            prescription_generations: {
-                selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                exercises: { selectList: [{ data: validExercisesList, error: null }] },
             },
-            exercises: { selectList: [{ data: validExercisesList, error: null }] },
-            assigned_programs: { insertSingle: [{ data: { id: 'p1' }, error: null }] },
-            assigned_workouts: { insertSingle: [{ data: { id: 'wk-a' }, error: null }] },
+            rpc: [{ data: 'p1', error: null }],
         })
-        await assignFromSnapshot(a.client, baseInput({ isScheduled: false }))
-        expect(a.capture.updates.assigned_programs).toHaveLength(1)
-        expect(a.capture.updates.assigned_programs[0]).toMatchObject({ status: 'completed' })
+        await assignFromSnapshot(a.client, baseInput({ isScheduled: false, startDate: '2026-05-01T00:00:00Z' }))
+        expect(a.capture.rpcCalls[0].args).toMatchObject({
+            p_is_scheduled: false,
+            p_start_date: null,
+        })
 
-        // Case B: scheduled → no update.
+        // Case B: scheduled → p_is_scheduled=true with the start date.
         const b = makeSupabase({
-            prescription_generations: {
-                selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                exercises: { selectList: [{ data: validExercisesList, error: null }] },
             },
-            exercises: { selectList: [{ data: validExercisesList, error: null }] },
-            assigned_programs: { insertSingle: [{ data: { id: 'p2' }, error: null }] },
-            assigned_workouts: { insertSingle: [{ data: { id: 'wk-b' }, error: null }] },
+            rpc: [{ data: 'p2', error: null }],
         })
         await assignFromSnapshot(b.client, baseInput({ isScheduled: true, startDate: '2026-05-01T00:00:00Z' }))
-        expect(b.capture.updates.assigned_programs).toBeUndefined()
-        expect(b.capture.inserts.assigned_programs[0]).toMatchObject({
-            status: 'scheduled',
-            scheduled_start_date: '2026-05-01T00:00:00Z',
-            started_at: null,
+        expect(b.capture.rpcCalls[0].args).toMatchObject({
+            p_is_scheduled: true,
+            p_start_date: '2026-05-01T00:00:00Z',
         })
+    })
+
+    it('workoutSchedule override replaces snapshot scheduled_days in the RPC payload', async () => {
+        const snapshot = makeSnapshot()
+        const { client, capture } = makeSupabase({
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
+            },
+        })
+
+        await assignFromSnapshot(client, baseInput({ workoutSchedule: { 1: [0, 3] } }))
+
+        const payload = capture.rpcCalls[0].args.p_snapshot as {
+            workouts: Array<{ order_index: number; scheduled_days: number[] }>
+        }
+        // order_index 1 overridden; order_index 2 keeps the snapshot days.
+        expect(payload.workouts[0]).toMatchObject({ order_index: 1, scheduled_days: [0, 3] })
+        expect(payload.workouts[1]).toMatchObject({ order_index: 2, scheduled_days: [2, 5] })
+    })
+
+    it('editedSnapshot sets p_bump_edits=true', async () => {
+        const snapshot = makeSnapshot()
+        const { client, capture } = makeSupabase({
+            tables: {
+                prescription_generations: {
+                    // editedSnapshot path still re-fetches for ownership/status.
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: null, trainer_edits_count: 2 }, error: null }],
+                },
+                exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
+            },
+        })
+
+        await assignFromSnapshot(client, baseInput({ editedSnapshot: snapshot as never }))
+
+        expect(capture.rpcCalls[0].args).toMatchObject({ p_bump_edits: true })
     })
 
     it('filters invalid UUIDs from substitute_exercise_ids and logs warn', async () => {
@@ -435,28 +443,32 @@ describe('assignFromSnapshot', () => {
         })
 
         const { client, capture } = makeSupabase({
-            prescription_generations: {
-                selectSingle: [
-                    {
-                        data: {
-                            id: GENERATION_ID,
-                            status: 'pending_review',
-                            output_snapshot: snapshot,
+            tables: {
+                prescription_generations: {
+                    selectSingle: [
+                        {
+                            data: {
+                                id: GENERATION_ID,
+                                status: 'pending_review',
+                                output_snapshot: snapshot,
+                            },
+                            error: null,
                         },
-                        error: null,
-                    },
-                ],
+                    ],
+                },
+                exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
             },
-            exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
-            assigned_programs: { insertSingle: [{ data: { id: 'p-sanitized' }, error: null }] },
-            assigned_workouts: { insertSingle: [{ data: { id: 'wk-sanitized' }, error: null }] },
+            rpc: [{ data: 'p-sanitized', error: null }],
         })
 
         const result = await assignFromSnapshot(client, baseInput())
         expect(result).toEqual({ programId: 'p-sanitized' })
 
-        expect(capture.inserts.assigned_workout_items).toHaveLength(1)
-        expect(capture.inserts.assigned_workout_items[0]).toMatchObject({
+        const payload = capture.rpcCalls[0].args.p_snapshot as {
+            workouts: Array<{ items: Array<{ substitute_exercise_ids: string[] }> }>
+        }
+        expect(payload.workouts[0].items).toHaveLength(1)
+        expect(payload.workouts[0].items[0]).toMatchObject({
             substitute_exercise_ids: ['fa921fca-3f70-4d8c-803a-2f30a03d3784'],
         })
 
@@ -514,21 +526,25 @@ describe('assignFromSnapshot', () => {
         })
 
         const { client, capture } = makeSupabase({
-            prescription_generations: {
-                selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                // Pool returns only the first id (ghost id is absent).
+                exercises: { selectList: [{ data: [{ id: 'fa921fca-3f70-4d8c-803a-2f30a03d3784', owner_id: null }], error: null }] },
             },
-            // Pool returns only the first id (ghost id is absent).
-            exercises: { selectList: [{ data: [{ id: 'fa921fca-3f70-4d8c-803a-2f30a03d3784', owner_id: null }], error: null }] },
-            assigned_programs: { insertSingle: [{ data: { id: 'p-mixed' }, error: null }] },
-            assigned_workouts: { insertSingle: [{ data: { id: 'wk-mixed' }, error: null }] },
+            rpc: [{ data: 'p-mixed', error: null }],
         })
 
         const result = await assignFromSnapshot(client, baseInput())
         expect(result).toEqual({ programId: 'p-mixed' })
 
-        // Only the valid item is inserted.
-        expect(capture.inserts.assigned_workout_items).toHaveLength(1)
-        expect(capture.inserts.assigned_workout_items[0]).toMatchObject({
+        // Only the valid item makes it into the RPC payload.
+        const payload = capture.rpcCalls[0].args.p_snapshot as {
+            workouts: Array<{ items: Array<{ exercise_id: string }> }>
+        }
+        expect(payload.workouts[0].items).toHaveLength(1)
+        expect(payload.workouts[0].items[0]).toMatchObject({
             exercise_id: 'fa921fca-3f70-4d8c-803a-2f30a03d3784',
         })
 
@@ -580,20 +596,24 @@ describe('assignFromSnapshot', () => {
         })
 
         const { client, capture } = makeSupabase({
-            prescription_generations: {
-                selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                // Pool returns only the first id; second workout's only item is ghost.
+                exercises: { selectList: [{ data: [{ id: 'fa921fca-3f70-4d8c-803a-2f30a03d3784', owner_id: null }], error: null }] },
             },
-            // Pool returns only the first id; second workout's only item is ghost.
-            exercises: { selectList: [{ data: [{ id: 'fa921fca-3f70-4d8c-803a-2f30a03d3784', owner_id: null }], error: null }] },
-            assigned_programs: { insertSingle: [{ data: { id: 'p-dropped' }, error: null }] },
-            assigned_workouts: { insertSingle: [{ data: { id: 'wk-good' }, error: null }] },
+            rpc: [{ data: 'p-dropped', error: null }],
         })
 
         await assignFromSnapshot(client, baseInput())
 
-        // Only one workout inserted.
-        expect(capture.inserts.assigned_workouts).toHaveLength(1)
-        expect(capture.inserts.assigned_workouts[0]).toMatchObject({ name: 'GoodOne' })
+        // Only one workout in the RPC payload.
+        const payload = capture.rpcCalls[0].args.p_snapshot as {
+            workouts: Array<{ name: string }>
+        }
+        expect(payload.workouts).toHaveLength(1)
+        expect(payload.workouts[0]).toMatchObject({ name: 'GoodOne' })
 
         expect(warnSpy).toHaveBeenCalledWith(
             '[assignFromSnapshot] dropping entire workout (no valid items)',
@@ -628,39 +648,97 @@ describe('assignFromSnapshot', () => {
         })
 
         const { client, capture } = makeSupabase({
-            prescription_generations: {
-                selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                exercises: { selectList: [{ data: [], error: null }] }, // pool empty / no matches
             },
-            exercises: { selectList: [{ data: [], error: null }] }, // pool empty / no matches
         })
 
         await expect(assignFromSnapshot(client, baseInput())).rejects.toBeInstanceOf(
             GenerationSnapshotAllItemsInvalidError,
         )
         // Abort happens before any write.
-        expect(capture.inserts.assigned_programs).toBeUndefined()
+        expect(capture.rpcCalls).toHaveLength(0)
         expect(warnSpy).toHaveBeenCalledWith(
             '[assignFromSnapshot] aborting: snapshot has zero valid items across all workouts',
             expect.objectContaining({ generationId: GENERATION_ID }),
         )
     })
 
-    it('rolls back assigned_programs when a workout insert fails', async () => {
+    // -----------------------------------------------------------------------
+    // RPC error mapping — stable messages raised inside migration 188 are
+    // translated back to the typed errors the route handles. This covers the
+    // race window between the TS pre-check and the locked re-check in the DB.
+    // -----------------------------------------------------------------------
+
+    it('maps RPC error generation_not_found to GenerationNotFoundError', async () => {
         const snapshot = makeSnapshot()
-        const { client, capture } = makeSupabase({
-            prescription_generations: {
-                selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+        const { client } = makeSupabase({
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
             },
-            exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
-            assigned_programs: {
-                insertSingle: [{ data: { id: 'rollback-target' }, error: null }],
+            rpc: [{ data: null, error: { message: 'generation_not_found' } }],
+        })
+
+        await expect(assignFromSnapshot(client, baseInput())).rejects.toBeInstanceOf(GenerationNotFoundError)
+    })
+
+    it('maps RPC error generation_already_approved to GenerationAlreadyApprovedError (double-tap race)', async () => {
+        const snapshot = makeSnapshot()
+        const { client } = makeSupabase({
+            tables: {
+                prescription_generations: {
+                    // Pre-check passes (status still pending) — the race is
+                    // lost at the DB, which raises under the row lock.
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
             },
-            assigned_workouts: {
-                insertSingle: [{ data: null, error: { message: 'boom' } }],
+            rpc: [{ data: null, error: { message: 'generation_already_approved' } }],
+        })
+
+        await expect(assignFromSnapshot(client, baseInput())).rejects.toBeInstanceOf(GenerationAlreadyApprovedError)
+    })
+
+    it('rethrows unknown RPC errors as-is and logs them', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const snapshot = makeSnapshot()
+        const { client } = makeSupabase({
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
             },
+            rpc: [{ data: null, error: { message: 'boom' } }],
         })
 
         await expect(assignFromSnapshot(client, baseInput())).rejects.toMatchObject({ message: 'boom' })
-        expect(capture.deletes.assigned_programs).toEqual([{ val: 'rollback-target' }])
+        expect(errorSpy).toHaveBeenCalledWith(
+            '[assignFromSnapshot] assign_program_from_snapshot RPC failed',
+            expect.objectContaining({ generationId: GENERATION_ID }),
+        )
+    })
+
+    it('throws when the RPC returns no program id', async () => {
+        const snapshot = makeSnapshot()
+        const { client } = makeSupabase({
+            tables: {
+                prescription_generations: {
+                    selectSingle: [{ data: { id: GENERATION_ID, status: 'pending_review', output_snapshot: snapshot }, error: null }],
+                },
+                exercises: { selectList: [{ data: allSnapshotExercisesValid(snapshot), error: null }] },
+            },
+            rpc: [{ data: null, error: null }],
+        })
+
+        await expect(assignFromSnapshot(client, baseInput())).rejects.toMatchObject({
+            message: 'assign_program_from_snapshot returned no program id',
+        })
     })
 })
