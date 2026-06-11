@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useId, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useId } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks } from 'lucide-react'
@@ -50,6 +50,7 @@ import { useWorkoutModel } from './helpers/use-workout-model'
 import { useCompareMode } from './helpers/use-compare-mode'
 import { useProgramSchedule } from './helpers/use-program-schedule'
 import { useCanvasDnd } from './helpers/use-canvas-dnd'
+import { useBuilderChrome } from './helpers/use-builder-chrome'
 import type { WorkoutSet } from '@kinevo/shared/types/prescription'
 
 
@@ -324,58 +325,16 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [nameShake, setNameShake] = useState(false)
-    const [isCanvasScrolled, setIsCanvasScrolled] = useState(false)
-    const [isHeaderHidden, setIsHeaderHidden] = useState(false)
-    const lastScrollTopRef = useRef(0)
-    const accumulatedScrollRef = useRef(0)
-    const lastDirectionRef = useRef<'up' | 'down' | null>(null)
-    const headerTransitionRef = useRef(false)
-    const [previewScale, setPreviewScale] = useState(0.82)
-    // Fase 4.5k: SSR-safe init. Sempre começa `false` no servidor; useEffect
-    // logo abaixo lê o localStorage no client após mount. Evita o hydration
-    // mismatch que acontecia quando o lazy-init usava localStorage no render
-    // inicial — o servidor (Node, sem localStorage) entregava `false`, mas
-    // o client lia o valor real do storage e divergia.
-    const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false)
-    const canvasScrollRef = useRef<HTMLDivElement>(null)
-
-    const setHeaderHiddenSafe = useCallback((hidden: boolean) => {
-        if (hidden === isHeaderHidden || headerTransitionRef.current) return
-        headerTransitionRef.current = true
-        setIsHeaderHidden(hidden)
-        setTimeout(() => { headerTransitionRef.current = false }, 200)
-    }, [isHeaderHidden])
-
-    // Dynamically scale the phone preview to fit the available vertical space
-    useEffect(() => {
-        const BASE_PHONE_HEIGHT = 812
-        const OFFSET = 180
-        const update = () => {
-            const available = window.innerHeight - OFFSET
-            const s = Math.min(0.82, Math.max(0.55, available / BASE_PHONE_HEIGHT))
-            setPreviewScale(s)
-        }
-        update()
-        window.addEventListener('resize', update)
-        return () => window.removeEventListener('resize', update)
-    }, [])
-
-    // Fase 4.5k: rehidrata a preferência salva DEPOIS do mount. A transição
-    // animada do panel (transition-all duration-250) mascara o ajuste, então
-    // não há "flash" perceptível pra quem tinha a biblioteca recolhida.
-    useEffect(() => {
-        if (typeof window === 'undefined') return
-        const stored = localStorage.getItem('kinevo-library-collapsed')
-        if (stored === 'true') setIsLibraryCollapsed(true)
-    }, [])
-
-    const toggleLibrary = useCallback(() => {
-        setIsLibraryCollapsed(prev => {
-            const next = !prev
-            localStorage.setItem('kinevo-library-collapsed', String(next))
-            return next
-        })
-    }, [])
+    // Chrome da tela (header auto-hide, preview scale, biblioteca) — hook compartilhado.
+    const {
+        canvasScrollRef,
+        isCanvasScrolled,
+        isHeaderHidden,
+        handleCanvasScroll,
+        previewScale,
+        isLibraryCollapsed,
+        toggleLibrary,
+    } = useBuilderChrome()
     // Sensors for tab drag-and-drop
     const tabSensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -632,7 +591,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     // em modo avançado". method_key/rounds vão como null/1.
                     if (item.children) {
                         for (const child of item.children) {
-                            let childId = child.id
+                            const childId = child.id
                             const childPayload: any = {
                                 assigned_workout_id: workoutId,
                                 item_type: child.item_type,
@@ -1111,30 +1070,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                     {/* Canvas (scrollable) */}
                                     <div
                                         ref={canvasScrollRef}
-                                        onScroll={(e) => {
-                                            const scrollTop = e.currentTarget.scrollTop
-                                            const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
-                                            if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
-                                            // Auto-hide header: accumulate distance in same direction
-                                            if (!headerTransitionRef.current) {
-                                                const dir = scrollTop > lastScrollTopRef.current ? 'down' : 'up'
-                                                const absDelta = Math.abs(scrollTop - lastScrollTopRef.current)
-                                                if (dir !== lastDirectionRef.current) {
-                                                    accumulatedScrollRef.current = 0
-                                                    lastDirectionRef.current = dir
-                                                }
-                                                accumulatedScrollRef.current += absDelta
-                                                if (dir === 'down' && scrollTop > 60 && accumulatedScrollRef.current > 40) {
-                                                    setHeaderHiddenSafe(true)
-                                                    accumulatedScrollRef.current = 0
-                                                } else if (dir === 'up' && accumulatedScrollRef.current > 20) {
-                                                    setHeaderHiddenSafe(false)
-                                                    accumulatedScrollRef.current = 0
-                                                }
-                                                if (scrollTop <= 10) setHeaderHiddenSafe(false)
-                                            }
-                                            lastScrollTopRef.current = scrollTop
-                                        }}
+                                        onScroll={handleCanvasScroll}
                                         onDragOver={handleCanvasDragOver}
                                         onDragLeave={handleCanvasDragLeave}
                                         onDrop={handleCanvasDrop}
@@ -1318,30 +1254,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 <div className="flex flex-1 overflow-hidden">
                                     <div
                                         ref={canvasScrollRef}
-                                        onScroll={(e) => {
-                                            const scrollTop = e.currentTarget.scrollTop
-                                            const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
-                                            if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
-                                            // Auto-hide header: accumulate distance in same direction
-                                            if (!headerTransitionRef.current) {
-                                                const dir = scrollTop > lastScrollTopRef.current ? 'down' : 'up'
-                                                const absDelta = Math.abs(scrollTop - lastScrollTopRef.current)
-                                                if (dir !== lastDirectionRef.current) {
-                                                    accumulatedScrollRef.current = 0
-                                                    lastDirectionRef.current = dir
-                                                }
-                                                accumulatedScrollRef.current += absDelta
-                                                if (dir === 'down' && scrollTop > 60 && accumulatedScrollRef.current > 40) {
-                                                    setHeaderHiddenSafe(true)
-                                                    accumulatedScrollRef.current = 0
-                                                } else if (dir === 'up' && accumulatedScrollRef.current > 20) {
-                                                    setHeaderHiddenSafe(false)
-                                                    accumulatedScrollRef.current = 0
-                                                }
-                                                if (scrollTop <= 10) setHeaderHiddenSafe(false)
-                                            }
-                                            lastScrollTopRef.current = scrollTop
-                                        }}
+                                        onScroll={handleCanvasScroll}
                                         onDragOver={handleCanvasDragOver}
                                         onDragLeave={handleCanvasDragLeave}
                                         onDrop={handleCanvasDrop}

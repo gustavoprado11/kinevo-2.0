@@ -168,6 +168,7 @@ import { useWorkoutModel } from './helpers/use-workout-model'
 import { useCompareMode } from './helpers/use-compare-mode'
 import { useProgramSchedule } from './helpers/use-program-schedule'
 import { useCanvasDnd } from './helpers/use-canvas-dnd'
+import { useBuilderChrome } from './helpers/use-builder-chrome'
 import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription'
 
 /** Persist the materialized children rows for a saved workout_item_template.
@@ -521,32 +522,20 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [nameShake, setNameShake] = useState(false)
-    const [isCanvasScrolled, setIsCanvasScrolled] = useState(false)
-    const [isHeaderHidden, setIsHeaderHidden] = useState(false)
-    const lastScrollTopRef = useRef(0)
-    const headerTransitionRef = useRef(false)
-    const canvasScrollRef = useRef<HTMLDivElement>(null)
-
-    const setHeaderHiddenSafe = useCallback((hidden: boolean) => {
-        if (hidden === isHeaderHidden || headerTransitionRef.current) return
-        headerTransitionRef.current = true
-        setIsHeaderHidden(hidden)
-        setTimeout(() => {
-            headerTransitionRef.current = false
-            // Alternar o header redimensiona a área de scroll e pode deslocar o
-            // scrollTop; re-baseia para que esse deslocamento induzido não seja
-            // lido como um novo movimento (o que travava o reaparecimento).
-            if (canvasScrollRef.current) lastScrollTopRef.current = canvasScrollRef.current.scrollTop
-        }, 280)
-    }, [isHeaderHidden])
-    const [previewScale, setPreviewScale] = useState(0.82)
-    // Fase 4.5k: SSR-safe init (mesmo padrão do EditAssignedProgramClient).
-    // Default `false` no servidor; useEffect rehidrata do localStorage no
-    // client após mount. Resolve hydration mismatch reportado no painel da
-    // biblioteca.
-    const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(
-        prescriptionPreferences ? !prescriptionPreferences.visualization.library_open_on_enter : false,
-    )
+    // Chrome da tela (header auto-hide, preview scale, biblioteca) — hook compartilhado.
+    const {
+        canvasScrollRef,
+        isCanvasScrolled,
+        isHeaderHidden,
+        handleCanvasScroll,
+        previewScale,
+        isLibraryCollapsed,
+        toggleLibrary,
+    } = useBuilderChrome({
+        initialLibraryCollapsed: prescriptionPreferences
+            ? !prescriptionPreferences.visualization.library_open_on_enter
+            : false,
+    })
     const [formTriggers, setFormTriggers] = useState<TriggerSelection>({
         preWorkout: initialFormTriggers?.preWorkout?.formTemplateId ?? null,
         postWorkout: initialFormTriggers?.postWorkout?.formTemplateId ?? null,
@@ -642,39 +631,6 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         useSensor(TouchSensor),
     )
 
-
-    // Dynamically scale the phone preview to fit the available vertical space
-    useEffect(() => {
-        const BASE_PHONE_HEIGHT = 812
-        // Offset = AppLayout header (64) + builder header (~48) + tabs (~44) + padding (24)
-        const OFFSET = 180
-
-        const update = () => {
-            const available = window.innerHeight - OFFSET
-            const s = Math.min(0.82, Math.max(0.55, available / BASE_PHONE_HEIGHT))
-            setPreviewScale(s)
-        }
-
-        update()
-        window.addEventListener('resize', update)
-        return () => window.removeEventListener('resize', update)
-    }, [])
-
-    // Fase 4.5k: rehidrata a preferência salva DEPOIS do mount. A transição
-    // animada do panel mascara o ajuste — sem flash perceptível.
-    useEffect(() => {
-        if (typeof window === 'undefined') return
-        const stored = localStorage.getItem('kinevo-library-collapsed')
-        if (stored === 'true') setIsLibraryCollapsed(true)
-    }, [])
-
-    const toggleLibrary = useCallback(() => {
-        setIsLibraryCollapsed(prev => {
-            const next = !prev
-            localStorage.setItem('kinevo-library-collapsed', String(next))
-            return next
-        })
-    }, [])
 
     // ── Adders: prefs do treinador resolvidas aqui; mutações no hook ────────
     const addExerciseToWorkout = useCallback((
@@ -1527,24 +1483,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     {/* Canvas (scrollable) */}
                                     <div
                                         ref={canvasScrollRef}
-                                        onScroll={(e) => {
-                                            const scrollTop = e.currentTarget.scrollTop
-                                            const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
-                                            if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
-                                            // Esconde ao descer; reaparece ao subir (qualquer movimento)
-                                            // ou perto do topo.
-                                            if (!headerTransitionRef.current) {
-                                                const delta = scrollTop - lastScrollTopRef.current
-                                                if (scrollTop <= 10) {
-                                                    setHeaderHiddenSafe(false)
-                                                } else if (delta > 6 && scrollTop > 80) {
-                                                    setHeaderHiddenSafe(true)
-                                                } else if (delta < -6) {
-                                                    setHeaderHiddenSafe(false)
-                                                }
-                                            }
-                                            lastScrollTopRef.current = scrollTop
-                                        }}
+                                        onScroll={handleCanvasScroll}
                                         onDragOver={handleCanvasDragOver}
                                         onDragLeave={handleCanvasDragLeave}
                                         onDrop={handleCanvasDrop}
@@ -1728,24 +1667,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 <div className="flex flex-1 overflow-hidden">
                                     <div
                                         ref={canvasScrollRef}
-                                        onScroll={(e) => {
-                                            const scrollTop = e.currentTarget.scrollTop
-                                            const shouldBeScrolled = isCanvasScrolled ? scrollTop > 10 : scrollTop > 60
-                                            if (shouldBeScrolled !== isCanvasScrolled) setIsCanvasScrolled(shouldBeScrolled)
-                                            // Esconde ao descer; reaparece ao subir (qualquer movimento)
-                                            // ou perto do topo.
-                                            if (!headerTransitionRef.current) {
-                                                const delta = scrollTop - lastScrollTopRef.current
-                                                if (scrollTop <= 10) {
-                                                    setHeaderHiddenSafe(false)
-                                                } else if (delta > 6 && scrollTop > 80) {
-                                                    setHeaderHiddenSafe(true)
-                                                } else if (delta < -6) {
-                                                    setHeaderHiddenSafe(false)
-                                                }
-                                            }
-                                            lastScrollTopRef.current = scrollTop
-                                        }}
+                                        onScroll={handleCanvasScroll}
                                         onDragOver={handleCanvasDragOver}
                                         onDragLeave={handleCanvasDragLeave}
                                         onDrop={handleCanvasDrop}
