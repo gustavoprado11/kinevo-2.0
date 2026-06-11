@@ -5,9 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
 import { WorkoutPanel } from './workout-panel'
-import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
@@ -35,7 +34,6 @@ import { usePrescriptionGenerationStream } from '@/hooks/use-prescription-genera
 import { consumePrescriptionAnimateFlag, setPrescriptionAnimateFlag } from './helpers/prescription-animate-flag'
 import { useBuilderDraft, buildDraftKey } from './helpers/use-builder-draft'
 import { WorkoutCardKebab } from './workout-card/WorkoutCardKebab'
-import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
 
 // Code-split the heaviest on-demand panels: each only renders for a specific
 // builder mode (preview / ai_prescribe / compare) or when the AI feature is
@@ -61,47 +59,11 @@ const ProgramSelector = dynamic(
     () => import('@/components/builder/context-panel/program-selector').then(m => ({ default: m.ProgramSelector })),
     { ssr: false }
 )
-import type { CompareProgramSummary, CompareProgramData } from '@/actions/programs/get-program-for-compare'
-import { compareWorkoutToWorkout } from '@/lib/workouts/transformPastWorkout'
 
-export type BuilderViewMode = 'normal' | 'preview' | 'compare' | 'ai_prescribe'
-
-export interface WorkoutItem {
-    id: string
-    item_type: 'exercise' | 'superset' | 'note' | 'warmup' | 'cardio'
-    order_index: number
-    parent_item_id: string | null
-    exercise_id: string | null
-    substitute_exercise_ids: string[]
-    exercise?: Exercise
-    sets: number | null
-    reps: string | null
-    rest_seconds: number | null
-    notes: string | null
-    exercise_function?: string | null
-    item_config?: Record<string, any>
-    children?: WorkoutItem[]
-    /** Per-set prescription (Fase 2). When set, takes precedence over the
-     * aggregates and the saved aggregates are derived via summarizeSetScheme.
-     * For compound methods (drop-set, cluster) this is the per-round shape
-     * collapsed from the materialized DB rows; the save flow expands it back
-     * `rounds` times via `expandSchemeByRounds`. */
-    set_scheme?: import('@kinevo/shared/types/prescription').WorkoutSet[] | null
-    /** Method/preset marker for the chip in the UI. */
-    method_key?: import('@kinevo/shared/types/prescription').MethodKey | null
-    /** Rodadas (Fase 4.4). 1 para métodos lineares (default). 2..20 para
-     *  compostos. Quando > 1, `set_scheme` descreve UMA rodada e é
-     *  materializado N vezes no save. */
-    rounds?: number | null
-}
-
-export interface Workout {
-    id: string
-    name: string
-    order_index: number
-    items: WorkoutItem[]
-    frequency?: string[] // ['mon', 'tue', etc]
-}
+// Tipos canônicos do modelo agora moram em ./builder-model. O re-export
+// preserva os ~20 importadores existentes (workout-panel, workout-card/*,
+// preview, hooks) sem churn.
+export type { BuilderViewMode, Workout, WorkoutItem } from './builder-model'
 
 interface ProgramData {
     id: string
@@ -140,11 +102,6 @@ interface ProgramData {
 type ProgramTemplateInsert =
     import('@kinevo/shared/types/database').Database['public']['Tables']['program_templates']['Insert']
 
-// item_config chega como Json (banco) ou Record (mapper de IA); o builder
-// trabalha com objeto plano.
-function asItemConfig(v: unknown): Record<string, any> {
-    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, any>) : {}
-}
 
 interface Trainer {
     id: string
@@ -187,123 +144,48 @@ interface ProgramBuilderClientProps {
     prescriptionPreferences?: PrescriptionPreferences
 }
 
-// Generate temp ID for new items
-const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-/** Converte uma pref de séries (ex: "3", "3-4") em count inteiro. Faixa pega
- *  o limite inferior. Fallback 3 se inválido. Usado pelo seed de set_scheme
- *  quando a pref `add_exercise.open_mode === 'set_editor'`. */
-function parseSetsCount(setsPref: string): number {
-    const match = setsPref.trim().match(/^(\d+)/)
-    const n = match ? parseInt(match[1], 10) : 3
-    return Number.isFinite(n) && n > 0 ? n : 3
-}
-
-/** Gera o nome de um workout novo respeitando a convenção do treinador.
- *  - 'letter': "Treino A", "Treino B", ... (até Z; depois reinicia em A1, B1 — improvável v1)
- *  - 'free':   "Treino 1", "Treino 2", ... (numérico simples) */
-function generateWorkoutName(index: number, convention: 'letter' | 'free'): string {
-    if (convention === 'free') return `Treino ${index + 1}`
-    return `Treino ${String.fromCharCode(65 + index)}`
-}
-
-// ── Per-set helpers (Fase 2 / 4.4) ──
+// ── Núcleo compartilhado: tipos, helpers per-set e mutações puras ──
 import {
-    collapseExpandedScheme,
-    expandSchemeByRounds,
-    summarizeSetScheme as _summarizeSetScheme,
-    summarizeWithRounds as _summarizeWithRounds,
-} from '@kinevo/shared/lib/prescription/set-scheme'
-import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
-import type { WorkoutSet } from '@kinevo/shared/types/prescription'
-
-/** Hydrate the materialized rows from the DB into the per-round shape the
- *  editor expects. Returns `{ scheme, rounds }`:
- *  - linear methods → returns the rows unchanged with rounds=1
- *  - compound methods → collapses N×M rows into M (one round) and rounds=N
- *  - empty / null → returns `{ scheme: null, rounds: 1 }` */
-function hydrateSetScheme(
-    rows: WorkoutSet[] | null | undefined,
-    roundsHint: number | null | undefined,
-): { scheme: WorkoutSet[] | null; rounds: number } {
-    if (!rows || rows.length === 0) return { scheme: null, rounds: 1 }
-    const sorted = [...rows].sort((a, b) => a.set_number - b.set_number)
-    const collapsed = collapseExpandedScheme(sorted, roundsHint ?? 1)
-    return {
-        scheme: collapsed.scheme.length > 0 ? collapsed.scheme : null,
-        rounds: collapsed.rounds,
-    }
-}
-
-/** Effective rounds for an item. Compound methods honor `item.rounds`; linear
- *  methods are forced to 1 even if the trainer accidentally typed something
- *  else somewhere — defesa em profundidade matching the mobile save flow. */
-function effectiveRoundsForItem(item: WorkoutItem): number {
-    if (!item.set_scheme || item.set_scheme.length === 0) return 1
-    if (!isCompoundMethod(item.method_key ?? null)) return 1
-    const r = Number.isFinite(item.rounds as number) ? Math.floor(item.rounds as number) : 1
-    return Math.max(1, Math.min(20, r))
-}
+    aggregatesFromItem,
+    asItemConfig,
+    buildSetSchemeRows,
+    effectiveMethodKey,
+    effectiveRoundsForItem,
+    generateWorkoutName,
+    hydrateSetScheme,
+    makeCardioItem,
+    makeExerciseItem,
+    makeNoteItem,
+    makeWarmupItem,
+    parseSetsCount,
+    tempId,
+    type BuilderViewMode,
+    type Workout,
+    type WorkoutItem,
+} from './builder-model'
+import { useWorkoutModel } from './helpers/use-workout-model'
+import { useCompareMode } from './helpers/use-compare-mode'
+import { useProgramSchedule } from './helpers/use-program-schedule'
+import { useCanvasDnd } from './helpers/use-canvas-dnd'
+import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription'
 
 /** Persist the materialized children rows for a saved workout_item_template.
- *  Linear methods write the scheme as-is; compound methods expand by `rounds`
- *  via `expandSchemeByRounds` and tag each row with its `round_number`. */
+ *  A expansão por rounds vive em buildSetSchemeRows (núcleo compartilhado);
+ *  aqui só entra a coluna FK desta tabela. */
 async function insertSetSchemeRows(
     supabase: ReturnType<typeof createClient>,
     workoutItemTemplateId: string,
     scheme: WorkoutSet[] | null | undefined,
     rounds: number,
 ): Promise<void> {
-    if (!scheme || scheme.length === 0) return
-    const safeRounds = Math.max(1, Math.min(20, Math.floor(rounds || 1)))
-    const expanded = safeRounds > 1
-        ? expandSchemeByRounds(scheme, safeRounds)
-        : scheme
-    const isCompound = safeRounds > 1
-    const rows = expanded.map((s, i) => ({
+    const rows = buildSetSchemeRows(scheme, rounds).map(r => ({
         workout_item_template_id: workoutItemTemplateId,
-        set_number: i + 1,
-        set_type: s.set_type,
-        reps: s.reps,
-        rest_seconds: s.rest_seconds,
-        weight_target_kg: s.weight_target_kg,
-        weight_target_pct1rm: s.weight_target_pct1rm,
-        rir: s.rir,
-        tempo: s.tempo,
-        notes: s.notes,
-        round_number: isCompound ? (s.round_number ?? null) : null,
+        ...r,
     }))
+    if (rows.length === 0) return
     const { error } = await supabase.from('workout_item_set_templates').insert(rows)
     if (error) throw error
-}
-
-/** Coerce the parent aggregates so they always mirror the canonical summary
- *  for the item's effective rounds. Linear / no-scheme paths keep the legacy
- *  behaviour byte-for-byte. */
-function aggregatesFromItem(item: WorkoutItem): {
-    sets: number | null
-    reps: string | null
-    rest_seconds: number | null
-} {
-    if (item.set_scheme && item.set_scheme.length > 0) {
-        const rounds = effectiveRoundsForItem(item)
-        const summary = rounds > 1
-            ? _summarizeWithRounds(item.set_scheme, rounds)
-            : _summarizeSetScheme(item.set_scheme)
-        return {
-            sets: summary.sets,
-            reps: summary.reps,
-            rest_seconds: summary.rest_seconds,
-        }
-    }
-    return { sets: item.sets, reps: item.reps, rest_seconds: item.rest_seconds }
-}
-
-/** Effective method_key honouring the "supersets bloqueados em V1" rule:
- * children with parent_item_id !== null never persist a scheme. */
-function effectiveMethodKey(item: WorkoutItem): string | null {
-    if (item.parent_item_id) return null
-    return item.method_key ?? null
 }
 
 export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning, formTriggerTemplates = [], initialFormTriggers, prescriptionData, prescriptionPreferences }: ProgramBuilderClientProps) {
@@ -320,13 +202,6 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     // Program state
     const [name, setName] = useState(program?.name || '')
     const [description, setDescription] = useState(program?.description || '')
-    const [durationWeeks, setDurationWeeks] = useState(
-        program?.duration_weeks?.toString()
-        ?? prescriptionPreferences?.program_structure.default_weeks?.toString()
-        ?? '4',
-    )
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
-    const [isEndDateFixed, setIsEndDateFixed] = useState(false)
     const [assignmentType] = useState<'immediate' | 'scheduled'>(initialAssignmentType)
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
     const [builderViewMode, setBuilderViewMode] = useState<BuilderViewMode>(
@@ -354,15 +229,6 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // Compare mode state
-    const [compareProgramsList, setCompareProgramsList] = useState<CompareProgramSummary[]>([])
-    const [compareProgramsLoading, setCompareProgramsLoading] = useState(false)
-    const [compareProgramsLoaded, setCompareProgramsLoaded] = useState(false)
-    const [compareSelectedProgramId, setCompareSelectedProgramId] = useState<string | null>(null)
-    const [compareProgramData, setCompareProgramData] = useState<CompareProgramData | null>(null)
-    const [compareProgramLoading, setCompareProgramLoading] = useState(false)
-    const [compareWorkouts, setCompareWorkouts] = useState<Workout[]>([])
-    const [compareActiveWorkoutId, setCompareActiveWorkoutId] = useState<string | null>(null)
 
     const [showActivateConfirm, setShowActivateConfirm] = useState(false)
     const [showTemplateDialog, setShowTemplateDialog] = useState(false)
@@ -376,107 +242,45 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [emptyWorkoutWarning, setEmptyWorkoutWarning] = useState<{ workoutNames: string[], onConfirm: () => void } | null>(null)
     const [activationBlock, setActivationBlock] = useState<{ workoutNames: string[] } | null>(null)
 
-    // Helper to calculate end date from weeks
-    const calculateEndDate = useCallback((start: string, weeksStr: string) => {
-        const startObj = new Date(start)
-        const weeks = parseInt(weeksStr) || 0
-        if (isNaN(startObj.getTime())) return ''
-        const endObj = new Date(startObj)
-        endObj.setDate(endObj.getDate() + (weeks * 7) - 1)
-        return endObj.toISOString().split('T')[0]
-    }, [])
+    // Início ↔ semanas ↔ fim (sync bidirecional) — hook compartilhado.
+    const {
+        startDate,
+        endDate,
+        durationWeeks,
+        setDurationWeeks,
+        isEndDateFixed,
+        handleWeeksChange,
+        handleEndDateChange,
+        handleStartDateChange,
+    } = useProgramSchedule({
+        initialStartDate: new Date().toISOString().split('T')[0],
+        initialWeeks: program?.duration_weeks?.toString()
+            ?? prescriptionPreferences?.program_structure.default_weeks?.toString()
+            ?? '4',
+    })
 
-    // Helper to calculate weeks from end date
-    const calculateWeeks = useCallback((start: string, end: string) => {
-        const startObj = new Date(start)
-        const endObj = new Date(end)
-        if (isNaN(startObj.getTime()) || isNaN(endObj.getTime())) return '0'
-        const diffTime = endObj.getTime() - startObj.getTime()
-        const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1)
-        return Math.round(diffDays / 7).toString()
-    }, [])
-
-    const [endDate, setEndDate] = useState(() =>
-        calculateEndDate(new Date().toISOString().split('T')[0], program?.duration_weeks?.toString() || '4')
-    )
-
-    // Handlers for bidirectional sync
-    const handleWeeksChange = (weeks: string) => {
-        const weeksNum = Math.max(0, parseInt(weeks) || 0)
-        const weeksStr = weeksNum.toString()
-
-        setDurationWeeks(weeksStr)
-        const newEnd = calculateEndDate(startDate, weeksStr)
-        setEndDate(newEnd)
-    }
-
-    const handleEndDateChange = (end: string) => {
-        // Prevent end date being before start date
-        if (new Date(end) < new Date(startDate)) {
-            // Reset to start date + 0 weeks
-            const resetEnd = calculateEndDate(startDate, '0')
-            setEndDate(resetEnd)
-            setDurationWeeks('0')
-            return
-        }
-
-        setEndDate(end)
-        setIsEndDateFixed(true)
-        const newWeeks = calculateWeeks(startDate, end)
-        setDurationWeeks(newWeeks)
-    }
-
-    const handleStartDateChange = (start: string) => {
-        setStartDate(start)
-        const newEnd = calculateEndDate(start, durationWeeks)
-        setEndDate(newEnd)
-    }
-
-    // ── Compare mode handlers ──────────────────────────────────────────────
-    const handleEnterCompare = useCallback(() => {
-        setBuilderViewMode('compare')
-        if (studentContext?.id && !compareProgramsLoaded) {
-            setCompareProgramsLoading(true)
-            getPastProgramsForStudent(studentContext.id)
-                .then((result) => {
-                    setCompareProgramsList(result.data || [])
-                    setCompareProgramsLoaded(true)
-                })
-                .catch(() => {
-                    setCompareProgramsList([])
-                    setCompareProgramsLoaded(true)
-                })
-                .finally(() => setCompareProgramsLoading(false))
-        }
-    }, [studentContext?.id, compareProgramsLoaded])
-
-    const handleSelectCompareProgram = useCallback((programId: string) => {
-        setCompareSelectedProgramId(programId)
-        setCompareProgramLoading(true)
-        getFullProgramForCompare(programId)
-            .then((result) => {
-                const data = result.data || null
-                setCompareProgramData(data)
-                if (data && data.workouts.length > 0) {
-                    const converted = data.workouts.map(cw => compareWorkoutToWorkout(cw, localExercises))
-                    setCompareWorkouts(converted)
-                    setCompareActiveWorkoutId(converted[0].id)
-                } else {
-                    setCompareWorkouts([])
-                    setCompareActiveWorkoutId(null)
-                }
-            })
-            .catch(() => {
-                setCompareProgramData(null)
-                setCompareWorkouts([])
-                setCompareActiveWorkoutId(null)
-            })
-            .finally(() => setCompareProgramLoading(false))
-    }, [localExercises])
-
-    const handleExitCompare = useCallback(() => {
-        setBuilderViewMode('normal')
-    }, [])
+    // ── Compare mode (hook compartilhado) ──────────────────────────────────
+    const enterCompareView = useCallback(() => setBuilderViewMode('compare'), [])
+    const exitCompareView = useCallback(() => setBuilderViewMode('normal'), [])
+    const {
+        compareProgramsList,
+        compareProgramsLoading,
+        compareSelectedProgramId,
+        compareProgramData,
+        compareProgramLoading,
+        compareWorkouts,
+        compareActiveWorkoutId,
+        setCompareActiveWorkoutId,
+        compareActiveWorkout,
+        handleEnterCompare,
+        handleSelectCompareProgram,
+        handleExitCompare,
+    } = useCompareMode({
+        studentId: studentContext?.id ?? null,
+        exercises: localExercises,
+        onEnter: enterCompareView,
+        onExit: exitCompareView,
+    })
 
     const handleEnterPreview = useCallback(() => {
         setBuilderViewMode('preview')
@@ -620,10 +424,38 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             })
     }
 
-    const [workouts, setWorkouts] = useState<Workout[]>(initializeWorkouts)
-    const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(
-        workouts.length > 0 ? workouts[0].id : null
-    )
+    const workoutNamingConvention = prescriptionPreferences?.program_structure.naming_convention
+        ?? KINEVO_DEFAULT_PREFERENCES.program_structure.naming_convention
+    const {
+        workouts,
+        setWorkouts,
+        activeWorkoutId,
+        setActiveWorkoutId,
+        activeWorkout,
+        workoutsWithoutDays,
+        occupiedDays,
+        addWorkout,
+        createWorkoutWithName,
+        updateWorkoutName,
+        updateWorkoutFrequency,
+        deleteWorkout,
+        duplicateWorkout,
+        handleWorkoutDragEnd,
+        cleanupEmptyPlaceholders,
+        appendItemsWith,
+        updateItem,
+        deleteItem,
+        duplicateItem,
+        moveItem,
+        handleReorderItem,
+        createSupersetWithNext,
+        addToExistingSuperset,
+        removeFromSuperset,
+        dissolveSuperset,
+    } = useWorkoutModel({
+        initialWorkouts: initializeWorkouts,
+        workoutName: (index) => generateWorkoutName(index, workoutNamingConvention),
+    })
 
     // ── Fase 1.5 progressive reveal ──
     // Read the sessionStorage flag once on mount. The flag is set by the AI
@@ -669,7 +501,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         streamClearedRef.current = true
         setWorkouts([])
         setActiveWorkoutId(null)
-    }, [streamAnimate])
+    }, [streamAnimate, setWorkouts, setActiveWorkoutId])
 
     // Mirror the hook's growing workouts list into local state while streaming.
     // Once `isDone`, we stop copying — local state becomes soberano so the
@@ -685,7 +517,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         if (stream.isDone) {
             streamHandoffDoneRef.current = true
         }
-    }, [streamAnimate, stream.workouts, stream.isDone])
+    }, [streamAnimate, stream.workouts, stream.isDone, setWorkouts, setActiveWorkoutId])
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [nameShake, setNameShake] = useState(false)
@@ -715,7 +547,6 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(
         prescriptionPreferences ? !prescriptionPreferences.visualization.library_open_on_enter : false,
     )
-    const [isDraggingOver, setIsDraggingOver] = useState(false)
     const [formTriggers, setFormTriggers] = useState<TriggerSelection>({
         preWorkout: initialFormTriggers?.preWorkout?.formTemplateId ?? null,
         postWorkout: initialFormTriggers?.postWorkout?.formTemplateId ?? null,
@@ -804,36 +635,13 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         setFormTriggers(d.formTriggers)
         markPristine(d)
         dismissPending()
-    }, [pendingDraft, streamAnimate, markPristine, dismissPending])
+    }, [pendingDraft, streamAnimate, markPristine, dismissPending, setDurationWeeks, setWorkouts, setActiveWorkoutId])
     // Sensors for tab drag-and-drop (distance constraint allows click without triggering drag)
     const tabSensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
         useSensor(TouchSensor),
     )
 
-    // Derived state
-    const activeWorkout = useMemo(() =>
-        workouts.find(w => w.id === activeWorkoutId) || null
-        , [workouts, activeWorkoutId])
-
-    const compareActiveWorkout = useMemo(() =>
-        compareWorkouts.find(w => w.id === compareActiveWorkoutId) || null
-        , [compareWorkouts, compareActiveWorkoutId])
-
-    const workoutsWithoutDays = useMemo(() =>
-        workouts.filter(w => !w.frequency || w.frequency.length === 0),
-        [workouts]
-    )
-
-    const occupiedDays = useMemo(() => {
-        const days = new Set<string>()
-        workouts.forEach(w => {
-            if (activeWorkoutId !== w.id && w.frequency) {
-                w.frequency.forEach(d => days.add(d))
-            }
-        })
-        return Array.from(days)
-    }, [workouts, activeWorkoutId])
 
     // Dynamically scale the phone preview to fit the available vertical space
     useEffect(() => {
@@ -868,152 +676,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         })
     }, [])
 
-    // Actions
-    const addWorkout = useCallback(() => {
-        const convention = prescriptionPreferences?.program_structure.naming_convention
-            ?? KINEVO_DEFAULT_PREFERENCES.program_structure.naming_convention
-        const newWorkout: Workout = {
-            id: tempId(),
-            name: generateWorkoutName(workouts.length, convention),
-            order_index: workouts.length,
-            items: [],
-            frequency: []
-        }
-        setWorkouts(prev => [...prev, newWorkout])
-        setActiveWorkoutId(newWorkout.id)
-    }, [workouts.length, prescriptionPreferences])
-
-    const updateWorkoutName = useCallback((workoutId: string, name: string) => {
-        setWorkouts(prev => prev.map(w =>
-            w.id === workoutId ? { ...w, name } : w
-        ))
-    }, [])
-
-    const deleteWorkout = useCallback((workoutId: string) => {
-        const remaining = workouts.filter(w => w.id !== workoutId)
-        setWorkouts(remaining.map((w, i) => ({ ...w, order_index: i })))
-        if (activeWorkoutId === workoutId) {
-            setActiveWorkoutId(remaining[0]?.id || null)
-        }
-    }, [activeWorkoutId, workouts])
-
-    const duplicateWorkout = useCallback((workoutId: string) => {
-        const convention = prescriptionPreferences?.program_structure.naming_convention
-            ?? KINEVO_DEFAULT_PREFERENCES.program_structure.naming_convention
-        setWorkouts(prev => {
-            const source = prev.find(w => w.id === workoutId)
-            if (!source) return prev
-            const baseName = source.name.replace(/^(Treino [A-Z]|Treino \d+|Dia \d+)\s*[-–]\s*/, '')
-            const prefix = generateWorkoutName(prev.length, convention)
-            const copy: Workout = {
-                id: tempId(),
-                name: `${prefix}${baseName ? ` - ${baseName}` : ''}`,
-                order_index: prev.length,
-                items: source.items.map(item => ({
-                    ...item,
-                    id: tempId(),
-                    item_config: item.item_config ? { ...item.item_config } : {},
-                    children: item.children?.map(child => ({ ...child, id: tempId(), item_config: child.item_config ? { ...child.item_config } : {} })),
-                })),
-                frequency: [],
-            }
-            return [...prev, copy]
-        })
-    }, [prescriptionPreferences])
-
-    const handleWorkoutDragEnd = useCallback((event: DragEndEvent) => {
-        const { active, over } = event
-        if (!over || active.id === over.id) return
-        setWorkouts(prev => {
-            const oldIndex = prev.findIndex(w => w.id === active.id)
-            const newIndex = prev.findIndex(w => w.id === over.id)
-            if (oldIndex === -1 || newIndex === -1) return prev
-            return arrayMove(prev, oldIndex, newIndex).map((w, i) => ({ ...w, order_index: i }))
-        })
-    }, [])
-
-    const updateWorkoutFrequency = useCallback((workoutId: string, days: string[]) => {
-        setWorkouts(prev => prev.map(w =>
-            w.id === workoutId ? { ...w, frequency: days } : w
-        ))
-    }, [])
-
-    const addExerciseFromLibrary = useCallback((exercise: Exercise, options?: { sets?: number; reps?: string; rest_seconds?: number | null; notes?: string | null }) => {
-        if (!activeWorkoutId) return
-
-        const setDefaults = prescriptionPreferences?.set_defaults ?? KINEVO_DEFAULT_PREFERENCES.set_defaults
-        const addCfg = prescriptionPreferences?.add_exercise ?? KINEVO_DEFAULT_PREFERENCES.add_exercise
-
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== activeWorkoutId) return w
-
-            const setsCount = options?.sets ?? parseSetsCount(setDefaults.sets)
-            const repsStr = options?.reps ?? setDefaults.reps
-            // TODO v2: client model has single rest_seconds; pref.rest_isolation_seconds
-            // is persisted but not consumed. See PRD_preferencias_prescricao_LIMITACOES_V1.md.
-            const restSeconds = options?.rest_seconds ?? setDefaults.rest_compound_seconds
-
-            const seedScheme: WorkoutSet[] | null =
-                addCfg.open_mode === 'set_editor'
-                    ? Array.from({ length: setsCount }, (_, i): WorkoutSet => ({
-                        set_number: i + 1,
-                        set_type: 'normal',
-                        reps: repsStr,
-                        rest_seconds: restSeconds,
-                        weight_target_kg: null,
-                        weight_target_pct1rm: null,
-                        rir: null,
-                        tempo: null,
-                        notes: null,
-                    }))
-                    : null
-
-            const newItem: WorkoutItem = {
-                id: tempId(),
-                item_type: 'exercise',
-                order_index: 0, // Will be recalculated
-                parent_item_id: null,
-                exercise_id: exercise.id,
-                substitute_exercise_ids: [],
-                exercise: exercise,
-                sets: setsCount,
-                reps: repsStr,
-                rest_seconds: restSeconds,
-                notes: options?.notes ?? null,
-                set_scheme: seedScheme,
-                method_key: null,
-                rounds: 1,
-                children: []
-            }
-
-            // Heurística auto_warmup: injeta um item de aquecimento ANTES do
-            // exercício quando a pref está ligada E é a primeira adição neste
-            // workout (items.length === 0). Não duplica em workouts já populados.
-            const shouldInjectWarmup = addCfg.auto_warmup && w.items.length === 0
-            const newItems = [...w.items]
-            if (shouldInjectWarmup) {
-                const warmupItem: WorkoutItem = {
-                    id: tempId(),
-                    item_type: 'warmup',
-                    order_index: newItems.length,
-                    parent_item_id: null,
-                    exercise_id: null,
-                    substitute_exercise_ids: [],
-                    sets: null,
-                    reps: null,
-                    rest_seconds: null,
-                    notes: null,
-                    item_config: { warmup_type: 'free' },
-                    children: [],
-                }
-                newItems.push(warmupItem)
-            }
-            newItems.push({ ...newItem, order_index: newItems.length })
-
-            return { ...w, items: newItems }
-        }))
-    }, [activeWorkoutId, prescriptionPreferences])
-
+    // ── Adders: prefs do treinador resolvidas aqui; mutações no hook ────────
     const addExerciseToWorkout = useCallback((
         workoutId: string,
         exercise: Exercise,
@@ -1022,493 +685,67 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             reps?: string
             rest_seconds?: number | null
             notes?: string | null
-            method_key?: import('@kinevo/shared/types/prescription').MethodKey | null
+            method_key?: MethodKey | null
             set_scheme?: WorkoutSet[] | null
             rounds?: number | null
         },
     ) => {
         const setDefaults = prescriptionPreferences?.set_defaults ?? KINEVO_DEFAULT_PREFERENCES.set_defaults
         const addCfg = prescriptionPreferences?.add_exercise ?? KINEVO_DEFAULT_PREFERENCES.add_exercise
-
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const setsCount = options?.sets ?? parseSetsCount(setDefaults.sets)
-            const repsStr = options?.reps ?? setDefaults.reps
+        appendItemsWith(workoutId, (w) => {
             // TODO v2: client model has single rest_seconds; pref.rest_isolation_seconds
             // is persisted but not consumed. See PRD_preferencias_prescricao_LIMITACOES_V1.md.
-            const restSeconds = options?.rest_seconds ?? setDefaults.rest_compound_seconds
-
-            const seedScheme: WorkoutSet[] | null =
-                options?.set_scheme !== undefined
-                    ? options.set_scheme
-                    : addCfg.open_mode === 'set_editor'
-                        ? Array.from({ length: setsCount }, (_, i): WorkoutSet => ({
-                            set_number: i + 1,
-                            set_type: 'normal',
-                            reps: repsStr,
-                            rest_seconds: restSeconds,
-                            weight_target_kg: null,
-                            weight_target_pct1rm: null,
-                            rir: null,
-                            tempo: null,
-                            notes: null,
-                        }))
-                        : null
-
-            const newItem: WorkoutItem = {
-                id: tempId(),
-                item_type: 'exercise',
-                order_index: w.items.length,
-                parent_item_id: null,
-                exercise_id: exercise.id,
-                substitute_exercise_ids: [],
-                exercise: exercise,
-                sets: setsCount,
-                reps: repsStr,
-                rest_seconds: restSeconds,
+            const newItem = makeExerciseItem(exercise, {
+                setsCount: options?.sets ?? parseSetsCount(setDefaults.sets),
+                reps: options?.reps ?? setDefaults.reps,
+                restSeconds: options?.rest_seconds ?? setDefaults.rest_compound_seconds,
                 notes: options?.notes ?? null,
-                set_scheme: seedScheme,
-                method_key: options?.method_key ?? null,
+                setScheme: options?.set_scheme,
+                seedSetEditor: addCfg.open_mode === 'set_editor',
+                methodKey: options?.method_key ?? null,
                 rounds: options?.rounds ?? 1,
-                children: []
-            }
-
-            // Mesma heurística do addExerciseFromLibrary — só injeta warmup
-            // se a pref está ligada e o workout está vazio.
-            const shouldInjectWarmup = addCfg.auto_warmup && w.items.length === 0
-            const newItems = [...w.items]
-            if (shouldInjectWarmup) {
-                const warmupItem: WorkoutItem = {
-                    id: tempId(),
-                    item_type: 'warmup',
-                    order_index: newItems.length,
-                    parent_item_id: null,
-                    exercise_id: null,
-                    substitute_exercise_ids: [],
-                    sets: null,
-                    reps: null,
-                    rest_seconds: null,
-                    notes: null,
-                    item_config: { warmup_type: 'free' },
-                    children: [],
-                }
-                newItems.push(warmupItem)
-            }
-            newItems.push({ ...newItem, order_index: newItems.length })
-
-            return { ...w, items: newItems }
-        }))
-    }, [prescriptionPreferences])
-
-    const createWorkoutWithName = useCallback((name: string, frequency?: string[]): string => {
-        const id = tempId()
-        const newWorkout: Workout = {
-            id,
-            name,
-            order_index: workouts.length,
-            items: [],
-            frequency: frequency ?? []
-        }
-        setWorkouts(prev => [...prev, newWorkout])
-        setActiveWorkoutId(id)
-        return id
-    }, [workouts.length])
-
-    /** Remove workouts vazios pelos IDs informados, com reindex de order_index.
-     *  Usado pelo `AiPrescribePanel` no fim de uma prescrição por texto pra
-     *  limpar placeholders ("Treino A" default) que ficaram órfãos quando o
-     *  trainer prescreveu workouts próprios. Operação atômica via callback —
-     *  sobrevive a múltiplas atualizações em sequência. */
-    const cleanupEmptyPlaceholders = useCallback((workoutIds: string[]) => {
-        if (workoutIds.length === 0) return
-        const idSet = new Set(workoutIds)
-        setWorkouts(prev => {
-            const filtered = prev.filter(w => !idSet.has(w.id) || w.items.length > 0)
-            // Só reindex se houve remoção, pra evitar render desnecessário.
-            if (filtered.length === prev.length) return prev
-            return filtered.map((w, i) => ({ ...w, order_index: i }))
+            })
+            // Heurística auto_warmup: injeta um aquecimento ANTES do exercício
+            // quando a pref está ligada E é a primeira adição neste workout.
+            // Não duplica em workouts já populados.
+            return addCfg.auto_warmup && w.items.length === 0
+                ? [makeWarmupItem(), newItem]
+                : [newItem]
         })
-        setActiveWorkoutId(prev => prev && idSet.has(prev) ? null : prev)
-    }, [])
+    }, [appendItemsWith, prescriptionPreferences])
+
+    const addExerciseFromLibrary = useCallback((exercise: Exercise, options?: { sets?: number; reps?: string; rest_seconds?: number | null; notes?: string | null }) => {
+        if (!activeWorkoutId) return
+        addExerciseToWorkout(activeWorkoutId, exercise, options)
+    }, [activeWorkoutId, addExerciseToWorkout])
 
     const handleExerciseCreated = useCallback((newExercise: Exercise) => {
         setLocalExercises(prev => [newExercise, ...prev])
     }, [])
 
-    // Handle drag-and-drop from exercise library to workout canvas
-    const handleCanvasDragOver = useCallback((e: React.DragEvent) => {
-        if (e.dataTransfer.types.includes('application/kinevo-exercise-id')) {
-            e.preventDefault()
-            e.dataTransfer.dropEffect = 'copy'
-            setIsDraggingOver(true)
-        }
-    }, [])
-
-    const handleCanvasDragLeave = useCallback((e: React.DragEvent) => {
-        // Only trigger when leaving the container, not child elements
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-            setIsDraggingOver(false)
-        }
-    }, [])
-
-    const handleCanvasDrop = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDraggingOver(false)
-        const exerciseId = e.dataTransfer.getData('application/kinevo-exercise-id')
-        if (!exerciseId) return
-        const exercise = localExercises.find(ex => ex.id === exerciseId)
-        if (exercise) {
-            addExerciseFromLibrary(exercise)
-        }
-    }, [localExercises, addExerciseFromLibrary])
+    // Drag-and-drop biblioteca → canvas
+    const { isDraggingOver, handleCanvasDragOver, handleCanvasDragLeave, handleCanvasDrop } = useCanvasDnd({
+        exercises: localExercises,
+        onDropExercise: addExerciseFromLibrary,
+    })
 
     const addNote = useCallback((workoutId: string) => {
         const noteTemplate = prescriptionPreferences?.quick_blocks.note_template
             ?? KINEVO_DEFAULT_PREFERENCES.quick_blocks.note_template
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-            const newItem: WorkoutItem = {
-                id: tempId(),
-                item_type: 'note',
-                order_index: w.items.length,
-                parent_item_id: null,
-                exercise_id: null,
-                substitute_exercise_ids: [],
-                sets: null,
-                reps: null,
-                rest_seconds: null,
-                notes: noteTemplate ?? '',
-                children: []
-            }
-            return { ...w, items: [...w.items, newItem] }
-        }))
-    }, [prescriptionPreferences])
+        appendItemsWith(workoutId, () => [makeNoteItem(noteTemplate ?? '')])
+    }, [appendItemsWith, prescriptionPreferences])
 
     const addWarmup = useCallback((workoutId: string) => {
         const warmupTemplate = prescriptionPreferences?.quick_blocks.warmup_template
             ?? KINEVO_DEFAULT_PREFERENCES.quick_blocks.warmup_template
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-            const newItem: WorkoutItem = {
-                id: tempId(),
-                item_type: 'warmup',
-                order_index: w.items.length,
-                parent_item_id: null,
-                exercise_id: null,
-                substitute_exercise_ids: [],
-                sets: null,
-                reps: null,
-                rest_seconds: null,
-                notes: null,
-                item_config: warmupTemplate
-                    ? { warmup_type: 'free', description: warmupTemplate }
-                    : { warmup_type: 'free' },
-                children: []
-            }
-            return { ...w, items: [...w.items, newItem] }
-        }))
-    }, [prescriptionPreferences])
+        appendItemsWith(workoutId, () => [makeWarmupItem(warmupTemplate)])
+    }, [appendItemsWith, prescriptionPreferences])
 
     const addCardio = useCallback((workoutId: string) => {
         const aerobicTemplate = prescriptionPreferences?.quick_blocks.aerobic_template
             ?? KINEVO_DEFAULT_PREFERENCES.quick_blocks.aerobic_template
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-            const newItem: WorkoutItem = {
-                id: tempId(),
-                item_type: 'cardio',
-                order_index: w.items.length,
-                parent_item_id: null,
-                exercise_id: null,
-                substitute_exercise_ids: [],
-                sets: null,
-                reps: null,
-                rest_seconds: null,
-                notes: null,
-                // v1 limitation: aerobic_template popula item_config.notes (campo
-                // exposto pelo TechnicalNote do CardioItemCard). CardioConfig não
-                // tem um `description` dedicado como WarmupConfig.
-                // Ver PRD_preferencias_prescricao_LIMITACOES_V1.md.
-                item_config: aerobicTemplate
-                    ? { mode: 'continuous', objective: 'time', notes: aerobicTemplate }
-                    : { mode: 'continuous', objective: 'time' },
-                children: []
-            }
-            return { ...w, items: [...w.items, newItem] }
-        }))
-    }, [prescriptionPreferences])
-
-    const updateItem = useCallback((workoutId: string, itemId: string, updates: Partial<WorkoutItem>) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const newItems = w.items.map(item => {
-                if (item.id === itemId) return { ...item, ...updates }
-                if (item.children) {
-                    const newChildren = item.children.map(c =>
-                        c.id === itemId ? { ...c, ...updates } : c
-                    )
-                    return { ...item, children: newChildren }
-                }
-                return item
-            })
-
-            return { ...w, items: newItems }
-        }))
-    }, [])
-
-    const deleteItem = useCallback((workoutId: string, itemId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const newItems = w.items.filter(item => item.id !== itemId).map(item => ({
-                ...item,
-                children: item.children ? item.children.filter(c => c.id !== itemId) : []
-            }))
-
-            return { ...w, items: newItems }
-        }))
-    }, [])
-
-    /**
-     * Duplica um item top-level (exercise, superset, warmup, cardio) e o
-     * insere logo após o original. Útil quando o trainer configurou um bloco
-     * complexo (ex: superset com método avançado) e quer replicar a
-     * estrutura pra outro grupo de exercícios.
-     *
-     * - Gera novos `id` pro item e pra todos os children (supersets).
-     * - `set_scheme` é clonado raso: cada WorkoutSet só tem campos
-     *   primitivos, sem IDs próprios.
-     * - `substitute_exercise_ids` aponta pra exercícios da biblioteca, não
-     *   pra workout items, então pode reutilizar o array.
-     */
-    const duplicateItem = useCallback((workoutId: string, itemId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const index = w.items.findIndex(i => i.id === itemId)
-            if (index === -1) return w
-
-            const original = w.items[index]
-            const newItemId = tempId()
-            const duplicate: WorkoutItem = {
-                ...original,
-                id: newItemId,
-                set_scheme: original.set_scheme
-                    ? original.set_scheme.map(s => ({ ...s }))
-                    : original.set_scheme,
-                substitute_exercise_ids: [...(original.substitute_exercise_ids ?? [])],
-                children: original.children
-                    ? original.children.map(child => ({
-                        ...child,
-                        id: tempId(),
-                        parent_item_id: newItemId,
-                        set_scheme: child.set_scheme
-                            ? child.set_scheme.map(s => ({ ...s }))
-                            : child.set_scheme,
-                        substitute_exercise_ids: [...(child.substitute_exercise_ids ?? [])],
-                    }))
-                    : original.children,
-            }
-
-            const newItems = [...w.items]
-            newItems.splice(index + 1, 0, duplicate)
-
-            return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
-        }))
-    }, [])
-
-    const moveItem = useCallback((workoutId: string, itemId: string, direction: 'up' | 'down') => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const index = w.items.findIndex(i => i.id === itemId)
-            if (index !== -1) {
-                const targetIndex = direction === 'up' ? index - 1 : index + 1
-                if (targetIndex >= 0 && targetIndex < w.items.length) {
-                    const newItems = [...w.items]
-                    const temp = newItems[index]
-                    newItems[index] = newItems[targetIndex]
-                    newItems[targetIndex] = temp
-                    return { ...w, items: newItems.map((item, i) => ({ ...item, order_index: i })) }
-                }
-            }
-            return w
-        }))
-    }, [])
-
-    const handleReorderItem = useCallback((activeId: string, overId: string) => {
-        if (!activeWorkoutId) return
-
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== activeWorkoutId) return w
-
-            const oldIndex = w.items.findIndex(i => i.id === activeId)
-            const newIndex = w.items.findIndex(i => i.id === overId)
-
-            if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-                const newItems = arrayMove(w.items, oldIndex, newIndex)
-                return { ...w, items: newItems.map((item, i) => ({ ...item, order_index: i })) }
-            }
-            return w
-        }))
-    }, [activeWorkoutId])
-
-    const createSupersetWithNext = useCallback((workoutId: string, itemId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const index = w.items.findIndex(i => i.id === itemId)
-            if (index === -1 || index === w.items.length - 1) return w
-
-            const currentItem = w.items[index]
-            const nextItem = w.items[index + 1]
-            if (currentItem.item_type !== 'exercise' || nextItem.item_type !== 'exercise') return w
-
-            const supersetId = tempId()
-            const superset: WorkoutItem = {
-                id: supersetId,
-                item_type: 'superset',
-                order_index: index,
-                parent_item_id: null,
-                exercise_id: null,
-                substitute_exercise_ids: [],
-                sets: null,
-                reps: null,
-                rest_seconds: null,
-                notes: null,
-                children: [
-                    { ...currentItem, parent_item_id: supersetId, order_index: 0 },
-                    { ...nextItem, parent_item_id: supersetId, order_index: 1 }
-                ]
-            }
-
-            const newItems = [...w.items]
-            newItems.splice(index, 2, superset)
-
-            return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
-        }))
-    }, [])
-
-    const dissolveSuperset = useCallback((workoutId: string, supersetId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const index = w.items.findIndex(i => i.id === supersetId)
-            if (index === -1) return w
-
-            const superset = w.items[index]
-            if (!superset.children) return w
-
-            const children = superset.children.map(c => ({
-                ...c,
-                parent_item_id: null
-            }))
-
-            const newItems = [...w.items]
-            newItems.splice(index, 1, ...children)
-            return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
-        }))
-    }, [])
-
-    const addToExistingSuperset = useCallback((workoutId: string, itemId: string, supersetId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const itemIndex = w.items.findIndex(i => i.id === itemId)
-            const supersetIndex = w.items.findIndex(i => i.id === supersetId)
-
-            if (itemIndex === -1 || supersetIndex === -1) return w
-
-            const item = w.items[itemIndex]
-            const superset = w.items[supersetIndex]
-
-            // Only exercise items can be added to supersets
-            if (item.item_type !== 'exercise') return w
-
-            // Create new child with parent reference
-            const newChild = {
-                ...item,
-                parent_item_id: supersetId,
-                order_index: (superset.children?.length || 0)
-            }
-
-            // Update superset children
-            const newChildren = [...(superset.children || []), newChild]
-                .map((c, i) => ({ ...c, order_index: i }))
-
-            const updatedSuperset = {
-                ...superset,
-                children: newChildren
-            }
-
-            // Remove original item and update superset
-            const newItems = [...w.items]
-            // If item is before superset, remove first then update superset index
-            if (itemIndex < supersetIndex) {
-                newItems.splice(supersetIndex, 1, updatedSuperset)
-                newItems.splice(itemIndex, 1)
-            } else {
-                newItems.splice(itemIndex, 1)
-                newItems.splice(supersetIndex, 1, updatedSuperset)
-            }
-
-            return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
-        }))
-    }, [])
-
-    const removeFromSuperset = useCallback((workoutId: string, supersetId: string, itemId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const supersetIndex = w.items.findIndex(i => i.id === supersetId)
-            if (supersetIndex === -1) return w
-
-            const superset = w.items[supersetIndex]
-            if (!superset.children) return w
-
-            const childIndex = superset.children.findIndex(c => c.id === itemId)
-            if (childIndex === -1) return w
-
-            const child = superset.children[childIndex]
-            const newChildren = superset.children.filter(c => c.id !== itemId)
-            const removedChild: WorkoutItem = { ...child, parent_item_id: null }
-
-            const newItems = [...w.items]
-
-            // Auto-dissolução: superset com 0 ou 1 filho não faz mais sentido
-            // como agrupamento. Some o container e promove o(s) sobrevivente(s)
-            // pra root. Espelha o comportamento de
-            // edit-assigned-program-client.tsx pra manter os dois fluxos
-            // consistentes.
-            if (newChildren.length <= 1) {
-                // Remove o superset
-                newItems.splice(supersetIndex, 1)
-
-                // Insere o desvinculado na posição original do superset, e o
-                // remanescente (se houver) logo depois.
-                const itemsToInsert: WorkoutItem[] = [removedChild]
-                if (newChildren.length === 1) {
-                    itemsToInsert.push({ ...newChildren[0], parent_item_id: null })
-                }
-                newItems.splice(supersetIndex, 0, ...itemsToInsert)
-
-                return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
-            }
-
-            // 2+ filhos remanescentes: mantém o superset, só atualiza children
-            // e enfileira o desvinculado logo após o bloco.
-            const updatedSuperset = {
-                ...superset,
-                children: newChildren.map((c, i) => ({ ...c, order_index: i }))
-            }
-            newItems.splice(supersetIndex, 1, updatedSuperset)
-            newItems.splice(supersetIndex + 1, 0, removedChild)
-
-            return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
-        }))
-    }, [])
+        appendItemsWith(workoutId, () => [makeCardioItem(aerobicTemplate)])
+    }, [appendItemsWith, prescriptionPreferences])
 
 
     // Save program — overrideType allows buttons to pass the assignment type directly

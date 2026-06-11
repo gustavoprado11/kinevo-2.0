@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
 import { WorkoutPanel } from './workout-panel'
-import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibraryPanel } from './exercise-library-panel'
 import { VolumeSummary } from './volume-summary'
@@ -21,7 +20,6 @@ import type { Exercise } from '@/types/exercise'
 import type { FormTemplateOption } from '@/actions/programs/get-form-templates-for-triggers'
 import { saveProgramFormTriggers } from '@/actions/programs/save-program-form-triggers'
 import { capturePostAssignmentEdits } from '@/actions/prescription/capture-post-assignment-edits'
-import { getPastProgramsForStudent, getFullProgramForCompare } from '@/actions/programs/get-program-for-compare'
 
 // Code-split panels that only render in preview / compare modes — see
 // program-builder-client.tsx for context.
@@ -33,50 +31,27 @@ const ProgramSelector = dynamic(
     () => import('@/components/builder/context-panel/program-selector').then(m => ({ default: m.ProgramSelector })),
     { ssr: false }
 )
-import type { CompareProgramSummary, CompareProgramData } from '@/actions/programs/get-program-for-compare'
-import { compareWorkoutToWorkout } from '@/lib/workouts/transformPastWorkout'
-import type { BuilderViewMode } from './program-builder-client'
-// Fase 4.5i — per-set helpers para hidratar/persistir set_scheme + rounds
-// no fluxo de edição de programa atribuído (paridade com ProgramBuilderClient).
+// ── Núcleo compartilhado: tipos, helpers per-set e mutações puras ──
 import {
-    collapseExpandedScheme,
-    expandSchemeByRounds,
-    summarizeSetScheme as _summarizeSetScheme,
-    summarizeWithRounds as _summarizeWithRounds,
-} from '@kinevo/shared/lib/prescription/set-scheme'
-import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
+    aggregatesFromItem,
+    buildSetSchemeRows,
+    effectiveMethodKey,
+    effectiveRoundsForItem,
+    hydrateSetScheme,
+    makeCardioItem,
+    makeExerciseItem,
+    makeNoteItem,
+    makeWarmupItem,
+    type BuilderViewMode,
+    type Workout,
+    type WorkoutItem,
+} from './builder-model'
+import { useWorkoutModel } from './helpers/use-workout-model'
+import { useCompareMode } from './helpers/use-compare-mode'
+import { useProgramSchedule } from './helpers/use-program-schedule'
+import { useCanvasDnd } from './helpers/use-canvas-dnd'
 import type { WorkoutSet } from '@kinevo/shared/types/prescription'
 
-export interface WorkoutItem {
-    id: string
-    item_type: 'exercise' | 'superset' | 'note' | 'warmup' | 'cardio'
-    order_index: number
-    parent_item_id: string | null
-    exercise_id: string | null
-    substitute_exercise_ids: string[]
-    exercise?: Exercise
-    sets: number | null
-    reps: string | null
-    rest_seconds: number | null
-    notes: string | null
-    exercise_function?: string | null
-    item_config?: Record<string, any>
-    children?: WorkoutItem[]
-    /** Per-set prescription (Fase 4.4 read-only). The edit-assigned flow does
-     *  not yet write per-set children — this is here so the UI can read and
-     *  display chips/badges consistently with the create flow. */
-    set_scheme?: import('@kinevo/shared/types/prescription').WorkoutSet[] | null
-    method_key?: import('@kinevo/shared/types/prescription').MethodKey | null
-    rounds?: number | null
-}
-
-export interface Workout {
-    id: string
-    name: string
-    order_index: number
-    items: WorkoutItem[]
-    frequency?: string[] // ['mon', 'tue', etc]
-}
 
 interface AssignedProgramData {
     id: string
@@ -136,72 +111,11 @@ interface EditAssignedProgramClientProps {
     formTriggerTemplates?: FormTemplateOption[]
 }
 
-// Generate temp ID for new items
-const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-// ── Per-set helpers (Fase 4.5i) — duplicados do ProgramBuilderClient pra
-//    manter o fluxo de edição de assigned program independente. Mesma
-//    semântica; se divergir, ProgramBuilderClient.tsx é a fonte canônica. ──
-
-/** Hidrata as linhas materializadas do DB na forma per-round que o editor
- *  exibe. Programas atribuídos pré-Fase-4.5i (sem rounds nem filhas) caem
- *  no caminho `{ scheme: null, rounds: 1 }` e abrem em modo simples. */
-function hydrateSetScheme(
-    rows: WorkoutSet[] | null | undefined,
-    roundsHint: number | null | undefined,
-): { scheme: WorkoutSet[] | null; rounds: number } {
-    if (!rows || rows.length === 0) return { scheme: null, rounds: 1 }
-    const sorted = [...rows].sort((a, b) => a.set_number - b.set_number)
-    const collapsed = collapseExpandedScheme(sorted, roundsHint ?? 1)
-    return {
-        scheme: collapsed.scheme.length > 0 ? collapsed.scheme : null,
-        rounds: collapsed.rounds,
-    }
-}
-
-/** Effective rounds para um item. Compound methods honram `item.rounds`;
- *  linear / sem scheme são forçados a 1. Defesa em profundidade idêntica
- *  ao ProgramBuilderClient.effectiveRoundsForItem. */
-function effectiveRoundsForItem(item: WorkoutItem): number {
-    if (!item.set_scheme || item.set_scheme.length === 0) return 1
-    if (!isCompoundMethod(item.method_key ?? null)) return 1
-    const r = Number.isFinite(item.rounds as number) ? Math.floor(item.rounds as number) : 1
-    return Math.max(1, Math.min(20, r))
-}
-
-/** Coerce os agregados do parent assigned_workout_item pra refletirem o
- *  resumo canônico do scheme + rounds. Single source of truth: nunca
- *  persistir sets/reps/rest_seconds divergentes do summarize. */
-function aggregatesFromItem(item: WorkoutItem): {
-    sets: number | null
-    reps: string | null
-    rest_seconds: number | null
-} {
-    if (item.set_scheme && item.set_scheme.length > 0) {
-        const rounds = effectiveRoundsForItem(item)
-        const summary = rounds > 1
-            ? _summarizeWithRounds(item.set_scheme, rounds)
-            : _summarizeSetScheme(item.set_scheme)
-        return {
-            sets: summary.sets,
-            reps: summary.reps,
-            rest_seconds: summary.rest_seconds,
-        }
-    }
-    return { sets: item.sets, reps: item.reps, rest_seconds: item.rest_seconds }
-}
-
-/** method_key efetivo respeitando "supersets bloqueados em V1": children
- *  com parent_item_id !== null nunca persistem método. */
-function effectiveMethodKey(item: WorkoutItem): string | null {
-    if (item.parent_item_id) return null
-    return item.method_key ?? null
-}
 
 /** Persiste as linhas filhas em `assigned_workout_item_sets` para um item
- *  recém-salvo. Materializa N rodadas × M fases via expandSchemeByRounds
- *  e marca cada linha com seu round_number. Deleta as filhas órfãs antes
- *  pra cobrir o caso de UPDATE (item pré-existente que ganhou/perdeu/
+ *  recém-salvo. A expansão por rounds vive em buildSetSchemeRows (núcleo
+ *  compartilhado); aqui entram a coluna FK desta tabela e o delete das filhas
+ *  órfãs no caminho de UPDATE (item pré-existente que ganhou/perdeu/
  *  reorganizou fases). */
 async function persistAssignedSetSchemeRows(
     supabase: ReturnType<typeof createClient>,
@@ -219,26 +133,11 @@ async function persistAssignedSetSchemeRows(
         if (delError) throw delError
     }
 
-    if (!scheme || scheme.length === 0) return
-
-    const safeRounds = Math.max(1, Math.min(20, Math.floor(rounds || 1)))
-    const expanded = safeRounds > 1
-        ? expandSchemeByRounds(scheme, safeRounds)
-        : scheme
-    const isCompound = safeRounds > 1
-    const rows = expanded.map((s, i) => ({
+    const rows = buildSetSchemeRows(scheme, rounds).map(r => ({
         assigned_workout_item_id: assignedItemId,
-        set_number: i + 1,
-        set_type: s.set_type,
-        reps: s.reps,
-        rest_seconds: s.rest_seconds,
-        weight_target_kg: s.weight_target_kg,
-        weight_target_pct1rm: s.weight_target_pct1rm,
-        rir: s.rir,
-        tempo: s.tempo,
-        notes: s.notes,
-        round_number: isCompound ? (s.round_number ?? null) : null,
+        ...r,
     }))
+    if (rows.length === 0) return
     const { error } = await supabase.from('assigned_workout_item_sets').insert(rows)
     if (error) throw error
 }
@@ -251,26 +150,11 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     // Program state
     const [name, setName] = useState(program.name)
     const [description, setDescription] = useState(program.description || '')
-    const [durationWeeks, setDurationWeeks] = useState(program.duration_weeks?.toString() || '0')
-    const [startDate, setStartDate] = useState(() => {
-        const date = program.started_at || program.scheduled_start_date || new Date().toISOString()
-        return date.split('T')[0]
-    })
-    const [isEndDateFixed, setIsEndDateFixed] = useState(false)
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
     const [showTemplateDialog, setShowTemplateDialog] = useState(false)
     const [builderViewMode, setBuilderViewMode] = useState<BuilderViewMode>('preview')
     const [checkinExpanded, setCheckinExpanded] = useState(false)
 
-    // Compare mode state
-    const [compareProgramsList, setCompareProgramsList] = useState<CompareProgramSummary[]>([])
-    const [compareProgramsLoading, setCompareProgramsLoading] = useState(false)
-    const [compareProgramsLoaded, setCompareProgramsLoaded] = useState(false)
-    const [compareSelectedProgramId, setCompareSelectedProgramId] = useState<string | null>(null)
-    const [compareProgramData, setCompareProgramData] = useState<CompareProgramData | null>(null)
-    const [compareProgramLoading, setCompareProgramLoading] = useState(false)
-    const [compareWorkouts, setCompareWorkouts] = useState<Workout[]>([])
-    const [compareActiveWorkoutId, setCompareActiveWorkoutId] = useState<string | null>(null)
 
     const [formTriggers, setFormTriggers] = useState<TriggerSelection>({
         preWorkout: initialFormTriggers?.preWorkout?.formTemplateId ?? null,
@@ -284,108 +168,44 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     // Preserve the program's original activation mode
     const assignmentType = program.scheduled_start_date ? 'scheduled' : 'immediate' as const
 
-    // Helper to calculate end date from weeks
-    const calculateEndDate = useCallback((start: string, weeksStr: string) => {
-        const startObj = new Date(start)
-        const weeks = parseInt(weeksStr) || 0
-        if (isNaN(startObj.getTime())) return ''
-        const endObj = new Date(startObj)
-        endObj.setDate(endObj.getDate() + (weeks * 7) - 1)
-        return endObj.toISOString().split('T')[0]
-    }, [])
-
-    // Helper to calculate weeks from end date
-    const calculateWeeks = useCallback((start: string, end: string) => {
-        const startObj = new Date(start)
-        const endObj = new Date(end)
-        if (isNaN(startObj.getTime()) || isNaN(endObj.getTime())) return '0'
-        const diffTime = endObj.getTime() - startObj.getTime()
-        const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1)
-        return Math.round(diffDays / 7).toString()
-    }, [])
-
-    const [endDate, setEndDate] = useState(() =>
-        calculateEndDate(startDate, program.duration_weeks?.toString() || '0')
-    )
-
-    // Handlers for bidirectional sync
-    const handleWeeksChange = (weeks: string) => {
-        const weeksNum = Math.max(0, parseInt(weeks) || 0)
-        const weeksStr = weeksNum.toString()
-
-        setDurationWeeks(weeksStr)
-        const newEnd = calculateEndDate(startDate, weeksStr)
-        setEndDate(newEnd)
-    }
-
-    const handleEndDateChange = (end: string) => {
-        // Prevent end date being before start date
-        if (new Date(end) < new Date(startDate)) {
-            const resetEnd = calculateEndDate(startDate, '0')
-            setEndDate(resetEnd)
-            setDurationWeeks('0')
-            return
-        }
-
-        setEndDate(end)
-        setIsEndDateFixed(true)
-        const newWeeks = calculateWeeks(startDate, end)
-        setDurationWeeks(newWeeks)
-    }
-
-    const handleStartDateChange = (start: string) => {
-        setStartDate(start)
-        const newEnd = calculateEndDate(start, durationWeeks)
-        setEndDate(newEnd)
-    }
+    // Início ↔ semanas ↔ fim (sync bidirecional) — hook compartilhado.
+    const {
+        startDate,
+        endDate,
+        durationWeeks,
+        isEndDateFixed,
+        handleWeeksChange,
+        handleEndDateChange,
+        handleStartDateChange,
+    } = useProgramSchedule({
+        initialStartDate: (program.started_at || program.scheduled_start_date || new Date().toISOString()).split('T')[0],
+        initialWeeks: program.duration_weeks?.toString() || '0',
+    })
 
     const [localExercises, setLocalExercises] = useState<Exercise[]>(exercises)
 
-    // ── Compare mode handlers ──────────────────────────────────────────────
-    const handleEnterCompare = useCallback(() => {
-        setBuilderViewMode('compare')
-        if (!compareProgramsLoaded) {
-            setCompareProgramsLoading(true)
-            getPastProgramsForStudent(studentId)
-                .then((result) => {
-                    setCompareProgramsList(result.data || [])
-                    setCompareProgramsLoaded(true)
-                })
-                .catch(() => {
-                    setCompareProgramsList([])
-                    setCompareProgramsLoaded(true)
-                })
-                .finally(() => setCompareProgramsLoading(false))
-        }
-    }, [studentId, compareProgramsLoaded])
-
-    const handleSelectCompareProgram = useCallback((programId: string) => {
-        setCompareSelectedProgramId(programId)
-        setCompareProgramLoading(true)
-        getFullProgramForCompare(programId)
-            .then((result) => {
-                const data = result.data || null
-                setCompareProgramData(data)
-                if (data && data.workouts.length > 0) {
-                    const converted = data.workouts.map(cw => compareWorkoutToWorkout(cw, localExercises))
-                    setCompareWorkouts(converted)
-                    setCompareActiveWorkoutId(converted[0].id)
-                } else {
-                    setCompareWorkouts([])
-                    setCompareActiveWorkoutId(null)
-                }
-            })
-            .catch(() => {
-                setCompareProgramData(null)
-                setCompareWorkouts([])
-                setCompareActiveWorkoutId(null)
-            })
-            .finally(() => setCompareProgramLoading(false))
-    }, [localExercises])
-
-    const handleExitCompare = useCallback(() => {
-        setBuilderViewMode('normal')
-    }, [])
+    // ── Compare mode (hook compartilhado) ──────────────────────────────────
+    const enterCompareView = useCallback(() => setBuilderViewMode('compare'), [])
+    const exitCompareView = useCallback(() => setBuilderViewMode('normal'), [])
+    const {
+        compareProgramsList,
+        compareProgramsLoading,
+        compareSelectedProgramId,
+        compareProgramData,
+        compareProgramLoading,
+        compareWorkouts,
+        compareActiveWorkoutId,
+        setCompareActiveWorkoutId,
+        compareActiveWorkout,
+        handleEnterCompare,
+        handleSelectCompareProgram,
+        handleExitCompare,
+    } = useCompareMode({
+        studentId,
+        exercises: localExercises,
+        onEnter: enterCompareView,
+        onExit: exitCompareView,
+    })
 
     const handleEnterPreview = useCallback(() => {
         setBuilderViewMode('preview')
@@ -395,10 +215,11 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         setBuilderViewMode('normal')
     }, [])
 
-    // Handler for new inline exercises
-    const handleExerciseCreated = (newExercise: Exercise) => {
-        setLocalExercises(prev => [...prev, newExercise])
-    }
+    // Handler for new inline exercises (prepend: novo exercício no topo da
+    // biblioteca — comportamento unificado com o builder de criação).
+    const handleExerciseCreated = useCallback((newExercise: Exercise) => {
+        setLocalExercises(prev => [newExercise, ...prev])
+    }, [])
 
     // Initialize workouts from program data
     const initializeWorkouts = (): Workout[] => {
@@ -477,10 +298,29 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             })
     }
 
-    const [workouts, setWorkouts] = useState<Workout[]>(initializeWorkouts)
-    const [activeWorkoutId, setActiveWorkoutId] = useState<string | null>(
-        workouts.length > 0 ? workouts[0].id : null
-    )
+    const {
+        workouts,
+        activeWorkoutId,
+        setActiveWorkoutId,
+        activeWorkout,
+        occupiedDays,
+        addWorkout,
+        updateWorkoutName,
+        updateWorkoutFrequency,
+        deleteWorkout: deleteWorkoutFromModel,
+        duplicateWorkout,
+        handleWorkoutDragEnd,
+        appendItemsWith,
+        updateItem,
+        deleteItem,
+        duplicateItem,
+        moveItem,
+        handleReorderItem,
+        createSupersetWithNext,
+        addToExistingSuperset,
+        removeFromSuperset,
+        dissolveSuperset,
+    } = useWorkoutModel({ initialWorkouts: initializeWorkouts })
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [nameShake, setNameShake] = useState(false)
@@ -497,7 +337,6 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     // inicial — o servidor (Node, sem localStorage) entregava `false`, mas
     // o client lia o valor real do storage e divergia.
     const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false)
-    const [isDraggingOver, setIsDraggingOver] = useState(false)
     const canvasScrollRef = useRef<HTMLDivElement>(null)
 
     const setHeaderHiddenSafe = useCallback((hidden: boolean) => {
@@ -543,532 +382,44 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         useSensor(TouchSensor),
     )
 
-    const activeWorkout = workouts.find(w => w.id === activeWorkoutId)
 
-    const compareActiveWorkout = useMemo(() =>
-        compareWorkouts.find(w => w.id === compareActiveWorkoutId) || null
-    , [compareWorkouts, compareActiveWorkoutId])
-
-    const workoutsWithoutDays = useMemo(() =>
-        workouts.filter(w => !w.frequency || w.frequency.length === 0),
-        [workouts]
-    )
-
-    // Calculate days occupied by other workouts
-    const occupiedDays = useMemo(() => {
-        const days = new Set<string>()
-        workouts.forEach(w => {
-            if (activeWorkoutId && w.id !== activeWorkoutId) {
-                w.frequency?.forEach(day => days.add(day))
-            }
-        })
-        return Array.from(days)
-    }, [workouts, activeWorkoutId])
-
-    // Workout management
-    const addWorkout = () => {
-        const newWorkout: Workout = {
-            id: tempId(),
-            name: `Treino ${String.fromCharCode(65 + workouts.length)}`,
-            order_index: workouts.length,
-            items: [],
-        }
-        setWorkouts([...workouts, newWorkout])
-        setActiveWorkoutId(newWorkout.id)
-    }
-
-    const updateWorkoutName = (id: string, newName: string) => {
-        setWorkouts(workouts.map(w =>
-            w.id === id ? { ...w, name: newName } : w
-        ))
-    }
-
-    const updateWorkoutFrequency = (id: string, days: string[]) => {
-        setWorkouts(workouts.map(w =>
-            w.id === id ? { ...w, frequency: days } : w
-        ))
-    }
-
+    // Excluir treino atribuído pede confirmação: histórico do aluno pode ser
+    // afetado (cascade no banco). A mutação em si vive no hook compartilhado.
     const deleteWorkout = (id: string) => {
         if (!confirm('Tem certeza que deseja remover este treino? Se ele já foi realizado pelo aluno, o histórico associado pode ser perdido.')) {
             return
         }
-        const filtered = workouts.filter(w => w.id !== id)
-        setWorkouts(filtered.map((w, i) => ({ ...w, order_index: i })))
-        if (activeWorkoutId === id) {
-            setActiveWorkoutId(filtered.length > 0 ? filtered[0].id : null)
-        }
+        deleteWorkoutFromModel(id)
     }
 
-    const duplicateWorkout = (workoutId: string) => {
-        const source = workouts.find(w => w.id === workoutId)
-        if (!source) return
-        const baseName = source.name.replace(/^(Treino [A-Z]|Dia \d+)\s*[-–]\s*/, '')
-        const copy: Workout = {
-            id: tempId(),
-            name: `Treino ${String.fromCharCode(65 + workouts.length)}${baseName ? ` - ${baseName}` : ''}`,
-            order_index: workouts.length,
-            items: source.items.map(item => ({
-                ...item,
-                id: tempId(),
-                children: item.children?.map(child => ({ ...child, id: tempId() })),
-            })),
-            frequency: [],
-        }
-        setWorkouts([...workouts, copy])
-    }
-
-    const handleWorkoutDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event
-        if (!over || active.id === over.id) return
-        const oldIndex = workouts.findIndex(w => w.id === active.id)
-        const newIndex = workouts.findIndex(w => w.id === over.id)
-        if (oldIndex === -1 || newIndex === -1) return
-        setWorkouts(arrayMove(workouts, oldIndex, newIndex).map((w, i) => ({ ...w, order_index: i })))
-    }
-
-    const handleReorderItem = useCallback((activeId: string, overId: string) => {
-        if (!activeWorkoutId) return
-
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== activeWorkoutId) return w
-
-            const oldIndex = w.items.findIndex(i => i.id === activeId)
-            const newIndex = w.items.findIndex(i => i.id === overId)
-
-            if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-                const newItems = arrayMove(w.items, oldIndex, newIndex)
-                return { ...w, items: newItems.map((item, i) => ({ ...item, order_index: i })) }
-            }
-            return w
-        }))
-    }, [activeWorkoutId])
-
-    // Item management - Add exercise from inline library
+    // Add exercise from inline library — defaults fixos do fluxo de edição
+    // (as preferências de prescrição só existem no builder de criação).
     const addExerciseFromLibrary = useCallback((exercise: Exercise) => {
         if (!activeWorkoutId) return
+        appendItemsWith(activeWorkoutId, () => [makeExerciseItem(exercise, {
+            setsCount: 3,
+            reps: '10-12',
+            restSeconds: 60,
+        })])
+    }, [activeWorkoutId, appendItemsWith])
 
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== activeWorkoutId) return w
+    // Drag-and-drop biblioteca → canvas
+    const { isDraggingOver, handleCanvasDragOver, handleCanvasDragLeave, handleCanvasDrop } = useCanvasDnd({
+        exercises: localExercises,
+        onDropExercise: addExerciseFromLibrary,
+    })
 
-            return {
-                ...w,
-                items: [...w.items, {
-                    id: tempId(),
-                    item_type: 'exercise' as const,
-                    order_index: w.items.length,
-                    parent_item_id: null,
-                    exercise_id: exercise.id,
-                    substitute_exercise_ids: [],
-                    exercise,
-                    sets: 3,
-                    reps: '10-12',
-                    rest_seconds: 60,
-                    notes: null,
-                }]
-            }
-        }))
-    }, [activeWorkoutId])
+    const addNote = useCallback((workoutId: string) => {
+        appendItemsWith(workoutId, () => [makeNoteItem('')])
+    }, [appendItemsWith])
 
-    // Handle drag-and-drop from exercise library to workout canvas
-    const handleCanvasDragOver = useCallback((e: React.DragEvent) => {
-        if (e.dataTransfer.types.includes('application/kinevo-exercise-id')) {
-            e.preventDefault()
-            e.dataTransfer.dropEffect = 'copy'
-            setIsDraggingOver(true)
-        }
-    }, [])
+    const addWarmup = useCallback((workoutId: string) => {
+        appendItemsWith(workoutId, () => [makeWarmupItem()])
+    }, [appendItemsWith])
 
-    const handleCanvasDragLeave = useCallback((e: React.DragEvent) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-            setIsDraggingOver(false)
-        }
-    }, [])
-
-    const handleCanvasDrop = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDraggingOver(false)
-        const exerciseId = e.dataTransfer.getData('application/kinevo-exercise-id')
-        if (!exerciseId) return
-        const exercise = localExercises.find(ex => ex.id === exerciseId)
-        if (exercise) {
-            addExerciseFromLibrary(exercise)
-        }
-    }, [localExercises, addExerciseFromLibrary])
-
-    // Create superset by combining exercise with the next one
-    const createSupersetWithNext = (workoutId: string, exerciseItemId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const itemIndex = w.items.findIndex(i => i.id === exerciseItemId)
-            if (itemIndex === -1 || itemIndex >= w.items.length - 1) return w
-
-            const currentItem = w.items[itemIndex]
-            const nextItem = w.items[itemIndex + 1]
-
-            // Only combine exercises (not supersets or notes)
-            if (currentItem.item_type !== 'exercise' || nextItem.item_type !== 'exercise') return w
-
-            // Create new superset containing both exercises
-            const superset: WorkoutItem = {
-                id: tempId(),
-                item_type: 'superset',
-                order_index: itemIndex,
-                parent_item_id: null,
-                exercise_id: null,
-                substitute_exercise_ids: [],
-                sets: null,
-                reps: null,
-                rest_seconds: currentItem.rest_seconds || 60,
-                notes: null,
-                children: [
-                    { ...currentItem, order_index: 0, parent_item_id: null },
-                    { ...nextItem, order_index: 1, parent_item_id: null }
-                ]
-            }
-
-            // Remove both items and insert superset
-            const newItems = w.items.filter((_, i) => i !== itemIndex && i !== itemIndex + 1)
-            newItems.splice(itemIndex, 0, superset)
-
-            return {
-                ...w,
-                items: newItems.map((item, i) => ({ ...item, order_index: i }))
-            }
-        }))
-    }
-
-    // Add exercise to an existing superset
-    const addToExistingSuperset = (workoutId: string, exerciseItemId: string, supersetId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const exerciseItem = w.items.find(i => i.id === exerciseItemId)
-            const supersetItem = w.items.find(i => i.id === supersetId)
-
-            if (!exerciseItem || !supersetItem || supersetItem.item_type !== 'superset') return w
-            if (exerciseItem.item_type !== 'exercise') return w
-
-            // Add exercise to superset's children
-            const newChildren = [
-                ...(supersetItem.children || []),
-                { ...exerciseItem, order_index: (supersetItem.children?.length || 0), parent_item_id: supersetId }
-            ]
-
-            // Remove exercise from root and update superset
-            return {
-                ...w,
-                items: w.items
-                    .filter(i => i.id !== exerciseItemId)
-                    .map(item => {
-                        if (item.id === supersetId) {
-                            return { ...item, children: newChildren }
-                        }
-                        return item
-                    })
-                    .map((item, i) => ({ ...item, order_index: i }))
-            }
-        }))
-    }
-
-    // Remove exercise from superset (with auto-dissolution if only 1 remains)
-    const removeFromSuperset = (workoutId: string, supersetId: string, exerciseItemId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const supersetIndex = w.items.findIndex(i => i.id === supersetId)
-            const supersetItem = w.items[supersetIndex]
-
-            if (!supersetItem || supersetItem.item_type !== 'superset') return w
-
-            const exerciseToRemove = supersetItem.children?.find(c => c.id === exerciseItemId)
-            if (!exerciseToRemove) return w
-
-            const remainingChildren = supersetItem.children?.filter(c => c.id !== exerciseItemId) || []
-
-            // Auto-dissolution: if only 1 child remains, dissolve the superset
-            if (remainingChildren.length <= 1) {
-                const newItems = [...w.items]
-                // Remove superset
-                newItems.splice(supersetIndex, 1)
-
-                // Insert the removed exercise and the remaining one (if any) at the superset's position
-                const itemsToInsert: WorkoutItem[] = [
-                    { ...exerciseToRemove, parent_item_id: null, order_index: supersetIndex }
-                ]
-                if (remainingChildren.length === 1) {
-                    itemsToInsert.push({ ...remainingChildren[0], parent_item_id: null, order_index: supersetIndex + 1 })
-                }
-
-                newItems.splice(supersetIndex, 0, ...itemsToInsert)
-
-                return {
-                    ...w,
-                    items: newItems.map((item, i) => ({ ...item, order_index: i }))
-                }
-            }
-
-            // Otherwise just remove the exercise from superset and insert it after
-            const newItems = [...w.items]
-            newItems.splice(supersetIndex + 1, 0, { ...exerciseToRemove, parent_item_id: null, order_index: supersetIndex + 1 })
-
-            return {
-                ...w,
-                items: newItems.map(item => {
-                    if (item.id === supersetId) {
-                        return {
-                            ...item,
-                            children: remainingChildren.map((c, i) => ({ ...c, order_index: i }))
-                        }
-                    }
-                    return item
-                }).map((item, i) => ({ ...item, order_index: i }))
-            }
-        }))
-    }
-
-    // Dissolve superset - extract all exercises as standalone items
-    const dissolveSuperset = (workoutId: string, supersetId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const supersetIndex = w.items.findIndex(i => i.id === supersetId)
-            const supersetItem = w.items[supersetIndex]
-
-            if (!supersetItem || supersetItem.item_type !== 'superset') return w
-
-            const children = supersetItem.children || []
-            if (children.length === 0) return w
-
-            // Remove superset and insert all children at its position
-            const newItems = [...w.items]
-            newItems.splice(supersetIndex, 1)
-
-            // Insert all children as standalone exercises
-            const childrenToInsert = children.map((child, i) => ({
-                ...child,
-                parent_item_id: null,
-                order_index: supersetIndex + i
-            }))
-            newItems.splice(supersetIndex, 0, ...childrenToInsert)
-
-            return {
-                ...w,
-                items: newItems.map((item, i) => ({ ...item, order_index: i }))
-            }
-        }))
-    }
-
-    // Legacy: Add empty superset (keeping for compatibility but not exposing in UI)
-    const addSuperset = (workoutId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-            return {
-                ...w,
-                items: [...w.items, {
-                    id: tempId(),
-                    item_type: 'superset' as const,
-                    order_index: w.items.length,
-                    parent_item_id: null,
-                    exercise_id: null,
-                    substitute_exercise_ids: [],
-                    sets: null,
-                    reps: null,
-                    rest_seconds: 60,
-                    notes: null,
-                    children: [],
-                }]
-            }
-        }))
-    }
-
-    const addNote = (workoutId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-            return {
-                ...w,
-                items: [...w.items, {
-                    id: tempId(),
-                    item_type: 'note' as const,
-                    order_index: w.items.length,
-                    parent_item_id: null,
-                    exercise_id: null,
-                    substitute_exercise_ids: [],
-                    sets: null,
-                    reps: null,
-                    rest_seconds: null,
-                    notes: '',
-                }]
-            }
-        }))
-    }
-
-    const addWarmup = (workoutId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-            return {
-                ...w,
-                items: [...w.items, {
-                    id: tempId(),
-                    item_type: 'warmup' as const,
-                    order_index: w.items.length,
-                    parent_item_id: null,
-                    exercise_id: null,
-                    substitute_exercise_ids: [],
-                    sets: null,
-                    reps: null,
-                    rest_seconds: null,
-                    notes: null,
-                    item_config: { warmup_type: 'free' },
-                }]
-            }
-        }))
-    }
-
-    const addCardio = (workoutId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-            return {
-                ...w,
-                items: [...w.items, {
-                    id: tempId(),
-                    item_type: 'cardio' as const,
-                    order_index: w.items.length,
-                    parent_item_id: null,
-                    exercise_id: null,
-                    substitute_exercise_ids: [],
-                    sets: null,
-                    reps: null,
-                    rest_seconds: null,
-                    notes: null,
-                    item_config: { mode: 'continuous', objective: 'time' },
-                }]
-            }
-        }))
-    }
-
-    const updateItem = (workoutId: string, itemId: string, updates: Partial<WorkoutItem>) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-            return {
-                ...w,
-                items: w.items.map(item => {
-                    if (item.id === itemId) {
-                        return { ...item, ...updates }
-                    }
-                    if (item.children) {
-                        return {
-                            ...item,
-                            children: item.children.map(child =>
-                                child.id === itemId ? { ...child, ...updates } : child
-                            )
-                        }
-                    }
-                    return item
-                })
-            }
-        }))
-    }
-
-    const deleteItem = (workoutId: string, itemId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const rootItem = w.items.find(i => i.id === itemId)
-            if (rootItem) {
-                return {
-                    ...w,
-                    items: w.items
-                        .filter(i => i.id !== itemId)
-                        .map((item, i) => ({ ...item, order_index: i }))
-                }
-            }
-
-            return {
-                ...w,
-                items: w.items.map(item => ({
-                    ...item,
-                    children: item.children
-                        ?.filter(c => c.id !== itemId)
-                        .map((child, i) => ({ ...child, order_index: i }))
-                }))
-            }
-        }))
-    }
-
-    /** Duplica um item top-level (gera novos IDs pra ele e pros children).
-     *  Espelha program-builder-client.tsx pra manter os dois fluxos
-     *  consistentes. */
-    const duplicateItem = (workoutId: string, itemId: string) => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const index = w.items.findIndex(i => i.id === itemId)
-            if (index === -1) return w
-
-            const original = w.items[index]
-            const newItemId = tempId()
-            const duplicate: WorkoutItem = {
-                ...original,
-                id: newItemId,
-                set_scheme: original.set_scheme
-                    ? original.set_scheme.map(s => ({ ...s }))
-                    : original.set_scheme,
-                substitute_exercise_ids: [...(original.substitute_exercise_ids ?? [])],
-                children: original.children
-                    ? original.children.map(child => ({
-                        ...child,
-                        id: tempId(),
-                        parent_item_id: newItemId,
-                        set_scheme: child.set_scheme
-                            ? child.set_scheme.map(s => ({ ...s }))
-                            : child.set_scheme,
-                        substitute_exercise_ids: [...(child.substitute_exercise_ids ?? [])],
-                    }))
-                    : original.children,
-            }
-
-            const newItems = [...w.items]
-            newItems.splice(index + 1, 0, duplicate)
-
-            return { ...w, items: newItems.map((i, idx) => ({ ...i, order_index: idx })) }
-        }))
-    }
-
-    const moveItem = (workoutId: string, itemId: string, direction: 'up' | 'down') => {
-        setWorkouts(prev => prev.map(w => {
-            if (w.id !== workoutId) return w
-
-            const itemIndex = w.items.findIndex(i => i.id === itemId)
-            if (itemIndex !== -1) {
-                const newItems = [...w.items]
-                if (direction === 'up' && itemIndex > 0) {
-                    ;[newItems[itemIndex - 1], newItems[itemIndex]] = [newItems[itemIndex], newItems[itemIndex - 1]]
-                } else if (direction === 'down' && itemIndex < newItems.length - 1) {
-                    ;[newItems[itemIndex], newItems[itemIndex + 1]] = [newItems[itemIndex + 1], newItems[itemIndex]]
-                }
-                return { ...w, items: newItems.map((item, i) => ({ ...item, order_index: i })) }
-            }
-
-            return {
-                ...w,
-                items: w.items.map(item => {
-                    if (!item.children) return item
-                    const childIndex = item.children.findIndex(c => c.id === itemId)
-                    if (childIndex === -1) return item
-
-                    const newChildren = [...item.children]
-                    if (direction === 'up' && childIndex > 0) {
-                        ;[newChildren[childIndex - 1], newChildren[childIndex]] = [newChildren[childIndex], newChildren[childIndex - 1]]
-                    } else if (direction === 'down' && childIndex < newChildren.length - 1) {
-                        ;[newChildren[childIndex], newChildren[childIndex + 1]] = [newChildren[childIndex + 1], newChildren[childIndex]]
-                    }
-                    return { ...item, children: newChildren.map((c, i) => ({ ...c, order_index: i })) }
-                })
-            }
-        }))
-    }
+    const addCardio = useCallback((workoutId: string) => {
+        appendItemsWith(workoutId, () => [makeCardioItem()])
+    }, [appendItemsWith])
 
     const saveProgram = async (skipFrequencyCheck = false) => {
         if (!name.trim()) {
