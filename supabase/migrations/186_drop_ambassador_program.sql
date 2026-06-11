@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 185: drop do programa de embaixadores (morto)
+-- Migration 186: drop do programa de embaixadores (morto; originalmente 185, renumerada por duplicidade)
 --
 -- Contexto (auditoria 09/06/2026, achado crítico #2 — drift): as 5 tabelas
 -- do programa de embaixadores existiam só em produção (migration cloud

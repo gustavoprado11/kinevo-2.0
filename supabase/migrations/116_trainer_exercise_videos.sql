@@ -1,4 +1,4 @@
--- Migration 092: Trainer custom exercise videos
+-- Migration 116: Trainer custom exercise videos (originalmente 092, renumerada por duplicidade)
 -- Allows trainers to attach their own videos to any exercise (upload or external URL)
 
 -- 1. Create table
