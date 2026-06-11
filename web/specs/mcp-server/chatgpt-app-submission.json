@@ -1,0 +1,953 @@
+{
+  "schema_version": 1,
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "app": {
+    "name": "Kinevo",
+    "slug": "kinevo",
+    "tagline": "Manage your personal training business with AI",
+    "description": "Kinevo is a B2B SaaS platform for personal trainers. This connector lets trainers manage students, create training programs, prescribe exercises, track progress, send messages, and view financial data \u2014 all through natural language in ChatGPT.",
+    "long_description": "Kinevo connects personal trainers to their entire business operations directly from ChatGPT.\n\nWith 21 tools available, trainers can:\n\n- Manage students \u2014 list, search, view profiles, create new students, update info and clinical conditions\n- Create training programs \u2014 build programs from scratch, add workout sessions, prescribe exercises with sets/reps/rest, assign to students\n- Track progress \u2014 view workout history, load progression over time, adherence rates, form/check-in responses\n- Communicate \u2014 list conversations, read messages, send messages to students (with push notifications)\n- Monitor finances \u2014 view subscriptions, MRR, cancellations, payment status\n- Get insights \u2014 dashboard summary with active students, programs, sessions, unread messages\n\nDesigned for the Brazilian personal training market. All tools support Portuguese prompts.",
+    "categories": [
+      "productivity",
+      "health-fitness"
+    ],
+    "logo_url": "https://www.kinevoapp.com/logo-icon.png",
+    "company": {
+      "name": "Kinevo Tecnologia",
+      "website": "https://www.kinevoapp.com",
+      "support_email": "kinevoapp@gmail.com",
+      "privacy_policy_url": "https://www.kinevoapp.com/privacy",
+      "terms_of_service_url": "https://www.kinevoapp.com/terms"
+    },
+    "availability": {
+      "countries": [
+        "BR"
+      ],
+      "plans": [
+        "plus",
+        "pro",
+        "business",
+        "enterprise",
+        "education"
+      ]
+    }
+  },
+  "mcp": {
+    "server_url": "https://www.kinevoapp.com/api/mcp",
+    "transport": "streamable-http",
+    "authentication": {
+      "type": "oauth2",
+      "authorization_url": "https://www.kinevoapp.com/oauth/authorize",
+      "token_url": "https://www.kinevoapp.com/oauth/token",
+      "registration_url": "https://www.kinevoapp.com/oauth/register",
+      "scopes": [
+        "mcp"
+      ],
+      "pkce_required": true,
+      "metadata_url": "https://www.kinevoapp.com/.well-known/oauth-authorization-server"
+    }
+  },
+  "tools": {
+    "kinevo_ping": {
+      "description": "Test the connection to Kinevo. Returns trainer name and account status.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_list_students": {
+      "description": "List the trainer's students with optional filters. Returns active students by default. Use this to find students by name, check who is active/inactive, or get an overview of all students.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "description": "Filter by student name (partial match, case-insensitive)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "description": "Filter by student status. Defaults to all statuses if omitted."
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Max results to return"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0,
+            "description": "Offset for pagination"
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_get_student": {
+      "description": "Get the complete profile of a specific student including personal data, clinical conditions, training history, and current program. Use this when the trainer asks about a specific student's details.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The student's UUID"
+          }
+        },
+        "required": [
+          "student_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_create_student": {
+      "description": "Register a new student for this trainer. Creates the student profile with Supabase Auth account and optionally sets clinical/training preferences.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "description": "Student's full name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Student's email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Student's phone number"
+          },
+          "objective": {
+            "type": "string",
+            "description": "Student's training objective (e.g., 'Hipertrofia', 'Emagrecimento', 'Qualidade de vida')"
+          },
+          "modality": {
+            "type": "string",
+            "enum": [
+              "online",
+              "presential"
+            ],
+            "default": "online",
+            "description": "Training modality"
+          },
+          "training_level": {
+            "type": "string",
+            "enum": [
+              "beginner",
+              "intermediate",
+              "advanced"
+            ],
+            "description": "Student's training experience level"
+          },
+          "medical_restrictions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "condition": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "condition"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Medical conditions or restrictions (e.g., knee injury, herniated disc)"
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool creates a new student account (auth user + profile record) in the trainer's Kinevo account.",
+        "destructive_justification": "Creates a new record. Does not modify or delete existing data. Reversible by the trainer via the dashboard.",
+        "open_world_justification": "Creates a Supabase Auth user and student record within the trainer's own Kinevo account. No external services are contacted beyond Supabase Auth."
+      }
+    },
+    "kinevo_update_student": {
+      "description": "Update an existing student's profile data such as name, phone, objective, modality, notes, or training level.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The student's UUID"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "description": "Updated name"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Updated phone number"
+          },
+          "objective": {
+            "type": "string",
+            "description": "Updated training objective"
+          },
+          "modality": {
+            "type": "string",
+            "enum": [
+              "online",
+              "presential"
+            ],
+            "description": "Updated modality"
+          },
+          "trainer_notes": {
+            "type": "string",
+            "description": "Trainer's private notes about this student"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "description": "Set student as active or inactive"
+          }
+        },
+        "required": [
+          "student_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool updates an existing student's profile fields (name, phone, objective, notes, status).",
+        "destructive_justification": "Modifies existing student data. Changes are reversible by updating again. No records are deleted.",
+        "open_world_justification": "Only modifies data within the trainer's own Kinevo account. No external systems are contacted."
+      }
+    },
+    "kinevo_list_programs": {
+      "description": "List training programs created by this trainer. Can filter by student (to see their program history) or by status. Returns both program templates and assigned programs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Filter programs assigned to a specific student"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "active",
+              "scheduled",
+              "completed",
+              "paused",
+              "expired"
+            ],
+            "description": "Filter by program status"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "template",
+              "assigned"
+            ],
+            "default": "assigned",
+            "description": "'template' for reusable program templates, 'assigned' for programs assigned to students"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_get_program": {
+      "description": "Get full details of a training program including all workout sessions and exercises with sets, reps, and loads. Works for both templates and assigned programs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The program's UUID"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "template",
+              "assigned"
+            ],
+            "default": "assigned",
+            "description": "Whether this is a template or an assigned program"
+          }
+        },
+        "required": [
+          "program_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_create_program": {
+      "description": "Create a new training program template. This creates an empty program structure that can then have workout sessions and exercises added to it. Optionally assign it directly to a student.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "description": "Program name (e.g., 'Hipertrofia - Fase 1')"
+          },
+          "description": {
+            "type": "string",
+            "description": "Program description and goals"
+          },
+          "duration_weeks": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 52,
+            "description": "Program duration in weeks"
+          },
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "If provided, creates the program as already assigned to this student (status: 'draft')"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool creates a new training program (as template or draft assigned to a student).",
+        "destructive_justification": "Creates a new record. Does not modify or delete existing data.",
+        "open_world_justification": "Only creates data within the trainer's own Kinevo account."
+      }
+    },
+    "kinevo_assign_program": {
+      "description": "Assign an existing program template to a student, creating a copy. Or activate a draft assigned program by setting its start date.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The program template ID (to copy) or assigned program ID (to activate)"
+          },
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required when assigning a template. The student to assign to."
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Start date in YYYY-MM-DD format. Defaults to today."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "assign_template",
+              "activate_draft"
+            ],
+            "description": "'assign_template' copies a template to a student, 'activate_draft' activates an existing draft program"
+          }
+        },
+        "required": [
+          "program_id",
+          "action"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool copies a program template to a student or activates a draft program.",
+        "destructive_justification": "Copies data and changes program status. The original template is preserved. Previous active programs are deactivated (not deleted).",
+        "open_world_justification": "Only modifies data within the trainer's own Kinevo account."
+      }
+    },
+    "kinevo_expire_program": {
+      "description": "Manually expire/deactivate an active program. The program's data is preserved but it will no longer appear as the student's current program.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The assigned program ID to expire"
+          }
+        },
+        "required": [
+          "program_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool changes an active program's status to expired.",
+        "destructive_justification": "Changes status only. All program data (workouts, exercises) is preserved. No records are deleted.",
+        "open_world_justification": "Only modifies data within the trainer's own Kinevo account."
+      }
+    },
+    "kinevo_list_exercises": {
+      "description": "Search the exercise catalog. Returns exercises available to this trainer (system exercises + trainer's custom exercises). Filter by muscle group, equipment, or name.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "description": "Search by exercise name (partial match)"
+          },
+          "muscle_group": {
+            "type": "string",
+            "description": "Filter by muscle group name (e.g., 'Peitoral', 'Quadriceps', 'Biceps')"
+          },
+          "equipment": {
+            "type": "string",
+            "description": "Filter by equipment (e.g., 'Barra', 'Halter', 'Maquina', 'Cabo')"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 30
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0,
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_add_workout_session": {
+      "description": "Add a new workout session (e.g., 'Treino A - Peito e Triceps') to an existing program. Works for both templates and assigned programs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The program ID to add the session to"
+          },
+          "program_type": {
+            "type": "string",
+            "enum": [
+              "template",
+              "assigned"
+            ],
+            "default": "assigned",
+            "description": "Whether the program is a template or assigned"
+          },
+          "name": {
+            "type": "string",
+            "description": "Session name (e.g., 'Treino A - Peito e Triceps')"
+          },
+          "order_index": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Position in the program. If omitted, appends at the end."
+          }
+        },
+        "required": [
+          "program_id",
+          "name"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool adds a new workout session to an existing training program.",
+        "destructive_justification": "Creates a new record within an existing program. Does not modify or delete existing sessions.",
+        "open_world_justification": "Only creates data within the trainer's own Kinevo account."
+      }
+    },
+    "kinevo_add_exercise_to_session": {
+      "description": "Add an exercise to a workout session with sets, reps, and rest configuration. Can add exercises to both template and assigned workout sessions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workout_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The workout session ID to add the exercise to"
+          },
+          "workout_type": {
+            "type": "string",
+            "enum": [
+              "template",
+              "assigned"
+            ],
+            "default": "assigned"
+          },
+          "exercise_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The exercise ID from the catalog"
+          },
+          "sets": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "Number of sets"
+          },
+          "reps": {
+            "type": "string",
+            "description": "Reps prescription (e.g., '12', '8-12', '10/10/8/6', 'AMRAP')"
+          },
+          "rest_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 600,
+            "default": 90,
+            "description": "Rest between sets in seconds"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Special instructions (e.g., 'Carga inicial: 80kg', 'Controlar a exc\u00eantrica')"
+          },
+          "exercise_function": {
+            "type": "string",
+            "enum": [
+              "warmup",
+              "activation",
+              "main",
+              "accessory",
+              "conditioning"
+            ],
+            "default": "main",
+            "description": "The role of this exercise in the session"
+          },
+          "order_index": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Position in the session. If omitted, appends at the end."
+          },
+          "method_key": {
+            "type": "string",
+            "description": "Training method (e.g., 'drop_set', 'rest_pause', 'cluster')"
+          }
+        },
+        "required": [
+          "workout_id",
+          "exercise_id",
+          "sets",
+          "reps"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool adds an exercise to an existing workout session with sets, reps, and rest configuration.",
+        "destructive_justification": "Creates a new record within an existing workout. Does not modify or delete existing exercises.",
+        "open_world_justification": "Only creates data within the trainer's own Kinevo account."
+      }
+    },
+    "kinevo_get_student_progress": {
+      "description": "Get a student's training progress including workout history, adherence rate, and load progression over time. Can filter by date range and specific exercise for load tracking.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The student's UUID"
+          },
+          "days": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 365,
+            "default": 30,
+            "description": "Number of days to look back"
+          },
+          "exercise_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "If provided, returns load progression for this specific exercise"
+          }
+        },
+        "required": [
+          "student_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_get_form_responses": {
+      "description": "Get form/check-in responses submitted by a student. Includes pre/post-workout check-ins, anamneses, and surveys.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The student's UUID"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "anamnese",
+              "checkin",
+              "survey",
+              "assessment",
+              "feedback"
+            ],
+            "description": "Filter by form category"
+          },
+          "trigger_context": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "pre_workout",
+              "post_workout",
+              "recurring"
+            ],
+            "description": "Filter by how the form was triggered"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          }
+        },
+        "required": [
+          "student_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_get_dashboard_summary": {
+      "description": "Get an overview of the trainer's account: total students, active programs, students without programs, students inactive for 7+ days, recent activity, and key metrics.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_send_message": {
+      "description": "Send a text message to a student. The message appears in the student's Kinevo app inbox.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The student's UUID"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Message text content"
+          }
+        },
+        "required": [
+          "student_id",
+          "content"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool sends a text message to a student, creating a message record and triggering a push notification.",
+        "destructive_justification": "Creates a new message record. Does not modify or delete existing messages. The student receives a push notification on their device.",
+        "open_world_justification": "Sends a push notification to the student's registered device via Expo Push API. The message content is visible to the student in their Kinevo mobile app."
+      }
+    },
+    "kinevo_list_subscriptions": {
+      "description": "List student contracts/subscriptions managed by this trainer. Shows payment status, plan, amount, and next billing date.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Filter by contract status (e.g., 'active', 'past_due', 'canceled', 'pending')"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 30
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_get_revenue_summary": {
+      "description": "Get a financial summary: MRR (Monthly Recurring Revenue), new contracts this month, cancellations, and payment status overview.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "description": "Month in YYYY-MM format. Defaults to current month."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_list_conversations": {
+      "description": "List the trainer's conversations with students, ordered by most recent message. Shows unread count for each conversation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    },
+    "kinevo_get_conversation": {
+      "description": "Get messages from a conversation with a specific student, ordered by most recent first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The student's UUID"
+          },
+          "limit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 30
+          },
+          "before": {
+            "type": "string",
+            "description": "Fetch messages before this timestamp (for pagination)"
+          }
+        },
+        "required": [
+          "student_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads data from the trainer's account. No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
+      }
+    }
+  },
+  "testing": {
+    "test_account": {
+      "login_url": "https://www.kinevoapp.com/login",
+      "email": "kinevo.reviewer.openai@gmail.com",
+      "password": "0VjOnMhifWxNUpB1",
+      "notes": "Test trainer account with 3 sample students (Maria Silva, Carlos Santos, Ana Oliveira). Subscription: trialing (90 days). After logging in on the browser, connect the MCP server \u2014 the OAuth flow will use this session."
+    },
+    "instructions": "1. Log in at https://www.kinevoapp.com/login with the test credentials above\n2. Connect to the MCP server at https://www.kinevoapp.com/api/mcp using OAuth\n3. The OAuth consent screen will show OpenAI Reviewer \u2014 click Autorizar\n4. Test read tools: List my active students, Show my dashboard summary\n5. Test write tools: Send a message to Maria Silva: Hello from ChatGPT!\n6. Test complex flow: Create a 4-week hypertrophy program for Carlos Santos\n\nNote: Brazilian SaaS for personal trainers. Prompts work in Portuguese and English.",
+    "test_prompts": [
+      "Lista meus alunos ativos",
+      "Me da um resumo geral da minha conta",
+      "Quais exercicios de peitoral tem no catalogo?",
+      "Qual meu MRR atual?",
+      "Quais alunos nao treinaram nos ultimos 7 dias?"
+    ]
+  }
+}
