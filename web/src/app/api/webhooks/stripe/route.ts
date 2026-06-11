@@ -94,8 +94,18 @@ export async function POST(request: NextRequest) {
                 console.log(`[webhook] Unhandled event type: ${event.type}`)
         }
     } catch (handlerError) {
-        // CRITICAL: Return 200 even on processing errors to prevent Stripe from retrying endlessly
+        // Handler falhou DEPOIS do registro de idempotência: se devolvêssemos
+        // 200 aqui, o retry do Stripe encontraria o event_id já gravado e
+        // pularia o evento PARA SEMPRE (assinatura de treinador ficaria
+        // dessincronizada até alguém rodar sync manual — classe do incidente
+        // de abril/2026). Desfazemos o registro e devolvemos 500 para o
+        // Stripe re-entregar limpo — mesmo padrão do webhook do Connect.
         console.error(`[webhook] Error handling ${event.type}:`, handlerError)
+        await supabaseAdmin
+            .from('webhook_events')
+            .delete()
+            .eq('event_id', event.id)
+        return NextResponse.json({ error: 'Handler failed, event released for retry' }, { status: 500 })
     }
 
     return NextResponse.json({ received: true })

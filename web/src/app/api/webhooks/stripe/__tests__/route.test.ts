@@ -193,11 +193,11 @@ describe('POST /api/webhooks/stripe', () => {
             expect(retrieveMock).not.toHaveBeenCalled()
         })
 
-        it('returns 200 even when the subscription upsert fails (no Stripe retry loop)', async () => {
-            // comportamento atual: erro de handler é só logado; resposta é 200
-            // e o evento já ficou marcado como processado em webhook_events —
-            // o retry do Stripe vai pular esse evento (contraste com o
-            // stripe-connect, que desfaz a linha e devolve 500).
+        it('releases the idempotency row and returns 500 when the handler fails (clean Stripe retry)', async () => {
+            // Handler falhando NÃO pode devolver 200 com o event_id já gravado:
+            // o retry do Stripe pularia o evento para sempre. O handler desfaz
+            // a linha de webhook_events e devolve 500 — mesmo padrão do
+            // stripe-connect.
             constructEventMock.mockReturnValue(stubEvent('checkout.session.completed', {
                 mode: 'subscription', metadata: { trainer_id: TRAINER_ID }, subscription: 'sub_1', customer: 'cus_1',
             }))
@@ -209,9 +209,10 @@ describe('POST /api/webhooks/stripe', () => {
                 return undefined
             })
             const res = await POST(makeRequest())
-            expect(res.status).toBe(200)
-            expect(await res.json()).toEqual({ received: true })
-            expect(stub.calls('webhook_events', 'delete').length).toBe(0)
+            expect(res.status).toBe(500)
+            const deletes = stub.calls('webhook_events', 'delete')
+            expect(deletes.length).toBe(1)
+            expect(hasFilter(deletes[0], 'eq', 'event_id', 'evt_1')).toBe(true)
         })
     })
 
