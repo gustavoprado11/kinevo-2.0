@@ -46,6 +46,7 @@ export function WorkoutItemCard({
     onMoveDown,
     onUpdateChild,
     onDeleteChild,
+    onMoveChild,
     onRemoveFromSuperset,
     onDissolveSuperset,
     dragHandleProps,
@@ -103,6 +104,7 @@ export function WorkoutItemCard({
                 onDuplicate={onDuplicate}
                 onUpdateChild={onUpdateChild}
                 onDeleteChild={onDeleteChild}
+                onMoveChild={onMoveChild}
                 onRemoveFromSuperset={onRemoveFromSuperset}
                 onDissolveSuperset={onDissolveSuperset}
                 dragHandleProps={dragHandleProps}

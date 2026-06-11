@@ -16,6 +16,9 @@ interface SupersetItemCardProps {
     onDuplicate?: () => void
     onUpdateChild?: (childId: string, updates: Partial<WorkoutItem>) => void
     onDeleteChild?: (childId: string) => void
+    /** Move o filho DENTRO do superset (setas ↑↓ — o modelo compartilhado já
+     *  trata filhos no moveItemIn). */
+    onMoveChild?: (childId: string, direction: 'up' | 'down') => void
     onRemoveFromSuperset?: (childId: string) => void
     onDissolveSuperset?: () => void
     dragHandleProps?: HTMLAttributes<HTMLDivElement>
@@ -54,6 +57,7 @@ export function SupersetItemCard({
     onDuplicate,
     onUpdateChild,
     onDeleteChild,
+    onMoveChild,
     onRemoveFromSuperset,
     onDissolveSuperset,
     dragHandleProps,
@@ -183,13 +187,21 @@ export function SupersetItemCard({
              *  descanso é do superset pai) e sem grip de arrastar. */}
             {!isMinimized && (
                 <div className="space-y-2 pl-3">
-                    {children.map((child) => (
+                    {children.map((child, index) => (
                         <ExerciseItemCard
                             key={child.id}
                             item={child}
                             exercises={exercises}
                             onUpdate={(updates) => onUpdateChild?.(child.id, updates)}
                             onDelete={() => onDeleteChild?.(child.id)}
+                            {...(onMoveChild
+                                ? {
+                                    onMoveUp: () => onMoveChild(child.id, 'up'),
+                                    onMoveDown: () => onMoveChild(child.id, 'down'),
+                                    canMoveUp: index > 0,
+                                    canMoveDown: index < children.length - 1,
+                                }
+                                : {})}
                             onRemoveFromSuperset={() => onRemoveFromSuperset?.(child.id)}
                             readonly={readonly}
                             omitRest
