@@ -5,11 +5,7 @@ import { AlertCircle, Link2 } from "lucide-react-native";
 import { walletFetch } from "../../lib/wallet-api";
 import { timeAgo } from "../../lib/time";
 import type { AwaitingPayout } from "../../hooks/useFinancialDashboard";
-
-function formatBRL(value: number): string {
-    const [i, d] = value.toFixed(2).split(".");
-    return `R$ ${i.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${d}`;
-}
+import { formatBRL } from "@/lib/currency";
 
 export function AwaitingPayoutBanner({ payouts, onChanged }: { payouts: AwaitingPayout[]; onChanged: () => void }) {
     const [syncingId, setSyncingId] = useState<string | null>(null);

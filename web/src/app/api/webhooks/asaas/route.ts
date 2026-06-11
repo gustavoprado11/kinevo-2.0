@@ -25,9 +25,7 @@ import {
     resolveTrainerByAsaasTransfer,
 } from '@/lib/financial/notify'
 import { logContractEvent } from '@/lib/contract-events'
-
-const formatBRL = (n: number) =>
-    n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+import { formatBRL } from '@kinevo/shared/utils/currency'
 
 export async function POST(request: NextRequest) {
     // 1. Verify shared-secret header

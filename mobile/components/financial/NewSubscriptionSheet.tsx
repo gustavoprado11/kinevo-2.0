@@ -19,7 +19,7 @@ import { useRoleMode } from "../../contexts/RoleModeContext";
 import type { TrainerPlan } from "../../hooks/useTrainerPlans";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 import { toRgba } from "../../lib/brandColor";
-import { formatBRL } from "@/lib/currency";
+import { formatBRL as formatCurrency } from "@/lib/currency";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
@@ -42,10 +42,6 @@ interface NewSubscriptionSheetProps {
     /** Carteira Asaas aprovada → habilita cobrança via PIX/cartão/boleto. */
     walletApproved: boolean;
     preSelectedStudent?: { id: string; name: string; avatar_url: string | null } | null;
-}
-
-function formatCurrency(value: number): string {
-    return formatBRL(value);
 }
 
 const BILLING_OPTIONS: { key: BillingType; label: string; desc: string; icon: any; requiresWallet?: boolean }[] = [

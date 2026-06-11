@@ -6,6 +6,7 @@ import { Lock, Unlock, ArrowRight } from "lucide-react-native";
 import { walletFetch } from "../../lib/wallet-api";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import type { FinancialStudent, DisplayStatus } from "../../types/financial";
+import { formatBRL } from "@/lib/currency";
 
 const STATUS_LABEL: Record<DisplayStatus, string> = {
     courtesy: "Cortesia",
@@ -17,11 +18,6 @@ const STATUS_LABEL: Record<DisplayStatus, string> = {
     canceled: "Encerrado",
     expired: "Expirado",
 };
-
-function formatBRL(value: number): string {
-    const [i, d] = value.toFixed(2).split(".");
-    return `R$ ${i.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${d}`;
-}
 
 function daysOverdue(dateStr: string | null): number {
     if (!dateStr) return 0;

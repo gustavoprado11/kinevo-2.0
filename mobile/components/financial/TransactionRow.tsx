@@ -2,11 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import type { FinancialTransaction } from "../../types/financial";
 import { useV2Colors } from "../../hooks/useV2Colors";
-import { formatBRL } from "@/lib/currency";
-
-function formatCurrency(value: number): string {
-    return formatBRL(value);
-}
+import { formatBRL as formatCurrency } from "@/lib/currency";
 
 function timeAgo(dateStr: string): string {
     const now = new Date();

@@ -16,6 +16,7 @@ import { markAsPaid } from '@/actions/financial/mark-as-paid'
 import { toggleBlockOnFail } from '@/actions/financial/toggle-block-on-fail'
 import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
 import type { FinancialStudent, DisplayStatus } from '@/types/financial'
+import { formatCurrency } from '@/lib/utils/financial'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useToast } from '@/components/ui/toast'
 import {
@@ -110,9 +111,6 @@ const statusTooltips: Partial<Record<DisplayStatus, string>> = {
     overdue: 'Pagamento atrasado há mais de 3 dias. Se o bloqueio de acesso estiver ativado, o aluno não consegue ver os treinos no app.',
     expired: 'O contrato expirou (período encerrado). Para continuar cobrando, configure uma nova cobrança.',
 }
-
-const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
 const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—'

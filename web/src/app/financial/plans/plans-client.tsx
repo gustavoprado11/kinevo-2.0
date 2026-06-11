@@ -12,6 +12,7 @@ import {
     Plus, Trash2, Loader2, Wallet, Pencil, ChevronLeft, Users,
     TrendingUp, Layers, Repeat,
 } from 'lucide-react'
+import { formatBRL } from '@kinevo/shared/utils/currency'
 
 interface Trainer {
     id: string
@@ -45,9 +46,6 @@ interface PlansClientProps {
     hasStripeConnect: boolean
     usageByPlan: Record<string, number>
 }
-
-const formatBRL = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
 const intervalLabel = (i: string): string => {
     switch (i) {

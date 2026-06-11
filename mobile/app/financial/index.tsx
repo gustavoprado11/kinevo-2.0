@@ -38,11 +38,7 @@ import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 import { toRgba } from "../../lib/brandColor";
 import type { FinancialTransaction } from "../../types/financial";
 import type { PendingCharge } from "../../hooks/useFinancialDashboard";
-
-function formatBRL(value: number): string {
-    const [intPart, decPart] = value.toFixed(2).split(".");
-    return `R$ ${intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${decPart}`;
-}
+import { formatBRL } from "@/lib/currency";
 
 const NON_APPROVED_COPY: Record<Exclude<KinevoWalletStatus, "approved">, { label: string; desc: string }> = {
     not_started: { label: "Carteira não ativada", desc: "Ative para receber via PIX, cartão e boleto direto no app." },

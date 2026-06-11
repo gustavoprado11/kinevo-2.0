@@ -22,6 +22,7 @@ import { CobrarCarteiraModal } from '@/components/financial/cobrar-carteira-moda
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useToast } from '@/components/ui/toast'
 import type { FinancialStudent, DisplayStatus } from '@/types/financial'
+import { formatCurrency } from '@/lib/utils/financial'
 import type { KinevoWalletStatus, KinevoWalletMode } from '@/lib/asaas'
 
 interface Trainer {
@@ -132,9 +133,6 @@ const statusColors: Record<DisplayStatus, string> = {
     canceled: 'text-gray-600 dark:text-gray-400',
     expired: 'text-red-600 dark:text-red-400',
 }
-
-const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
 const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—'

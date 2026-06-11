@@ -15,6 +15,7 @@ import {
     XCircle,
 } from "lucide-react-native";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { formatBRL as formatCurrency } from "@/lib/currency";
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
@@ -36,13 +37,6 @@ const billingTypeLabels: Record<string, string> = {
     manual_one_off: "Avulso",
     courtesy: "Cortesia",
 };
-
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-    }).format(value);
-}
 
 function formatDate(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString("pt-BR", {

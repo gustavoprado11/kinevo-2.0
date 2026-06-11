@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle2, AlertCircle, ExternalLink, Loader2, Wallet, Clock, ArrowUpRight } from 'lucide-react'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { formatCurrency } from '@/lib/utils/financial'
 
 interface ConnectStatusCardProps {
     connected: boolean
@@ -15,13 +16,6 @@ interface StripeBalance {
     available: number
     pending: number
     currency: string
-}
-
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(value)
 }
 
 const formatBalance = (value: number) => {

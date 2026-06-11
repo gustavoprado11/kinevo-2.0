@@ -9,15 +9,11 @@ import { usePixKeys } from "../../../hooks/usePixKeys";
 import { usePayouts, type PayoutStatus, type PayoutRow } from "../../../hooks/usePayouts";
 import { useWalletBalance } from "../../../hooks/useWalletBalance";
 import { useV2Colors } from "../../../hooks/useV2Colors";
+import { formatBRL } from "@/lib/currency";
 
 const KEY_TYPE_LABEL: Record<PixKeyType, string> = {
     CPF: "CPF", CNPJ: "CNPJ", EMAIL: "E-mail", PHONE: "Telefone", EVP: "Chave aleatória",
 };
-
-function formatBRL(value: number): string {
-    const [intPart, decPart] = value.toFixed(2).split(".");
-    return `R$ ${intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${decPart}`;
-}
 
 function parseAmount(raw: string): number {
     const cleaned = raw.replace(/[^\d,.]/g, "").replace(/\./g, "").replace(",", ".");

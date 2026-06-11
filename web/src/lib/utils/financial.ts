@@ -66,5 +66,6 @@ export const INTERVAL_LABELS: Record<string, string> = {
     year: '/ano',
 }
 
-export const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+// S5: delega para a fonte única web+mobile (a versão Intl daqui produzia
+// espaço não-quebrável e divergia da string-built do mobile).
+export { formatBRL, formatBRL as formatCurrency, parseBRL } from '@kinevo/shared/utils/currency'

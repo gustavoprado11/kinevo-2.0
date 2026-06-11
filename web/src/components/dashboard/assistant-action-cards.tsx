@@ -15,6 +15,7 @@ import type { InsightItem } from '@/actions/insights'
 import type { PendingFinancialItem, PendingFormItem, ExpiredPlanItem } from '@/lib/dashboard/get-dashboard-data'
 import { useAssistantChatStore } from '@/stores/assistant-chat-store'
 import { useCommunicationStore } from '@/stores/communication-store'
+import { formatCurrency } from '@/lib/utils/financial'
 
 // ── Category config ──
 
@@ -101,9 +102,6 @@ function getDirectActions(insight: InsightItem): Array<{
 
     return actions
 }
-
-const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
 // ── Unified row type ──
 

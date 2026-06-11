@@ -5,6 +5,7 @@ import { X, Loader2, AlertCircle, AlertTriangle, Calendar, Shield, ShieldOff } f
 import { BillingTypeBadge } from './billing-type-badge'
 import { updateContract } from '@/actions/financial/update-contract'
 import { cancelContract } from '@/actions/financial/cancel-contract'
+import { formatCurrency } from '@/lib/utils/financial'
 import Image from 'next/image'
 
 interface Student {
@@ -90,13 +91,6 @@ export function ContractDetailModal({
         if (isManual && editPeriodEnd !== (contract.current_period_end?.split('T')[0] || '')) return true
         return false
     })()
-
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL',
-        }).format(value)
-    }
 
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return '—'

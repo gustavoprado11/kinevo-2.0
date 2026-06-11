@@ -10,6 +10,7 @@ import {
     Wallet, ArrowRight, Clock3, AlertTriangle, Check, Sparkles, Link2,
 } from 'lucide-react'
 import type { KinevoWalletStatus, KinevoWalletMode } from '@/lib/asaas'
+import { formatBRL } from '@kinevo/shared/utils/currency'
 
 interface Props {
     status: KinevoWalletStatus
@@ -17,9 +18,6 @@ interface Props {
     balance: number | null
     rejectionReason?: string | null
 }
-
-const formatBRL = (n: number) =>
-    n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export function WalletStatusCard({ status, mode, balance, rejectionReason }: Props) {
     // ---- Aprovada: card destaque com saldo ----

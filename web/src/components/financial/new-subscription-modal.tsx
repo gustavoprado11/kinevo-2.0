@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { X, Loader2, AlertCircle, CreditCard, HandCoins, Heart, Copy, Check, ExternalLink, MessageCircle } from 'lucide-react'
 import { createContract } from '@/actions/financial/create-contract'
 import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
+import { formatCurrency } from '@/lib/utils/financial'
 
 interface Student {
     id: string
@@ -147,13 +148,6 @@ export function NewSubscriptionModal({
             setError('Erro ao processar. Tente novamente.')
             setLoading(false)
         }
-    }
-
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL',
-        }).format(value)
     }
 
     const intervalLabels: Record<string, string> = {

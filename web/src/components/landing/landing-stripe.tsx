@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { ShieldCheck, CreditCard, Repeat, Lock } from 'lucide-react'
+import { formatBRL } from '@kinevo/shared/utils/currency'
 
 const STRIPE_RATE = 0.0399
 const STRIPE_FIXED = 0.50
@@ -16,10 +17,6 @@ const netCompetitor = gross - competitorFee - stripeFee
 const netKinevo = gross - stripeFee
 const monthlyDiff = netKinevo - netCompetitor
 const yearlyDiff = monthlyDiff * 12
-
-function formatBRL(n: number): string {
-    return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
 
 type Row = {
     label: string

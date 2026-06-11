@@ -7,11 +7,7 @@ import * as Haptics from "expo-haptics";
 import { ChevronLeft, X, CheckCircle2, CreditCard, RefreshCw, Clock } from "lucide-react-native";
 import { useStudentPayment } from "../hooks/useStudentPayment";
 import { useV2Colors } from "../hooks/useV2Colors";
-
-function formatBRL(value: number): string {
-    const [i, d] = value.toFixed(2).split(".");
-    return `R$ ${i.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${d}`;
-}
+import { formatBRL } from "@/lib/currency";
 
 export default function StudentPaymentScreen() {
     const colors = useV2Colors();

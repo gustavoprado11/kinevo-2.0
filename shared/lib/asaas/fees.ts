@@ -97,15 +97,10 @@ export function simulateAllMethods(
     return methods.map(m => simulateNet(grossValue, m))
 }
 
-/** Format helper pra exibir na UI ("R$ 245,01"). */
-export function formatBRL(value: number): string {
-    return value.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    })
-}
+/** Format helper pra exibir na UI ("R$ 245,01") — delega para a fonte única
+ *  (S5: a versão Intl daqui divergia da string-built por causa do espaço
+ *  não-quebrável do Intl e do Hermes sem Intl completo no mobile). */
+export { formatBRL } from '../../utils/currency'
 
 /** Format helper de percentual ("2,99%"). */
 export function formatPercent(pct: number): string {

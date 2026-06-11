@@ -3,17 +3,13 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Users, Trash2, Pencil } from "lucide-react-native";
 import type { TrainerPlan } from "../../hooks/useTrainerPlans";
 import { useV2Colors } from "../../hooks/useV2Colors";
-import { formatBRL } from "@/lib/currency";
+import { formatBRL as formatCurrency } from "@/lib/currency";
 
 const INTERVAL_LABELS: Record<string, { label: string; color: string; bg: string }> = {
     month: { label: "Mensal", color: "#7c3aed", bg: "rgba(124,58,237,0.12)" },
     quarter: { label: "Trimestral", color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
     year: { label: "Anual", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
 };
-
-function formatCurrency(value: number): string {
-    return formatBRL(value);
-}
 
 interface PlanCardProps {
     plan: TrainerPlan;

@@ -18,6 +18,7 @@ import {
     MessageCircle, Wallet, CalendarClock, Receipt,
 } from 'lucide-react'
 import { FeesSimulationCard } from './fees-simulation-card'
+import { formatBRL } from '@kinevo/shared/utils/currency'
 
 interface Plan {
     id: string
@@ -64,9 +65,6 @@ const intervalLabel = (interval: string): string => {
         default: return interval
     }
 }
-
-const formatBRL = (n: number) =>
-    n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export function CobrarCarteiraModal({
     isOpen,

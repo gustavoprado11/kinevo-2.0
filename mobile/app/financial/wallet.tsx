@@ -21,12 +21,7 @@ import { useWallet } from "../../hooks/useWallet";
 import { useWalletBalance } from "../../hooks/useWalletBalance";
 import { useWalletDocuments } from "../../hooks/useWalletDocuments";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
-
-function formatBRL(value: number): string {
-    const [intPart, decPart] = value.toFixed(2).split(".");
-    const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return `R$ ${grouped},${decPart}`;
-}
+import { formatBRL } from "@/lib/currency";
 
 interface StatusMeta {
     label: string;

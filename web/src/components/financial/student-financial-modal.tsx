@@ -10,6 +10,7 @@ import {
     ExternalLink, AlertTriangle, FolderArchive
 } from 'lucide-react'
 import type { FinancialStudent, ContractEvent, DisplayStatus } from '@/types/financial'
+import { formatCurrency } from '@/lib/utils/financial'
 import { getStudentEvents } from '@/actions/financial/get-student-events'
 import { toggleBlockOnFail } from '@/actions/financial/toggle-block-on-fail'
 import { cancelContract } from '@/actions/financial/cancel-contract'
@@ -61,9 +62,6 @@ const eventConfig: Record<string, { icon: React.ElementType; color: string; labe
     access_unblocked: { icon: Unlock, color: 'text-emerald-600 dark:text-emerald-400', label: 'Bloqueio desativado' },
     student_archived: { icon: FolderArchive, color: 'text-gray-600 dark:text-gray-400', label: 'Aluno arquivado' },
 }
-
-const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
 const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—'

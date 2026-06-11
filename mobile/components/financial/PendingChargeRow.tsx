@@ -7,11 +7,7 @@ import { walletFetch } from "../../lib/wallet-api";
 import { timeAgo } from "../../lib/time";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import type { PendingCharge } from "../../hooks/useFinancialDashboard";
-
-function formatBRL(value: number): string {
-    const [i, d] = value.toFixed(2).split(".");
-    return `R$ ${i.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${d}`;
-}
+import { formatBRL } from "@/lib/currency";
 
 type Action = "copy" | "whatsapp" | "sync" | "cancel" | null;
 

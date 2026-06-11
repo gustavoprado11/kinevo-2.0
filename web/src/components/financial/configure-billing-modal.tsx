@@ -9,6 +9,7 @@ import { createContract } from '@/actions/financial/create-contract'
 import { generateCheckoutLink } from '@/actions/financial/generate-checkout-link'
 import { migrateContract } from '@/actions/financial/migrate-contract'
 import type { FinancialStudent } from '@/types/financial'
+import { formatCurrency } from '@/lib/utils/financial'
 
 interface Plan {
     id: string
@@ -31,9 +32,6 @@ interface ConfigureBillingModalProps {
 
 type BillingType = 'stripe_auto' | 'manual_recurring' | 'manual_one_off' | 'courtesy'
 type ModalStep = 'migration_alert' | 'type' | 'details'
-
-const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
 const intervalLabels: Record<string, string> = {
     month: '/mês',

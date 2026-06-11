@@ -4,16 +4,10 @@ import { useState, useEffect, memo, useCallback } from 'react'
 import { Users, Activity, TrendingUp, TrendingDown, Target, Eye, EyeOff, DollarSign } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { DashboardStats } from '@/lib/dashboard/get-dashboard-data'
+import { formatCurrency } from '@/lib/utils/financial'
 
 interface StatCardsProps {
     stats: DashboardStats
-}
-
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(value)
 }
 
 // Monday-first to match sessionsPerDay ([Mon..Sun])
