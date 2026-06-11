@@ -3,7 +3,7 @@
 import { useState, useMemo, lazy, Suspense, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
-import { StudentModal } from '@/components/student-modal'
+import dynamic from 'next/dynamic'
 import { TrainerProfileBanner } from '@/components/dashboard/trainer-profile-banner'
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { StatCards } from '@/components/dashboard/stat-cards'
@@ -12,8 +12,23 @@ import { ExpiringPrograms } from '@/components/dashboard/expiring-programs'
 import { UpcomingAppointmentsWidget } from '@/components/dashboard/upcoming-appointments-widget'
 import { WidgetGrid } from '@/components/dashboard/widget-grid'
 import { WidgetPicker } from '@/components/dashboard/widget-picker'
-import { WelcomeModal } from '@/components/onboarding/widgets/welcome-modal'
-import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+// Overlays fora do chunk inicial da rota (45% do tráfego está aqui): nenhum
+// é necessário pro primeiro paint — o StudentModal abre por clique, o
+// WelcomeModal/Tour só aparecem pra conta nova. ssr:false adia o JS (incl.
+// framer-motion do WelcomeModal) pra depois da hidratação. Mesmo padrão dos
+// painéis do program builder.
+const StudentModal = dynamic(
+    () => import('@/components/student-modal').then(m => ({ default: m.StudentModal })),
+    { ssr: false },
+)
+const WelcomeModal = dynamic(
+    () => import('@/components/onboarding/widgets/welcome-modal').then(m => ({ default: m.WelcomeModal })),
+    { ssr: false },
+)
+const TourRunner = dynamic(
+    () => import('@/components/onboarding/tours/tour-runner').then(m => ({ default: m.TourRunner })),
+    { ssr: false },
+)
 
 // ── Lazy-loaded heavy widgets (code-split) ──
 const AssistantActionCards = lazy(() => import('@/components/dashboard/assistant-action-cards').then(m => ({ default: m.AssistantActionCards })))
