@@ -5,6 +5,7 @@ import { Copy, Info, Minus, Plus, Trash2 } from 'lucide-react'
 
 import type { MethodKey, SetType, WorkoutSet } from '@kinevo/shared/types/prescription'
 import { SET_TYPE_OPTIONS } from '@kinevo/shared/types/prescription'
+import { SET_TYPE_LABELS } from '@kinevo/shared/lib/prescription/set-type-labels'
 import {
     applyPreset,
 } from '@kinevo/shared/lib/prescription/set-scheme'
@@ -25,17 +26,6 @@ interface SetSchemeTableProps {
     rounds?: number | null
     onChange: (next: WorkoutSet[], nextMethodKey: MethodKey, nextRounds: number) => void
     readonly?: boolean
-}
-
-const SET_TYPE_LABELS: Record<SetType, string> = {
-    warmup: 'Aquecimento',
-    normal: 'Normal',
-    top: 'Top',
-    backoff: 'Backoff',
-    drop: 'Drop',
-    failure: 'Falha',
-    cluster: 'Cluster',
-    amrap: 'AMRAP',
 }
 
 const ROUND_MIN = 1
