@@ -1,14 +1,26 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { translateAuthError } from '@/lib/translate-auth-error'
 import { AuthLayout } from '@/components/auth/auth-layout'
 
-export default function LoginPage() {
+// Aceita apenas caminhos internos ("/oauth/authorize?...") para evitar
+// open-redirect. Rejeita URLs absolutas, "//host" e "/\host".
+function safeRedirect(raw: string | null): string {
+    if (!raw) return '/dashboard'
+    if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) {
+        return '/dashboard'
+    }
+    return raw
+}
+
+function LoginForm() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const redirectTo = safeRedirect(searchParams.get('redirect'))
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState<string | null>(null)
@@ -32,7 +44,7 @@ export default function LoginPage() {
             return
         }
 
-        router.push('/dashboard')
+        router.push(redirectTo)
         router.refresh()
     }
 
@@ -110,5 +122,13 @@ export default function LoginPage() {
                 </form>
             </div>
         </AuthLayout>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginForm />
+        </Suspense>
     )
 }
