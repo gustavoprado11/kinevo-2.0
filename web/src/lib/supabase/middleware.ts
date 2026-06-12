@@ -74,8 +74,15 @@ export async function updateSession(request: NextRequest) {
         !request.nextUrl.pathname.startsWith('/subscription') &&
         request.nextUrl.pathname !== '/'
     ) {
+        // Preserve the originally-requested path (+query) so the login page can
+        // send the user back after authenticating. Critical for the OAuth flow:
+        // an unauthenticated reviewer hitting /oauth/authorize?... must return to
+        // the consent screen, not /dashboard, or the auth code is never issued.
+        const intended = request.nextUrl.pathname + request.nextUrl.search
         const url = request.nextUrl.clone()
         url.pathname = '/login'
+        url.search = ''
+        url.searchParams.set('redirect', intended)
         return NextResponse.redirect(url)
     }
 
