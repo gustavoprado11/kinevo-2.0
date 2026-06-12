@@ -20,6 +20,7 @@ import { useWorkoutSession } from '../../hooks/useWorkoutSession';
 import { useLiveActivity } from '../../hooks/useLiveActivity';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
 import { useWatchConnectivity } from '../../hooks/useWatchConnectivity';
+import { markWatchWorkoutScreenMounted, markWatchWorkoutScreenUnmounted } from '../../lib/persistWatchSetLog';
 import { ChevronLeft, Info } from 'lucide-react-native';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
 import { WorkoutCelebration, CelebrationData } from '../../components/workout/WorkoutCelebration';
@@ -251,19 +252,28 @@ export default function WorkoutPlayerScreen() {
         liveActivityRef.current = { startRestTimer, updateTimerState, clearTimerState };
     }, [startRestTimer, updateTimerState, clearTimerState]);
 
+    // A2: while this screen is mounted it persists Watch set completions itself, so
+    // the root-level safety net in _layout.tsx must stand down for this workout.
+    useEffect(() => {
+        markWatchWorkoutScreenMounted(id as string);
+        return () => markWatchWorkoutScreenUnmounted(id as string);
+    }, [id]);
+
     // Apple Watch connectivity
     // Note: FINISH_WORKOUT is handled at root level (_layout.tsx → finishWorkoutFromWatch)
     // so it works even when this screen is not mounted (app killed during workout).
     useWatchConnectivity({
-        onWatchSetComplete: ({ workoutId, exerciseIndex, setIndex, reps, weight }) => {
+        onWatchSetComplete: ({ workoutId, exerciseId, exerciseIndex, setIndex, reps, weight }) => {
             if (workoutId && workoutId !== (id as string)) {
                 return;
             }
 
             if (__DEV__) console.log(
-                `[WorkoutScreen] Watch reported set complete: exercise ${exerciseIndex}, set ${setIndex}, reps ${reps ?? '-'}, weight ${weight ?? '-'}`
+                `[WorkoutScreen] Watch reported set complete: exercise ${exerciseId ?? exerciseIndex}, set ${setIndex}, reps ${reps ?? '-'}, weight ${weight ?? '-'}`
             );
-            applyWatchSetCompletion(exerciseIndex, setIndex, reps, weight);
+            // A1: pass the exerciseId so the set lands on the right exercise even if
+            // the program was reordered mid-workout (index alone can be stale).
+            applyWatchSetCompletion(exerciseIndex, setIndex, reps, weight, exerciseId);
         },
         onWatchCardioComplete: ({ workoutId, itemId, elapsedSeconds }) => {
             if (workoutId && workoutId !== (id as string)) {

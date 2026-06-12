@@ -21,6 +21,9 @@ interface UseWatchConnectivityProps {
       sets: Array<{ setIndex: number; reps: number; weight: number; completed: boolean }>;
     }>;
     cardio?: Array<{ itemId: string; elapsedSeconds: number }>;
+    /** True when the Watch is re-sending an unacknowledged finish (reconciliation),
+     *  so the phone saves + ACKs silently without navigating the user. */
+    isResend?: boolean;
   }) => void;
   onWatchDiscardWorkout?: (event: { workoutId: string }) => void;
   onWatchCardioComplete?: (event: { workoutId: string; itemId: string; elapsedSeconds: number }) => void;
@@ -108,6 +111,7 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
         const sessionId = typeof event.payload.sessionId === 'string' ? event.payload.sessionId : undefined;
         const rpe = Number(event.payload.rpe ?? 0);
         const startedAt = typeof event.payload.startedAt === 'string' ? event.payload.startedAt : undefined;
+        const isResend = event.payload.isResend === true;
         const exercises = Array.isArray(event.payload.exercises)
           ? event.payload.exercises.map((ex: any) => ({
               id: String(ex.id ?? ''),
@@ -134,8 +138,8 @@ export function useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, 
             }))
           : undefined;
 
-        if (__DEV__) console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises, ${cardio?.length ?? 0} cardio, session ${sessionId ?? 'none'}`);
-        finishWorkoutRef.current?.({ workoutId, sessionId, rpe, startedAt, exercises, cardio });
+        if (__DEV__) console.log(`[useWatchConnectivity] Watch requested FINISH_WORKOUT for ${workoutId} with rpe ${rpe}, ${exercises?.length ?? 0} exercises, ${cardio?.length ?? 0} cardio, session ${sessionId ?? 'none'}${isResend ? ' (resend)' : ''}`);
+        finishWorkoutRef.current?.({ workoutId, sessionId, rpe, startedAt, exercises, cardio, isResend });
       }
 
       if (event.type === 'CARDIO_COMPLETE' && event.payload) {

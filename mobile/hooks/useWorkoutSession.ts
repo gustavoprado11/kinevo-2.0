@@ -1017,13 +1017,28 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         exerciseIndex: number,
         setIndex: number,
         reps?: number,
-        weight?: number
+        weight?: number,
+        exerciseId?: string
     ) => {
         setExercises(prev => {
-            if (!prev[exerciseIndex] || !prev[exerciseIndex].setsData[setIndex]) return prev;
+            // A1: resolve the exercise by its id (assigned_workout_item id) when the
+            // Watch sent one. The positional index can point at the WRONG exercise if
+            // the trainer reordered the program mid-workout (the Watch and phone lists
+            // diverge). Fall back to the index for older Watch builds that omit the id.
+            let idx = exerciseIndex;
+            if (exerciseId) {
+                const byId = prev.findIndex(e => e.id === exerciseId);
+                if (byId !== -1) {
+                    idx = byId;
+                } else if (__DEV__) {
+                    console.warn(`[applyWatchSetCompletion] exerciseId ${exerciseId} not found — falling back to index ${exerciseIndex}`);
+                }
+            }
+
+            if (!prev[idx] || !prev[idx].setsData[setIndex]) return prev;
 
             const newExercises = [...prev];
-            const exercise = { ...newExercises[exerciseIndex] };
+            const exercise = { ...newExercises[idx] };
             const newSets = [...exercise.setsData];
             const currentSet = { ...newSets[setIndex] };
             const wasCompleted = currentSet.completed;
@@ -1044,10 +1059,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
             currentSet.completed = true;
             newSets[setIndex] = currentSet;
             exercise.setsData = newSets;
-            newExercises[exerciseIndex] = exercise;
+            newExercises[idx] = exercise;
 
             if (!wasCompleted && options?.onSetComplete) {
-                options.onSetComplete(exerciseIndex, setIndex);
+                options.onSetComplete(idx, setIndex);
             }
 
             // Persist to DB immediately (fire-and-forget)

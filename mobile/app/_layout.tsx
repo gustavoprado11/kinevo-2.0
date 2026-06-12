@@ -53,6 +53,7 @@ function WatchBridge() {
     const { appEvents, WORKOUT_COMPLETED, WATCH_WORKOUT_FINISHED } = require("../lib/events");
     const { supabase } = require("../lib/supabase");
     const { getProgramSnapshotForWatch } = require("../lib/getProgramSnapshotForWatch");
+    const { persistWatchSetLog, cacheWatchSession, isWatchWorkoutScreenMounted } = require("../lib/persistWatchSetLog");
     const router = useRouter();
     const pathname = usePathname();
     const lastStartRef = React.useRef<{ workoutId: string; ts: number } | null>(null);
@@ -159,6 +160,9 @@ function WatchBridge() {
                         // health-sample payloads carry it back — eliminating the
                         // 15-min assigned_workout_id mapping heuristic (M-2).
                         if (sessionId) {
+                            // Prime the cache so root-level SET_COMPLETE persistence
+                            // (A2) doesn't need a session lookup on the first set.
+                            cacheWatchSession(workoutId, sessionId);
                             sendReliableToWatch({
                                 type: 'SESSION_SYNC',
                                 payload: { workoutId, sessionId },
@@ -182,13 +186,14 @@ function WatchBridge() {
     );
 
     const onWatchFinishWorkout = React.useCallback(
-        async ({ workoutId, sessionId: watchSessionId, rpe, startedAt, exercises, cardio }: {
+        async ({ workoutId, sessionId: watchSessionId, rpe, startedAt, exercises, cardio, isResend }: {
             workoutId: string;
             sessionId?: string;
             rpe: number;
             startedAt?: string;
             exercises?: any[];
             cardio?: Array<{ itemId: string; elapsedSeconds: number }>;
+            isResend?: boolean;
         }) => {
             const now = Date.now();
             const last = lastFinishRef.current;
@@ -242,6 +247,14 @@ function WatchBridge() {
                 }
             } catch (error: any) {
                 console.error('[Layout] Error finishing workout from watch:', error?.message ?? error);
+            }
+
+            // A reconciliation re-send (Watch retrying an unacknowledged finish) must
+            // NOT yank the user around: the save + ACK above is all it needs. The user
+            // may be anywhere in the app, possibly long after the original finish.
+            if (isResend) {
+                if (__DEV__) console.log(`[Layout] FINISH_WORKOUT was a re-send for ${workoutId} — saved/acked silently, skipping navigation`);
+                return;
             }
 
             // ALWAYS notify and navigate — same pattern as discard.
@@ -303,7 +316,26 @@ function WatchBridge() {
         [uploadHealthSamples]
     );
 
-    useWatchConnectivity({ onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout, onWatchHealthSamples });
+    // A2 safety net: persist Watch set completions to the DB when the workout screen
+    // is NOT mounted (otherwise the screen handles them). Without this, sets logged on
+    // the Watch while the phone screen is closed are lost when finishing on the phone.
+    const onWatchSetComplete = React.useCallback(
+        ({ workoutId, exerciseId, setIndex, reps, weight }: {
+            workoutId?: string;
+            exerciseId?: string;
+            exerciseIndex?: number;
+            setIndex?: number;
+            reps?: number;
+            weight?: number;
+        }) => {
+            if (!workoutId || !exerciseId || setIndex === undefined) return;
+            if (isWatchWorkoutScreenMounted(workoutId)) return; // screen persists it
+            persistWatchSetLog({ workoutId, exerciseId, setIndex, reps, weight });
+        },
+        []
+    );
+
+    useWatchConnectivity({ onWatchSetComplete, onWatchStartWorkout, onWatchFinishWorkout, onWatchDiscardWorkout, onWatchHealthSamples });
 
     // Lifecycle log for debugging Watch → iPhone data flow
     React.useEffect(() => {

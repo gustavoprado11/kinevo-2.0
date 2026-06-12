@@ -364,6 +364,11 @@ export async function finishWorkoutFromWatch(
       }
 
       for (const set of exercise.sets) {
+        // A3: only write COMPLETED sets. Writing incomplete sets (is_completed=false)
+        // would downgrade a set the iPhone already completed (e.g. logged on the phone
+        // while the Watch's copy stayed incomplete), and the rehydrate path only reads
+        // is_completed=true rows anyway — so an incomplete row is pure downside.
+        if (set.completed !== true) continue;
         setLogs.push({
           workout_session_id: sessionId,
           assigned_workout_item_id: exercise.id,
@@ -374,8 +379,8 @@ export async function finishWorkoutFromWatch(
           set_number: set.setIndex + 1,
           weight: set.weight || 0,
           reps_completed: set.reps || 0,
-          is_completed: set.completed === true,
-          completed_at: set.completed ? now.toISOString() : null,
+          is_completed: true,
+          completed_at: now.toISOString(),
           weight_unit: 'kg',
         });
       }

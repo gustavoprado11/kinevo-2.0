@@ -175,7 +175,9 @@ export async function getProgramSnapshotForWatch(
       assignedSets,
       aggregateSets: item.sets || 3,
       aggregateReps: item.reps || '10',
-      aggregateRestSeconds: item.rest_seconds || 60,
+      // A4: preserve an explicit 0s rest (drop-set/cluster have no inter-set rest).
+      // `rest_seconds` is nullable with no DB default, so null = "unset" → 60s.
+      aggregateRestSeconds: item.rest_seconds ?? 60,
     });
     return prescriptions.map((p) => ({
       setNumber: p.set_number,
@@ -245,7 +247,8 @@ export async function getProgramSnapshotForWatch(
         sets: setDetails.length || item.sets || 3,
         reps: parseInt(item.reps || '0', 10) || 0,
         weight: weightMap.get(item.id) ?? null,
-        restTime: item.rest_seconds || 60,
+        // A4: preserve an explicit 0s rest (null = unset → 60s default).
+        restTime: item.rest_seconds ?? 60,
         targetReps: item.reps || null,
         lastWeight: weightMap.get(item.id) ?? null,
         lastReps: repsMap.get(item.id) ?? null,
