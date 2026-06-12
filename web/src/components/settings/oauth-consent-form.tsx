@@ -68,7 +68,7 @@ export function OAuthConsentForm({
           Autorizado!
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Voce pode fechar esta janela e voltar ao Claude.
+          Voce pode fechar esta janela e voltar ao aplicativo.
         </p>
       </div>
     )

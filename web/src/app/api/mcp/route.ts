@@ -46,6 +46,11 @@ function isAllowedOrigin(request: Request): boolean {
       hostname === 'claude.com' ||
       hostname.endsWith('.claude.ai') ||
       hostname.endsWith('.claude.com') ||
+      hostname === 'chatgpt.com' ||
+      hostname.endsWith('.chatgpt.com') ||
+      hostname === 'openai.com' ||
+      hostname.endsWith('.openai.com') ||
+      hostname.endsWith('.oaiusercontent.com') ||
       hostname === 'kinevoapp.com' ||
       hostname.endsWith('.kinevoapp.com') ||
       hostname === 'localhost' ||
