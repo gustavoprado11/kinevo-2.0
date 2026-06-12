@@ -99,7 +99,7 @@ mobile/
 │   │       ├── SummaryTemplate.tsx
 │   │       └── PRTemplate.tsx
 │   │
-│   └── WatchBridge.tsx         ← Bridge Apple Watch ↔ iPhone
+│   └── (sem WatchBridge.tsx — a ponte Apple Watch ↔ iPhone é inline em app/_layout.tsx)
 │
 ├── contexts/                   ← Context providers
 │   ├── AuthContext.tsx          ← Sessão, user, signIn/signOut
@@ -132,8 +132,7 @@ mobile/
 │   ├── events.ts               ← Event emitter app-wide
 │   ├── youtube.ts              ← Helpers de vídeo YouTube
 │   ├── finishWorkoutFromWatch.ts ← Finalização via Watch (17.7KB)
-│   ├── getProgramSnapshotForWatch.ts ← Snapshot do programa para Watch
-│   └── getNextWorkoutForWatch.ts ← Próximo treino para Watch
+│   └── getProgramSnapshotForWatch.ts ← Snapshot do programa para Watch (contrato v2 atual)
 │
 ├── stores/                     ← Zustand stores
 │   └── training-room-store.ts  ← Estado do coaching ao vivo (16.9KB, MMKV persistence)
