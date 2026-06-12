@@ -36,6 +36,10 @@ struct WorkoutExecutionState: Codable, Equatable {
     /// Cardio item configs, persisted so a workout with cardio can be fully resumed
     /// after the app is relaunched (without depending on the iPhone re-syncing).
     var cardioItems: [WatchCardioItem] = []
+    /// RPE entered by the user when finishing. Persisted so a finish-pending workout
+    /// can be RE-SENT to the iPhone after an app relaunch without losing the
+    /// perceived-exertion value (the resend net that closes the F3/F4/F5 loss window).
+    var rpe: Int?
 
     /// Custom decoding to support older persisted state that lacks finishState.
     init(from decoder: Decoder) throws {
@@ -52,6 +56,7 @@ struct WorkoutExecutionState: Codable, Equatable {
         sessionId = try container.decodeIfPresent(String.self, forKey: .sessionId)
         startedRemotely = try container.decodeIfPresent(Bool.self, forKey: .startedRemotely) ?? false
         cardioItems = try container.decodeIfPresent([WatchCardioItem].self, forKey: .cardioItems) ?? []
+        rpe = try container.decodeIfPresent(Int.self, forKey: .rpe)
     }
 
     init(
@@ -66,7 +71,8 @@ struct WorkoutExecutionState: Codable, Equatable {
         cardioStates: [CardioExecutionState] = [],
         sessionId: String? = nil,
         startedRemotely: Bool = false,
-        cardioItems: [WatchCardioItem] = []
+        cardioItems: [WatchCardioItem] = [],
+        rpe: Int? = nil
     ) {
         self.workoutId = workoutId
         self.workoutName = workoutName
@@ -80,6 +86,7 @@ struct WorkoutExecutionState: Codable, Equatable {
         self.sessionId = sessionId
         self.startedRemotely = startedRemotely
         self.cardioItems = cardioItems
+        self.rpe = rpe
     }
 
     struct ExerciseState: Codable, Equatable, Identifiable {

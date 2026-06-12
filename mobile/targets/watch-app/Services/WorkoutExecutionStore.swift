@@ -29,16 +29,22 @@ class WorkoutExecutionStore: ObservableObject {
     init() {
         // Attempt to restore from disk on launch
         if let restored = WorkoutStatePersistence.load() {
-            // If finish was pending and state is stale (>10 min), the ACK was likely
-            // received while the app was killed, or delivered but unhandled. Clear it.
+            // A finish-pending workout means FINISH_WORKOUT was sent but the iPhone
+            // never acknowledged it (SYNC_SUCCESS). This is the F3/F4/F5 loss window:
+            // the iPhone may have dropped the event from its in-memory buffer before
+            // the JS runtime persisted it. We must NOT delete it — instead we keep it
+            // and re-send on launch / session activation (see KinevoWatchApp). The
+            // iPhone is idempotent (canonical sessionId + upsert), so a re-send is
+            // safe even if the original DID save. Only abandon truly ancient state
+            // (>48h) the user has long moved past.
             if restored.finishState == .pending {
                 let staleness = Date().timeIntervalSince(restored.lastPersistedAt)
-                if staleness > 600 { // 10 minutes
-                    print("[WorkoutStore] Restored finish-pending workout \(restored.workoutId) but stale (\(Int(staleness))s) — clearing")
+                if staleness > 172_800 { // 48 hours — treat as abandoned
+                    print("[WorkoutStore] Restored finish-pending workout \(restored.workoutId) but ancient (\(Int(staleness))s) — clearing")
                     WorkoutStatePersistence.delete()
                 } else {
                     self.state = restored
-                    print("[WorkoutStore] Restored finish-pending workout \(restored.workoutId) — waiting for SYNC_SUCCESS")
+                    print("[WorkoutStore] Restored finish-pending workout \(restored.workoutId) (\(Int(staleness))s old) — will re-send and wait for SYNC_SUCCESS")
                 }
             } else {
                 self.state = restored
@@ -108,21 +114,77 @@ class WorkoutExecutionStore: ObservableObject {
         print("[WorkoutStore] Workout marked as started")
     }
 
-    /// Mark the workout as finish-pending. Persists state so it survives app termination.
+    /// Mark the workout as finish-pending. Persists state (including the RPE) so it
+    /// survives app termination and can be RE-SENT until the iPhone acknowledges it.
     /// Called BEFORE sending FINISH_WORKOUT to iPhone.
-    func markFinishPending() {
+    func markFinishPending(rpe: Int) {
         guard var s = state, s.finishState == .none else { return }
         s.finishState = .pending
+        s.rpe = rpe
         state = s
         persistImmediate()
-        print("[WorkoutStore] Workout \(s.workoutId) marked as finish pending")
+        print("[WorkoutStore] Workout \(s.workoutId) marked as finish pending (rpe: \(rpe))")
+    }
+
+    /// Move a finish-pending workout out of the active slot into the pending-finish
+    /// queue, then clear the active state. Called when the finish sheet is dismissed
+    /// without an ACK — the workout must stay re-sendable (F3/F4/F5) without keeping
+    /// the active-workout UI (resume card, auto-resume, B-01 guard) alive. No-op when
+    /// nothing is pending (e.g. SYNC_SUCCESS already cleared the state).
+    func releaseFinishPendingToQueue() {
+        guard let s = state, s.finishState == .pending else { return }
+        WorkoutStatePersistence.savePendingFinish(s)
+        print("[WorkoutStore] Released finish-pending workout \(s.workoutId) to resend queue")
+        clearWorkout()
+    }
+
+    typealias FinishResendPayload = (workoutId: String, rpe: Int, startedAt: Date, exercises: [[String: Any]], cardio: [[String: Any]], sessionId: String?)
+
+    /// Build the FINISH_WORKOUT payloads that still need (re-)sending: the active
+    /// finish-pending workout (sheet still up) plus every queued unacknowledged
+    /// finish from previous sessions. Queue entries older than 48h are expired.
+    /// The iPhone is idempotent (canonical sessionId + upsert), so re-sending is
+    /// always safe.
+    func pendingFinishResends() -> [FinishResendPayload] {
+        func payload(_ s: WorkoutExecutionState) -> FinishResendPayload {
+            (
+                workoutId: s.workoutId,
+                rpe: s.rpe ?? 0,
+                startedAt: s.startedAt,
+                exercises: s.buildFinishPayload(),
+                cardio: s.buildCardioPayload(),
+                sessionId: s.sessionId
+            )
+        }
+
+        var out: [FinishResendPayload] = []
+        if let s = state, s.finishState == .pending {
+            out.append(payload(s))
+        }
+        for s in WorkoutStatePersistence.loadAllPendingFinishes() {
+            let age = Date().timeIntervalSince(s.lastPersistedAt)
+            if age > 172_800 { // 48h — treat as abandoned
+                print("[WorkoutStore] Expiring ancient pending finish \(s.workoutId) (\(Int(age))s)")
+                WorkoutStatePersistence.deletePendingFinish(workoutId: s.workoutId)
+                continue
+            }
+            if s.workoutId != state?.workoutId {
+                out.append(payload(s))
+            }
+        }
+        return out
     }
 
     /// Handle SYNC_SUCCESS acknowledgement from iPhone.
     /// Clears workout state only if the workoutId matches.
     func acknowledgeFinish(workoutId: String) {
+        // Always clear the resend queue entry — the ACK may arrive long after the
+        // finish sheet was dismissed (state released to the queue) or even after
+        // a different workout became active.
+        WorkoutStatePersistence.deletePendingFinish(workoutId: workoutId)
+
         guard let current = state else {
-            print("[WorkoutStore] acknowledgeFinish ignored — no active state")
+            print("[WorkoutStore] acknowledgeFinish — no active state (queue entry cleared if present)")
             return
         }
 

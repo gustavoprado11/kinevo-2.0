@@ -18,6 +18,10 @@ class WatchSessionManager: NSObject, ObservableObject {
   var onProgramUpdated: ((_ snapshot: WatchProgramSnapshot) -> Void)?
   var onExerciseOrderUpdate: ((_ workoutId: String, _ exerciseIds: [String]) -> Void)?
   var onSessionSync: ((_ workoutId: String, _ sessionId: String) -> Void)?
+  /// Fired when the WCSession finishes activating. Used to (re-)send any
+  /// finish-pending workout once the transport is actually ready — closing the
+  /// cold-launch window where sendReliable would otherwise silently drop (B-05).
+  var onSessionActivated: (() -> Void)?
 
   private var wcSession: WCSession?
 
@@ -196,7 +200,7 @@ class WatchSessionManager: NSObject, ObservableObject {
   /// Send FINISH_WORKOUT with RPE, start time, completed exercises, and cardio results.
   /// Uses sendReliable (sendMessage first, transferUserInfo fallback) for immediate delivery
   /// when iPhone is reachable — transferUserInfo alone may not wake the JS runtime.
-  func sendFinishWorkout(workoutId: String, rpe: Int, startedAt: Date, exercises: [[String: Any]], cardio: [[String: Any]] = [], sessionId: String? = nil) {
+  func sendFinishWorkout(workoutId: String, rpe: Int, startedAt: Date, exercises: [[String: Any]], cardio: [[String: Any]] = [], sessionId: String? = nil, isResend: Bool = false) {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
@@ -211,6 +215,11 @@ class WatchSessionManager: NSObject, ObservableObject {
     }
     if let sessionId {
         payload["sessionId"] = sessionId
+    }
+    if isResend {
+        // Tells the iPhone this is a reconciliation re-send (not a fresh finish),
+        // so it saves + ACKs silently without navigating the user to home.
+        payload["isResend"] = true
     }
 
     let message: [String: Any] = [
@@ -333,6 +342,10 @@ extension WatchSessionManager: WCSessionDelegate {
         } else {
           print("[WatchSessionManager] No cached applicationContext — waiting for iPhone to sync")
         }
+
+        // Transport is ready — re-send any finish-pending workout that never got
+        // acknowledged (survives the iPhone dropping the buffered FINISH event).
+        self.onSessionActivated?()
       }
     }
   }

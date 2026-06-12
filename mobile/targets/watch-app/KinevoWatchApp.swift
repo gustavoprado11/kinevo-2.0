@@ -76,6 +76,13 @@ struct KinevoWatchApp: App {
                     workoutStore?.setSessionId(workoutId: workoutId, sessionId: sessionId)
                 }
 
+                // Wire WCSession activation — re-send any finish-pending workout once
+                // the transport is ready. This is the resend net that recovers a
+                // FINISH the iPhone received but dropped before saving (F3/F4/F5).
+                sessionManager.onSessionActivated = { [weak workoutStore, weak sessionManager] in
+                    resendPendingFinish(store: workoutStore, session: sessionManager)
+                }
+
                 // Wire direct exercise order updates from iPhone (immediate delivery via sendMessage).
                 sessionManager.onExerciseOrderUpdate = { [weak workoutStore] workoutId, exerciseIds in
                     guard let store = workoutStore,
@@ -92,6 +99,11 @@ struct KinevoWatchApp: App {
                 }
 
                 resumeNavigationIfNeeded()
+
+                // If a finish-pending workout was restored on launch and the session is
+                // already active, re-send immediately. If the session isn't ready yet,
+                // onSessionActivated will fire the re-send once it is.
+                resendPendingFinish(store: workoutStore, session: sessionManager)
             }
             // When the program snapshot arrives (cached applicationContext read on
             // launch), restore navigation into an active workout — the NavigationPath
@@ -122,7 +134,32 @@ struct KinevoWatchApp: App {
             if newPhase == .background || newPhase == .inactive {
                 workoutStore.persistImmediate()
                 print("[KinevoWatchApp] Scene phase → \(newPhase) — flushed workout state")
+            } else if newPhase == .active {
+                // Foregrounding: retry any unacknowledged finish (the iPhone may have
+                // come back online or relaunched since the workout was finished).
+                resendPendingFinish(store: workoutStore, session: sessionManager)
             }
+        }
+    }
+
+    /// Re-send every unacknowledged finished workout to the iPhone (the active
+    /// finish-pending one plus the persisted resend queue). No-op when nothing is
+    /// pending. Safe to call repeatedly: the iPhone resolves the same canonical
+    /// session and upserts the set_logs idempotently, and clears the Watch via
+    /// SYNC_SUCCESS once the save is durably confirmed.
+    private func resendPendingFinish(store: WorkoutExecutionStore?, session: WatchSessionManager?) {
+        guard let store, let session else { return }
+        for resend in store.pendingFinishResends() {
+            print("[KinevoWatchApp] Re-sending finish-pending workout \(resend.workoutId)")
+            session.sendFinishWorkout(
+                workoutId: resend.workoutId,
+                rpe: resend.rpe,
+                startedAt: resend.startedAt,
+                exercises: resend.exercises,
+                cardio: resend.cardio,
+                sessionId: resend.sessionId,
+                isResend: true
+            )
         }
     }
 

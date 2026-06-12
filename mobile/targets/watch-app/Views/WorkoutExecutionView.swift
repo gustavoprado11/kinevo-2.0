@@ -34,6 +34,20 @@ struct WatchDisplayPadding {
   }
 }
 
+private extension View {
+  /// Apple Watch Double Tap (pinch) → primary action. The developer API only
+  /// exists on watchOS 11+; on watchOS 10 the modifier is skipped (deployment
+  /// target is 10.0, so this must be availability-gated).
+  @ViewBuilder
+  func doubleTapPrimaryAction() -> some View {
+    if #available(watchOS 11.0, *) {
+      self.handGestureShortcut(.primaryAction)
+    } else {
+      self
+    }
+  }
+}
+
 private struct RestTimerState: Identifiable {
   let id = UUID()
   let seconds: Int
@@ -54,12 +68,21 @@ struct WorkoutExecutionView: View {
   @State private var workoutRpe: Double = 5
   @State private var hasFinishedWorkout = false
   @State private var showDiscardConfirmation = false
+  @State private var showSwitchConfirmation = false
   @State private var carouselPage: Int = 0
   @State private var checkmarkScale: CGFloat = 0.01
   @State private var autoDismissTask: Task<Void, Never>?
   @State private var showBriefing = false
   @State private var verticalPage: Int = 0          // 0 = cards, 1 = metrics, 2 = now playing
   @State private var didApplyInitialPage = false
+
+  /// True while the workout shown by THIS screen is actively running. Drives the
+  /// navigation-bar visibility: fullscreen during execution, back chevron otherwise
+  /// (pre-start screen, empty view, or another workout's state being active).
+  private var isThisWorkoutRunning: Bool {
+    guard let s = workoutStore.state else { return false }
+    return s.workoutId == workout.workoutId && s.hasStarted
+  }
 
   var body: some View {
     let sm = sessionManager
@@ -73,7 +96,10 @@ struct WorkoutExecutionView: View {
         if let state = store.state {
           if !state.hasStarted {
             startView(sm: sm, hk: hk, store: store)
-          } else if state.exercises.isEmpty {
+          } else if state.exercises.isEmpty && workout.cardioItems.isEmpty {
+            // B-02: only truly-empty workouts hit emptyView. A cardio-only workout has
+            // no strength exercises but must still render its cardio pages (otherwise it
+            // got stuck here forever with a live HKWorkoutSession and no way out).
             emptyView
           } else {
             workoutContent(state: state, sm: sm, store: store)
@@ -105,9 +131,37 @@ struct WorkoutExecutionView: View {
     } message: {
       Text("Seu progresso neste treino será perdido.")
     }
+    .confirmationDialog(
+      "Trocar de treino?",
+      isPresented: $showSwitchConfirmation,
+      titleVisibility: .visible
+    ) {
+      Button("Trocar", role: .destructive) {
+        // Discard the in-progress workout (notify the iPhone to clean up its session
+        // and end the live HealthKit session) before loading the one the user tapped.
+        if let activeId = store.state?.workoutId {
+          sm.sendDiscardWorkout(workoutId: activeId)
+        }
+        hk.discardWorkout()
+        store.clearWorkout()
+        store.loadWorkout(from: workout)
+        carouselPage = store.state?.exerciseIndex ?? 0
+      }
+      Button("Cancelar", role: .cancel) {
+        // Keep the active workout — back out to the list.
+        dismiss()
+      }
+    } message: {
+      Text("Você tem um treino em andamento. Trocar vai descartar o progresso atual.")
+    }
     .onAppear {
-      // Load workout into store if not already present
-      if store.state == nil || store.state?.workoutId != workout.workoutId {
+      // B-01: opening a DIFFERENT workout while one is in progress used to silently
+      // wipe the active workout's progress (loadWorkout replaces the state). Guard it
+      // behind a confirmation; the load only happens if the user confirms (or there's
+      // nothing started to lose).
+      if let active = store.state, active.hasStarted, active.workoutId != workout.workoutId {
+        showSwitchConfirmation = true
+      } else if store.state == nil || store.state?.workoutId != workout.workoutId {
         store.loadWorkout(from: workout)
       }
       // Sync carousel page with exercise index
@@ -124,7 +178,10 @@ struct WorkoutExecutionView: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    .toolbar(.hidden, for: .navigationBar)
+    // Show the system back chevron on the pre-start screen — without it the user is
+    // STUCK there (no visible way back to the workout list; edge-swipe is not
+    // discoverable). Go fullscreen (hidden bar) only while THIS workout is running.
+    .toolbar(isThisWorkoutRunning ? .hidden : .visible, for: .navigationBar)
     // When SYNC_SUCCESS arrives and clearWorkout() fires, state becomes nil.
     // Dismiss the sheet so the NavigationStack can pop this view.
     .onChange(of: workoutStore.state == nil) { _, isNil in
@@ -370,8 +427,9 @@ struct WorkoutExecutionView: View {
         let exercisesPayload = state.buildFinishPayload()
         let cardioPayload = state.buildCardioPayload()
 
-        // Mark as pending BEFORE sending — persists so it survives app termination
-        store.markFinishPending()
+        // Mark as pending BEFORE sending — persists state + RPE so it survives app
+        // termination and can be re-sent until the iPhone acknowledges (SYNC_SUCCESS).
+        store.markFinishPending(rpe: Int(workoutRpe))
 
         sm.sendFinishWorkout(
           workoutId: state.workoutId,
@@ -439,8 +497,11 @@ struct WorkoutExecutionView: View {
                     dismiss()
                   }
                 } else {
-                  // Force clear if SYNC_SUCCESS didn't arrive
-                  workoutStore.clearWorkout()
+                  // SYNC_SUCCESS didn't arrive — move the finished workout to the
+                  // resend queue (NOT a destructive clear: deleting here would
+                  // destroy the only copy the resend net can recover, losing the
+                  // whole workout if the iPhone dropped the FINISH event).
+                  workoutStore.releaseFinishPendingToQueue()
                 }
               }
             }
@@ -463,9 +524,8 @@ struct WorkoutExecutionView: View {
         Button("Fechar") {
           NSLog("[KinevoWatch] Manual close tapped on finish screen")
           isFinishingWorkout = false
-          if workoutStore.state != nil {
-            workoutStore.clearWorkout()
-          }
+          // Keep the unacknowledged finish re-sendable (queue), never hard-delete.
+          workoutStore.releaseFinishPendingToQueue()
           DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             dismiss()
           }
@@ -512,6 +572,8 @@ struct WorkoutExecutionView: View {
 
 private struct ExerciseExecutionPage: View {
   @ObservedObject var store: WorkoutExecutionStore
+  // Live heart rate for the inline FC chip (propagated from KinevoWatchApp).
+  @EnvironmentObject private var healthKitManager: HealthKitManager
   let exerciseIndex: Int
   let totalExercises: Int
   let totalCarouselPages: Int
@@ -692,6 +754,8 @@ private struct ExerciseExecutionPage: View {
               .frame(maxWidth: .infinity)
               .frame(minHeight: compact ? 36 : 40)
               .padding(.bottom, 4)
+              // Apple Watch Double Tap (pinch) completes the set hands-free (watchOS 11+).
+              .doubleTapPrimaryAction()
               .accessibilityLabel("Concluir série \(currentSetNumber(exercise)) de \(totalSets(exercise)), \(exercise.name), \(String(format: "%.1f", currentWeight(exercise))) quilos vezes \(currentReps(exercise)) repetições")
             }
           }
@@ -769,8 +833,8 @@ private struct ExerciseExecutionPage: View {
             .padding(.trailing, 34)
         }
 
-        // Current set-type badge + tappable trainer-note chip.
-        if currentSetTypeLabel(exercise) != nil || exercise.notes != nil {
+        // Current set-type badge + tappable trainer-note chip + live heart rate.
+        if currentSetTypeLabel(exercise) != nil || exercise.notes != nil || healthKitManager.heartRate > 0 {
           HStack(spacing: 4) {
             if let setType = currentSetTypeLabel(exercise) {
               chipLabel(setType, color: setTypeColor(exercise))
@@ -786,6 +850,15 @@ private struct ExerciseExecutionPage: View {
                 .background(Capsule().fill(Color.cyan.opacity(0.16)))
               }
               .buttonStyle(.plain)
+            }
+            // Inline FC chip — instant feedback without swiping to the metrics page.
+            if healthKitManager.heartRate > 0 {
+              HStack(spacing: 3) {
+                Image(systemName: "heart.fill").font(.system(size: 8))
+                Text("\(Int(healthKitManager.heartRate))").font(.system(size: 9, weight: .bold))
+              }
+              .foregroundStyle(.red)
+              .accessibilityLabel("Frequência cardíaca \(Int(healthKitManager.heartRate)) batimentos por minuto")
             }
           }
           .padding(.trailing, 34)
@@ -1255,12 +1328,21 @@ private struct RestTimerSheet: View {
   @Environment(\.dismiss) private var dismiss
 
   @State private var remainingSeconds: Int
+  /// User adjustment (±15s) applied on top of the prescribed rest.
+  @State private var adjustment: Int = 0
   private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
   init(timerState: RestTimerState) {
     self.timerState = timerState
     _remainingSeconds = State(initialValue: timerState.seconds)
   }
+
+  /// Prescribed rest plus the user's ±15s adjustments (never negative).
+  private var effectiveTotal: Int { max(0, timerState.seconds + adjustment) }
+
+  /// Absolute end instant — drives the Always-On countdown so the number keeps
+  /// ticking with the wrist down (a plain @State integer freezes in AOD).
+  private var endDate: Date { timerState.startedAt.addingTimeInterval(Double(effectiveTotal)) }
 
   var body: some View {
     ZStack {
@@ -1289,9 +1371,13 @@ private struct RestTimerSheet: View {
             .rotationEffect(.degrees(-90))
             .frame(width: 96, height: 96)
 
-          Text("\(remainingSeconds)s")
-            .font(.system(size: 28, weight: .bold, design: .rounded))
+          // Always-On friendly: the system keeps this counting down even when the
+          // wrist drops and our 1s ticker is suspended.
+          Text(timerInterval: min(Date.now, endDate)...endDate, countsDown: true)
+            .font(.system(size: 26, weight: .bold, design: .rounded))
             .monospacedDigit()
+            .multilineTextAlignment(.center)
+            .frame(width: 80)
             .foregroundStyle(.white)
         }
 
@@ -1299,26 +1385,49 @@ private struct RestTimerSheet: View {
           .font(.system(size: 11))
           .foregroundStyle(.secondary)
 
+        // Adjust rest on the fly (e.g. need a bit more before a heavy set).
+        HStack(spacing: 8) {
+          Button {
+            adjustment -= 15
+            WKInterfaceDevice.current().play(.click)
+          } label: {
+            Text("−15s").font(.system(size: 13, weight: .medium))
+          }
+          .buttonStyle(.bordered)
+          .accessibilityLabel("Reduzir descanso em 15 segundos")
+
+          Button {
+            adjustment += 15
+            WKInterfaceDevice.current().play(.click)
+          } label: {
+            Text("+15s").font(.system(size: 13, weight: .medium))
+          }
+          .buttonStyle(.bordered)
+          .accessibilityLabel("Aumentar descanso em 15 segundos")
+        }
+
         Button("Pular descanso") {
           dismiss()
         }
-        .font(.system(size: 14))
+        .font(.system(size: 13))
         .buttonStyle(.bordered)
+        .tint(Color.kinevoViolet)
         .accessibilityLabel("Pular descanso")
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 6)
     }
-    .accessibilityElement(children: .combine)
-    .accessibilityValue("\(remainingSeconds) segundos restantes")
+    // .contain (not .combine) so the −15s/+15s/Pular buttons stay individually
+    // reachable by VoiceOver instead of being flattened into one static element.
+    .accessibilityElement(children: .contain)
     .onReceive(ticker) { _ in
       let elapsed = Int(Date().timeIntervalSince(timerState.startedAt))
-      let newRemaining = max(timerState.seconds - elapsed, 0)
+      let newRemaining = max(effectiveTotal - elapsed, 0)
       let previousRemaining = remainingSeconds
       remainingSeconds = newRemaining
 
       // Intermediate haptic at 30s remaining (only when total > 45s)
-      if previousRemaining > 30 && newRemaining <= 30 && timerState.seconds > 45 {
+      if previousRemaining > 30 && newRemaining <= 30 && effectiveTotal > 45 {
         WKInterfaceDevice.current().play(.directionUp)
       }
 
@@ -1339,9 +1448,9 @@ private struct RestTimerSheet: View {
   }
 
   private var progressValue: CGFloat {
-    guard timerState.seconds > 0 else { return 1 }
-    let elapsed = timerState.seconds - remainingSeconds
-    let progress = Double(elapsed) / Double(timerState.seconds)
+    guard effectiveTotal > 0 else { return 1 }
+    let elapsed = effectiveTotal - remainingSeconds
+    let progress = Double(elapsed) / Double(effectiveTotal)
     return CGFloat(min(max(progress, 0), 1))
   }
 }
