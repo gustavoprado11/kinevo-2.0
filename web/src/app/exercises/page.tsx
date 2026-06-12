@@ -18,6 +18,7 @@ export default async function ExercisesPage() {
             original_system_id,
             video_url,
             image_url,
+            movement_pattern,
             is_archived,
             created_at,
             updated_at,
@@ -66,6 +67,7 @@ export default async function ExercisesPage() {
         video_url: e.video_url || null,
         thumbnail_url: null,
         instructions: null,
+        movement_pattern: e.movement_pattern || null,
         is_archived: e.is_archived,
         created_at: e.created_at,
         updated_at: e.updated_at

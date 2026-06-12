@@ -13,11 +13,12 @@ import { ConciergeButton } from './concierge-button'
 import { ConciergeModal } from './concierge-modal'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, Settings2, LayoutGrid, List, ChevronDown, Check } from 'lucide-react'
+import { Plus, Search, Settings2, LayoutGrid, List, ChevronDown, Check, Layers } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { revalidateMyExerciseLibrary } from '@/actions/exercises/revalidate-library'
 import { useToast } from '@/components/ui/toast'
+import { patternLabel, sortPatternLabels } from '@/lib/movement-patterns'
 
 type ViewMode = 'grid' | 'list'
 
@@ -136,6 +137,8 @@ export function ExercisesClient({
     const [exercises, setExercises] = useState(initialExercises)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
+    const [selectedPatterns, setSelectedPatterns] = useState<string[]>([])
+    const [groupByPattern, setGroupByPattern] = useState(false)
 
     // Mapa parent -> children names (e.g. "Mobilidade" -> ["Mobilidade Quadril", "Mobilidade Ombro", ...])
     const childrenByParentName = useMemo(() => {
@@ -216,6 +219,21 @@ export function ExercisesClient({
         return counts
     }, [deduplicatedExercises, childrenByParentName])
 
+    // Contagem por Padrão de Movimento (rótulo PT). "Sem padrão" agrupa os null.
+    const patternCounts = useMemo(() => {
+        const counts: Record<string, number> = {}
+        for (const exercise of deduplicatedExercises) {
+            const label = patternLabel(exercise.movement_pattern)
+            counts[label] = (counts[label] || 0) + 1
+        }
+        return counts
+    }, [deduplicatedExercises])
+
+    const availablePatterns = useMemo(
+        () => sortPatternLabels(Object.keys(patternCounts)),
+        [patternCounts]
+    )
+
     // Expand each selected group to include its hierarchy descendants.
     // e.g. selecting "Mobilidade" also matches "Mobilidade Quadril", "Mobilidade Ombro", etc.
     const expandedSelection = useMemo(() => {
@@ -239,13 +257,36 @@ export function ExercisesClient({
                 matchesMuscle = muscles.some(m => expandedSelection.has(m))
             }
 
-            return matchesSearch && matchesMuscle
+            const matchesPattern = selectedPatterns.length === 0
+                || selectedPatterns.includes(patternLabel(exercise.movement_pattern))
+
+            return matchesSearch && matchesMuscle && matchesPattern
         })
-    }, [deduplicatedExercises, searchQuery, expandedSelection])
+    }, [deduplicatedExercises, searchQuery, expandedSelection, selectedPatterns])
+
+    // Agrupamento por Padrão de Movimento (seções ordenadas pela sequência canônica).
+    const groupedByPattern = useMemo(() => {
+        if (!groupByPattern) return null
+        const groups = new Map<string, ExerciseWithDetails[]>()
+        for (const exercise of filteredExercises) {
+            const label = patternLabel(exercise.movement_pattern)
+            const arr = groups.get(label) || []
+            arr.push(exercise)
+            groups.set(label, arr)
+        }
+        return sortPatternLabels(Array.from(groups.keys()))
+            .map(label => ({ label, items: groups.get(label)! }))
+    }, [filteredExercises, groupByPattern])
 
     const toggleMuscleGroup = (group: string) => {
         setSelectedMuscleGroups(prev =>
             prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group]
+        )
+    }
+
+    const togglePattern = (pattern: string) => {
+        setSelectedPatterns(prev =>
+            prev.includes(pattern) ? prev.filter(p => p !== pattern) : [...prev, pattern]
         )
     }
 
@@ -299,6 +340,43 @@ export function ExercisesClient({
         useOnboardingStore.getState().completeMilestone('first_exercise_added')
         router.refresh()
     }
+
+    const hasActiveFilters = searchQuery !== '' || selectedMuscleGroups.length > 0 || selectedPatterns.length > 0
+
+    // Renderiza uma lista de exercícios em grade ou lista (reusado no modo agrupado).
+    const renderItems = (list: ExerciseWithDetails[]) => (
+        viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {list.map(exercise => (
+                    <ExerciseItem
+                        key={exercise.id}
+                        exercise={exercise}
+                        currentTrainerId={currentTrainerId}
+                        onEdit={handleEdit}
+                        onDelete={handleArchive}
+                        viewMode="grid"
+                        trainerVideo={trainerVideosMap[exercise.id] || null}
+                        onCustomVideoClick={handleCustomVideoClick}
+                    />
+                ))}
+            </div>
+        ) : (
+            <div className="space-y-1">
+                {list.map(exercise => (
+                    <ExerciseItem
+                        key={exercise.id}
+                        exercise={exercise}
+                        currentTrainerId={currentTrainerId}
+                        onEdit={handleEdit}
+                        onDelete={handleArchive}
+                        viewMode="list"
+                        trainerVideo={trainerVideosMap[exercise.id] || null}
+                        onCustomVideoClick={handleCustomVideoClick}
+                    />
+                ))}
+            </div>
+        )
+    )
 
     return (
         <AppLayout
@@ -356,12 +434,35 @@ export function ExercisesClient({
                             </div>
                         )}
 
+                        {availablePatterns.length > 0 && (
+                            <FilterDropdown
+                                label="Padrão de Movimento"
+                                options={availablePatterns}
+                                selected={selectedPatterns}
+                                onToggle={togglePattern}
+                                onClear={() => setSelectedPatterns([])}
+                                counts={patternCounts}
+                            />
+                        )}
+
                         <button
                             onClick={() => setIsManagerOpen(true)}
                             className="p-2.5 rounded-lg border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-glass-bg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active text-[#6E6E73] dark:text-k-text-secondary hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-all"
                             title="Gerenciar Grupos"
                         >
                             <Settings2 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                            onClick={() => setGroupByPattern(v => !v)}
+                            className={`p-2.5 rounded-lg border transition-all ${
+                                groupByPattern
+                                    ? 'border-[#7C3AED]/30 bg-[#7C3AED]/10 text-[#7C3AED] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300'
+                                    : 'border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-secondary hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                            }`}
+                            title="Agrupar por padrão de movimento"
+                        >
+                            <Layers className="w-4 h-4" />
                         </button>
 
                         <div className="w-px h-6 bg-[#E8E8ED] dark:bg-k-border-subtle mx-1" />
@@ -388,50 +489,38 @@ export function ExercisesClient({
                 {/* Results Count */}
                 <div className="text-sm font-medium text-[#86868B] dark:text-k-text-quaternary pl-1">
                     {filteredExercises.length} exercícios
-                    {(searchQuery || selectedMuscleGroups.length > 0) && ` de ${deduplicatedExercises.length}`}
+                    {hasActiveFilters && ` de ${deduplicatedExercises.length}`}
                 </div>
 
-                {/* Exercise Grid / List */}
+                {/* Exercise Grid / List (agrupado por padrão ou plano) */}
                 {filteredExercises.length > 0 ? (
-                    viewMode === 'grid' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {filteredExercises.map(exercise => (
-                                <ExerciseItem
-                                    key={exercise.id}
-                                    exercise={exercise}
-                                    currentTrainerId={currentTrainerId}
-                                    onEdit={handleEdit}
-                                    onDelete={handleArchive}
-                                    viewMode="grid"
-                                    trainerVideo={trainerVideosMap[exercise.id] || null}
-                                    onCustomVideoClick={handleCustomVideoClick}
-                                />
+                    groupByPattern && groupedByPattern ? (
+                        <div className="space-y-8">
+                            {groupedByPattern.map(group => (
+                                <section key={group.label}>
+                                    <div className="flex items-center gap-2 mb-3 pl-1">
+                                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary tracking-tight">
+                                            {group.label}
+                                        </h2>
+                                        <span className="px-2 py-0.5 rounded-full bg-[#F5F5F7] dark:bg-glass-bg text-xs font-medium text-[#86868B] dark:text-k-text-tertiary border border-[#E8E8ED] dark:border-k-border-subtle">
+                                            {group.items.length}
+                                        </span>
+                                    </div>
+                                    {renderItems(group.items)}
+                                </section>
                             ))}
                         </div>
                     ) : (
-                        <div className="space-y-1">
-                            {filteredExercises.map(exercise => (
-                                <ExerciseItem
-                                    key={exercise.id}
-                                    exercise={exercise}
-                                    currentTrainerId={currentTrainerId}
-                                    onEdit={handleEdit}
-                                    onDelete={handleArchive}
-                                    viewMode="list"
-                                    trainerVideo={trainerVideosMap[exercise.id] || null}
-                                    onCustomVideoClick={handleCustomVideoClick}
-                                />
-                            ))}
-                        </div>
+                        renderItems(filteredExercises)
                     )
                 ) : (
                     <div className="text-center py-20 rounded-2xl border border-dashed border-[#D2D2D7] dark:border-k-border-primary">
                         <Search className="w-6 h-6 text-[#AEAEB2] dark:text-k-text-quaternary mx-auto mb-3" strokeWidth={1.5} />
                         <p className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Nenhum exercício encontrado</p>
                         <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-1">Tente outro termo ou limpe os filtros</p>
-                        {(searchQuery || selectedMuscleGroups.length > 0) && (
+                        {hasActiveFilters && (
                             <button
-                                onClick={() => { setSearchQuery(''); setSelectedMuscleGroups([]) }}
+                                onClick={() => { setSearchQuery(''); setSelectedMuscleGroups([]); setSelectedPatterns([]) }}
                                 className="mt-4 text-xs font-medium text-[#7C3AED] hover:text-[#6D28D9] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                             >
                                 Limpar busca

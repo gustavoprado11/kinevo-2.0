@@ -20,6 +20,9 @@ export interface Exercise {
     thumbnail_url: string | null
     instructions: string | null
 
+    /** Padrão de movimento (squat, hinge, lunge, push_h/v, pull_h/v, core, isolation, mobility, locomotion, jump, integrated, carry). */
+    movement_pattern?: string | null
+
     // Ownership
     owner_id: string | null // NULL = System, UUID = Trainer
 
