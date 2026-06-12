@@ -51,7 +51,10 @@ struct WorkoutDashboardView: View {
 
         VStack(alignment: .leading, spacing: 0) {
           Text(
-            timerInterval: workoutStartDate...Date.now,
+            // B-03: clamp the lower bound to "now". A startedAt in the future (device
+            // clock skew, or a stale snapshot) makes lowerBound > upperBound, which
+            // traps the ClosedRange initializer and crashes the dashboard.
+            timerInterval: min(workoutStartDate, Date.now)...Date.now,
             pauseTime: nil,
             countsDown: false,
             showsHours: true
