@@ -682,6 +682,30 @@ describe('applyWatchSetCompletion', () => {
         await waitFor(() => expect(queriesFor('set_logs', 'upsert')).toHaveLength(1));
         expect((queriesFor('set_logs', 'upsert')[0].payload as Record<string, unknown>).reps_completed).toBe(9);
     });
+
+    it('A1: roteia pelo exerciseId, não pelo índice (treino reordenado mid-treino)', async () => {
+        installScenario({
+            existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' },
+            items: [
+                makeItem(),
+                makeItem({ id: 'item-2', exercise_id: 'ex-2', exercise_name: 'Agachamento', order_index: 1 }),
+            ],
+        });
+        const { result } = await renderSession({ deferSessionCreation: true });
+
+        // O Watch calculou índice 0, mas o exercício real (pós-reordenação) é o item-2.
+        // O exerciseId deve mandar a série para o item-2 — não para o item-1 do índice 0.
+        act(() => result.current.applyWatchSetCompletion(0, 0, 9, 80, 'item-2'));
+
+        expect(result.current.exercises[1].setsData[0].completed).toBe(true);
+        expect(result.current.exercises[1].setsData[0].reps).toBe('9');
+        expect(result.current.exercises[1].setsData[0].weight).toBe('80');
+        // O exercício do índice 0 (item-1) NÃO foi tocado.
+        expect(result.current.exercises[0].setsData[0].completed).toBe(false);
+
+        await waitFor(() => expect(queriesFor('set_logs', 'upsert')).toHaveLength(1));
+        expect((queriesFor('set_logs', 'upsert')[0].payload as Record<string, unknown>).assigned_workout_item_id).toBe('item-2');
+    });
 });
 
 // ── 9. Fila offline (A4) ─────────────────────────────────────────────────────
