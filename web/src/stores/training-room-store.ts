@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { SetPrescription } from '@kinevo/shared/lib/hydrate-workout-sets'
 
 // ---------------------------------------------------------------------------
 // Types — mirror mobile interfaces for data parity
@@ -38,6 +39,10 @@ export interface ExerciseData {
     order_index: number                  // global position in workout
     exercise_function?: string | null    // warmup, activation, main, accessory, conditioning
     item_config?: Record<string, any>    // warmup/cardio specific configuration
+    /** Per-set prescription hidratada de assigned_workout_item_sets (mesma
+     *  lógica compartilhada do app do aluno). Vazio em programas legados sem
+     *  linhas per-set — UI cai nos agregados. */
+    setScheme?: SetPrescription[]
 }
 
 export interface WorkoutNote {
@@ -64,6 +69,10 @@ export interface ActiveSession {
     workoutNotes: WorkoutNote[]
     status: 'ready' | 'pre_checkin' | 'in_progress' | 'post_checkin' | 'finishing'
     startedAt: number | null             // Date.now() absolute timestamp
+    /** Quando o aluno entrou na sala. Sessões 'ready' nunca tinham startedAt
+     *  e por isso NUNCA expiravam no GC — snapshot velho ficava eterno no
+     *  localStorage e divergia do programa real. */
+    addedAt: number
     restTimerEnd: number | null
     restTimerDuration: number | null
     preWorkoutTrigger?: FormTriggerData | null
@@ -100,6 +109,13 @@ interface TrainingRoomStore {
     addStudent: (studentId: string, data: SessionSetupData) => void
     removeStudent: (studentId: string) => void
     setActiveStudent: (studentId: string | null) => void
+    /** Revalida a prescrição de uma sessão contra o banco (treinador pode ter
+     *  editado o programa depois do aluno entrar na sala). 'ready' substitui
+     *  tudo; sessões em andamento fazem merge preservando o progresso. */
+    refreshSessionData: (
+        studentId: string,
+        fresh: { workoutName: string; exercises: ExerciseData[]; workoutNotes: WorkoutNote[] },
+    ) => void
 
     // Workout lifecycle
     startWorkout: (studentId: string) => void
@@ -178,6 +194,7 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                             workoutNotes: data.workoutNotes || [],
                             status: 'ready',
                             startedAt: null,
+                            addedAt: Date.now(),
                             restTimerEnd: null,
                             restTimerDuration: null,
                             preWorkoutTrigger: data.preWorkoutTrigger ?? null,
@@ -209,6 +226,79 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
 
             setActiveStudent(studentId) {
                 set({ activeStudentId: studentId })
+            },
+
+            refreshSessionData(studentId, fresh) {
+                set((state) => {
+                    const session = state.sessions[studentId]
+                    if (!session) return state
+
+                    // Sessão ainda não começou: snapshot novo substitui tudo —
+                    // não há progresso a preservar.
+                    if (session.status === 'ready') {
+                        return {
+                            sessions: {
+                                ...state.sessions,
+                                [studentId]: {
+                                    ...session,
+                                    workoutName: fresh.workoutName,
+                                    exercises: fresh.exercises,
+                                    workoutNotes: fresh.workoutNotes,
+                                },
+                            },
+                        }
+                    }
+
+                    // Sessão em andamento: a prescrição nova vence, o progresso
+                    // (pesos/reps digitados, séries concluídas, trocas feitas na
+                    // sala) é preservado por item.
+                    const oldById = new Map(session.exercises.map((ex) => [ex.id, ex]))
+                    const freshIds = new Set(fresh.exercises.map((ex) => ex.id))
+
+                    const merged = fresh.exercises.map((freshEx) => {
+                        const old = oldById.get(freshEx.id)
+                        if (!old) return freshEx // item novo adicionado pelo editor
+
+                        // Redimensiona o progresso pro novo nº de séries:
+                        // mantém as N primeiras, completa com vazias.
+                        const setsData = Array.from({ length: freshEx.setsData.length }, (_, i) =>
+                            old.setsData[i] ?? { weight: '', reps: '', completed: false },
+                        )
+
+                        const withProgress: ExerciseData = { ...freshEx, setsData }
+
+                        // Troca feita ao vivo na sala sobrevive ao refresh.
+                        if (old.swap_source !== 'none' && old.exercise_id !== freshEx.exercise_id) {
+                            withProgress.exercise_id = old.exercise_id
+                            withProgress.name = old.name
+                            withProgress.swap_source = old.swap_source
+                            withProgress.video_url = old.video_url
+                            withProgress.previousLoad = old.previousLoad
+                            withProgress.previousSets = old.previousSets
+                        }
+                        return withProgress
+                    })
+
+                    // Item removido do programa MAS com série já concluída na
+                    // sala: mantém no fim — trabalho registrado não some da tela.
+                    for (const old of session.exercises) {
+                        if (!freshIds.has(old.id) && old.setsData.some((s) => s.completed)) {
+                            merged.push(old)
+                        }
+                    }
+
+                    return {
+                        sessions: {
+                            ...state.sessions,
+                            [studentId]: {
+                                ...session,
+                                workoutName: fresh.workoutName,
+                                exercises: merged,
+                                workoutNotes: fresh.workoutNotes,
+                            },
+                        },
+                    }
+                })
             },
 
             startWorkout(studentId) {
@@ -474,9 +564,10 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                     let activeId = state.activeStudentId
 
                     for (const [id, session] of Object.entries(state.sessions)) {
-                        const age = session.startedAt
-                            ? now - session.startedAt
-                            : 0
+                        // Sessões 'ready' nunca têm startedAt — sem o addedAt
+                        // como fallback elas nunca expiravam (snapshot eterno).
+                        const base = session.startedAt ?? session.addedAt ?? now
+                        const age = now - base
                         if (age < MAX_AGE_MS) {
                             sessions[id] = session
                         } else if (activeId === id) {
@@ -495,14 +586,27 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
         }),
         {
             name: 'kinevo-training-room',
-            version: 1,
+            version: 2,
             migrate(persisted: any, version: number) {
+                if (version === 1 && persisted && persisted.sessions) {
+                    // v1 → v2: sessões antigas ganham addedAt (baseline agora —
+                    // expiram em 24h se não forem usadas) e setScheme vazio.
+                    const sessions: Record<string, Partial<ActiveSession>> = {}
+                    for (const [id, session] of Object.entries(persisted.sessions as Record<string, Partial<ActiveSession>>)) {
+                        sessions[id] = {
+                            ...session,
+                            addedAt: session.addedAt ?? Date.now(),
+                        }
+                    }
+                    return { ...persisted, sessions }
+                }
                 if (version === 0 && persisted && persisted.sessions) {
                     // v0 → v1: add trigger fields to existing sessions
                     const sessions: Record<string, any> = {}
                     for (const [id, session] of Object.entries(persisted.sessions as Record<string, any>)) {
                         sessions[id] = {
                             ...session,
+                            addedAt: session.addedAt ?? Date.now(),
                             preWorkoutTrigger: session.preWorkoutTrigger ?? null,
                             postWorkoutTrigger: session.postWorkoutTrigger ?? null,
                             preWorkoutSubmissionId: session.preWorkoutSubmissionId ?? null,

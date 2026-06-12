@@ -182,7 +182,7 @@ export function ExerciseCard({
                                 weight={setData.weight}
                                 reps={setData.reps}
                                 completed={setData.completed}
-                                targetReps={exercise.reps}
+                                targetReps={exercise.setScheme?.[si]?.reps_target || exercise.reps}
                                 disabled={disabled}
                                 previousSet={exercise.previousSets?.[si]}
                                 onWeightChange={(v) => onWeightChange(si, v)}

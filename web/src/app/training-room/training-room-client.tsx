@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, ArrowLeft, Play, Square, Trash2, X } from 'lucide-react'
 import { useTrainingRoomStore } from '@/stores/training-room-store'
-import type { ExerciseData, WorkoutNote } from '@/stores/training-room-store'
 import { StudentPickerModal } from '@/components/training-room/student-picker-modal'
 import { ExerciseCard } from '@/components/training-room/exercise-card'
 import { SupersetGroup } from '@/components/training-room/superset-group'
@@ -17,6 +16,7 @@ import { RestTimerOverlay } from '@/components/training-room/rest-timer-overlay'
 import { WarmupCardioCard } from '@/components/training-room/warmup-cardio-card'
 import { WorkoutFormInline } from '@/components/training-room/workout-form-inline'
 import { finishTrainingRoomWorkout } from '@/actions/training-room/finish-training-room-workout'
+import { getStudentTodayWorkout } from '@/actions/training-room/get-student-today-workout'
 import type { SubstituteOption } from '@/actions/training-room/get-substitute-exercises'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { useToast } from '@/components/ui/toast'
@@ -37,6 +37,7 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
     const setFinishing = useTrainingRoomStore((s) => s.setFinishing)
     const finishSession = useTrainingRoomStore((s) => s.finishSession)
     const removeStudent = useTrainingRoomStore((s) => s.removeStudent)
+    const refreshSessionData = useTrainingRoomStore((s) => s.refreshSessionData)
     const startRestTimer = useTrainingRoomStore((s) => s.startRestTimer)
     const clearRestTimer = useTrainingRoomStore((s) => s.clearRestTimer)
     const setPreCheckin = useTrainingRoomStore((s) => s.setPreCheckin)
@@ -66,6 +67,30 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
     useEffect(() => {
         clearExpiredSessions()
     }, [clearExpiredSessions])
+
+    // Revalida as sessões persistidas contra o banco ao abrir a sala. O store
+    // vive em localStorage: sem isto, uma edição feita no programa DEPOIS do
+    // aluno entrar na sala nunca aparecia aqui (e o snapshot velho ficava
+    // valendo). 'ready' substitui tudo; em andamento o merge preserva o
+    // progresso (ver refreshSessionData). Falha de rede mantém o snapshot.
+    useEffect(() => {
+        const { sessions: current } = useTrainingRoomStore.getState()
+        for (const session of Object.values(current)) {
+            getStudentTodayWorkout(session.studentId, session.assignedWorkoutId)
+                .then((result) => {
+                    if (result.data) {
+                        refreshSessionData(session.studentId, {
+                            workoutName: result.data.workoutName,
+                            exercises: result.data.exercises,
+                            workoutNotes: result.data.workoutNotes,
+                        })
+                    }
+                })
+                .catch(() => { /* offline/erro transiente — snapshot continua */ })
+        }
+        // Intencional: uma vez por mount da sala.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const handleStartWorkout = () => {
         if (!activeStudentId || !activeSession) return
@@ -174,9 +199,12 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
 
             toggleSetComplete(activeStudentId, exerciseIdx, setIdx)
 
-            // Start rest timer when completing a set (not uncompleting)
-            if (setData && !setData.completed && exercise.rest_seconds > 0) {
-                startRestTimer(activeStudentId, exercise.rest_seconds)
+            // Start rest timer when completing a set (not uncompleting).
+            // Per-set vence o agregado: prescrições avançadas (drop-set,
+            // cluster, descansos por série) usam o rest daquela série.
+            const restForSet = exercise.setScheme?.[setIdx]?.rest_seconds ?? exercise.rest_seconds
+            if (setData && !setData.completed && restForSet > 0) {
+                startRestTimer(activeStudentId, restForSet)
             }
         },
         [activeStudentId, activeSession, toggleSetComplete, startRestTimer],
@@ -283,7 +311,8 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                         }
                                         removeStudent(session.studentId)
                                     }}
-                                    className="ml-1 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
+                                    aria-label={`Remover ${session.studentName} da sala`}
+                                    className="ml-1 rounded-full p-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity hover:bg-white/10"
                                 >
                                     <X size={12} />
                                 </button>

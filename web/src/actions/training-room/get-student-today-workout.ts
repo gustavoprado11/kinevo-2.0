@@ -1,6 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { hydrateSetPrescriptions } from '@kinevo/shared/lib/hydrate-workout-sets'
+import type { WorkoutSet } from '@kinevo/shared/types/prescription'
 import type { ExerciseData, WorkoutSetData, WorkoutNote, PreviousSetData } from '@/stores/training-room-store'
 
 interface GetStudentWorkoutResult {
@@ -99,6 +101,35 @@ export async function getStudentTodayWorkout(
         .map((item) => item.exercise_id)
         .filter(Boolean) as string[]
 
+    // Per-set prescription rows (pirâmide, drop-set, descansos por série…).
+    // Sem isto a sala achatava tudo nos agregados e divergia do app do aluno,
+    // que sempre hidratou estas linhas (mesma lógica compartilhada).
+    const setSchemeByItem = new Map<string, WorkoutSet[]>()
+    const exerciseItemIds = exerciseItems.map((item) => item.id)
+    if (exerciseItemIds.length > 0) {
+        const { data: setRows } = await supabase
+            .from('assigned_workout_item_sets')
+            .select('assigned_workout_item_id, set_number, set_type, reps, rest_seconds, weight_target_kg, weight_target_pct1rm, rir, tempo, notes, round_number')
+            .in('assigned_workout_item_id', exerciseItemIds)
+
+        for (const row of setRows || []) {
+            const list = setSchemeByItem.get(row.assigned_workout_item_id) ?? []
+            list.push({
+                set_number: row.set_number,
+                set_type: row.set_type as WorkoutSet['set_type'],
+                reps: row.reps,
+                rest_seconds: row.rest_seconds,
+                weight_target_kg: row.weight_target_kg,
+                weight_target_pct1rm: row.weight_target_pct1rm,
+                rir: row.rir,
+                tempo: row.tempo,
+                notes: row.notes,
+                round_number: row.round_number ?? null,
+            })
+            setSchemeByItem.set(row.assigned_workout_item_id, list)
+        }
+    }
+
     const previousData = await fetchPreviousData(supabase, studentId, exerciseIds)
 
     // Fetch trainer's custom videos for these exercises
@@ -119,9 +150,18 @@ export async function getStudentTodayWorkout(
     const exercises: ExerciseData[] = exerciseItems.map((item) => {
         const exerciseRef = item.exercises as any
         const exerciseId = item.exercise_id || ''
-        const setsCount = item.sets || 3
         const prev = previousData.get(exerciseId)
         const parentSuperset = item.parent_item_id ? supersetMap.get(item.parent_item_id) : null
+
+        // Mesma hidratação do mobile: linhas per-set quando existem; senão
+        // N séries idênticas a partir dos agregados (comportamento legado).
+        const setPrescriptions = hydrateSetPrescriptions({
+            assignedSets: setSchemeByItem.get(item.id) ?? null,
+            aggregateSets: item.sets || 3,
+            aggregateReps: item.reps || '12',
+            aggregateRestSeconds: item.rest_seconds || 60,
+        })
+        const setsCount = setPrescriptions.length || (item.sets || 3)
 
         return {
             id: item.id,
@@ -136,6 +176,7 @@ export async function getStudentTodayWorkout(
             substitute_exercise_ids: item.substitute_exercise_ids || [],
             swap_source: 'none' as const,
             setsData: createInitialSets(setsCount),
+            setScheme: setSchemeByItem.has(item.id) ? setPrescriptions : [],
             previousLoad: prev?.load,
             previousSets: prev?.sets,
             notes: item.notes || null,
