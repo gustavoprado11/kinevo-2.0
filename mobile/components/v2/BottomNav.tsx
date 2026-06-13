@@ -32,14 +32,20 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
+import { GlassView, GlassContainer, isLiquidGlassAvailable } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import { v2 } from '@kinevo/shared/tokens';
 import { useV2Colors, useIsDark } from '../../hooks/useV2Colors';
 import { useBrand } from '../../stores/brandStore';
-import { toRgba } from '../../lib/brandColor';
 
 const { spacing, radius, shadows } = v2;
+
+/**
+ * iOS 26+ expõe o material Liquid Glass nativo (UIGlassEffect) via expo-glass-effect.
+ * Avaliado uma vez no load — a disponibilidade não muda em runtime. Em iOS < 26 e
+ * Android cai no fallback BlurView + overlay (visual idêntico ao anterior).
+ */
+const LIQUID_GLASS = isLiquidGlassAvailable();
 
 export interface BottomNavTab<K extends string = string> {
     key: K;
@@ -73,6 +79,41 @@ export function BottomNav<K extends string = string>({
     const overlayBg = isDark ? 'rgba(24,24,27,0.78)' : 'rgba(255,255,255,0.78)';
     const borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(9,9,11,0.06)';
 
+    const tabsRow = (
+        <View style={styles.tabsRow}>
+            {tabs.map((tab) => (
+                <NavTabItem
+                    key={tab.key}
+                    tab={tab}
+                    active={tab.key === activeKey}
+                    onPress={() => onChange(tab.key)}
+                />
+            ))}
+        </View>
+    );
+
+    // iOS 26+: material Liquid Glass nativo. O GlassContainer permite que a cápsula
+    // tingida da aba ativa "funda" com a barra (efeito líquido do sistema).
+    if (LIQUID_GLASS) {
+        return (
+            <GlassContainer
+                spacing={24}
+                accessibilityRole="tablist"
+                accessibilityLabel={accessibilityLabel ?? 'Navegação principal'}
+                style={[styles.wrapper, { borderColor }, nativeShadow(shadows.glass), style]}
+            >
+                <GlassView
+                    style={[StyleSheet.absoluteFill, styles.glassFill]}
+                    glassEffectStyle="regular"
+                    colorScheme={isDark ? 'dark' : 'light'}
+                    isInteractive
+                />
+                {tabsRow}
+            </GlassContainer>
+        );
+    }
+
+    // Fallback iOS < 26 / Android: blur + overlay translúcido (visual anterior).
     return (
         <View
             accessibilityRole="tablist"
@@ -81,16 +122,7 @@ export function BottomNav<K extends string = string>({
         >
             <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.blur} />
             <View style={[styles.overlay, { backgroundColor: overlayBg }]} />
-            <View style={styles.tabsRow}>
-                {tabs.map((tab) => (
-                    <NavTabItem
-                        key={tab.key}
-                        tab={tab}
-                        active={tab.key === activeKey}
-                        onPress={() => onChange(tab.key)}
-                    />
-                ))}
-            </View>
+            {tabsRow}
         </View>
     );
 }
@@ -106,6 +138,7 @@ function NavTabItem<K extends string>({
 }) {
     const colors = useV2Colors();
     const brand = useBrand();
+    const isDark = useIsDark();
     const scale = useSharedValue(1);
     const activeProgress = useSharedValue(active ? 1 : 0);
 
@@ -141,19 +174,21 @@ function NavTabItem<K extends string>({
                 style={styles.tabPressable}
                 hitSlop={4}
             >
-                <Animated.View style={[StyleSheet.absoluteFill, styles.tintedWrap, tintedStyle]}>
-                    <LinearGradient
-                        colors={[toRgba(brand.color, 0.22), toRgba(brand.color, 0.10)]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={StyleSheet.absoluteFill}
-                    />
-                </Animated.View>
+                {/* Realce neutro sutil da aba ativa — sem cor de fundo; o destaque
+                    fica por conta do ícone/label tingidos na cor da brand. */}
+                <Animated.View
+                    style={[
+                        StyleSheet.absoluteFill,
+                        styles.tintedWrap,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(9,9,11,0.06)' },
+                        tintedStyle,
+                    ]}
+                />
 
                 <View style={styles.iconWrap}>
                     {React.isValidElement(tab.icon) && typeof tab.icon.type !== 'string'
                         ? React.cloneElement(tab.icon as React.ReactElement<{ color?: string; strokeWidth?: number }>, {
-                            color: active ? brand.color : colors.text.quaternary,
+                            color: active ? brand.color : colors.text.secondary,
                             strokeWidth: active ? 2.4 : 2,
                         })
                         : tab.icon}
@@ -175,7 +210,7 @@ function NavTabItem<K extends string>({
                     style={{
                         fontFamily: active ? 'PlusJakartaSans_700Bold' : 'PlusJakartaSans_600SemiBold',
                         fontSize: 10,
-                        color: active ? brand.color : colors.text.quaternary,
+                        color: active ? brand.color : colors.text.secondary,
                         marginTop: 2,
                     }}
                     numberOfLines={1}
@@ -197,6 +232,9 @@ const styles = StyleSheet.create({
     },
     blur: {
         ...StyleSheet.absoluteFillObject,
+    },
+    glassFill: {
+        borderRadius: 22,
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,
