@@ -66,6 +66,12 @@
       "expo-secure-store",
       "expo-web-browser",
       [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "O Kinevo usa o Face ID para confirmar saques da sua Carteira."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "O Kinevo precisa de acesso à sua galeria para você alterar sua foto de perfil."

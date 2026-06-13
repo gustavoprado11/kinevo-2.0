@@ -3,6 +3,7 @@ import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndic
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as LocalAuthentication from "expo-local-authentication";
 import { ChevronLeft, KeyRound, ArrowUpRight, Clock, CheckCircle2, XCircle, ShieldAlert } from "lucide-react-native";
 import type { PixKeyType } from "@kinevo/shared/types/asaas";
 import { usePixKeys } from "../../../hooks/usePixKeys";
@@ -59,6 +60,19 @@ export default function PayoutScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setSubmitting(true);
         try {
+            // Fase C: biometria antes de mover dinheiro. Só exige quando o
+            // device tem biometria cadastrada (fallback de passcode fica por
+            // conta do sistema); sem hardware/cadastro, segue sem travar.
+            const enrolled =
+                (await LocalAuthentication.hasHardwareAsync()) &&
+                (await LocalAuthentication.isEnrolledAsync());
+            if (enrolled) {
+                const auth = await LocalAuthentication.authenticateAsync({
+                    promptMessage: `Confirmar saque de ${formatBRL(value)}`,
+                    cancelLabel: "Cancelar",
+                });
+                if (!auth.success) return; // usuário cancelou/falhou — não cobra
+            }
             const result = await requestPayout(activeKeyId, value);
             refreshBalance();
             setAmount("");
