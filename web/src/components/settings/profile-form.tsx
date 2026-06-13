@@ -167,6 +167,9 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                                 disabled
                                 className="w-full cursor-not-allowed rounded-lg border border-k-border-subtle bg-glass-bg px-3 py-2 text-sm text-k-text-quaternary"
                             />
+                            <p className="mt-1 text-[11px] text-k-text-quaternary">
+                                O e-mail de acesso não pode ser alterado por aqui.
+                            </p>
                         </div>
                     </div>
                 </div>

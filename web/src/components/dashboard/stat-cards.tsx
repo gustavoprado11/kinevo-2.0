@@ -222,6 +222,9 @@ export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
                 </div>
                 <SessionProgressBar current={stats.sessionsThisWeek} total={stats.expectedSessionsThisWeek} />
                 <Sparkline data={stats.sessionsPerDay} />
+                {stats.sessionsThisWeek === 0 && stats.expectedSessionsThisWeek === 0 && (
+                    <p className="mt-1 text-[11px] text-[#AEAEB2] dark:text-k-text-quaternary">Sem treinos registrados ainda</p>
+                )}
             </motion.div>
 
             {/* MRR */}
@@ -236,6 +239,7 @@ export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
                     <span className="text-xs font-medium text-[#86868B] dark:text-k-text-tertiary uppercase tracking-wide">Receita mensal</span>
                     <button
                         onClick={toggleMrr}
+                        title={mrrVisible ? 'Ocultar receita mensal' : 'Mostrar receita mensal'}
                         aria-label={mrrVisible ? 'Ocultar receita mensal' : 'Mostrar receita mensal'}
                         aria-pressed={mrrVisible}
                         className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
@@ -249,6 +253,9 @@ export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
                     </p>
                     {mrrVisible && <TrendBadge current={stats.mrr} previous={stats.mrrLastMonth} />}
                 </div>
+                {mrrVisible && stats.mrr === 0 && (
+                    <p className="mt-1 text-[11px] text-[#AEAEB2] dark:text-k-text-quaternary">Nenhuma assinatura ativa ainda</p>
+                )}
             </motion.div>
 
             {/* Adherence */}

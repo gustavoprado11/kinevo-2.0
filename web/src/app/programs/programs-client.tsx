@@ -448,9 +448,9 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                             </>
                         ) : (
                             <>
-                                <p className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary mb-1">Nenhum modelo salvo</p>
+                                <p className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary mb-1">Nenhum programa ainda</p>
                                 <p className="text-xs text-[#86868B] dark:text-k-text-quaternary max-w-sm mx-auto">
-                                    Salve programas como modelo para reutilizar com diferentes alunos
+                                    Crie programas reutilizáveis para atribuir aos seus alunos
                                 </p>
                                 <button
                                     onClick={() => router.push('/programs/new')}

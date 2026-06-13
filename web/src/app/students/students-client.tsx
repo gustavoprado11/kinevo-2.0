@@ -429,7 +429,7 @@ export function StudentsClient({
                                                     <div>
                                                         <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">{student.name}</span>
                                                         {student.is_trainer_profile && (
-                                                            <span className="ml-2 px-1.5 py-0.5 text-[9px] font-medium rounded-full bg-[#F5F5F7] dark:bg-violet-500/10 text-[#6E6E73] dark:text-violet-300 border border-[#D2D2D7] dark:border-violet-500/20">
+                                                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-[#F3F0FF] dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-300 border border-[#E0D7FF] dark:border-violet-500/20">
                                                                 Eu
                                                             </span>
                                                         )}
@@ -488,7 +488,7 @@ export function StudentsClient({
                                                         {timeAgo(student.lastSessionDate)}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-sm text-[#FF3B30] dark:text-k-text-quaternary">Nunca</span>
+                                                    <span className="text-sm text-[#FF9500] dark:text-yellow-400">Nunca</span>
                                                 )}
                                             </td>
 
