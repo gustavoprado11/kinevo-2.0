@@ -59,6 +59,11 @@ audit/
 *.docx
 /prompts-*.md
 /prompt-*.md
+# Explicit uppercase variants: with core.ignorecase=true git matches these via
+# the lowercase patterns above, but EAS Build packs case-sensitively and flags
+# the mismatch ("inconsistent filename casing"). Match them explicitly.
+/PROMPT-*.md
+/PROMPTS-*.md
 /kinevo-*.md
 
 # Design work + specs locais (orchestrator workflow)
