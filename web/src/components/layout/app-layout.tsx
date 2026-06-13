@@ -5,7 +5,6 @@ import { FinancialBadge } from './financial-badge'
 import { ThemeSync } from '@/components/theme-sync'
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
 import { OnboardingChecklist } from '@/components/onboarding/widgets/onboarding-checklist'
-import { MigrationBanner } from './migration-banner'
 import dynamic from 'next/dynamic'
 
 const UnifiedCommunicationPanel = dynamic(
@@ -65,7 +64,6 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
                 {/* Page content */}
                 <main className="p-8">
                     <OnboardingProvider initialState={onboardingState ?? null} trainerModalityFocus={trainerModalityFocus}>
-                        <MigrationBanner />
                         {children}
                     </OnboardingProvider>
                 </main>

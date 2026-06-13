@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, lazy, Suspense, useCallback } from 'react'
+import { useState, useMemo, lazy, Suspense, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import dynamic from 'next/dynamic'
@@ -220,6 +220,16 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
         ),
     }), [data, trainer.id, rankedStudents, handleMarkAsPaid, handleSellPlan, handleArchiveStudent])
 
+    // Coordenação dos banners do topo: no máximo UM por vez, com prioridade
+    // TrainerProfile > Modality. Evita o empilhamento que empurrava os KPIs
+    // pra baixo da dobra.
+    const [profileBannerDismissed, setProfileBannerDismissed] = useState(true)
+    useEffect(() => {
+        setProfileBannerDismissed(!!localStorage.getItem('kinevo_trainer_profile_banner_dismissed'))
+    }, [])
+    // Modality só aparece depois que o banner de perfil (maior prioridade) foi dispensado.
+    const showModalityToast = profileBannerDismissed
+
     return (
         <AppLayout
             trainerName={trainer.name}
@@ -231,10 +241,11 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             students={students.map(s => ({ id: s.id, name: s.name, status: s.status }))}
         >
             {/* Modality Inference Toast (Fase 17b) — só renderiza se modalityFocus=null
-                + 3+ alunos com modality dominante >= 80% + tip não dispensada */}
-            <ModalityInferenceToast studentsCount={students.length} />
+                + 3+ alunos com modality dominante >= 80% + tip não dispensada.
+                Suprimido enquanto Migration ou TrainerProfile (maior prioridade) estiverem ativos. */}
+            {showModalityToast && <ModalityInferenceToast studentsCount={students.length} />}
 
-            {/* Trainer Profile Banner (conditional, dismissible) */}
+            {/* Trainer Profile Banner (conditional, dismissible) — maior prioridade entre os banners do dashboard. */}
             <TrainerProfileBanner selfStudentId={selfStudentId} />
 
             {/* 1. Saudação — always fixed */}
