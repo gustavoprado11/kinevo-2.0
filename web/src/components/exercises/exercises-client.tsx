@@ -13,7 +13,7 @@ import { ConciergeButton } from './concierge-button'
 import { ConciergeModal } from './concierge-modal'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, Settings2, LayoutGrid, List, ChevronDown, Check, Layers } from 'lucide-react'
+import { Plus, Search, Settings2, LayoutGrid, List, ChevronDown, Check, Layers, User } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { revalidateMyExerciseLibrary } from '@/actions/exercises/revalidate-library'
@@ -139,6 +139,7 @@ export function ExercisesClient({
     const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
     const [selectedPatterns, setSelectedPatterns] = useState<string[]>([])
     const [groupByPattern, setGroupByPattern] = useState(false)
+    const [showOnlyMine, setShowOnlyMine] = useState(false)
 
     // Mapa parent -> children names (e.g. "Mobilidade" -> ["Mobilidade Quadril", "Mobilidade Ombro", ...])
     const childrenByParentName = useMemo(() => {
@@ -249,6 +250,8 @@ export function ExercisesClient({
     // Filter exercises (Search + Muscle Group)
     const filteredExercises = useMemo(() => {
         return deduplicatedExercises.filter(exercise => {
+            const matchesOwner = !showOnlyMine || exercise.owner_id === currentTrainerId
+
             const matchesSearch = exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
 
             let matchesMuscle = true
@@ -260,9 +263,15 @@ export function ExercisesClient({
             const matchesPattern = selectedPatterns.length === 0
                 || selectedPatterns.includes(patternLabel(exercise.movement_pattern))
 
-            return matchesSearch && matchesMuscle && matchesPattern
+            return matchesOwner && matchesSearch && matchesMuscle && matchesPattern
         })
-    }, [deduplicatedExercises, searchQuery, expandedSelection, selectedPatterns])
+    }, [deduplicatedExercises, showOnlyMine, currentTrainerId, searchQuery, expandedSelection, selectedPatterns])
+
+    // Quantos exercícios são de autoria do próprio treinador (para o badge do toggle).
+    const myExercisesCount = useMemo(
+        () => deduplicatedExercises.filter(e => e.owner_id === currentTrainerId).length,
+        [deduplicatedExercises, currentTrainerId]
+    )
 
     // Agrupamento por Padrão de Movimento (seções ordenadas pela sequência canônica).
     const groupedByPattern = useMemo(() => {
@@ -444,6 +453,24 @@ export function ExercisesClient({
                                 counts={patternCounts}
                             />
                         )}
+
+                        <button
+                            onClick={() => setShowOnlyMine(v => !v)}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                                showOnlyMine
+                                    ? 'bg-[#7C3AED]/10 border-[#7C3AED]/30 text-[#7C3AED] dark:bg-violet-500/10 dark:border-violet-500/30 dark:text-violet-300'
+                                    : 'bg-white dark:bg-glass-bg border-[#D2D2D7] dark:border-k-border-primary text-[#1D1D1F] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active'
+                            }`}
+                            title="Mostrar apenas exercícios criados por mim"
+                        >
+                            <User className="w-3.5 h-3.5" />
+                            Meus exercícios
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                showOnlyMine ? 'bg-[#7C3AED]/20 dark:bg-violet-500/20' : 'bg-[#F5F5F7] dark:bg-glass-bg-active text-[#8E8E93] dark:text-k-text-quaternary'
+                            }`}>
+                                {myExercisesCount}
+                            </span>
+                        </button>
 
                         <button
                             onClick={() => setIsManagerOpen(true)}

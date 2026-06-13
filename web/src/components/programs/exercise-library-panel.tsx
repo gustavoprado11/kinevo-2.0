@@ -205,6 +205,7 @@ export function ExerciseLibraryPanel({
 }: ExerciseLibraryPanelProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
+    const [showOnlyMine, setShowOnlyMine] = useState(false)
     const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
@@ -237,6 +238,8 @@ export function ExerciseLibraryPanel({
                 return false
             }
 
+            const matchesOwner = !showOnlyMine || exercise.owner_id === trainerId
+
             const matchesSearch = exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
 
             const exerciseMuscles = exercise.muscle_groups && exercise.muscle_groups.length > 0
@@ -246,9 +249,9 @@ export function ExerciseLibraryPanel({
             const matchesMuscle = !selectedGroup ||
                 exerciseMuscles.includes(selectedGroup)
 
-            return matchesSearch && matchesMuscle
+            return matchesOwner && matchesSearch && matchesMuscle
         })
-    }, [exercises, searchQuery, selectedGroup, overrideSystemIds])
+    }, [exercises, showOnlyMine, trainerId, searchQuery, selectedGroup, overrideSystemIds])
 
     // Group exercises by primary muscle group (for "Todos" mode without search)
     const groupedExercises = useMemo(() => {
@@ -307,6 +310,17 @@ export function ExerciseLibraryPanel({
                 {/* Scrollable filter pills with arrow navigation */}
                 {muscleGroups.length > 0 && (
                     <ScrollableChips>
+                        <button
+                            onClick={() => setShowOnlyMine(v => !v)}
+                            title="Mostrar apenas exercícios criados por mim"
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
+                                showOnlyMine
+                                    ? 'bg-[#7C3AED] dark:bg-violet-600 text-white'
+                                    : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-secondary'
+                            }`}
+                        >
+                            Meus
+                        </button>
                         <button
                             onClick={() => setSelectedGroup(null)}
                             className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
