@@ -1,0 +1,9 @@
+{
+  "name": "kinevo-qa-loop",
+  "private": true,
+  "type": "module",
+  "description": "QA visual + improvement loop harness (CDP). Not part of the monorepo workspaces.",
+  "dependencies": {
+    "playwright-core": "^1.60.0"
+  }
+}
