@@ -247,10 +247,14 @@ export function ScheduleClient({
                         <h1 className="text-xl font-bold text-[#1D1D1F] dark:text-k-text-primary tracking-tight">
                             Agenda
                         </h1>
-                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-1">
+                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
                             Calendário semanal de agendamentos
-                            <span className="ml-2 text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary/70">
-                                ← → navegam · T volta pra hoje
+                            <span className="inline-flex items-center gap-1 text-[11px] text-[#6E6E73] dark:text-k-text-tertiary">
+                                <kbd className="rounded border border-[#D2D2D7] dark:border-k-border-subtle px-1 font-sans leading-none">←</kbd>
+                                <kbd className="rounded border border-[#D2D2D7] dark:border-k-border-subtle px-1 font-sans leading-none">→</kbd>
+                                navegam ·
+                                <kbd className="rounded border border-[#D2D2D7] dark:border-k-border-subtle px-1 font-sans leading-none">T</kbd>
+                                hoje
                             </span>
                         </p>
                     </div>
