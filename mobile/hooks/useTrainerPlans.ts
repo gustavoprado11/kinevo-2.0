@@ -15,6 +15,11 @@ export interface TrainerPlan {
     stripe_price_id: string | null;
     created_at: string;
     student_count?: number;
+    // Métodos de pagamento Asaas habilitados no plano (o select("*") já traz;
+    // ausente/null = default do web: PIX e cartão sim, boleto não).
+    allow_pix?: boolean | null;
+    allow_credit_card?: boolean | null;
+    allow_boleto?: boolean | null;
 }
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";

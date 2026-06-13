@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     View,
     Text,
+    TextInput,
     TouchableOpacity,
     Modal,
     ScrollView,
@@ -19,7 +20,10 @@ import { useRoleMode } from "../../contexts/RoleModeContext";
 import type { TrainerPlan } from "../../hooks/useTrainerPlans";
 import { useV2Colors, type V2Palette } from "../../hooks/useV2Colors";
 import { toRgba } from "../../lib/brandColor";
-import { formatBRL as formatCurrency } from "@/lib/currency";
+import { formatBRL as formatCurrency, parseBRL } from "@/lib/currency";
+import { brDateToISO, maskBrDate, toBrDate, toLocalISO } from "../../lib/brDate";
+import { FeesSimulationCard } from "./FeesSimulationCard";
+import type { PaymentMethod } from "@kinevo/shared/lib/asaas/fees";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
@@ -68,6 +72,9 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [selectedBilling, setSelectedBilling] = useState<BillingType | null>(null);
     const [selectedPlan, setSelectedPlan] = useState<TrainerPlan | null>(null);
+    // Avulsa: valor editável (prefill = preço do plano) e vencimento DD/MM/AAAA.
+    const [chargeValue, setChargeValue] = useState("");
+    const [dueDate, setDueDate] = useState("");
     const [submitting, setSubmitting] = useState(false);
     // A3: guard idempotente síncrono — `submitting` (state) só reflete no próximo
     // render, então dois toques no mesmo frame disparavam duas cobranças/links.
@@ -97,6 +104,8 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
             setSelectedStudent(null);
             setSelectedBilling(null);
             setSelectedPlan(null);
+            setChargeValue("");
+            setDueDate("");
         } else if (preSelectedStudent) {
             setSelectedStudent(preSelectedStudent);
             setStep("billing");
@@ -124,6 +133,10 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
     const handleSelectPlan = (plan: TrainerPlan) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setSelectedPlan(plan);
+        // Avulsa: prefill do valor com o preço do plano e vencimento hoje+3
+        // (data LOCAL — ver nota B6 no handleConfirm).
+        setChargeValue(plan.price.toFixed(2).replace(".", ","));
+        setDueDate(toBrDate(new Date(Date.now() + 3 * 86_400_000)));
         setStep("confirm");
     };
 
@@ -145,6 +158,26 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                 break;
         }
     };
+
+    // Avulsa: valor/vencimento efetivos derivados dos inputs.
+    const oneOffValue = parseBRL(chargeValue);
+    const dueDateISO = brDateToISO(dueDate);
+    // B6: comparação por string de data LOCAL (nunca toISOString, que é UTC e
+    // à noite em BRT adiantava um dia).
+    const todayISO = toLocalISO(new Date());
+    const dueDateInPast = !!dueDateISO && dueDateISO < todayISO;
+    const oneOffValid = oneOffValue > 0 && !!dueDateISO && !dueDateInPast;
+
+    // Métodos simulados no card de taxas: recorrência é só cartão (Rodada 10);
+    // avulsa segue os métodos habilitados no plano (defaults do web).
+    const simulationMethods: PaymentMethod[] = (() => {
+        if (selectedBilling === "asaas_recurring") return ["CREDIT_CARD"];
+        const m: PaymentMethod[] = [];
+        if (selectedPlan?.allow_pix ?? true) m.push("PIX");
+        if (selectedPlan?.allow_credit_card ?? true) m.push("CREDIT_CARD");
+        if (selectedPlan?.allow_boleto) m.push("BOLETO");
+        return m.length > 0 ? m : ["PIX", "CREDIT_CARD"];
+    })();
 
     const handleConfirm = useCallback(async () => {
         if (!selectedStudent) return;
@@ -169,14 +202,19 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                     });
                     url = r.url;
                 } else {
-                    // dueDate padrão: hoje + 3 dias (YYYY-MM-DD). B6: usa as
-                    // componentes de data LOCAIS — `toISOString().slice(0,10)` era
-                    // UTC e, à noite em BRT (UTC-3), adiantava o vencimento um dia.
-                    const d = new Date(Date.now() + 3 * 86_400_000);
-                    const dueDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                    if (!oneOffValid) {
+                        Alert.alert("Erro", "Confira o valor e o vencimento da cobrança.");
+                        return;
+                    }
                     const r = await walletFetch<{ url: string }>("/api/wallet/charges", {
                         method: "POST",
-                        body: { studentId: selectedStudent.id, planId: selectedPlan.id, value: selectedPlan.price, dueDate },
+                        body: {
+                            studentId: selectedStudent.id,
+                            planId: selectedPlan.id,
+                            value: oneOffValue,
+                            dueDate: dueDateISO,
+                            description: selectedPlan.title,
+                        },
                     });
                     url = r.url;
                 }
@@ -219,7 +257,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
             setSubmitting(false);
             submittingRef.current = false;
         }
-    }, [selectedStudent, selectedBilling, selectedPlan, onSuccess, onClose]);
+    }, [selectedStudent, selectedBilling, selectedPlan, oneOffValid, oneOffValue, dueDateISO, onSuccess, onClose]);
 
     const getStepTitle = () => {
         switch (step) {
@@ -440,14 +478,87 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                                 {selectedPlan && (
                                     <>
                                         <SummaryRow colors={colors} label="Plano" value={selectedPlan.title} />
-                                        <SummaryRow colors={colors} label="Valor" value={formatCurrency(selectedPlan.price)} />
-                                        <SummaryRow colors={colors} label="Recorrência" value={INTERVAL_LABELS[selectedPlan.interval] || selectedPlan.interval} />
+                                        <SummaryRow
+                                            colors={colors}
+                                            label="Valor"
+                                            value={formatCurrency(selectedBilling === "asaas_one_off" ? oneOffValue : selectedPlan.price)}
+                                        />
+                                        {selectedBilling === "asaas_one_off" ? (
+                                            <SummaryRow colors={colors} label="Vencimento" value={dueDate || "—"} />
+                                        ) : (
+                                            <SummaryRow colors={colors} label="Recorrência" value={INTERVAL_LABELS[selectedPlan.interval] || selectedPlan.interval} />
+                                        )}
                                     </>
                                 )}
                                 {selectedBilling === "courtesy" && (
                                     <SummaryRow colors={colors} label="Valor" value="Gratuito" />
                                 )}
                             </View>
+
+                            {/* Avulsa: valor editável + vencimento */}
+                            {selectedBilling === "asaas_one_off" && (
+                                <View style={{ marginBottom: 20 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text.primary, marginBottom: 8 }}>
+                                        Valor da cobrança
+                                    </Text>
+                                    <View style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        backgroundColor: colors.surface.card,
+                                        borderRadius: 12,
+                                        borderWidth: 1,
+                                        borderColor: oneOffValue > 0 ? colors.border.default : colors.semantic.danger.default,
+                                        paddingHorizontal: 14,
+                                        marginBottom: 14,
+                                    }}>
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.secondary }}>R$</Text>
+                                        <TextInput
+                                            value={chargeValue}
+                                            onChangeText={setChargeValue}
+                                            placeholder="0,00"
+                                            placeholderTextColor={colors.text.quaternary}
+                                            keyboardType="decimal-pad"
+                                            style={{ flex: 1, paddingVertical: 13, paddingHorizontal: 8, fontSize: 16, fontWeight: "700", color: colors.text.primary }}
+                                        />
+                                    </View>
+
+                                    <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text.primary, marginBottom: 8 }}>
+                                        Vencimento
+                                    </Text>
+                                    <View style={{
+                                        backgroundColor: colors.surface.card,
+                                        borderRadius: 12,
+                                        borderWidth: 1,
+                                        borderColor: dueDateISO && !dueDateInPast ? colors.border.default : colors.semantic.danger.default,
+                                        paddingHorizontal: 14,
+                                    }}>
+                                        <TextInput
+                                            value={dueDate}
+                                            onChangeText={(t) => setDueDate(maskBrDate(t))}
+                                            placeholder="DD/MM/AAAA"
+                                            placeholderTextColor={colors.text.quaternary}
+                                            keyboardType="number-pad"
+                                            style={{ paddingVertical: 13, fontSize: 16, fontWeight: "600", color: colors.text.primary }}
+                                        />
+                                    </View>
+                                    {dueDateInPast ? (
+                                        <Text style={{ fontSize: 12, color: colors.semantic.danger.fg, marginTop: 6 }}>
+                                            O vencimento não pode ficar no passado.
+                                        </Text>
+                                    ) : null}
+                                </View>
+                            )}
+
+                            {/* Simulação de taxas (quanto entra na Carteira) */}
+                            {isAsaas(selectedBilling) && (
+                                <View style={{ marginBottom: 20 }}>
+                                    <FeesSimulationCard
+                                        value={selectedBilling === "asaas_one_off" ? oneOffValue : (selectedPlan?.price ?? 0)}
+                                        methods={simulationMethods}
+                                        title="Valor que entra na sua Carteira"
+                                    />
+                                </View>
+                            )}
 
                             {/* Info text */}
                             {isAsaas(selectedBilling) && (
@@ -466,7 +577,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                             {/* Confirm button */}
                             <TouchableOpacity
                                 onPress={handleConfirm}
-                                disabled={submitting}
+                                disabled={submitting || (selectedBilling === "asaas_one_off" && !oneOffValid)}
                                 activeOpacity={0.7}
                                 style={{
                                     backgroundColor: colors.purple[600],
@@ -474,7 +585,7 @@ export function NewSubscriptionSheet({ visible, onClose, onSuccess, plans, walle
                                     paddingVertical: 16,
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    opacity: submitting ? 0.7 : 1,
+                                    opacity: submitting || (selectedBilling === "asaas_one_off" && !oneOffValid) ? 0.7 : 1,
                                 }}
                             >
                                 {submitting ? (

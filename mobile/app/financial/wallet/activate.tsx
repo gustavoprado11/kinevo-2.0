@@ -8,6 +8,7 @@ import { walletFetch } from "../../../lib/wallet-api";
 import { useRoleMode } from "../../../contexts/RoleModeContext";
 import { useV2Colors, type V2Palette } from "../../../hooks/useV2Colors";
 import { toRgba } from "../../../lib/brandColor";
+import { onlyDigits, brDateToISO, maskBrDate } from "../../../lib/brDate";
 
 type Mode = "choose" | "new" | "link";
 type CompanyType = "INDIVIDUAL" | "MEI" | "LIMITED" | "ASSOCIATION";
@@ -18,24 +19,6 @@ const COMPANY_TYPES: { value: CompanyType; label: string }[] = [
     { value: "LIMITED", label: "Empresa LTDA" },
     { value: "ASSOCIATION", label: "Associação" },
 ];
-
-const onlyDigits = (s: string) => s.replace(/\D/g, "");
-
-// "DD/MM/AAAA" → "AAAA-MM-DD" (ou "" se incompleto/ inválido)
-function brDateToISO(masked: string): string {
-    const d = onlyDigits(masked);
-    if (d.length !== 8) return "";
-    const dd = d.slice(0, 2), mm = d.slice(2, 4), yyyy = d.slice(4, 8);
-    const day = Number(dd), month = Number(mm), year = Number(yyyy);
-    if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900) return "";
-    return `${yyyy}-${mm}-${dd}`;
-}
-function maskBrDate(s: string): string {
-    const d = onlyDigits(s).slice(0, 8);
-    if (d.length <= 2) return d;
-    if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
-    return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
-}
 
 export default function WalletActivateScreen() {
     const colors = useV2Colors();
