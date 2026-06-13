@@ -244,3 +244,10 @@ Validação: web tsc limpo, mobile tsc sem erros novos.
 - QR PIX nativo (copia-e-cola) no app do aluno: requer captura de CPF (cobrança direta).
 - Simulação de taxa no sheet de cobrança (replicar `fees.ts` no `shared`); valor custom + date picker na avulsa.
 - Fase C: push deep links da Carteira + biometria no saque.
+
+### Rodada 12 (2026-06-12) — Polimento: taxas no sheet, avulsa flexível, biometria no saque
+- `mobile/components/financial/FeesSimulationCard.tsx` — porta RN do card do web ("Valor que entra na sua Carteira"): roda `simulateNet` da fonte única `@kinevo/shared/lib/asaas/fees` e lista taxa + líquido por método. Exibido no passo de confirmação do `NewSubscriptionSheet` pra cobranças Asaas (recorrente = só cartão; avulsa = métodos do plano via `allow_pix`/`allow_credit_card`/`allow_boleto`, agora tipados no `TrainerPlan` — o `select("*")` já os trazia).
+- `NewSubscriptionSheet` (avulsa): **valor editável** (prefill = preço do plano, `parseBRL`) e **vencimento DD/MM/AAAA** (prefill hoje+3, máscara reaproveitada do wizard — helpers extraídos pra `mobile/lib/brDate.ts`, `activate.tsx` agora importa de lá). Validação inline (valor > 0, data válida e não-passada, botão desabilita), resumo reflete valor custom e vencimento, `description` = título do plano (paridade com o web). Datas sempre por componentes LOCAIS (B6).
+- `mobile/app/financial/wallet/payout.tsx` — **biometria antes do saque** (Fase C parcial): `expo-local-authentication` (novo dep, `~17.0.8`, plugin no app.json com `faceIDPermission` em PT). Exige Face ID/Touch ID quando cadastrado (fallback de passcode do sistema); sem hardware/cadastro segue sem travar; cancelou = não cobra.
+- Validado: `tsc` 0 erros, vitest 332/332. **ATENÇÃO:** `expo-local-authentication` é módulo nativo novo → exige rebuild nativo (`npx expo run:ios` / novo build EAS); não funciona no dev client antigo nem Expo Go. QA visual em sim/device pendente.
+- Ficam pendentes da spec: push deep links da Carteira (resto da Fase C), QR PIX nativo (exige CPF), upload de doc KYC in-app (externo by design).
