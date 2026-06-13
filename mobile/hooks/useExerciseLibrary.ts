@@ -2,7 +2,10 @@ import { useState, useCallback, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import { useDebounce } from "./useDebounce";
 import { useCachedQuery } from "./useCachedQuery";
+import { useRoleMode } from "../contexts/RoleModeContext";
 import { CACHE_KEYS, CACHE_TTL } from "../lib/cache-keys";
+
+export type OwnerFilter = "all" | "mine";
 
 export interface Exercise {
     id: string;
@@ -26,9 +29,14 @@ interface ExerciseLibraryData {
 }
 
 export function useExerciseLibrary() {
+    // `trainerId` é o id da linha em `trainers` — mesmo valor gravado em
+    // `exercises.owner_id` quando o treinador cria um exercício. Usado pelo
+    // filtro "Meus exercícios". Null quando o usuário não está em modo trainer.
+    const { trainerId } = useRoleMode();
     const [search, setSearch] = useState("");
     const debouncedSearch = useDebounce(search, 300);
     const [muscleFilter, setMuscleFilter] = useState<string | null>(null);
+    const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");
 
     const fetcher = useCallback(async (): Promise<ExerciseLibraryData> => {
         const [exerciseRes, muscleRes] = await Promise.all([
@@ -86,8 +94,12 @@ export function useExerciseLibrary() {
             );
         }
 
+        if (ownerFilter === "mine" && trainerId) {
+            result = result.filter((e) => e.owner_id === trainerId);
+        }
+
         return result;
-    }, [allExercises, debouncedSearch, muscleFilter]);
+    }, [allExercises, debouncedSearch, muscleFilter, ownerFilter, trainerId]);
 
     return {
         exercises: filtered,
@@ -97,6 +109,12 @@ export function useExerciseLibrary() {
         setSearch,
         muscleFilter,
         setMuscleFilter,
+        ownerFilter,
+        setOwnerFilter,
+        // True quando o usuário está em modo trainer e portanto pode ter
+        // exercícios próprios para filtrar. A UI usa isso para esconder o
+        // chip "Meus" do aluno.
+        canFilterOwn: !!trainerId,
         isLoading,
         refresh,
     };

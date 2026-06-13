@@ -35,6 +35,9 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
         setSearch,
         muscleFilter,
         setMuscleFilter,
+        ownerFilter,
+        setOwnerFilter,
+        canFilterOwn,
         isLoading,
         refresh,
     } = useExerciseLibrary();
@@ -187,6 +190,32 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 6 }}
+                    ListHeaderComponent={
+                        canFilterOwn ? (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Haptics.selectionAsync();
+                                    setOwnerFilter(ownerFilter === "mine" ? "all" : "mine");
+                                }}
+                                accessibilityRole="tab"
+                                accessibilityState={{ selected: ownerFilter === "mine" }}
+                                accessibilityLabel="Apenas meus exercícios"
+                                style={{
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 6,
+                                    borderRadius: 100,
+                                    marginRight: 6,
+                                    backgroundColor: ownerFilter === "mine" ? colors.purple[600] : colors.surface.card,
+                                    borderWidth: 1,
+                                    borderColor: ownerFilter === "mine" ? colors.purple[600] : colors.border.default,
+                                }}
+                            >
+                                <Text style={{ fontSize: 12, fontWeight: "600", color: ownerFilter === "mine" ? "#FFFFFF" : colors.text.secondary }}>
+                                    Meus
+                                </Text>
+                            </TouchableOpacity>
+                        ) : null
+                    }
                     renderItem={({ item }) => {
                         const isActive = muscleFilter === item.id;
                         return (

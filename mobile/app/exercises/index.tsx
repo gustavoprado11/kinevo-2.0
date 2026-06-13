@@ -147,6 +147,9 @@ export default function ExercisesListScreen() {
         setSearch,
         muscleFilter,
         setMuscleFilter,
+        ownerFilter,
+        setOwnerFilter,
+        canFilterOwn,
         isLoading,
         refresh,
     } = useExerciseLibrary();
@@ -283,6 +286,31 @@ export default function ExercisesListScreen() {
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={{ paddingLeft: 20, paddingRight: 40, gap: 8, alignItems: "center" }}
                     >
+                        {canFilterOwn && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Haptics.selectionAsync();
+                                    setOwnerFilter(ownerFilter === "mine" ? "all" : "mine");
+                                }}
+                                style={{
+                                    paddingHorizontal: 16,
+                                    height: 36,
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    borderRadius: 18,
+                                    backgroundColor: ownerFilter === "mine" ? colors.purple[600] : colors.surface.card,
+                                    borderWidth: 1,
+                                    borderColor: ownerFilter === "mine" ? colors.purple[600] : colors.border.default,
+                                }}
+                                accessibilityLabel="Apenas meus exercícios"
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: ownerFilter === "mine" }}
+                            >
+                                <Text style={{ fontSize: 13, fontWeight: "600", color: ownerFilter === "mine" ? "#ffffff" : colors.text.secondary }}>
+                                    Meus
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                             onPress={() => {
                                 Haptics.selectionAsync();
