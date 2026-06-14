@@ -74,6 +74,26 @@ export async function migrateContract(input: MigrateContractInput): Promise<Migr
         return { success: false, error: 'Contrato não encontrado' }
     }
 
+    // Validate the target student: the contract ownership check above constrains
+    // fromContractId to this trainer, but NOT input.studentId — which flows into the
+    // new contract insert and generateCheckoutCore (mutating students.stripe_customer_id).
+    // Without these checks, a trainer could write a contract / mutate stripe_customer_id
+    // on another tenant's student by passing their UUID. (1) studentId must match the
+    // contract; (2) student must belong to this trainer.
+    if (input.studentId !== currentContract.student_id) {
+        return { success: false, error: 'Aluno não encontrado' }
+    }
+
+    const { data: targetStudent } = await supabaseAdmin
+        .from('students')
+        .select('id, coach_id')
+        .eq('id', input.studentId)
+        .single()
+
+    if (!targetStudent || targetStudent.coach_id !== trainer.id) {
+        return { success: false, error: 'Aluno não encontrado' }
+    }
+
     if (!['active', 'past_due'].includes(currentContract.status)) {
         return { success: false, error: 'Só é possível migrar contratos ativos' }
     }
