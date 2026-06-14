@@ -3,8 +3,7 @@ export const meta = {
   description: 'Camada 3 — loop de implementação: pega fix-prompts JÁ VERIFICADOS e aprovados, aplica cada um em worktree ISOLADO, roda testes (tsc/lint/test) + revisão adversarial do diff, e devolve só os diffs que passaram (NÃO faz push, NÃO landa em main, NÃO aplica fix de segurança sem flag explícita). O humano revisa/aplica.',
   whenToUse: 'Depois de um loop de detecção, com um conjunto de fixes selecionado/aprovado pelo Gustavo. Cada fix vira um patch verificado pronto pra revisão.',
   phases: [
-    { title: 'Implementar', detail: '1 worktree isolado por fix; agente aplica só aquele fix' },
-    { title: 'Verificar', detail: 'tsc/lint/test + revisor adversarial do diff' },
+    { title: 'Aplicar+Verificar', detail: '1 worktree isolado por fix; o MESMO agente aplica, roda tsc/lint/test e revisa o diff' },
   ],
 }
 
@@ -41,61 +40,42 @@ const RESULT_SCHEMA = {
   },
 }
 
-phase('Implementar')
-log(`${fixes.length} fix(es) a implementar (cada um em worktree isolado).`)
+phase('Aplicar+Verificar')
+log(`${fixes.length} fix(es), cada um num worktree isolado (aplica + verifica no MESMO worktree).`)
 
-// pipeline 1-item: cada fix é implementado e verificado no SEU worktree, em paralelo e sem colisão.
-const results = (await pipeline(
-  fixes,
-  // -- Stage 1: implementar em worktree isolado --
-  (f, _o, i) => {
-    const ws = f.workspace || 'web'
-    return agent(
-      `Você implementa UM fix no Kinevo, isolado num worktree próprio (não afeta os outros). Repo: ${repoRootAbs}. Workspace alvo: ${ws}/.
+// UM agente por fix, no SEU worktree: implementa E verifica no mesmo lugar.
+// Lição da 1ª run (14/jun): dois agent() com isolation:'worktree' = DOIS worktrees
+// distintos → o verificador nascia num checkout limpo e não via a implementação do
+// irmão. Tem que ser um agente só por worktree.
+const results = (await parallel(fixes.map((f, i) => () => {
+  const ws = f.workspace || 'web'
+  return agent(
+    `Você IMPLEMENTA e VERIFICA um fix no Kinevo, sozinho num worktree isolado (não afeta os outros). Repo: ${repoRootAbs}. Workspace alvo: ${ws}/.
 
 FIX #${f.id || i} (${f.domain || 'geral'} · severidade ${f.severity || '?'}): ${f.title || ''}
 
 PROMPT DE FIX (verificado por um loop de detecção):
 ${f.prompt}
 
-Regras ESTRITAS:
+PASSO 1 — IMPLEMENTAR. Regras estritas:
 - Aplique SOMENTE este fix. Não toque em nada fora dos arquivos que o prompt indica.
-- Siga as convenções do CLAUDE.md do repo (TS strict, sem \`any\`, Server Actions, etc.).
-- NÃO rode migration em banco, NÃO faça push, NÃO commite em main. Mude só arquivos.
-- Se o fix exigir DDL/migration, CRIE o arquivo .sql em supabase/migrations (não aplique no banco).
-- Ao terminar, deixe as mudanças no working tree do worktree (não precisa commitar).
+- Siga o CLAUDE.md do repo (TS strict, sem \`any\`, Server Actions, Shield Strategy/hex, ícones Lucide).
+- NÃO rode migration no banco, NÃO faça push, NÃO commite em main. Mude só arquivos no SEU worktree.
+- Se exigir DDL, CRIE o .sql em supabase/migrations (não aplique no banco).
 
-Devolva: filesTouched e um resumo do que mudou. (A verificação roda no próximo estágio.)`,
-      { label: `impl:${f.id || i}`, phase: 'Implementar', isolation: 'worktree', schema: {
-        type: 'object', additionalProperties: false,
-        required: ['id', 'summary', 'filesTouched'],
-        properties: { id: { type: 'string' }, summary: { type: 'string' }, filesTouched: { type: 'array', items: { type: 'string' } } },
-      } }).then((r) => ({ ...r, _fix: f, _i: i, _ws: ws }))
-  },
-  // -- Stage 2: verificar (tsc/lint/test + revisão adversarial) NO MESMO worktree --
-  (impl) => {
-    if (!impl) return null
-    const f = impl._fix, ws = impl._ws
-    return agent(
-      `Você VERIFICA o fix recém-aplicado, no MESMO worktree isolado onde ele foi feito. Repo: ${repoRootAbs}, workspace ${ws}/.
+PASSO 2 — PREPARAR DEPS. O worktree é checkout limpo SEM node_modules (gitignored). Da RAIZ do worktree: \`ln -sfn ${repoRootAbs}/node_modules node_modules\` e \`ln -sfn ${repoRootAbs}/${ws}/node_modules ${ws}/node_modules\`. tsc/vitest resolvem do node_modules da RAIZ (monorepo hoisted).
 
-Fix #${f.id || impl._i}: ${f.title || ''}
-Resumo da implementação: ${impl.summary}
-Arquivos tocados: ${JSON.stringify(impl.filesTouched || [])}
+PASSO 3 — CHECKS no workspace ${ws}/ (rode DENTRO de ${ws}/): \`npx tsc --noEmit\`; \`npx eslint\` nos arquivos tocados se houver; e a suíte (\`npx vitest run\`). Reporte nº verde/vermelho no campo checks.
 
-Faça, nesta ordem:
-1) \`git diff\` no worktree p/ ver exatamente o que mudou.
-2) Checks no workspace ${ws}/ (rode dentro de ${ws}/, NÃO na raiz do monorepo): \`npm run typecheck\` (ou tsc --noEmit), \`npm run lint\` se houver, e os testes do workspace (\`npm run test:run\`/\`vitest run\`). Reporte nº verde/vermelho.
-3) REVISÃO ADVERSARIAL do diff (seja cético): (a) resolve de fato o que o fix prometia (o Outcome)? (b) introduz regressão ou efeito colateral? (c) respeitou o ESCOPO (não tocou fora do previsto)? (d) segue as convenções?
+PASSO 4 — REVISÃO ADVERSARIAL do seu próprio diff (cético): (a) resolve o Outcome prometido? (b) introduz regressão/efeito colateral? (c) respeitou o ESCOPO? (d) segue convenções?
 
-Veredito:
-- status "passed" SÓ se tsc limpo + testes verdes + reviewVerdict "ok".
-- status "failed" se qualquer check falhou ou reviewVerdict ∈ {regressao, fora_de_escopo, nao_resolve} — explique no summary.
-Inclua o \`git diff\` completo no campo diff SE passed (senão vazio). NÃO faça push nem commite em main.`,
-      { label: `verify:${f.id || impl._i}`, phase: 'Verificar', isolation: 'worktree', schema: RESULT_SCHEMA },
-    )
-  },
-)).filter(Boolean)
+VEREDITO:
+- status "passed" SÓ se tsc limpo + testes verdes + reviewVerdict "ok". Inclua o \`git diff\` completo no campo diff.
+- status "failed" se qualquer check falhou ou reviewVerdict ∈ {regressao, fora_de_escopo, nao_resolve} — explique em summary, diff vazio.
+NÃO faça push nem commite em main.`,
+    { label: `fix:${f.id || i}`, phase: 'Aplicar+Verificar', isolation: 'worktree', schema: RESULT_SCHEMA },
+  )
+}))).filter(Boolean)
 
 const passed = results.filter((r) => r.status === 'passed')
 const failed = results.filter((r) => r.status === 'failed')
