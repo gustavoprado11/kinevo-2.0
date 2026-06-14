@@ -189,7 +189,11 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                     keyExtractor={(item) => item.id ?? "all"}
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 6 }}
+                    // flexGrow:0 stops the horizontal list from expanding to fill the
+                    // column's free vertical space (which stretched the chips into giant
+                    // pills); alignItems:flex-start keeps each chip at its intrinsic height.
+                    style={{ flexGrow: 0, flexShrink: 0 }}
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 6, alignItems: "flex-start" }}
                     ListHeaderComponent={
                         canFilterOwn ? (
                             <TouchableOpacity
@@ -201,6 +205,7 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                                 accessibilityState={{ selected: ownerFilter === "mine" }}
                                 accessibilityLabel="Apenas meus exercícios"
                                 style={{
+                                    alignSelf: "center",
                                     paddingHorizontal: 12,
                                     paddingVertical: 6,
                                     borderRadius: 100,
@@ -225,6 +230,7 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                                 accessibilityState={{ selected: isActive }}
                                 accessibilityLabel={item.name}
                                 style={{
+                                    alignSelf: "center",
                                     paddingHorizontal: 12,
                                     paddingVertical: 6,
                                     borderRadius: 100,

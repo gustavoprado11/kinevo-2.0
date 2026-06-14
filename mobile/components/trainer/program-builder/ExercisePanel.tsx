@@ -129,7 +129,10 @@ export function ExercisePanel({ onSelectExercise, visible }: ExercisePanelProps)
                 data={['Todos', ...muscleGroups]}
                 keyExtractor={(item) => typeof item === 'string' ? item : item.id}
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8, gap: 6 }}
+                // flexGrow:0 + alignItems:flex-start prevent the horizontal list from
+                // expanding vertically and stretching the chips into oversized pills.
+                style={{ flexGrow: 0, flexShrink: 0 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8, gap: 6, alignItems: "flex-start" }}
                 renderItem={({ item }) => {
                     const label = typeof item === 'string' ? item : item.name;
                     const isActive = label === 'Todos' ? !muscleFilter : muscleFilter === (typeof item === 'string' ? item : item.id);
@@ -140,6 +143,7 @@ export function ExercisePanel({ onSelectExercise, visible }: ExercisePanelProps)
                                 setMuscleFilter(label === 'Todos' ? null : (typeof item === 'string' ? item : item.id));
                             }}
                             style={{
+                                alignSelf: "center",
                                 paddingHorizontal: 10,
                                 paddingVertical: 5,
                                 borderRadius: 8,
