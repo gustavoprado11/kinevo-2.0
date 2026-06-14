@@ -301,6 +301,11 @@ export function AssistantActionCards({
                 <div className="divide-y divide-[#E8E8ED] dark:divide-border max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                     {rows.map((row, index) => {
                         const cat = CAT[row.category] || CAT.summary
+                        const isManualFin = !!row.financialItem && (row.financialItem.billingType === 'manual_recurring' || row.financialItem.billingType === 'manual_one_off')
+                        const hasActions = row.type === 'insight'
+                            || row.type === 'form'
+                            || row.type === 'expired_plan'
+                            || (row.type === 'financial' && isManualFin)
 
                         return (
                             <motion.div
@@ -312,9 +317,9 @@ export function AssistantActionCards({
                                 tabIndex={0}
                                 onClick={() => handleRowClick(row)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') handleRowClick(row) }}
-                                className="group flex w-full items-center justify-between px-6 py-4 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50 cursor-pointer"
+                                className="group flex w-full flex-col px-6 py-4 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50 cursor-pointer"
                             >
-                                <div className="flex flex-1 items-center gap-4 min-w-0">
+                                <div className="flex items-start gap-4 min-w-0">
                                     {/* Avatar */}
                                     {row.avatarUrl ? (
                                         <Image src={row.avatarUrl} alt={row.studentName} width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover" unoptimized />
@@ -354,8 +359,9 @@ export function AssistantActionCards({
                                     </div>
                                 </div>
 
-                                {/* Right side action */}
-                                <div className="flex items-center gap-2 shrink-0 ml-4">
+                                {/* Actions — own row below content so the text gets full width */}
+                                {hasActions && (
+                                <div className="flex items-center justify-end gap-2 mt-2.5 pl-14">
                                     {row.type === 'insight' && row.insight && (() => {
                                         const directActions = getDirectActions(row.insight!)
                                         const primaryAction = directActions[0]
@@ -453,6 +459,7 @@ export function AssistantActionCards({
                                         </div>
                                     )}
                                 </div>
+                                )}
                             </motion.div>
                         )
                     })}
