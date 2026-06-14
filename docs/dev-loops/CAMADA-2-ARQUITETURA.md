@@ -1,7 +1,11 @@
 # Camada 2 — Loops de desenvolvimento multi-domínio (modelo Replit)
 
-> Estado: **desenho** (jun/2026). Camada 1 (loop visual endurecido) já em produção
-> e validada — ver `scripts/qa-loop/` + `.claude/workflows/qa-visual-loop.js`.
+> Estado (14/jun/2026): **CONSTRUÍDO** — toda a arquitetura abaixo já existe em
+> `.claude/workflows/`. Detecção: `qa-visual-loop.js` (validado), `production-runtime-loop.js`
+> (validado em prod: pegou vuln real + 3 perf), `security-loop.js`, `seo-geo-loop.js`.
+> Orquestrador: `dev-loops.js`. Camada 3 (auto-fix): `fix-loop.js`.
+> Pendente de validação por run: security, seo, orquestrador, fix-loop.
+> Camada 1 (loop visual endurecido) já em produção — ver `scripts/qa-loop/`.
 
 ## Objetivo
 
