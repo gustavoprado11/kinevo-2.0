@@ -45,8 +45,21 @@ node lib/qa-account.mjs teardown <trainerId> <authUserId>
 - `capture.sh` — orquestra o acima.
 - `../../.claude/workflows/qa-visual-loop.js` — o Workflow de análise + síntese.
 
+## Precisão (por que o loop não vira ruído)
+Três defesas, todas em `drive.mjs` + o workflow:
+- **Ground-truth por rota (`intent` em `ROUTES`)**: descreve o que a tela É e seus
+  comportamentos *by-design* conhecidos (KPI em 0, grade da agenda em 05h, preview
+  vazio sem slug…). Vai pro analisador E pro verificador — impede re-reportar design
+  intencional como bug e cortar sugestão clichê. **Ao adicionar tela nova, escreva o `intent`.**
+- **Captura em segmentos** (`captureSegments`): rola a página e tira vários shots
+  limpos (a página inteira, não só a dobra) sem o artefato de costura do `fullPage`
+  em listas virtualizadas/animadas. Para se a página não rolar (scroll interno, ex. /schedule).
+- **Verificador julga VALOR, não só existência**: status `low_value` descarta
+  cosmético (tooltip/microcopy/helper) que "não existe" mas não agrega — só sobra
+  o que de fato corrige uso. Console errors viram regressão candidata (pega hydration mismatch).
+
 ## Estender
-- **Mais telas:** edite `ROUTES` em `drive.mjs`.
+- **Mais telas:** edite `ROUTES` em `drive.mjs` — **inclua `intent`** (ver acima).
 - **Fluxos interativos** (builder, sala de treino): adicione passos antes do
   `screenshot` (clicar, preencher) — cuidado com os gotchas do CDP QA (tour,
   wizard de preferências, header auto-hide, inputs React via `pressSequentially`).
