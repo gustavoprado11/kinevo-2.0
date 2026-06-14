@@ -121,7 +121,9 @@ export async function activateAssignedProgram(params: {
         })
         .eq('id', assignedProgramId)
         .eq('trainer_id', trainerId)
-        .eq('status', 'scheduled')
+        // Aceita 'scheduled' (fila, ativação manual ou via cron) e 'draft'
+        // (programa criado fora do builder, ex.: assistente via MCP).
+        .in('status', ['scheduled', 'draft'])
         .select('id')
 
     if (updateError) {

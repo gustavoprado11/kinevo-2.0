@@ -35,6 +35,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         { data: bodyMetricsData },
         { data: formTemplatesData },
         { data: formSchedulesData },
+        { data: draftProgramsRaw },
     ] = await Promise.all([
         supabase
             .from('students')
@@ -178,6 +179,15 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .eq('student_id', id)
             .eq('trainer_id', trainer.id)
             .eq('is_active', true)
+            .order('created_at', { ascending: false }),
+
+        // Draft programs created outside the builder (ex.: assistente via MCP).
+        // Não têm superfície própria → entram no card "Próximos Programas".
+        supabase
+            .from('assigned_programs')
+            .select('id, name, description, status, duration_weeks, current_week, started_at, created_at, assigned_workouts(id, name, scheduled_days)')
+            .eq('student_id', id)
+            .eq('status', 'draft')
             .order('created_at', { ascending: false }),
     ])
 
@@ -461,6 +471,15 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 status: p.status as 'active' | 'scheduled' | 'completed' | 'paused',
                 assigned_workouts: (p.assigned_workouts || []).map(w => ({
                     ...w,
+                    scheduled_days: w.scheduled_days ?? [],
+                })),
+            }))}
+            draftPrograms={(draftProgramsRaw || []).map(p => ({
+                id: p.id,
+                name: p.name,
+                assigned_workouts: (p.assigned_workouts || []).map(w => ({
+                    id: w.id,
+                    name: w.name,
                     scheduled_days: w.scheduled_days ?? [],
                 })),
             }))}
