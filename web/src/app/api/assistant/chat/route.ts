@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { buildChatContext } from '@/lib/assistant/context-builder'
 import { generateProgram } from '@/actions/prescription/generate-program'
 import { enrichStudentContext } from '@/lib/prescription/context-enricher'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 60
 
@@ -42,11 +42,10 @@ export async function POST(req: Request) {
 
         // 3. Rate limit (per-trainer) — prevents cost amplification via LLM.
         const rateLimitKey = `assistant:chat:${trainer.id}`
-        const limit = checkRateLimit(rateLimitKey, { perMinute: 15, perDay: 300 })
+        const limit = await consumeRateLimit(rateLimitKey, { perMinute: 15, perDay: 300 })
         if (!limit.allowed) {
             return new Response(limit.error || 'Rate limit exceeded', { status: 429 })
         }
-        recordRequest(rateLimitKey)
 
         // 4. Parse body + sanitize messages.
         // SECURITY: `role` must be forced to 'user'/'assistant' — without this,

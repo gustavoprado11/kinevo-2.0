@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { Json } from '@kinevo/shared/types/database'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
 
@@ -50,11 +50,10 @@ export async function updateOnboardingState(
     }
 
     const rateLimitKey = `onboarding:update:${user.id}`
-    const limit = checkRateLimit(rateLimitKey, { perMinute: 60, perDay: 1000 })
+    const limit = await consumeRateLimit(rateLimitKey, { perMinute: 60, perDay: 1000 })
     if (!limit.allowed) {
       return { error: limit.error || 'Rate limit exceeded' }
     }
-    recordRequest(rateLimitKey)
 
     // Fetch current state to ensure we have the trainer
     const { data: trainer, error: trainerError } = await supabase

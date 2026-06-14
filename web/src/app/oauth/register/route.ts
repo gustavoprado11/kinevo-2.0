@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import { corsPreflight, withCors } from '@/lib/mcp/cors'
 
 export function OPTIONS() {
@@ -28,11 +28,10 @@ async function handleRegister(request: Request): Promise<Response> {
   // Rate-limit por IP.
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
   const rlKey = `oauth-register:${ip}`
-  const rl = checkRateLimit(rlKey, { perMinute: 5, perDay: 50 })
+  const rl = await consumeRateLimit(rlKey, { perMinute: 5, perDay: 50 })
   if (!rl.allowed) {
     return Response.json({ error: 'rate_limited', error_description: rl.error }, { status: 429 })
   }
-  recordRequest(rlKey)
 
   let body: Record<string, unknown>
   try {

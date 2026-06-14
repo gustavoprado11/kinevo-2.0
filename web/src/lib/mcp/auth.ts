@@ -1,7 +1,7 @@
 import { createHash } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import type { McpContext } from './types'
 
 const MCP_RATE_LIMIT = { perMinute: 30, perDay: 1000 }
@@ -116,11 +116,10 @@ export async function authenticateRequest(
 
   // Rate limiting
   const rateLimitKey = `mcp:${result.keyId}`
-  const limit = checkRateLimit(rateLimitKey, MCP_RATE_LIMIT)
+  const limit = await consumeRateLimit(rateLimitKey, MCP_RATE_LIMIT)
   if (!limit.allowed) {
     throw new McpAuthError(limit.error ?? 'Rate limit exceeded', 429)
   }
-  recordRequest(rateLimitKey)
 
   return result
 }

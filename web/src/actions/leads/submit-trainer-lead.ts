@@ -3,7 +3,7 @@
 import { headers } from 'next/headers'
 import { createHash } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
 import { LEAD_SCHEMA, type LeadSchemaInput } from './lead-schema'
@@ -76,13 +76,12 @@ export async function submitTrainerLead(
     // 3. Rate limit por IP.
     const { ipHash, userAgent } = await resolveIpAndUa()
     const rlKey = `lead:${ipHash}`
-    const rl = checkRateLimit(rlKey, { perMinute: 5, perDay: 30 })
+    const rl = await consumeRateLimit(rlKey, { perMinute: 5, perDay: 30 })
     if (!rl.allowed) {
         // Falha silenciosa pra não dar pista de rate-limit pra atacante.
         // O usuário legítimo dificilmente bate esse limite.
         return { success: false, message: rl.error ?? 'Aguarde um momento.' }
     }
-    recordRequest(rlKey)
 
     // 4. Resolve trainer pelo slug. Se não existe / não publicada, success fake.
     const slug = data.slug.toLowerCase()

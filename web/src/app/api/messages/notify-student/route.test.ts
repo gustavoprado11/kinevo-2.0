@@ -17,22 +17,21 @@ vi.mock('@/lib/push-notifications', () => ({
     sendStudentPush: vi.fn(),
 }))
 vi.mock('@/lib/rate-limit', () => ({
-    checkRateLimit: vi.fn(() => ({ allowed: true })),
-    recordRequest: vi.fn(),
+    consumeRateLimit: vi.fn(async () => ({ allowed: true })),
 }))
 
 import { createClient as supabaseCreateClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { insertStudentNotification } from '@/lib/student-notifications'
 import { sendStudentPush } from '@/lib/push-notifications'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import { POST } from './route'
 
 const sbCreate = vi.mocked(supabaseCreateClient)
 const sbAdmin = vi.mocked(supabaseAdmin)
 const insertMock = vi.mocked(insertStudentNotification)
 const sendMock = vi.mocked(sendStudentPush)
-const rateMock = vi.mocked(checkRateLimit)
+const rateMock = vi.mocked(consumeRateLimit)
 
 const TRAINER_AUTH_UID = '00000000-0000-4000-8000-000000000001'
 const TRAINER_ID = '7aec3555-600c-4e7c-966e-028116921683'
@@ -90,7 +89,7 @@ function stubAdmin(handlers: {
 describe('POST /api/messages/notify-student', () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        rateMock.mockReturnValue({ allowed: true } as any)
+        rateMock.mockResolvedValue({ allowed: true } as any)
         insertMock.mockResolvedValue('inbox-id-42')
         sendMock.mockResolvedValue(undefined)
     })
@@ -145,7 +144,7 @@ describe('POST /api/messages/notify-student', () => {
 
     it('returns 429 when rate-limited', async () => {
         sbCreate.mockReturnValue(makeAuthClient({ id: TRAINER_AUTH_UID }))
-        rateMock.mockReturnValue({ allowed: false, error: 'slow down' } as any)
+        rateMock.mockResolvedValue({ allowed: false, error: 'slow down' } as any)
         const res = await POST(
             makeRequest({ studentId: STUDENT_ID }, { Authorization: 'Bearer good' }),
         )

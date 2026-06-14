@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -34,11 +34,10 @@ export async function POST(request: NextRequest) {
         // Rate limit per authenticated user — prevents a compromised or
         // misbehaving student app from spamming the trainer's push feed.
         const rateLimitKey = `messages:notify-trainer:${user.id}`
-        const limit = checkRateLimit(rateLimitKey, { perMinute: 20, perDay: 500 })
+        const limit = await consumeRateLimit(rateLimitKey, { perMinute: 20, perDay: 500 })
         if (!limit.allowed) {
             return NextResponse.json({ error: limit.error || 'Rate limit exceeded' }, { status: 429 })
         }
-        recordRequest(rateLimitKey)
 
         // Verify this user is the student
         const { data: student } = await supabaseAdmin

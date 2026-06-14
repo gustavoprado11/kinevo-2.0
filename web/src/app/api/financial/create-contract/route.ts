@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { Database } from '@kinevo/shared/types/database'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logContractEvent } from '@/lib/contract-events'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const VALID_BILLING_TYPES = new Set(['subscription','one_time','installments','courtesy'])
@@ -52,11 +52,10 @@ export async function POST(request: NextRequest) {
     // updates on students, and potentially external Stripe calls — capping
     // prevents floods of junk rows while still allowing bulk onboarding.
     const rateLimitKey = `financial:create-contract:${trainer.id}`
-    const limit = checkRateLimit(rateLimitKey, { perMinute: 10, perDay: 200 })
+    const limit = await consumeRateLimit(rateLimitKey, { perMinute: 10, perDay: 200 })
     if (!limit.allowed) {
         return NextResponse.json({ error: limit.error || 'Rate limit exceeded' }, { status: 429 })
     }
-    recordRequest(rateLimitKey)
 
     const body = await request.json()
     const { studentId, planId, billingType, blockOnFail = false } = body

@@ -1,48 +1,43 @@
 /**
- * Simple in-memory sliding window rate limiter.
- * Suitable for single-server Next.js deployments.
+ * Rate limiter DURÁVEL e atômico, compartilhado entre instâncias serverless.
+ *
+ * Backend: função SQL `consume_rate_limit` (migration 195) que faz check+insert
+ * atômico sob advisory lock por chave — fecha o TOCTOU e o problema do antigo
+ * `Map` em memória (que era por-lambda na Vercel → limites nunca convergiam).
+ *
+ * Uma única chamada `consumeRateLimit` substitui o par check/record antigo:
+ * ela já registra o request quando permite, então NÃO há mais `recordRequest`.
  */
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
-const ONE_MINUTE_MS = 60 * 1000
-const ONE_DAY_MS = 24 * 60 * 60 * 1000
-
-const store = new Map<string, number[]>()
-
-function cleanup(key: string): void {
-    const timestamps = store.get(key)
-    if (!timestamps) return
-    const cutoff = Date.now() - ONE_DAY_MS
-    const filtered = timestamps.filter((t) => t > cutoff)
-    if (filtered.length === 0) {
-        store.delete(key)
-    } else {
-        store.set(key, filtered)
-    }
-}
-
-export function checkRateLimit(
+export async function consumeRateLimit(
     key: string,
     opts: { perMinute: number; perDay: number }
-): { allowed: boolean; error?: string } {
-    cleanup(key)
-    const timestamps = store.get(key) || []
-    const now = Date.now()
+): Promise<{ allowed: boolean; error?: string }> {
+    try {
+        // Boundary cast: a função é nova e ainda não está nos tipos gerados (gen:types).
+        const { data, error } = await supabaseAdmin.rpc('consume_rate_limit' as never, {
+            p_key: key,
+            p_per_minute: opts.perMinute,
+            p_per_day: opts.perDay,
+        } as never)
 
-    const recentMinute = timestamps.filter((t) => t > now - ONE_MINUTE_MS)
-    if (recentMinute.length >= opts.perMinute) {
-        return { allowed: false, error: 'Limite de requisições por minuto atingido. Aguarde um momento.' }
+        if (error) {
+            // Fail-open: um hiccup do banco não deve derrubar o endpoint (que já tem auth).
+            console.error('[rate-limit] consume_rate_limit RPC error, failing open:', error.message)
+            return { allowed: true }
+        }
+
+        const res = data as unknown as { allowed: boolean; scope?: 'minute' | 'day' }
+        if (res?.allowed) return { allowed: true }
+        return {
+            allowed: false,
+            error: res?.scope === 'minute'
+                ? 'Limite de requisições por minuto atingido. Aguarde um momento.'
+                : 'Limite diário de requisições atingido. Tente novamente amanhã.',
+        }
+    } catch (e) {
+        console.error('[rate-limit] consume_rate_limit unexpected error, failing open:', e)
+        return { allowed: true }
     }
-
-    const recentDay = timestamps.filter((t) => t > now - ONE_DAY_MS)
-    if (recentDay.length >= opts.perDay) {
-        return { allowed: false, error: 'Limite diário de requisições atingido. Tente novamente amanhã.' }
-    }
-
-    return { allowed: true }
-}
-
-export function recordRequest(key: string): void {
-    const timestamps = store.get(key) || []
-    timestamps.push(Date.now())
-    store.set(key, timestamps)
 }

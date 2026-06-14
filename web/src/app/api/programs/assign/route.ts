@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import {
     assignFromSnapshot,
     GenerationNotFoundError,
@@ -115,11 +115,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Rate limit: 10/min, 50/day per trainer
-        const rl = checkRateLimit(`programs:assign:${trainer.id}`, { perMinute: 10, perDay: 50 })
+        const rl = await consumeRateLimit(`programs:assign:${trainer.id}`, { perMinute: 10, perDay: 50 })
         if (!rl.allowed) {
             return NextResponse.json({ error: rl.error }, { status: 429 })
         }
-        recordRequest(`programs:assign:${trainer.id}`)
 
         // 2. Validate student ownership
         const { data: student } = await supabase

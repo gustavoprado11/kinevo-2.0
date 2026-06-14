@@ -3,7 +3,7 @@
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import { checkPasswordPwned } from '@/lib/auth/hibp-check'
 import { verifyTurnstileToken } from '@/lib/auth/turnstile'
 
@@ -83,14 +83,10 @@ export async function signupTrainer(input: SignupTrainerInput): Promise<SignupTr
         'unknown'
 
     const rateKey = `signup:${ip}`
-    const rate = checkRateLimit(rateKey, { perMinute: 2, perDay: 10 })
+    const rate = await consumeRateLimit(rateKey, { perMinute: 2, perDay: 10 })
     if (!rate.allowed) {
         return { success: false, error: rate.error || 'Muitas tentativas. Aguarde antes de tentar novamente.' }
     }
-
-    // Record the attempt up-front so even a failure (e.g. duplicate email)
-    // counts toward the limit. Stops enumeration-via-error.
-    recordRequest(rateKey)
 
     // ─── Turnstile (Cloudflare CAPTCHA) ──────────────────────────────────
     // No-op when env vars are not configured (graceful degrade).

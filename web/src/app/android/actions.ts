@@ -4,7 +4,7 @@ import { headers } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 
 type Result =
     | { status: 'success' }
@@ -29,16 +29,14 @@ export async function submitAndroidTester(
         || headerStore.get('x-real-ip')
         || 'unknown').slice(0, 64)
     const ipKey = `android-tester:ip:${ip}`
-    const ipLimit = checkRateLimit(ipKey, PER_IP_LIMITS)
+    const ipLimit = await consumeRateLimit(ipKey, PER_IP_LIMITS)
     if (!ipLimit.allowed) {
         return { status: 'error', message: 'Muitas tentativas. Tente novamente mais tarde.' }
     }
-    const globalLimit = checkRateLimit('android-tester:global', GLOBAL_LIMITS)
+    const globalLimit = await consumeRateLimit('android-tester:global', GLOBAL_LIMITS)
     if (!globalLimit.allowed) {
         return { status: 'error', message: 'Sistema temporariamente indisponível. Tente novamente em alguns minutos.' }
     }
-    recordRequest(ipKey)
-    recordRequest('android-tester:global')
 
     const trimmedEmail = email.trim().toLowerCase()
 

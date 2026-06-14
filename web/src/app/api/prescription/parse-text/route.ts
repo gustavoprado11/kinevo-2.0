@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callLLM, type LLMModel } from '@/lib/prescription/llm-client'
-import { checkRateLimit, recordRequest } from '@/lib/rate-limit'
+import { consumeRateLimit } from '@/lib/rate-limit'
 import type { ParseTextRequest, ParseTextResponse } from './types'
 import { extractJson, validateAndFixResponse, splitWorkoutBlocks, filterCatalogByText } from './lib'
 
@@ -211,11 +211,10 @@ export async function POST(req: Request) {
         // Rate limit per trainer — each call fans out into N parallel LLM
         // requests, so this is the cheapest defense against cost amplification.
         const rateLimitKey = `prescription:parse-text:${trainer.id}`
-        const limit = checkRateLimit(rateLimitKey, { perMinute: 5, perDay: 50 })
+        const limit = await consumeRateLimit(rateLimitKey, { perMinute: 5, perDay: 50 })
         if (!limit.allowed) {
             return NextResponse.json({ error: limit.error || 'Rate limit exceeded' }, { status: 429 })
         }
-        recordRequest(rateLimitKey)
 
         // Parse request
         const body: ParseTextRequest = await req.json()

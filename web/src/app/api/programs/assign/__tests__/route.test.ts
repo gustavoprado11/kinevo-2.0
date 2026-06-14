@@ -4,8 +4,7 @@ import { NextRequest } from 'next/server'
 // Mocks declared before importing the route handler.
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/rate-limit', () => ({
-    checkRateLimit: vi.fn(() => ({ allowed: true })),
-    recordRequest: vi.fn(),
+    consumeRateLimit: vi.fn(async () => ({ allowed: true })),
 }))
 vi.mock('@/lib/ai-prescription/assign-from-snapshot', async () => {
     const actual = await vi.importActual<typeof import('@/lib/ai-prescription/assign-from-snapshot')>(
