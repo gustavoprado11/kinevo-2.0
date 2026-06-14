@@ -1348,7 +1348,11 @@ private struct RestTimerSheet: View {
     ZStack {
       Color.black.ignoresSafeArea()
 
-      VStack(spacing: 6) {
+      // ScrollView so the full controls (incl. "Pular descanso") stay reachable on
+      // smaller Watch sizes / larger Dynamic Type, where the fixed VStack overflowed
+      // and clipped the skip button off the bottom of the screen.
+      ScrollView {
+        VStack(spacing: 6) {
         Text("Descanso")
           .font(.system(size: 15, weight: .semibold))
           .foregroundStyle(.white)
@@ -1413,9 +1417,10 @@ private struct RestTimerSheet: View {
         .buttonStyle(.bordered)
         .tint(Color.kinevoViolet)
         .accessibilityLabel("Pular descanso")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
       }
-      .padding(.horizontal, 12)
-      .padding(.vertical, 6)
     }
     // .contain (not .combine) so the −15s/+15s/Pular buttons stay individually
     // reachable by VoiceOver instead of being flattened into one static element.
