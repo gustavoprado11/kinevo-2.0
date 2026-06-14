@@ -29,8 +29,29 @@ export async function bootstrap() {
       auth_user_id: authUserId,
       name: "QA Loop Trainer",
       email,
-      // best-effort: mark onboarding done; driver also strips overlays defensively
-      onboarding_state: { completed: true, qa: TAG },
+      // onboarding_state com SHAPE VÁLIDO (DEFAULT). Um objeto malformado
+      // (ex.: sem os arrays tours_completed/tips_dismissed) faz o server action
+      // updateOnboardingState lançar no spread e abortar a escrita — quebrando
+      // qualquer teste de persistência de dispensa.
+      onboarding_state: {
+        welcome_tour_completed: false,
+        checklist_dismissed: false,
+        checklist_snoozed_until: null,
+        tours_completed: [],
+        tips_dismissed: [],
+        milestones: {
+          first_student_created: false,
+          first_program_created: false,
+          first_program_assigned: false,
+          first_exercise_added: false,
+          first_form_sent: false,
+          financial_setup: false,
+          app_link_shared: false,
+          mobile_logged_in: false,
+          first_training_room_session: false,
+          landing_published: false,
+        },
+      },
     })
     .select("id")
     .single();
