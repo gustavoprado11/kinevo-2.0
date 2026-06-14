@@ -156,7 +156,7 @@ export function AssistantActionCards({
             id: `i-${i.id}`, type: 'insight', category: i.category, priority: P[i.priority] ?? 2,
             studentName: i.student_name || 'Aluno', studentId: i.student_id, isNew: i.status === 'new',
             title: i.title,
-            subtitle: i.body.length > 90 ? i.body.slice(0, 90).trimEnd() + '...' : i.body,
+            subtitle: i.body.length > 160 ? i.body.slice(0, 160).trimEnd() + '...' : i.body,
             insight: i,
         })
     }
@@ -314,7 +314,7 @@ export function AssistantActionCards({
                                 onKeyDown={(e) => { if (e.key === 'Enter') handleRowClick(row) }}
                                 className="group flex w-full items-center justify-between px-6 py-4 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50 cursor-pointer"
                             >
-                                <div className="flex items-center gap-4 min-w-0">
+                                <div className="flex flex-1 items-center gap-4 min-w-0">
                                     {/* Avatar */}
                                     {row.avatarUrl ? (
                                         <Image src={row.avatarUrl} alt={row.studentName} width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover" unoptimized />
@@ -326,7 +326,7 @@ export function AssistantActionCards({
                                         </div>
                                     )}
 
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex-1">
                                         {/* Line 1: Name + badge */}
                                         <div className="flex items-center gap-2 mb-0.5">
                                             <span className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground truncate">
@@ -341,13 +341,13 @@ export function AssistantActionCards({
                                         </div>
 
                                         {/* Line 2: Insight text */}
-                                        <p className="text-[13px] text-[#6E6E73] dark:text-muted-foreground truncate max-w-md">
+                                        <p className="text-[13px] text-[#6E6E73] dark:text-muted-foreground line-clamp-2">
                                             {row.title}
                                         </p>
 
                                         {/* Line 3: Subtitle / body */}
                                         {row.subtitle && (
-                                            <p className="text-[11px] text-[#AEAEB2] dark:text-muted-foreground/60 line-clamp-2 max-w-md mt-0.5" suppressHydrationWarning>
+                                            <p className="text-[11px] text-[#AEAEB2] dark:text-muted-foreground/60 line-clamp-2 mt-0.5" suppressHydrationWarning>
                                                 {row.subtitle}
                                             </p>
                                         )}
