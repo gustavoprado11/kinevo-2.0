@@ -29,6 +29,7 @@ const PLAN = {
   production: { wf: 'production-runtime-loop', args: { ...common, supabaseProjectId: A.supabaseProjectId, vercel: A.vercel } },
   security: { wf: 'security-loop', args: { ...common, supabaseProjectId: A.supabaseProjectId, liveProbe: A.liveProbe === true } },
   seo: { wf: 'seo-geo-loop', args: { ...common, base: A.base, routes: A.routes, targetQueries: A.targetQueries } },
+  mobile: { wf: 'mobile-loop', args: { ...common, mobileRootAbs: A.mobileRootAbs, supabaseProjectId: A.supabaseProjectId } },
   visual: { wf: 'qa-visual-loop', args: { manifest: A.visualManifest, date, reportDir, repoRoot } },
 }
 
