@@ -26,6 +26,11 @@ class WorkoutExecutionStore: ObservableObject {
     /// so a SESSION_SYNC that arrives before the workout is loaded still applies.
     private var sessionIdByWorkout: [String: String] = [:]
 
+    /// Authoritative exercise content (REPLACE_WORKOUT_CONTENT) that arrived before
+    /// the matching workout was loaded into state. Applied on the next loadWorkout
+    /// so a freshly-tapped workout never executes the stale cached snapshot.
+    private var pendingAuthoritativeContent: [String: [WatchProgramExerciseSummary]] = [:]
+
     init() {
         // Attempt to restore from disk on launch
         if let restored = WorkoutStatePersistence.load() {
@@ -81,6 +86,7 @@ class WorkoutExecutionStore: ObservableObject {
         if let existing = state, existing.workoutId == snapshot.workoutId {
             // Same workout already loaded — update exercise order but keep progress
             updateExerciseOrder(from: snapshot.exercises.map(\.id))
+            applyPendingAuthoritativeContent(for: snapshot.workoutId)
             return
         }
         if let existing = state {
@@ -92,6 +98,15 @@ class WorkoutExecutionStore: ObservableObject {
         state = newState
         persistImmediate()
         print("[WorkoutStore] Loaded workout \(newState.workoutId) with \(newState.exercises.count) exercises (not started)")
+        // If the iPhone already pushed fresh content for this workout before it was
+        // loaded, apply it now so the user never starts from the stale snapshot.
+        applyPendingAuthoritativeContent(for: newState.workoutId)
+    }
+
+    /// Apply any stashed authoritative content for `workoutId` (no-op if none).
+    private func applyPendingAuthoritativeContent(for workoutId: String) {
+        guard let pending = pendingAuthoritativeContent.removeValue(forKey: workoutId) else { return }
+        applyAuthoritativeContent(workoutId: workoutId, exercises: pending)
     }
 
     /// Apply the canonical workout_session_id from the iPhone (SESSION_SYNC).
@@ -392,6 +407,79 @@ class WorkoutExecutionStore: ObservableObject {
         state = s
         persistImmediate()
         print("[WorkoutStore] mergeProgramExercises — \(rebuilt.count) exercises (addedNew: \(addedNew))")
+    }
+
+    // MARK: - Authoritative Content Refresh (REPLACE_WORKOUT_CONTENT)
+
+    /// Apply the fresh, DB-authoritative exercise list for a workout the user is
+    /// starting on the Watch. Unlike `updateExerciseOrder` (order only) and
+    /// `mergeProgramExercises` (keeps stale content for matching ids), this UPDATES
+    /// each exercise's prescription (name, sets, reps, targets, method, per-set
+    /// detail) from the iPhone — while never discarding work the user already logged.
+    ///
+    /// Rules:
+    ///  - In fresh list, no completed sets locally → rebuilt from fresh content.
+    ///  - In fresh list, has completed sets        → kept as-is (protect logged work).
+    ///  - Absent from fresh list, no completed sets → dropped (replaced/removed).
+    ///  - Absent from fresh list, has completed sets → kept (defensive).
+    /// If no matching state exists yet, the content is stashed and applied on the
+    /// next loadWorkout for that workout.
+    func applyAuthoritativeContent(workoutId: String, exercises summaries: [WatchProgramExerciseSummary]) {
+        guard !summaries.isEmpty else { return }
+
+        guard var s = state, s.workoutId == workoutId else {
+            pendingAuthoritativeContent[workoutId] = summaries
+            print("[WorkoutStore] applyAuthoritativeContent — no active state for \(workoutId) yet, stashed \(summaries.count) exercises")
+            return
+        }
+
+        guard s.finishState != .pending else {
+            print("[WorkoutStore] applyAuthoritativeContent — finish pending, skipping")
+            return
+        }
+
+        let completedById: [String: Int] = Dictionary(
+            uniqueKeysWithValues: s.exercises.map { ($0.id, $0.sets.filter(\.isCompleted).count) }
+        )
+        let currentExerciseId = s.exerciseIndex < s.exercises.count
+            ? s.exercises[s.exerciseIndex].id
+            : nil
+
+        var existingById: [String: WorkoutExecutionState.ExerciseState] = [:]
+        for ex in s.exercises { existingById[ex.id] = ex }
+
+        var rebuilt: [WorkoutExecutionState.ExerciseState] = []
+        for summary in summaries {
+            if let existing = existingById[summary.id], (completedById[summary.id] ?? 0) > 0 {
+                rebuilt.append(existing) // protect already-logged work
+            } else {
+                rebuilt.append(WorkoutExecutionState.makeExercise(from: summary.toExerciseSnapshot()))
+            }
+        }
+
+        // Keep exercises with logged work that vanished from the fresh list
+        // (defensive — never silently drop the user's completed sets).
+        let freshIds = Set(summaries.map(\.id))
+        for ex in s.exercises where !freshIds.contains(ex.id) && (completedById[ex.id] ?? 0) > 0 {
+            rebuilt.append(ex)
+        }
+
+        if rebuilt == s.exercises {
+            print("[WorkoutStore] applyAuthoritativeContent — content already current for \(workoutId)")
+            return
+        }
+
+        // Keep the user viewing the same exercise where possible.
+        if let targetId = currentExerciseId, let idx = rebuilt.firstIndex(where: { $0.id == targetId }) {
+            s.exerciseIndex = idx
+        } else {
+            s.exerciseIndex = min(s.exerciseIndex, max(rebuilt.count - 1, 0))
+        }
+
+        s.exercises = rebuilt
+        state = s
+        persistImmediate()
+        print("[WorkoutStore] applyAuthoritativeContent — refreshed \(rebuilt.count) exercises for \(workoutId)")
     }
 
     // MARK: - Exercise Order Update

@@ -1,6 +1,6 @@
 import React from "react";
 import { Stack, usePathname, useRouter } from "expo-router";
-import { Alert, Linking, Platform } from "react-native";
+import { Alert, AppState, Linking, Platform } from "react-native";
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -81,12 +81,23 @@ function WatchBridge() {
                     const freshPayload = await getProgramSnapshotForWatch(syncUser.id);
                     syncProgramToWatch(freshPayload);
 
-                    // Extract exercise IDs in correct order for this specific workout
                     const workoutData = freshPayload?.workouts?.find((w: any) => w.workoutId === workoutId);
                     if (workoutData?.exercises?.length) {
+                        // Authoritative content: send the FULL exercise list (names, loads,
+                        // reps, targets, set schemes, order) so the Watch rebuilds the
+                        // workout it is about to run from fresh DB state instead of the
+                        // cached snapshot that predates the edit. This is the definitive fix
+                        // for the Watch running a stale/replaced exercise after the workout
+                        // was edited on the phone moments before starting. Reliable delivery:
+                        // sendMessage when reachable, transferUserInfo fallback when not.
+                        sendReliableToWatch({
+                            type: 'REPLACE_WORKOUT_CONTENT',
+                            payload: { workoutId, exercises: workoutData.exercises },
+                        });
+
+                        // Legacy fallback: older Watch builds only understand reordering.
+                        // No-op on new builds (content already applied → order matches).
                         const exerciseIds = workoutData.exercises.map((e: any) => e.id);
-                        // Reliable: sendMessage when reachable, transferUserInfo fallback
-                        // when not — so the correct order is never silently dropped.
                         sendReliableToWatch({
                             type: 'UPDATE_EXERCISE_ORDER',
                             payload: { workoutId, exerciseIds },
@@ -407,6 +418,31 @@ function WatchBridge() {
         const t2 = setTimeout(trySyncProgram, 8000);
         const t3 = setTimeout(trySyncProgram, 15000);
         return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }, []);
+
+    // Re-sync Watch when the app returns to the foreground. Edits made elsewhere
+    // (web dashboard, another device, or the phone app while backgrounded) don't
+    // notify the Watch; refreshing on foreground keeps the Watch's pre-start list
+    // current so the user doesn't start a stale workout. Debounced so rapid
+    // background/foreground toggles don't spam the DB.
+    React.useEffect(() => {
+        let lastSync = 0;
+        const sub = AppState.addEventListener('change', async (next: string) => {
+            if (next !== 'active') return;
+            const now = Date.now();
+            if (now - lastSync < 10000) return; // at most once per 10s
+            lastSync = now;
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const payload = await getProgramSnapshotForWatch(user.id);
+                syncProgramToWatch(payload);
+                if (__DEV__) console.log(`[WatchBridge] Re-synced Watch on foreground: ${payload?.programName ?? 'none'}`);
+            } catch (e: any) {
+                if (__DEV__) console.warn(`[WatchBridge] Foreground re-sync failed: ${e?.message}`);
+            }
+        });
+        return () => sub.remove();
     }, []);
 
     // Re-sync Watch when account changes (sign in / sign out).

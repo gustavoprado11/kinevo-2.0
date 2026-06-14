@@ -653,6 +653,11 @@ public class WatchConnectivityModule: Module {
       return
     }
 
+    // Strip NSNull / non-plist values — WatchConnectivity rejects them and would
+    // throw. Rich payloads (e.g. REPLACE_WORKOUT_CONTENT) carry nullable fields
+    // (weight, targetReps, methodKey…) that arrive as NSNull from JS.
+    let message = (sanitizeForPropertyList(message) as? [String: Any]) ?? message
+
     let type = (message["type"] as? String) ?? "unknown"
     if session.isReachable {
       session.sendMessage(message, replyHandler: { _ in

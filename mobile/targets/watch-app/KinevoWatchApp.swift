@@ -92,6 +92,14 @@ struct KinevoWatchApp: App {
                     store.updateExerciseOrder(from: exerciseIds)
                 }
 
+                // Wire authoritative content updates (REPLACE_WORKOUT_CONTENT) — the
+                // iPhone sends the full, fresh exercise list when the user starts a
+                // workout, so an edit made just before starting is reflected on the
+                // Watch instead of executing the stale cached snapshot.
+                sessionManager.onWorkoutContentUpdate = { [weak workoutStore] workoutId, summaries in
+                    workoutStore?.applyAuthoritativeContent(workoutId: workoutId, exercises: summaries)
+                }
+
                 // Wire SET_COMPLETE_FROM_PHONE — mirror set completions logged on the
                 // iPhone so the Watch advances in step instead of staying on set 1.
                 sessionManager.onRemoteSetComplete = { [weak workoutStore] workoutId, exerciseId, setIndex, reps, weight in

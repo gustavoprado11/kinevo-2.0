@@ -17,6 +17,10 @@ class WatchSessionManager: NSObject, ObservableObject {
   var onRemoteSetComplete: ((_ workoutId: String, _ exerciseId: String, _ setIndex: Int, _ reps: Int, _ weight: Double) -> Void)?
   var onProgramUpdated: ((_ snapshot: WatchProgramSnapshot) -> Void)?
   var onExerciseOrderUpdate: ((_ workoutId: String, _ exerciseIds: [String]) -> Void)?
+  /// Authoritative full exercise content for a workout the user is starting — sent
+  /// by the iPhone on START_WORKOUT so the Watch runs fresh DB state instead of the
+  /// cached snapshot (handles edited loads, changed reps, replaced exercises…).
+  var onWorkoutContentUpdate: ((_ workoutId: String, _ exercises: [WatchProgramExerciseSummary]) -> Void)?
   var onSessionSync: ((_ workoutId: String, _ sessionId: String) -> Void)?
   /// Fired when the WCSession finishes activating. Used to (re-)send any
   /// finish-pending workout once the transport is actually ready — closing the
@@ -539,6 +543,26 @@ extension WatchSessionManager: WCSessionDelegate {
       print("[WatchSessionManager] UPDATE_EXERCISE_ORDER for workoutId: \(workoutId) — \(exerciseIds.count) exercises")
       DispatchQueue.main.async {
         self.onExerciseOrderUpdate?(workoutId, exerciseIds)
+      }
+
+    case "REPLACE_WORKOUT_CONTENT":
+      guard let payload = message["payload"] as? [String: Any],
+            let workoutId = payload["workoutId"] as? String,
+            let exercisesArray = payload["exercises"] as? [[String: Any]]
+      else {
+        print("[WatchSessionManager] REPLACE_WORKOUT_CONTENT — failed to parse payload")
+        return
+      }
+
+      let summaries = exercisesArray.compactMap { WatchProgramExerciseSummary.parse(from: $0) }
+      guard !summaries.isEmpty else {
+        print("[WatchSessionManager] REPLACE_WORKOUT_CONTENT — no parseable exercises")
+        return
+      }
+
+      print("[WatchSessionManager] REPLACE_WORKOUT_CONTENT for workoutId: \(workoutId) — \(summaries.count) exercises")
+      DispatchQueue.main.async {
+        self.onWorkoutContentUpdate?(workoutId, summaries)
       }
 
     default:
