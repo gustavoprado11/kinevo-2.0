@@ -10,6 +10,7 @@ import Image from 'next/image'
 import { Plus, Search, ChevronRight, ChevronUp, ChevronDown, Users } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -185,12 +186,11 @@ export function StudentsClient({
     const filteredStudents = useMemo(() => {
         let result = studentsWithAttention
 
-        // Search
+        // Search (insensível a acento e caixa — ver search-text.ts)
         if (searchQuery) {
-            const q = searchQuery.toLowerCase()
             result = result.filter(s =>
-                s.name.toLowerCase().includes(q) ||
-                s.email.toLowerCase().includes(q)
+                matchesSearch(s.name, searchQuery) ||
+                matchesSearch(s.email, searchQuery)
             )
         }
 

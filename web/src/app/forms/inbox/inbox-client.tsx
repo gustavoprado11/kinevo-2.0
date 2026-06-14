@@ -12,6 +12,7 @@ import { SubmissionDetailSheet } from '@/components/forms/submission-detail-shee
 import { sendFormFeedback } from '@/actions/forms/send-form-feedback'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/toast'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 import {
     Search,
     Send,
@@ -215,16 +216,16 @@ export function InboxClient({ trainer, submissions: initialSubmissions, students
 
     // Filtered submissions
     const filteredSubmissions = useMemo(() => {
-        const search = searchQuery.trim().toLowerCase()
+        const search = searchQuery.trim()
         if (!search) return submissionRows
 
         return submissionRows.filter((sub) => {
             const template = templatesById.get(sub.form_template_id)
             const student = studentsById.get(sub.student_id)
             return (
-                template?.title?.toLowerCase().includes(search) ||
-                student?.name?.toLowerCase().includes(search) ||
-                student?.email?.toLowerCase().includes(search)
+                matchesSearch(template?.title, search) ||
+                matchesSearch(student?.name, search) ||
+                matchesSearch(student?.email, search)
             )
         })
     }, [submissionRows, searchQuery, studentsById, templatesById])

@@ -4,6 +4,7 @@ import { useDebounce } from "./useDebounce";
 import { useCachedQuery } from "./useCachedQuery";
 import { useRoleMode } from "../contexts/RoleModeContext";
 import { CACHE_KEYS, CACHE_TTL } from "../lib/cache-keys";
+import { matchesSearch } from "@kinevo/shared/utils/search-text";
 
 export type OwnerFilter = "all" | "mine";
 
@@ -84,8 +85,7 @@ export function useExerciseLibrary() {
         let result = allExercises;
 
         if (debouncedSearch.trim()) {
-            const q = debouncedSearch.toLowerCase();
-            result = result.filter((e) => e.name.toLowerCase().includes(q));
+            result = result.filter((e) => matchesSearch(e.name, debouncedSearch));
         }
 
         if (muscleFilter) {

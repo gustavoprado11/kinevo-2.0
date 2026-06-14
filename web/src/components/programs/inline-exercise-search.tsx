@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Search, X, Plus, Dumbbell, PlayCircle } from 'lucide-react'
 import type { Exercise } from '@/types/exercise'
 import { FloatingExercisePlayer } from '@/components/exercises/floating-exercise-player'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 interface InlineExerciseSearchProps {
     exercises: Exercise[]
@@ -26,11 +27,10 @@ export function InlineExerciseSearch({ exercises, onAdd, compact = false }: Inli
 
     const results = useMemo(() => {
         if (query.length < MIN_QUERY_LENGTH) return []
-        const q = query.toLowerCase()
         return exercises.filter(ex => {
-            const nameMatch = ex.name.toLowerCase().includes(q)
+            const nameMatch = matchesSearch(ex.name, query)
             const muscleMatch = ex.muscle_groups?.some(mg =>
-                mg.name?.toLowerCase().includes(q)
+                matchesSearch(mg.name, query)
             )
             return nameMatch || muscleMatch
         })

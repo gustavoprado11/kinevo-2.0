@@ -19,6 +19,7 @@ import type { FinancialStudent, DisplayStatus } from '@/types/financial'
 import { formatCurrency } from '@/lib/utils/financial'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useToast } from '@/components/ui/toast'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 import {
     Plus, Search, Users, Loader2, CheckCircle, ArrowLeft, Copy,
     MessageCircle, Settings2,
@@ -343,7 +344,7 @@ export function SubscriptionsClient({
     const filteredStudents = financialStudents.filter(s => {
         if (!currentTab.filter(s)) return false
         if (searchQuery) {
-            return s.student_name.toLowerCase().includes(searchQuery.toLowerCase())
+            return matchesSearch(s.student_name, searchQuery)
         }
         return true
     })

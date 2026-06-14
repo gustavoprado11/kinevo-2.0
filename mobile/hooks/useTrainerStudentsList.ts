@@ -4,6 +4,7 @@ import { useRoleMode } from "../contexts/RoleModeContext";
 import { useDebounce } from "./useDebounce";
 import { useCachedQuery } from "./useCachedQuery";
 import { CACHE_KEYS, CACHE_TTL } from "../lib/cache-keys";
+import { matchesSearch } from "@kinevo/shared/utils/search-text";
 
 // ── Types ──
 
@@ -56,13 +57,12 @@ export function useTrainerStudentsList() {
     const filteredStudents = useMemo(() => {
         let result = allStudents;
 
-        // Search filter (uses debounced value)
+        // Search filter (uses debounced value; insensível a acento e caixa)
         if (debouncedSearch.trim()) {
-            const q = debouncedSearch.toLowerCase().trim();
             result = result.filter(
                 (s) =>
-                    s.name.toLowerCase().includes(q) ||
-                    s.email.toLowerCase().includes(q)
+                    matchesSearch(s.name, debouncedSearch) ||
+                    matchesSearch(s.email, debouncedSearch)
             );
         }
 

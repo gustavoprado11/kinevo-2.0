@@ -19,6 +19,7 @@ import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { revalidateMyExerciseLibrary } from '@/actions/exercises/revalidate-library'
 import { useToast } from '@/components/ui/toast'
 import { patternLabel, sortPatternLabels } from '@/lib/movement-patterns'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 type ViewMode = 'grid' | 'list'
 
@@ -252,7 +253,7 @@ export function ExercisesClient({
         return deduplicatedExercises.filter(exercise => {
             const matchesOwner = !showOnlyMine || exercise.owner_id === currentTrainerId
 
-            const matchesSearch = exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
+            const matchesName = matchesSearch(exercise.name, searchQuery)
 
             let matchesMuscle = true
             if (expandedSelection.size > 0) {
@@ -263,7 +264,7 @@ export function ExercisesClient({
             const matchesPattern = selectedPatterns.length === 0
                 || selectedPatterns.includes(patternLabel(exercise.movement_pattern))
 
-            return matchesOwner && matchesSearch && matchesMuscle && matchesPattern
+            return matchesOwner && matchesName && matchesMuscle && matchesPattern
         })
     }, [deduplicatedExercises, showOnlyMine, currentTrainerId, searchQuery, expandedSelection, selectedPatterns])
 
