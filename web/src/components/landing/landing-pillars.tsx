@@ -566,6 +566,11 @@ export function LandingPillars() {
                         Tudo que você precisa para{' '}
                         <span className="text-[#86868B]">prescrever treinos de forma eficiente.</span>
                     </h2>
+                    <p className="font-jakarta text-[#6E6E73] text-base md:text-lg leading-relaxed mt-6">
+                        Prescrição avançada de verdade: monte drop-set, pirâmide, cluster, 5x5, top+backoff e
+                        supersets, com cargas por série em kg ou %1RM. Métodos que o Trainerize não entrega de
+                        forma nativa.
+                    </p>
                 </m.div>
 
                 {/* Tab navigation */}

@@ -64,4 +64,12 @@ export const faqs: Faq[] = [
         question: 'O que acontece com meus dados se eu cancelar?',
         answer: 'Você consegue exportar tudo (alunos, programas, históricos, financeiro) em CSV antes de cancelar. Após o cancelamento, mantemos seus dados por 90 dias caso você queira voltar — depois disso, exclusão permanente conforme LGPD.',
     },
+    {
+        question: 'O Kinevo é uma alternativa ao MFIT, Tecnofit ou Trainerize?',
+        answer: 'Sim. O Kinevo é uma plataforma brasileira de gestão e prescrição para personal trainers, usada por quem procura uma alternativa a apps como MFIT, Tecnofit e Trainerize, com app iOS/Android, Apple Watch nativo, assistente de IA e recebimento sem taxa Kinevo.',
+    },
+    {
+        question: 'Como o Kinevo se compara ao MFIT, Tecnofit e Trainerize?',
+        answer: 'O Kinevo reúne prescrição de treino, app nativo para iPhone e Android, Apple Watch nativo, Sala de Treino para o presencial, assistente de IA e recebimento sem taxa Kinevo em uma só plataforma. Personais que avaliam MFIT, Tecnofit ou Trainerize escolhem o Kinevo por ser feito no Brasil, em conformidade com a LGPD, e por não cobrar percentual sobre os pagamentos dos alunos.',
+    },
 ]

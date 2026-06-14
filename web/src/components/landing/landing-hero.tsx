@@ -671,6 +671,15 @@ export function LandingHero() {
                     <strong className="font-semibold text-[#1D1D1F]">Apple Watch</strong>.
                 </m.p>
 
+                <m.p
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.22 }}
+                    className="font-jakarta text-base text-[#6E6E73] mt-4 max-w-2xl mx-auto leading-relaxed"
+                >
+                    O Kinevo é um sistema completo para personal trainers que prescrevem treino com IA revisada e aprovada pelo profissional, acompanham cada sessão em tempo real e recebem dos alunos sem taxa de plataforma. É ideal tanto para o personal presencial — com a Sala de Treino para acompanhar vários alunos na academia — quanto para o online, com app nativo iOS/Android, Apple Watch e integração HealthKit.
+                </m.p>
+
                 {/* CTAs */}
                 <m.div
                     initial={{ opacity: 0, y: 12 }}

@@ -1,5 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
+
+export const metadata: Metadata = {
+    title: 'Política de Privacidade',
+    description: 'Política de Privacidade do Kinevo: como coletamos, usamos e protegemos seus dados pessoais e de treino.',
+    alternates: {
+        canonical: 'https://www.kinevoapp.com/privacy',
+    },
+};
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (

@@ -107,6 +107,7 @@ const softwareJsonLd = {
     'Recebimento sem taxa da plataforma',
     'Assistente de IA com contexto completo de cada aluno',
     'Formulários e anamneses gerados por IA',
+    'Métodos avançados de prescrição: drop-set, pirâmide, cluster, 5x5, top+backoff, supersets e cargas por série (kg ou %1RM)',
   ],
   offers: {
     '@type': 'Offer',

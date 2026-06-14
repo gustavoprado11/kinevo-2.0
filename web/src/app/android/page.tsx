@@ -4,11 +4,14 @@ import { AndroidTesterForm } from './android-tester-form'
 export const metadata: Metadata = {
     title: 'Kinevo — Acesso Antecipado Android',
     description: 'Cadastre seu e-mail Google para receber acesso antecipado ao app Kinevo para Android.',
+    alternates: {
+        canonical: 'https://www.kinevoapp.com/android',
+    },
     openGraph: {
         title: 'Kinevo — Acesso Antecipado Android',
         description: 'O Kinevo para Android está em fase de testes. Cadastre seu e-mail para receber o acesso.',
         type: 'website',
-        url: 'https://kinevoapp.com/android',
+        url: 'https://www.kinevoapp.com/android',
     },
 }
 

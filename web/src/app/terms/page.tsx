@@ -1,5 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
+
+export const metadata: Metadata = {
+    title: 'Termos de Uso',
+    description: 'Termos de Uso do Kinevo: condições de acesso e utilização da plataforma de gestão e acompanhamento de treinos.',
+    alternates: {
+        canonical: 'https://www.kinevoapp.com/terms',
+    },
+};
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
