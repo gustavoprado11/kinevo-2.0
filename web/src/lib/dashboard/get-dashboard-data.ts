@@ -366,12 +366,17 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const sessionsThisWeek = weekSessions.length
 
     // Sessions per day of week (sparkline data: [Mon, Tue, ..., Sun])
+    // O dia da semana TEM que ser calculado no fuso do treinador. Usar
+    // getDay() cru pega o fuso do servidor (UTC na Vercel), o que joga
+    // sessões da noite no Brasil para o dia seguinte e desalinha as barras
+    // entre local e produção.
+    const weekdayFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'short' })
+    const WEEKDAY_IDX: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }
     const sessionsPerDay = [0, 0, 0, 0, 0, 0, 0]
     for (const s of weekSessions) {
         if (!s.completed_at) continue
-        const day = new Date(s.completed_at).getDay()
-        const idx = (day + 6) % 7 // Monday-first: seg=0 … dom=6
-        sessionsPerDay[idx]++
+        const idx = WEEKDAY_IDX[weekdayFmt.format(new Date(s.completed_at))] // Monday-first: seg=0 … dom=6
+        if (idx !== undefined) sessionsPerDay[idx]++
     }
 
     // Expected sessions per week: sum unique scheduled_days across all active programs
