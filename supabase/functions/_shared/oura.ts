@@ -35,12 +35,15 @@ export interface OuraConfig {
   clientSecret: string;
   verificationToken: string | null;
   callbackUrl: string | null;
+  // Secret de autenticação da oura-webhook-setup (fail-closed). Fonte única na
+  // mesma tabela; o cron lê o mesmo valor pra montar o header x-setup-secret.
+  setupSecret: string | null;
 }
 
 export async function getOuraConfig(admin: SupabaseClient): Promise<OuraConfig> {
   const { data, error } = await admin
     .from("wearable_provider_config")
-    .select("client_id, client_secret, verification_token, callback_url")
+    .select("client_id, client_secret, verification_token, callback_url, setup_secret")
     .eq("source", "oura")
     .maybeSingle();
   if (error || !data) throw new Error("oura config not found in wearable_provider_config");
@@ -49,12 +52,14 @@ export async function getOuraConfig(admin: SupabaseClient): Promise<OuraConfig> 
     client_secret: string;
     verification_token: string | null;
     callback_url: string | null;
+    setup_secret: string | null;
   };
   return {
     clientId: row.client_id,
     clientSecret: row.client_secret,
     verificationToken: row.verification_token,
     callbackUrl: row.callback_url,
+    setupSecret: row.setup_secret,
   };
 }
 
@@ -266,7 +271,7 @@ export async function backfillOura(admin: SupabaseClient, studentId: string, acc
 
 // Comparação constant-time entre duas strings (evita timing attack na verificação
 // de assinatura). Sempre percorre o tamanho do valor esperado.
-function timingSafeEqual(a: string, b: string): boolean {
+export function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) {

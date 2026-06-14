@@ -10,7 +10,7 @@
 //
 // Env: OURA_CLIENT_ID, OURA_CLIENT_SECRET, OURA_WEBHOOK_VERIFICATION_TOKEN,
 //   OURA_WEBHOOK_CALLBACK_URL (https://<ref>.functions.supabase.co/oura-webhook)
-import { adminClient, corsHeaders, getOuraConfig, json, OURA_API_BASE } from "../_shared/oura.ts";
+import { adminClient, corsHeaders, getOuraConfig, json, OURA_API_BASE, timingSafeEqual } from "../_shared/oura.ts";
 
 const DATA_TYPES = ["sleep", "daily_readiness", "daily_activity"];
 const EVENT_TYPES = ["create", "update"];
@@ -28,6 +28,17 @@ Deno.serve(async (req) => {
 
   try {
     const cfg = await getOuraConfig(adminClient());
+
+    // Guard fail-closed: sem x-setup-secret válido, rejeita. Sem isso, qualquer POST
+    // anônimo dispara criação/renovação de subscriptions (abuso de quota Oura).
+    // Espelha send-push-notification. O cron (migration) manda o header com o mesmo
+    // valor lido de wearable_provider_config. verify_jwt permanece false.
+    const providedSecret = req.headers.get("x-setup-secret") ?? "";
+    if (!cfg.setupSecret || !timingSafeEqual(providedSecret, cfg.setupSecret)) {
+      console.warn("[oura-webhook-setup] Rejected: bad or missing x-setup-secret");
+      return json({ error: "unauthorized" }, 401);
+    }
+
     const clientId = cfg.clientId;
     const clientSecret = cfg.clientSecret;
     const verificationToken = cfg.verificationToken;
