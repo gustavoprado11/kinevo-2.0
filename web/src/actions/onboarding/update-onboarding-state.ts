@@ -67,8 +67,29 @@ export async function updateOnboardingState(
       return { error: 'Trainer not found' }
     }
 
-    // Deep merge: incoming state takes precedence, but we union arrays
-    const current = (trainer.onboarding_state as unknown as OnboardingState) ?? DEFAULT_ONBOARDING_STATE
+    // Deep merge: incoming state takes precedence, but we union arrays.
+    //
+    // BUGFIX: `current` (estado salvo no DB) pode ser legado/parcial — trainers
+    // antigos têm onboarding_state sem os arrays tours_completed/tips_dismissed.
+    // O spread direto (`...current.tours_completed`) lançava TypeError quando o
+    // campo era undefined → a action caía no catch e retornava { error } de forma
+    // SILENCIOSA (o cliente só trata exceções, não o { error } retornado) →
+    // NENHUMA dispensa de banner/onboarding persistia e tudo reaparecia a cada
+    // load. Normalizamos os arrays (sanitizeIds tolera não-array → []) para nunca
+    // lançar. Os demais campos já são tolerantes (sanitizeBool/sanitizeSnoozedUntil
+    // e milestones via ?? {}).
+    const rawCurrent =
+      (trainer.onboarding_state as unknown as Partial<OnboardingState>) ?? {}
+    const current: OnboardingState = {
+      ...DEFAULT_ONBOARDING_STATE,
+      ...rawCurrent,
+      tours_completed: sanitizeIds(rawCurrent.tours_completed),
+      tips_dismissed: sanitizeIds(rawCurrent.tips_dismissed),
+      milestones: {
+        ...DEFAULT_ONBOARDING_STATE.milestones,
+        ...(rawCurrent.milestones ?? {}),
+      },
+    }
 
     const incomingTours = sanitizeIds(newState.tours_completed)
     const incomingTips = sanitizeIds(newState.tips_dismissed)

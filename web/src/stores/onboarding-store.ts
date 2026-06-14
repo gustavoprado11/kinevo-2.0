@@ -124,13 +124,19 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
       // ----- Hydration -----
       hydrate(serverState) {
-        // Server is authoritative for boolean flags.
-        // Arrays are unioned (additive — can't "un-complete" a tour).
-        // Milestones are OR-merged (once completed, stays completed).
+        // Tudo aditivo: "uma vez dispensado/concluído, fica".
+        // Arrays são unidos; milestones OR-merge; e os booleanos de dispensa
+        // (welcome/checklist) também são OR-merge com o estado local — antes
+        // eram "server-wins", o que permitia um re-hydrate com o server defasado
+        // (ex.: logo após revalidatePath, antes da escrita propagar) SOBRESCREVER
+        // a dispensa otimista de volta pra false — o banner/modal reaparecia e o
+        // sync seguinte ainda mandava false. OR-merge elimina esse clobber.
         const currentLocal = get().state
         const merged: OnboardingState = {
-          welcome_tour_completed: serverState.welcome_tour_completed,
-          checklist_dismissed: serverState.checklist_dismissed,
+          welcome_tour_completed:
+            serverState.welcome_tour_completed || currentLocal.welcome_tour_completed,
+          checklist_dismissed:
+            serverState.checklist_dismissed || currentLocal.checklist_dismissed,
           // Server-wins pra snooze: usuário pode ter feito snooze em outro device.
           checklist_snoozed_until: serverState.checklist_snoozed_until ?? null,
           tours_completed: Array.from(
