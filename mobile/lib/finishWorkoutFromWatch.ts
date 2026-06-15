@@ -232,7 +232,11 @@ export async function finishWorkoutFromWatch(
     sessionId = payload.sessionId;
     if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 6: Using canonical session id from Watch — ${sessionId}`);
 
-    const { error: directUpdateError } = await supabase
+    // FIX A: guarda de status. Só completamos uma sessão que AINDA está
+    // in_progress — assim o finish do Watch NUNCA ressuscita uma sessão que o
+    // aluno já descartou no celular ('abandoned'). Pedimos a linha de volta
+    // (.select) pra distinguir os dois casos de "0 linhas afetadas".
+    const { data: updatedRows, error: directUpdateError }: { data: any; error: any } = await supabase
       .from('workout_sessions' as any)
       .update({
         status: 'completed',
@@ -241,12 +245,37 @@ export async function finishWorkoutFromWatch(
         duration_seconds: safeDuration,
         rpe: rpe || null,
       })
-      .eq('id', sessionId);
+      .eq('id', sessionId)
+      .eq('status', 'in_progress')
+      .select('id, status');
 
     if (directUpdateError) {
       console.error('[finishWorkoutFromWatch] Step 6 ERROR updating canonical session (queuing for retry):', directUpdateError.message, directUpdateError.details);
       await savePendingWorkout(payload);
       return 'pending';
+    }
+
+    // 0 linhas afetadas: a sessão não estava mais in_progress. Descobrimos o
+    // estado real pra decidir entre abortar (descartada) ou idempotência (já
+    // concluída).
+    if (!updatedRows || updatedRows.length === 0) {
+      const { data: current }: { data: any; error: any } = await supabase
+        .from('workout_sessions' as any)
+        .select('id, status')
+        .eq('id', sessionId)
+        .maybeSingle();
+
+      if (current?.status === 'abandoned') {
+        // O aluno descartou o treino no celular. NÃO ressuscitar — abortar o
+        // finish sem tocar nos set_logs (passos 7-8) pra não re-notificar o
+        // treinador nem inflar o histórico.
+        if (__DEV__) console.warn(`[finishWorkoutFromWatch] Step 6: session ${sessionId} já 'abandoned' — finish abortado (não ressuscitar)`);
+        watchFinishState.markFinished(workoutId);
+        return null;
+      }
+      // 'completed' (ou ausente): a sessão já foi finalizada por outro caminho.
+      // Idempotência — seguimos para o upsert idempotente dos set_logs.
+      if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 6: session ${sessionId} já '${current?.status ?? 'desconhecida'}' — idempotência, segue p/ upsert`);
     }
   } else {
 

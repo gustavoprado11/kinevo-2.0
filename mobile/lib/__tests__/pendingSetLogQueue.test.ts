@@ -13,7 +13,7 @@ vi.mock('react-native-mmkv', () => ({
 const sb = vi.hoisted(() => {
     interface Q {
         table: string;
-        op: 'upsert' | 'delete' | 'select';
+        op: 'upsert' | 'delete' | 'select' | 'update';
         payload?: unknown;
         options?: unknown;
         filters: Array<[string, unknown]>;
@@ -30,6 +30,7 @@ const sb = vi.hoisted(() => {
             state.recorded.push(this.q);
         }
         upsert(payload: unknown, options?: unknown) { this.q.op = 'upsert'; this.q.payload = payload; this.q.options = options; return this; }
+        update(payload: unknown) { this.q.op = 'update'; this.q.payload = payload; return this; }
         delete() { this.q.op = 'delete'; return this; }
         eq(col: string, val: unknown) { this.q.filters.push([col, val]); return this; }
         then(onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) {
@@ -48,6 +49,11 @@ import {
     clearPendingSetLogsForSession,
     drainPendingSetLogs,
     pendingSetLogCount,
+    enqueueDiscardSession,
+    enqueueFinishSession,
+    markSessionDiscarded,
+    isSessionDiscarded,
+    unmarkSessionDiscarded,
 } from '../pendingSetLogQueue';
 
 let seq = 0;
@@ -168,5 +174,97 @@ describe('pendingSetLogQueue', () => {
         const result = await drainPendingSetLogs();
         expect(result).toEqual({ flushed: 0, remaining: 0 });
         expect(sb.state.recorded.filter((q) => q.op === 'upsert')).toHaveLength(0);
+    });
+});
+
+// ── FIX C: registro de sessões descartadas ───────────────────────────────────
+
+describe('discarded_sessions (FIX C)', () => {
+    it('marca, consulta e desmarca uma sessão descartada', () => {
+        const sid = freshSession();
+        expect(isSessionDiscarded(sid)).toBe(false);
+        markSessionDiscarded(sid);
+        expect(isSessionDiscarded(sid)).toBe(true);
+        // idempotente: marcar de novo não duplica
+        markSessionDiscarded(sid);
+        expect(isSessionDiscarded(sid)).toBe(true);
+        unmarkSessionDiscarded(sid);
+        expect(isSessionDiscarded(sid)).toBe(false);
+    });
+});
+
+// ── FIX C/D: ops duráveis (discard_session / finish_session) ──────────────────
+
+describe('drain de ops duráveis (FIX C/D)', () => {
+    it('discard_session drena delete-por-session_id + update abandoned e desmarca', async () => {
+        const sid = freshSession();
+        markSessionDiscarded(sid);
+        enqueueDiscardSession(sid);
+
+        sb.state.resolver = () => ({ data: null, error: null });
+        const result = await drainPendingSetLogs();
+        expect(result.flushed).toBe(1);
+
+        const dels = sb.state.recorded.filter((q) => q.op === 'delete' && q.table === 'set_logs');
+        expect(dels).toHaveLength(1);
+        expect(dels[0].filters).toEqual([['workout_session_id', sid]]);
+
+        const upds = sb.state.recorded.filter((q) => q.op === 'update' && q.table === 'workout_sessions');
+        expect(upds).toHaveLength(1);
+        expect(upds[0].payload).toEqual({ status: 'abandoned' });
+        expect(upds[0].filters).toEqual([['id', sid], ['status', 'in_progress']]);
+
+        // confirmado no servidor → sai do registro de descartadas
+        expect(isSessionDiscarded(sid)).toBe(false);
+    });
+
+    it('discard_session que falha no delete permanece na fila e mantém a marca', async () => {
+        const sid = freshSession();
+        markSessionDiscarded(sid);
+        enqueueDiscardSession(sid);
+
+        sb.state.resolver = (q) => {
+            if (q.op === 'delete') return { data: null, error: { message: 'ainda offline' } };
+            return { data: null, error: null };
+        };
+        const result = await drainPendingSetLogs();
+        expect(result.remaining).toBe(1);
+        expect(isSessionDiscarded(sid)).toBe(true);
+
+        // limpa pro próximo teste
+        sb.state.resolver = () => ({ data: null, error: null });
+        await drainPendingSetLogs();
+    });
+
+    it('finish_session drena update completed + upsert idempotente das séries', async () => {
+        const sid = freshSession();
+        enqueueFinishSession({
+            session_id: sid,
+            session_update: { status: 'completed', rpe: 8, completed_at: '2026-06-11T11:00:00Z' },
+            set_logs: [payloadFor(sid, 'item-1', 1), payloadFor(sid, 'item-1', 2)],
+        });
+
+        sb.state.resolver = () => ({ data: null, error: null });
+        const result = await drainPendingSetLogs();
+        expect(result.flushed).toBe(1);
+
+        const upds = sb.state.recorded.filter((q) => q.op === 'update' && q.table === 'workout_sessions');
+        expect(upds).toHaveLength(1);
+        expect(upds[0].payload).toMatchObject({ status: 'completed', rpe: 8 });
+        expect(upds[0].filters).toEqual([['id', sid], ['status', 'in_progress']]);
+
+        const ups = sb.state.recorded.filter((q) => q.op === 'upsert' && q.table === 'set_logs');
+        expect(ups).toHaveLength(1);
+        expect(ups[0].options).toMatchObject({ onConflict: 'workout_session_id,assigned_workout_item_id,set_number' });
+        expect((ups[0].payload as unknown[]).length).toBe(2);
+    });
+
+    it('finish_session re-enfileirado (retry) substitui, não empilha', () => {
+        const sid = freshSession();
+        enqueueFinishSession({ session_id: sid, session_update: { status: 'completed' }, set_logs: [] });
+        enqueueFinishSession({ session_id: sid, session_update: { status: 'completed', rpe: 9 }, set_logs: [] });
+        expect(pendingSetLogCount()).toBe(1);
+        clearPendingSetLogsForSession(sid);
+        expect(pendingSetLogCount()).toBe(0);
     });
 });

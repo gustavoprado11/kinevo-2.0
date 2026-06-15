@@ -27,13 +27,28 @@ export interface PendingSetLogUpsert extends PendingSetLogKey {
     [column: string]: unknown;
 }
 
+/** FIX D: finalização offline durável do celular. Carrega tudo o que o finish
+ *  precisa re-aplicar quando a rede voltar — o update da sessão p/ 'completed'
+ *  e o upsert idempotente das séries montadas. Idempotente por sessionId. */
+export interface PendingFinishSession {
+    session_id: string;
+    /** Patch aplicado à workout_sessions (status/completed_at/duration/rpe/...). */
+    session_update: Record<string, unknown>;
+    /** Linhas de set_logs a re-upsertar (mesmo onConflict do caminho online). */
+    set_logs: PendingSetLogUpsert[];
+}
+
 interface PendingEntry {
-    op: 'upsert' | 'delete';
+    op: 'upsert' | 'delete' | 'discard_session' | 'finish_session';
     key: string;
     /** Presente quando op === 'upsert' */
     payload?: PendingSetLogUpsert;
     /** Presente quando op === 'delete' */
     filters?: PendingSetLogKey;
+    /** Presente quando op === 'discard_session' (FIX C) */
+    discardSessionId?: string;
+    /** Presente quando op === 'finish_session' (FIX D) */
+    finish?: PendingFinishSession;
     queuedAt: string;
 }
 
@@ -59,6 +74,11 @@ try {
 }
 
 const STORAGE_KEY = 'pending_set_logs_v1';
+// FIX C: registro persistente de sessões descartadas localmente. O reattach do
+// player consulta isto ANTES de rehidratar — uma sessão cujo id está aqui foi
+// descartada pelo aluno e NÃO pode ser ressuscitada, mesmo que a chamada de
+// rede de descarte ainda não tenha confirmado no servidor.
+const DISCARDED_KEY = 'discarded_sessions_v1';
 
 // Pendências mais velhas que isto são lixo (espelha o TTL do snapshot S4 e o
 // cleanup server-side de sessões in_progress >24h).
@@ -66,6 +86,52 @@ const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const keyOf = (k: PendingSetLogKey) =>
     `${k.workout_session_id}:${k.assigned_workout_item_id}:${k.set_number}`;
+
+// ── FIX C: registro de sessões descartadas (durável) ─────────────────────────
+
+function readDiscarded(): string[] {
+    try {
+        const raw = storage.getString(DISCARDED_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+    } catch {
+        return [];
+    }
+}
+
+function writeDiscarded(ids: string[]): void {
+    try {
+        if (ids.length === 0) storage.remove(DISCARDED_KEY);
+        else storage.set(DISCARDED_KEY, JSON.stringify(ids));
+    } catch (e: any) {
+        if (__DEV__) console.warn(`[pendingSetLogQueue] discarded write failed: ${e?.message}`);
+    }
+}
+
+/** FIX C: marca uma sessão como descartada ANTES da chamada de rede, de forma
+ *  persistente. O reattach do player ignora/abandona qualquer in_progress cujo
+ *  id esteja aqui. */
+export function markSessionDiscarded(sessionId: string): void {
+    if (!sessionId) return;
+    const ids = readDiscarded();
+    if (ids.includes(sessionId)) return;
+    ids.push(sessionId);
+    writeDiscarded(ids);
+}
+
+/** FIX C: o reattach consulta isto pra decidir se rehidrata ou abandona. */
+export function isSessionDiscarded(sessionId: string): boolean {
+    if (!sessionId) return false;
+    return readDiscarded().includes(sessionId);
+}
+
+/** FIX C: remove o id do registro — chamado só após o servidor confirmar o
+ *  descarte (a sessão já está 'abandoned' e os set_logs apagados). */
+export function unmarkSessionDiscarded(sessionId: string): void {
+    const ids = readDiscarded().filter((id) => id !== sessionId);
+    writeDiscarded(ids);
+}
 
 function readQueue(): PendingEntry[] {
     try {
@@ -104,10 +170,26 @@ export function enqueueSetLogDelete(filters: PendingSetLogKey): void {
     putEntry({ op: 'delete', key: keyOf(filters), filters, queuedAt: new Date().toISOString() });
 }
 
+/** FIX C: enfileira um descarte durável (delete-por-session_id + update
+ *  status='abandoned'). Chave por sessionId — idempotente. */
+export function enqueueDiscardSession(sessionId: string): void {
+    putEntry({ op: 'discard_session', key: `discard:${sessionId}`, discardSessionId: sessionId, queuedAt: new Date().toISOString() });
+}
+
+/** FIX D: enfileira uma finalização durável do celular. Chave por sessionId —
+ *  re-enfileirar (retry) substitui a entrada anterior em vez de empilhar. */
+export function enqueueFinishSession(finish: PendingFinishSession): void {
+    putEntry({ op: 'finish_session', key: `finish:${finish.session_id}`, finish, queuedAt: new Date().toISOString() });
+}
+
 /** Descarta pendências de uma sessão — usado quando o finish (catch-up
  *  idempotente re-envia tudo) ou o descarte (A1) tornam a fila obsoleta. */
 export function clearPendingSetLogsForSession(sessionId: string): void {
-    const remaining = readQueue().filter((e) => !e.key.startsWith(`${sessionId}:`));
+    const remaining = readQueue().filter((e) =>
+        !e.key.startsWith(`${sessionId}:`) &&
+        e.key !== `discard:${sessionId}` &&
+        e.key !== `finish:${sessionId}`
+    );
     writeQueue(remaining);
 }
 
@@ -153,6 +235,43 @@ export async function drainPendingSetLogs(): Promise<{ flushed: number; remainin
                         .eq('assigned_workout_item_id', entry.filters.assigned_workout_item_id)
                         .eq('set_number', entry.filters.set_number);
                     if (error) { failed.push(entry); continue; }
+                } else if (entry.op === 'discard_session' && entry.discardSessionId) {
+                    // FIX C: drena o descarte durável — apaga set_logs da sessão e
+                    // marca 'abandoned' (guardado por in_progress p/ não sobrescrever
+                    // uma sessão que o Watch concluiu em paralelo).
+                    const sid = entry.discardSessionId;
+                    const { error: delError } = await supabase
+                        .from('set_logs' as any)
+                        .delete()
+                        .eq('workout_session_id', sid);
+                    if (delError) { failed.push(entry); continue; }
+                    const { error: updError } = await supabase
+                        .from('workout_sessions' as any)
+                        .update({ status: 'abandoned' })
+                        .eq('id', sid)
+                        .eq('status', 'in_progress');
+                    if (updError) { failed.push(entry); continue; }
+                    // Servidor confirmou — o id pode sair do registro de descartadas.
+                    unmarkSessionDiscarded(sid);
+                } else if (entry.op === 'finish_session' && entry.finish) {
+                    // FIX D: drena a finalização durável do celular — completa a
+                    // sessão (só se ainda in_progress, p/ não ressuscitar/duplicar)
+                    // e re-upserta as séries (idempotente via onConflict).
+                    const f = entry.finish;
+                    const { error: updError } = await supabase
+                        .from('workout_sessions' as any)
+                        .update(f.session_update)
+                        .eq('id', f.session_id)
+                        .eq('status', 'in_progress');
+                    if (updError) { failed.push(entry); continue; }
+                    if (f.set_logs.length > 0) {
+                        const { error: logsError } = await supabase
+                            .from('set_logs' as any)
+                            .upsert(f.set_logs, {
+                                onConflict: 'workout_session_id,assigned_workout_item_id,set_number',
+                            });
+                        if (logsError) { failed.push(entry); continue; }
+                    }
                 }
                 flushed++;
             } catch {

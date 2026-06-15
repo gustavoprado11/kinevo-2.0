@@ -91,7 +91,9 @@ beforeEach(() => {
         if (q.table === 'students') return { data: { id: 'student-1', coach_id: 'coach-1' }, error: null };
         if (q.table === 'assigned_workouts') return { data: { assigned_program_id: 'prog-1', name: 'Treino A' }, error: null };
         if (q.table === 'assigned_programs') return { data: { started_at: '2026-06-01T00:00:00Z', duration_weeks: 8 }, error: null };
-        if (q.table === 'workout_sessions' && q.op === 'update') return { data: null, error: null };
+        // FIX A: o caminho canônico agora pede a linha de volta (.select) p/ a
+        // guarda de status. Happy-path: 1 linha afetada (estava in_progress).
+        if (q.table === 'workout_sessions' && q.op === 'update') return { data: [{ id: 'sess-canon', status: 'completed' }], error: null };
         if (q.table === 'assigned_workout_items') return { data: [{ id: 'item-1', exercise_id: 'ex-1' }], error: null };
         if (q.table === 'set_logs' && q.op === 'upsert') return { data: null, error: null };
         return undefined;
@@ -159,5 +161,60 @@ describe('finishWorkoutFromWatch', () => {
         expect(payload.status).toBe('completed');
         expect(payload.rpe).toBe(9);
         expect(updates[0].filters).toContainEqual(['eq', 'id', 'sess-canon']);
+        // FIX A: a guarda de status restringe o update a in_progress.
+        expect(updates[0].filters).toContainEqual(['eq', 'status', 'in_progress']);
+    });
+
+    it('FIX A: NÃO ressuscita sessão já "abandoned" (descartada no celular)', async () => {
+        // O update guardado por in_progress afeta 0 linhas; a consulta de estado
+        // revela 'abandoned' → o finish é abortado SEM tocar nos set_logs.
+        setResolver((q) => {
+            if (q.table === 'students') return { data: { id: 'student-1', coach_id: 'coach-1' }, error: null };
+            if (q.table === 'assigned_workouts') return { data: { assigned_program_id: 'prog-1', name: 'Treino A' }, error: null };
+            if (q.table === 'assigned_programs') return { data: { started_at: '2026-06-01T00:00:00Z', duration_weeks: 8 }, error: null };
+            // 0 linhas afetadas (não estava in_progress).
+            if (q.table === 'workout_sessions' && q.op === 'update') return { data: [], error: null };
+            // estado real: descartada.
+            if (q.table === 'workout_sessions' && q.op === 'select') return { data: { id: 'sess-canon', status: 'abandoned' }, error: null };
+            if (q.table === 'set_logs' && q.op === 'upsert') return { data: null, error: null };
+            return undefined;
+        });
+
+        const result = await finishWorkoutFromWatch({
+            workoutId: 'workout-1',
+            sessionId: 'sess-canon',
+            rpe: 8,
+            startedAt: '2026-06-12T10:00:00Z',
+            exercises: [{ id: 'item-1', sets: [{ setIndex: 0, reps: 10, weight: 80, completed: true }] }],
+        });
+
+        expect(result).toBeNull();
+        // Crítico: nenhum set_log foi gravado (treino descartado não ressuscita).
+        expect(upserts('set_logs')).toHaveLength(0);
+    });
+
+    it('FIX A: idempotente quando já "completed" (segue p/ upsert idempotente)', async () => {
+        setResolver((q) => {
+            if (q.table === 'students') return { data: { id: 'student-1', coach_id: 'coach-1' }, error: null };
+            if (q.table === 'assigned_workouts') return { data: { assigned_program_id: 'prog-1', name: 'Treino A' }, error: null };
+            if (q.table === 'assigned_programs') return { data: { started_at: '2026-06-01T00:00:00Z', duration_weeks: 8 }, error: null };
+            if (q.table === 'workout_sessions' && q.op === 'update') return { data: [], error: null }; // 0 linhas
+            if (q.table === 'workout_sessions' && q.op === 'select') return { data: { id: 'sess-canon', status: 'completed' }, error: null };
+            if (q.table === 'assigned_workout_items') return { data: [{ id: 'item-1', exercise_id: 'ex-1' }], error: null };
+            if (q.table === 'set_logs' && q.op === 'upsert') return { data: null, error: null };
+            return undefined;
+        });
+
+        const result = await finishWorkoutFromWatch({
+            workoutId: 'workout-1',
+            sessionId: 'sess-canon',
+            rpe: 8,
+            startedAt: '2026-06-12T10:00:00Z',
+            exercises: [{ id: 'item-1', sets: [{ setIndex: 0, reps: 10, weight: 80, completed: true }] }],
+        });
+
+        expect(result).toBe('sess-canon');
+        // Idempotência: o upsert das séries roda normalmente.
+        expect(upserts('set_logs')).toHaveLength(1);
     });
 });

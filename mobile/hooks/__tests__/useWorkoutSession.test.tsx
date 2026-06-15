@@ -14,7 +14,7 @@ import { renderHook, waitFor, act, cleanup } from '@testing-library/react';
 // ── Mocks (antes dos imports do hook; vi.mock é içado, então tudo que as
 //    factories referenciam vem de vi.hoisted) ────────────────────────────────
 
-const { alertMock, platformMock, saveWorkoutState, loadWorkoutState, clearWorkoutState, enqueueSetLogUpsert, enqueueSetLogDelete, clearPendingSetLogsForSession } = vi.hoisted(() => ({
+const { alertMock, platformMock, saveWorkoutState, loadWorkoutState, clearWorkoutState, enqueueSetLogUpsert, enqueueSetLogDelete, clearPendingSetLogsForSession, markSessionDiscarded, unmarkSessionDiscarded, enqueueDiscardSession, enqueueFinishSession, isSessionDiscarded } = vi.hoisted(() => ({
     alertMock: vi.fn(),
     platformMock: { OS: 'android' as string },
     saveWorkoutState: vi.fn(),
@@ -23,6 +23,11 @@ const { alertMock, platformMock, saveWorkoutState, loadWorkoutState, clearWorkou
     enqueueSetLogUpsert: vi.fn(),
     enqueueSetLogDelete: vi.fn(),
     clearPendingSetLogsForSession: vi.fn(),
+    markSessionDiscarded: vi.fn(),
+    unmarkSessionDiscarded: vi.fn(),
+    enqueueDiscardSession: vi.fn(),
+    enqueueFinishSession: vi.fn(),
+    isSessionDiscarded: vi.fn((_sessionId: string) => false),
 }));
 
 vi.mock('react-native', () => ({
@@ -32,6 +37,13 @@ vi.mock('react-native', () => ({
 
 vi.mock('expo-router', () => ({
     router: { back: vi.fn(), push: vi.fn(), replace: vi.fn() },
+}));
+
+// FIX C/D: isNetworkError consulta o NetInfo. Default: conectado (erros sem
+// code caem na heurística de mensagem). Testes offline sobrescrevem netInfoMock.
+const netInfoMock = vi.hoisted(() => ({ isConnected: true as boolean }));
+vi.mock('@react-native-community/netinfo', () => ({
+    default: { fetch: async () => ({ isConnected: netInfoMock.isConnected }) },
 }));
 
 vi.mock('../../contexts/AuthContext', () => ({
@@ -48,6 +60,11 @@ vi.mock('../../lib/pendingSetLogQueue', () => ({
     enqueueSetLogUpsert: (...a: unknown[]) => enqueueSetLogUpsert(...(a as [unknown])),
     enqueueSetLogDelete: (...a: unknown[]) => enqueueSetLogDelete(...(a as [unknown])),
     clearPendingSetLogsForSession: (...a: unknown[]) => clearPendingSetLogsForSession(...(a as [unknown])),
+    markSessionDiscarded: (...a: unknown[]) => markSessionDiscarded(...(a as [unknown])),
+    unmarkSessionDiscarded: (...a: unknown[]) => unmarkSessionDiscarded(...(a as [unknown])),
+    enqueueDiscardSession: (...a: unknown[]) => enqueueDiscardSession(...(a as [unknown])),
+    enqueueFinishSession: (...a: unknown[]) => enqueueFinishSession(...(a as [unknown])),
+    isSessionDiscarded: (...a: unknown[]) => isSessionDiscarded(...(a as [string])),
 }));
 
 // ── Stub fluente do supabase ─────────────────────────────────────────────────
@@ -180,7 +197,11 @@ function installScenario(opts: ScenarioOptions = {}) {
             return opts.sessionInsert ?? { data: { id: 'sess-new' }, error: null };
         }
         if (q.table === 'workout_sessions' && q.op === 'update') {
-            return opts.sessionUpdate ?? { data: null, error: null };
+            // FIX B: o discard agora pede a linha afetada de volta (.select('id'))
+            // pra distinguir 0 linhas (sessão já não in_progress) de 1 linha. O
+            // default devolve a linha da sessão existente (update aplicado).
+            const affectedId = (opts.existingSession?.id) ?? 'sess-1';
+            return opts.sessionUpdate ?? { data: [{ id: affectedId }], error: null };
         }
         if (q.table === 'set_logs' && q.op === 'select') {
             // rehidratação A2 (sessão reanexada) — filtra por workout_session_id
@@ -236,6 +257,13 @@ beforeEach(() => {
     enqueueSetLogUpsert.mockClear();
     enqueueSetLogDelete.mockClear();
     clearPendingSetLogsForSession.mockClear();
+    markSessionDiscarded.mockClear();
+    unmarkSessionDiscarded.mockClear();
+    enqueueDiscardSession.mockClear();
+    enqueueFinishSession.mockClear();
+    isSessionDiscarded.mockReset();
+    isSessionDiscarded.mockReturnValue(false);
+    netInfoMock.isConnected = true;
 });
 
 afterEach(() => {
@@ -767,5 +795,153 @@ describe('fila offline (A4)', () => {
         const { result } = await renderSession({ deferSessionCreation: true });
         await act(async () => { await result.current.discardWorkout(); });
         expect(clearPendingSetLogsForSession).toHaveBeenCalledWith('sess-1');
+    });
+});
+
+// ── 10. Descarte durável (FIX B/C) ───────────────────────────────────────────
+
+describe('descarte durável (FIX C)', () => {
+    it('FIX B: descarte faz UPDATE guardado por in_progress ANTES do DELETE', async () => {
+        installScenario({ existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' } });
+        const { result } = await renderSession({ deferSessionCreation: true });
+        await act(async () => { await result.current.discardWorkout(); });
+
+        const updates = queriesFor('workout_sessions', 'update');
+        expect(updates).toHaveLength(1);
+        expect(updates[0].payload).toEqual({ status: 'abandoned' });
+        expect(updates[0].filters).toEqual(expect.arrayContaining([
+            ['eq', 'id', 'sess-1'],
+            ['eq', 'status', 'in_progress'],
+        ]));
+        // só apaga set_logs porque o update afetou 1 linha
+        expect(queriesFor('set_logs', 'delete')).toHaveLength(1);
+    });
+
+    it('FIX B: sessão já completed (Watch venceu) → aborta SEM apagar set_logs', async () => {
+        installScenario({
+            existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' },
+            // 0 linhas afetadas: não estava mais in_progress.
+            sessionUpdate: { data: [], error: null },
+        });
+        const { result } = await renderSession({ deferSessionCreation: true });
+        await act(async () => { await result.current.discardWorkout(); });
+
+        // update tentado, mas DELETE de set_logs NÃO aconteceu (treino-fantasma evitado)
+        expect(queriesFor('workout_sessions', 'update')).toHaveLength(1);
+        expect(queriesFor('set_logs', 'delete')).toHaveLength(0);
+        // não há descarte durável a confirmar
+        expect(enqueueDiscardSession).not.toHaveBeenCalled();
+        expect(unmarkSessionDiscarded).toHaveBeenCalledWith('sess-1');
+    });
+
+    it('FIX C: descarte marca a sessão descartada ANTES da rede', async () => {
+        installScenario({ existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' } });
+        const { result } = await renderSession({ deferSessionCreation: true });
+        await act(async () => { await result.current.discardWorkout(); });
+        expect(markSessionDiscarded).toHaveBeenCalledWith('sess-1');
+        // sucesso online → o id sai do registro de descartadas
+        expect(unmarkSessionDiscarded).toHaveBeenCalledWith('sess-1');
+    });
+
+    it('FIX C: descarte offline enfileira op durável e mantém marca de descartada', async () => {
+        netInfoMock.isConnected = false;
+        installScenario({
+            existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' },
+            // rede caiu no UPDATE (erro de rede do supabase-js: sem code).
+            sessionUpdate: { data: null, error: { message: 'Network request failed' } },
+        });
+        const { result } = await renderSession({ deferSessionCreation: true });
+        await act(async () => { await result.current.discardWorkout(); });
+
+        expect(markSessionDiscarded).toHaveBeenCalledWith('sess-1');
+        expect(enqueueDiscardSession).toHaveBeenCalledWith('sess-1');
+        // offline: NÃO desmarca (descarte ainda não confirmado no servidor)
+        expect(unmarkSessionDiscarded).not.toHaveBeenCalled();
+    });
+
+    it('FIX C: reattach de sessão descartada NÃO rehidrata e re-enfileira o descarte', async () => {
+        isSessionDiscarded.mockReturnValue(true);
+        installScenario({
+            existingSession: { id: 'sess-DESC', started_at: '2026-06-11T10:00:00Z' },
+            persistedLogs: [{ assigned_workout_item_id: 'item-1', set_number: 1, weight: 50, reps_completed: 8, notes: null }],
+        });
+        const { result } = await renderSession({ deferSessionCreation: true });
+
+        // não rehidratou as séries descartadas
+        expect(result.current.exercises[0].setsData.every((s) => !s.completed)).toBe(true);
+        // re-enfileirou o descarte durável da sessão fantasma
+        expect(enqueueDiscardSession).toHaveBeenCalledWith('sess-DESC');
+    });
+});
+
+// ── 11. Finalização offline durável (FIX D) ──────────────────────────────────
+
+describe('finalização offline durável (FIX D)', () => {
+    it('erro de REDE no update → sucesso otimista + enfileira finish durável', async () => {
+        netInfoMock.isConnected = false;
+        installScenario({
+            existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' },
+            // update da sessão falha por rede (sem code → rede).
+            sessionUpdate: { data: null, error: { message: 'Network request failed' } },
+        });
+        const { result } = await renderSession({ deferSessionCreation: true });
+        act(() => result.current.handleToggleSetComplete(0, 0));
+
+        let sid: unknown;
+        await act(async () => { sid = await result.current.finishWorkout(8, 'bom'); });
+
+        // sucesso otimista: devolve o sessionId mesmo offline
+        expect(sid).toBe('sess-1');
+        // enfileirou a finalização durável com o patch + séries montadas
+        expect(enqueueFinishSession).toHaveBeenCalledTimes(1);
+        const arg = enqueueFinishSession.mock.calls[0][0] as {
+            session_id: string;
+            session_update: Record<string, unknown>;
+            set_logs: unknown[];
+        };
+        expect(arg.session_id).toBe('sess-1');
+        expect(arg.session_update).toMatchObject({ status: 'completed', rpe: 8, feedback: 'bom' });
+        expect(arg.set_logs).toHaveLength(1);
+        // snapshot local limpo (treino "concluído" otimisticamente)
+        expect(clearWorkoutState).toHaveBeenCalledWith(WORKOUT_ID);
+    });
+
+    it('erro de REDE no upsert das séries → sucesso otimista (não reverte sessão)', async () => {
+        netInfoMock.isConnected = false;
+        installScenario({
+            existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' },
+            // update OK, mas o upsert do catch-up cai por rede.
+            setLogUpsert: { data: null, error: { message: 'Network request failed' } },
+        });
+        const { result } = await renderSession({ deferSessionCreation: true });
+        act(() => result.current.handleToggleSetComplete(0, 0));
+
+        let sid: unknown;
+        await act(async () => { sid = await result.current.finishWorkout(7); });
+
+        expect(sid).toBe('sess-1');
+        expect(enqueueFinishSession).toHaveBeenCalledTimes(1);
+        // NÃO reverteu a sessão para in_progress (só o update 'completed' existe)
+        const reverts = queriesFor('workout_sessions', 'update')
+            .filter((q) => (q.payload as Record<string, unknown>).status === 'in_progress');
+        expect(reverts).toHaveLength(0);
+    });
+
+    it('erro de VALIDAÇÃO/RLS (com code) → mantém o throw (sem fila durável)', async () => {
+        installScenario({
+            existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' },
+            // erro com code = servidor respondeu (RLS/constraint) → NÃO é rede.
+            setLogUpsert: { data: null, error: { message: 'permission denied', code: '42501' } },
+        });
+        const { result } = await renderSession({ deferSessionCreation: true });
+        act(() => result.current.handleToggleSetComplete(0, 0));
+
+        await expect(act(async () => { await result.current.finishWorkout(7); }))
+            .rejects.toMatchObject({ code: '42501' });
+        expect(enqueueFinishSession).not.toHaveBeenCalled();
+        // C3: reverte a sessão p/ in_progress (comportamento atual preservado)
+        const reverts = queriesFor('workout_sessions', 'update')
+            .filter((q) => (q.payload as Record<string, unknown>).status === 'in_progress');
+        expect(reverts).toHaveLength(1);
     });
 });

@@ -10,7 +10,30 @@ import { sortExerciseItems } from '../utils/sortExerciseItems';
 import { hydrateSetPrescriptions, type SetPrescription } from '../lib/hydrateWorkoutSets';
 import { formatWeightKg } from '@kinevo/shared/lib/prescription/set-scheme';
 import { saveWorkoutState, loadWorkoutState, clearWorkoutState } from '../lib/workoutStatePersistence';
-import { enqueueSetLogUpsert, enqueueSetLogDelete, clearPendingSetLogsForSession } from '../lib/pendingSetLogQueue';
+import { enqueueSetLogUpsert, enqueueSetLogDelete, clearPendingSetLogsForSession, markSessionDiscarded, unmarkSessionDiscarded, enqueueDiscardSession, enqueueFinishSession, isSessionDiscarded, type PendingFinishSession } from '../lib/pendingSetLogQueue';
+
+// FIX D: distingue erro de REDE (offline / transiente sem resposta) de erro de
+// validação/RLS (o servidor respondeu rejeitando). Só erro de rede ganha
+// finalização otimista + fila durável; validação/RLS mantém o throw atual.
+async function isNetworkError(error: unknown): Promise<boolean> {
+    // 1. Códigos de erro do supabase-js / PostgREST: um código presente significa
+    //    que o servidor RESPONDEU (validação/RLS/constraint) — NÃO é rede.
+    const code = (error as { code?: unknown } | null)?.code;
+    if (typeof code === 'string' && code.length > 0) return false;
+    // 2. Sem conectividade reportada pelo NetInfo → rede.
+    try {
+        const NetInfo = require('@react-native-community/netinfo').default;
+        const state = await NetInfo.fetch();
+        if (state?.isConnected === false) return true;
+    } catch { /* NetInfo indisponível — cai na heurística de mensagem */ }
+    // 3. Heurística por mensagem (fetch sem resposta lança TypeError "Network
+    //    request failed" no RN; sem code anexado).
+    const message = String((error as { message?: unknown } | null)?.message ?? '').toLowerCase();
+    if (message.includes('network') || message.includes('failed to fetch') || message.includes('timeout') || message.includes('timed out')) {
+        return true;
+    }
+    return false;
+}
 
 export interface WorkoutSetData {
     weight: string;
@@ -430,23 +453,52 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         if (!sid) return; // nada foi persistido ainda
         // A4: séries descartadas não podem ressuscitar numa drenagem futura.
         clearPendingSetLogsForSession(sid);
+        // FIX C: marca o descarte de forma persistente ANTES da rede. Mesmo se o
+        // app morrer agora, o reattach (A2) vê este id e abandona em vez de
+        // rehidratar — e o catch-up do finish não reincorpora o volume.
+        markSessionDiscarded(sid);
         try {
+            // FIX B: torna o descarte atômico contra status. PRIMEIRO o UPDATE
+            // guardado por in_progress; só apaga set_logs se ele afetou 1 linha.
+            // Se a sessão já está 'completed' (o Watch venceu a corrida), abortamos
+            // sem tocar nos set_logs — senão sobraria uma sessão concluída com 0
+            // séries (treino-fantasma).
+            const { data: updatedRows, error: sessionError }: { data: any; error: any } = await supabase
+                .from('workout_sessions' as any)
+                .update({ status: 'abandoned' })
+                .eq('id', sid)
+                .eq('status', 'in_progress')
+                .select('id');
+
+            if (sessionError) throw sessionError;
+
+            if (!updatedRows || updatedRows.length === 0) {
+                // 0 linhas: a sessão não estava mais in_progress (Watch concluiu
+                // em paralelo). NÃO apagar set_logs — preserva o treino do Watch.
+                if (__DEV__) console.warn(`[useWorkoutSession] discard abortado: session ${sid} não está in_progress (Watch venceu) — set_logs preservados`);
+                unmarkSessionDiscarded(sid); // não há descarte a confirmar
+                return;
+            }
+
             const { error: logsError } = await supabase
                 .from('set_logs' as any)
                 .delete()
                 .eq('workout_session_id', sid);
-            if (logsError && __DEV__) console.error(`[useWorkoutSession] discard set_logs error: ${logsError.message}`);
+            if (logsError) throw logsError;
 
-            const { error: sessionError } = await supabase
-                .from('workout_sessions' as any)
-                .update({ status: 'abandoned' })
-                .eq('id', sid)
-                .eq('status', 'in_progress');
-            if (sessionError && __DEV__) console.error(`[useWorkoutSession] discard session error: ${sessionError.message}`);
-
+            // Servidor confirmou tudo — o id pode sair do registro de descartadas.
+            unmarkSessionDiscarded(sid);
             if (__DEV__) console.log(`[useWorkoutSession] Workout discarded: session ${sid} abandoned, set_logs deleted`);
         } catch (err: any) {
-            if (__DEV__) console.error(`[useWorkoutSession] discardWorkout exception: ${err?.message}`);
+            // FIX C: rede caiu no meio do descarte — enfileira uma op durável que
+            // drena delete-por-session_id + update status='abandoned' quando a
+            // conexão voltar. O id permanece em discarded_sessions até confirmar.
+            if (await isNetworkError(err)) {
+                enqueueDiscardSession(sid);
+                if (__DEV__) console.warn(`[useWorkoutSession] discardWorkout offline — enfileirado descarte durável da sessão ${sid}`);
+            } else if (__DEV__) {
+                console.error(`[useWorkoutSession] discardWorkout exception: ${err?.message}`);
+            }
         }
     };
 
@@ -556,7 +608,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 // 1b. Find or create workout_session (in_progress)
                 // When deferSessionCreation is true, skip creating a new session.
                 // An existing in_progress session is still reattached.
-                const { data: existingSession }: { data: any; error: any } = await supabase
+                let { data: existingSession }: { data: any; error: any } = await supabase
                     .from('workout_sessions' as any)
                     .select('id, started_at')
                     .eq('assigned_workout_id', workoutId)
@@ -569,6 +621,16 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 // A2: séries já persistidas da sessão reanexada, indexadas por
                 // item+set_number, para pré-popular o estado (rehidratação).
                 const persistedLogByKey = new Map<string, { weight: number; reps_completed: number; notes: string | null }>();
+
+                // FIX C: uma sessão in_progress que o aluno já descartou localmente
+                // NÃO pode ser rehidratada (o descarte offline ainda não confirmou
+                // no servidor). Re-enfileira o descarte durável e segue como sessão
+                // nova/descartada — não reincorpora as séries no estado.
+                if (existingSession && isSessionDiscarded(existingSession.id)) {
+                    if (__DEV__) console.warn(`[useWorkoutSession] reattach ignorado: session ${existingSession.id} está em discarded_sessions — re-enfileirando descarte durável`);
+                    enqueueDiscardSession(existingSession.id);
+                    existingSession = null;
+                }
 
                 if (existingSession) {
                     if (__DEV__) console.log(`[useWorkoutSession] Found existing in_progress session: ${existingSession.id}`);
@@ -1333,6 +1395,10 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
             // Use existing session (created on workout start) or create one as fallback
             let currentSessionId = sessionId;
+            // FIX D: caminho da sessão existente (update) é o que ganha durabilidade
+            // offline. O fallback insert (sem sessionId) não tem id durável a
+            // enfileirar, então mantém o comportamento atual (throw).
+            const isExistingSessionPath = !!currentSessionId;
 
             if (!currentSessionId) {
                 if (__DEV__) console.warn('[useWorkoutSession] No sessionId at finish — creating session now');
@@ -1383,28 +1449,22 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                 if (sessionError) throw sessionError;
                 currentSessionId = newSession.id;
-            } else {
-                // Update existing in_progress session to completed
-                const updatePayload: Record<string, any> = {
-                    status: 'completed',
-                    // A14: preserva o started_at real da sessão reanexada; só usa o
-                    // mount como fallback para sessões criadas nesta montagem.
-                    started_at: sessionStartedAtRef.current ?? new Date(startTime).toISOString(),
-                    completed_at: now,
-                    duration_seconds: durationSeconds,
-                    rpe: rpe || null,
-                    feedback: feedback || null,
-                };
-                if (postWorkoutSubmissionId) {
-                    updatePayload.post_workout_submission_id = postWorkoutSubmissionId;
-                }
+            }
 
-                const { error: updateError } = await supabase
-                    .from('workout_sessions' as any)
-                    .update(updatePayload)
-                    .eq('id', currentSessionId);
-
-                if (updateError) throw updateError;
+            // FIX D: payload do update da sessão existente — o mesmo patch que a
+            // fila durável re-aplica offline (guardado por in_progress no drain).
+            const existingSessionUpdatePayload: Record<string, any> = {
+                status: 'completed',
+                // A14: preserva o started_at real da sessão reanexada; só usa o
+                // mount como fallback para sessões criadas nesta montagem.
+                started_at: sessionStartedAtRef.current ?? new Date(startTime).toISOString(),
+                completed_at: now,
+                duration_seconds: durationSeconds,
+                rpe: rpe || null,
+                feedback: feedback || null,
+            };
+            if (postWorkoutSubmissionId) {
+                existingSessionUpdatePayload.post_workout_submission_id = postWorkoutSubmissionId;
             }
 
             // Upsert any remaining set_logs (catch-up for sets that may not have been persisted)
@@ -1468,6 +1528,36 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 }
             }
 
+            // FIX D: sucesso otimista quando o erro for de REDE. Enfileira a
+            // finalização durável (update + upsert idempotente), limpa o snapshot,
+            // marca hasFinishedRef e devolve o sessionId pra UI seguir p/ a
+            // celebração. Erro de validação/RLS NÃO entra aqui (volta false → throw).
+            const optimisticFinishOffline = (): string => {
+                enqueueFinishSession({
+                    session_id: currentSessionId as string,
+                    session_update: existingSessionUpdatePayload,
+                    set_logs: setLogs as PendingFinishSession['set_logs'],
+                });
+                hasFinishedRef.current = true;
+                clearWorkoutState(workoutId);
+                if (__DEV__) console.log(`[useWorkoutSession] finish offline — sessão ${currentSessionId} enfileirada (sucesso otimista)`);
+                return currentSessionId as string;
+            };
+
+            // FIX D: completa a sessão existente. Offline → fila durável + sucesso
+            // otimista. (O fallback insert já gravou 'completed' acima.)
+            if (isExistingSessionPath) {
+                const { error: updateError } = await supabase
+                    .from('workout_sessions' as any)
+                    .update(existingSessionUpdatePayload)
+                    .eq('id', currentSessionId);
+
+                if (updateError) {
+                    if (await isNetworkError(updateError)) return optimisticFinishOffline();
+                    throw updateError; // validação/RLS — comportamento atual
+                }
+            }
+
             if (setLogs.length > 0) {
                 const { error: logsError } = await supabase
                     .from('set_logs' as any)
@@ -1476,6 +1566,12 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                     });
 
                 if (logsError) {
+                    // FIX D: rede caiu no upsert (sessão já marcada completed acima) —
+                    // não reverte; enfileira a finalização durável (o drain re-aplica
+                    // update + upsert idempotente) e dá sucesso otimista.
+                    if (isExistingSessionPath && await isNetworkError(logsError)) {
+                        return optimisticFinishOffline();
+                    }
                     console.error('[useWorkoutSession] Error upserting set_logs at finish:', __DEV__ ? logsError : '');
                     // C3: NÃO concluir um treino com séries faltando. Reverte a
                     // sessão para in_progress (best-effort) e lança — o executeFinish
