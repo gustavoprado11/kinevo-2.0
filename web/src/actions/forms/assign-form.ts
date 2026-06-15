@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assignFormCore, type AssignFormInput } from './assign-form-core'
 
 /**
@@ -21,7 +22,10 @@ export async function assignFormToStudents(input: AssignFormInput) {
         .single()
     if (!trainer) return { success: false, error: 'Treinador não encontrado' }
 
-    const result = await assignFormCore(supabase, trainer.id, input)
+    // RPC assign_form_to_students (5-arg) é service-role-only desde a migration
+    // 204 (lockdown MCP). trainer.id vem da sessão autenticada acima (não é input
+    // do usuário) e o RPC revalida coach_id internamente — mesmo caminho do MCP.
+    const result = await assignFormCore(supabaseAdmin, trainer.id, input)
 
     if (result.success) {
         revalidatePath('/forms')
