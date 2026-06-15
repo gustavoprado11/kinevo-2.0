@@ -30,7 +30,20 @@ interface ScheduledRow {
     data: Record<string, unknown>;
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+    // Auth: shared secret enviado pelo cron pg_net (migration 205, mesmo
+    // secret do send-push-notification). A função roda com verify_jwt=false,
+    // então este header é a ÚNICA barreira contra POST anônimo. Fail-closed.
+    const expectedSecret = Deno.env.get("PUSH_WEBHOOK_SECRET");
+    const providedSecret = req.headers.get("x-push-secret");
+    if (!expectedSecret || providedSecret !== expectedSecret) {
+        console.warn("[dispatch] Rejected: bad or missing x-push-secret");
+        return new Response(
+            JSON.stringify({ error: "unauthorized" }),
+            { status: 401 },
+        );
+    }
+
     const nowIso = new Date().toISOString();
 
     const { data: rows, error: fetchError } = await supabaseAdmin
@@ -73,6 +86,25 @@ Deno.serve(async (_req) => {
 async function dispatchOne(
     row: ScheduledRow,
 ): Promise<"sent" | "skipped" | "failed"> {
+    // 0. Claim atômico: pending → processing condicionado a status='pending'.
+    //    Sob invocações concorrentes do cron, só UM worker vence o claim; os
+    //    outros recebem 0 linhas e pulam — evita inbox/push duplicados.
+    const { data: claimed, error: claimError } = await supabaseAdmin
+        .from("scheduled_notifications")
+        .update({ status: "processing" })
+        .eq("id", row.id)
+        .eq("status", "pending")
+        .select("id");
+
+    if (claimError) {
+        console.error("[dispatch] claim error:", claimError);
+        return "failed";
+    }
+    if (!claimed || claimed.length === 0) {
+        // Outro worker já reivindicou esta linha (ou ela saiu de 'pending').
+        return "skipped";
+    }
+
     // 1. Preferências do aluno — se desabilitou categoria 'appointment' ou
     //    push_enabled=false, cancela (não tenta de novo).
     const { data: student } = await supabaseAdmin
@@ -124,11 +156,10 @@ async function dispatchOne(
         .eq("id", row.id);
 
     if (updateError) {
-        // Inbox já foi inserido; se falhar o UPDATE o próximo tick pode
-        // re-enviar. Protegido pela UNIQUE(recurring_appointment_id,
-        // occurrence_date, source): não há risco de segundo insert de
-        // lembrete. Mas o dispatcher pode re-entrar por este mesmo `id`
-        // e re-inserir em inbox — pra evitar, apenas logamos.
+        // Inbox já foi inserido e o push já disparou. Se o mark-sent falhar, a
+        // linha fica em 'processing' (não volta a 'pending'), então o próximo
+        // tick NÃO a reprocessa — sem risco de inbox/push duplicado. Apenas
+        // logamos; a linha não fica marcada 'sent', mas a notificação saiu.
         console.error("[dispatch] mark-sent error:", updateError);
     }
 
