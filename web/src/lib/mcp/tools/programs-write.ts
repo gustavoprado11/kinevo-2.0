@@ -301,10 +301,13 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
         const { data: assignedProgramId, error: rpcError } = await supabaseAdmin.rpc(
           'assign_program_to_student',
           {
+            // Overload com p_trainer_id (migration 203): o MCP escreve com
+            // service-role, então current_trainer_id() é NULL na versão antiga.
+            p_trainer_id: trainerId,
             p_template_id: program_id,
             p_student_id: student_id,
             p_start_date: startDateValue,
-          }
+          } as never
         )
 
         if (rpcError) {
