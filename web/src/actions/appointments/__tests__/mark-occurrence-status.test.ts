@@ -8,6 +8,14 @@ vi.mock('@/lib/supabase/server', () => ({
     createClient: vi.fn(() => Promise.resolve(mockSupabase)),
 }))
 
+// O núcleo (core.ts) importa supabaseAdmin no topo — mock para não lançar no
+// ambiente de teste (sem SERVICE_ROLE_KEY).
+vi.mock('@/lib/supabase-admin', () => ({
+    supabaseAdmin: {
+        from: (...args: unknown[]) => mockSupabase.from(...(args as [string])),
+    },
+}))
+
 const RULE_ID = '66666666-6666-6666-6666-666666666666'
 
 describe('markOccurrenceStatus', () => {

@@ -6,6 +6,15 @@ vi.mock('@/lib/supabase/server', () => ({
     createClient: vi.fn(() => Promise.resolve(mockSupabase)),
 }))
 
+// O núcleo (core.ts) importa supabaseAdmin e next/cache no topo — mocks para não
+// lançar no ambiente de teste (sem SERVICE_ROLE_KEY).
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+vi.mock('@/lib/supabase-admin', () => ({
+    supabaseAdmin: {
+        from: (...args: unknown[]) => mockSupabase.from(...(args as [string])),
+    },
+}))
+
 function baseRule(overrides: Record<string, unknown> = {}) {
     return {
         id: 'ra-1',
