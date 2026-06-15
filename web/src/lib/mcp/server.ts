@@ -24,7 +24,15 @@ AGENDA / SESSÕES: o treinador gerencia a agenda de atendimentos pelas tools kin
 
 FORMULÁRIOS / CHECK-INS: o treinador envia formulários (check-in, anamnese, reavaliação, pesquisa) aos alunos.
 • Para ENVIAR: kinevo_list_form_templates lista os templates disponíveis (próprios + de sistema) → escolha o template_id → kinevo_send_form(template_id, student_ids[, due_at, message]). Pode enviar para vários alunos de uma vez (ex.: "manda o check-in semanal pra todos os alunos ativos" → liste os alunos ativos e passe os ids). Alunos que já têm o mesmo formulário pendente são pulados (sem duplicar). O aluno recebe push + item no inbox.
-• Para LER respostas já enviadas pelos alunos use kinevo_get_form_responses.`
+• Para RECORRÊNCIA (check-in semanal fixo, reavaliação mensal etc.): kinevo_schedule_form(template_id, student_ids, frequency) agenda o envio automático em cada vencimento — o aluno é notificado toda vez. Confirme a frequência antes. Reveja os agendamentos ativos de um aluno com kinevo_list_form_schedules(student_id). Para um envio ÚNICO use kinevo_send_form.
+• Para LER respostas já enviadas pelos alunos use kinevo_get_form_responses.
+
+FINANCEIRO: o treinador acompanha e cobra pelas tools kinevo_list_subscriptions / kinevo_get_revenue_summary (leitura) e kinevo_list_plans / kinevo_generate_checkout_link.
+• Cobrança: kinevo_generate_checkout_link(student_id, plan_id) gera um link de pagamento Stripe (assinatura recorrente) que o treinador envia ao aluno. SEMPRE confirme o aluno E o plano exatos com o treinador antes de gerar (ex.: "Gerar o link do plano Mensal R$199 para a Maria?") — é início de cobrança. Escolha o plan_id via kinevo_list_plans (só planos com checkout_ready=true funcionam) e o student_id via kinevo_list_students. Exige Stripe Connect ativo do treinador.
+
+AVALIAÇÕES FÍSICAS (antropometria): o treinador mede composição corporal (peso, circunferências, dobras, % gordura, IMC) pelas tools kinevo_*_assessment*.
+• Ler evolução: kinevo_get_assessments (sem session_id lista as sessões; com session_id traz uma sessão completa com medidas e métricas calculadas).
+• Fluxo de uma nova avaliação: (1) escolha um template com kinevo_list_form_templates(category='assessment'); (2) kinevo_create_assessment_session(student_id, template_id[, scheduled_at, subject_sex, subject_age_years]) abre a sessão — informe sexo/idade quando for usar protocolo de % de gordura; (3) kinevo_save_assessment_measurements(session_id, measurements) registra as medidas (pode chamar várias vezes); (4) kinevo_finalize_assessment(session_id) calcula as métricas derivadas, encerra e COMPARTILHA com o aluno — confirme com o treinador antes, é irreversível.`
 
 export function createMcpServer(trainerId: string): McpServer {
   const server = new McpServer(

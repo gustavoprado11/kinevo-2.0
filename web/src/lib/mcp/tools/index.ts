@@ -10,9 +10,11 @@ import { registerProgressReadTools } from './progress'
 import { registerDashboardReadTools } from './dashboard'
 import { registerMessageWriteTools } from './messages'
 import { registerBillingReadTools } from './billing'
+import { registerBillingWriteTools } from './billing-write'
 import { registerConversationReadTools } from './conversations'
 import { registerAppointmentTools } from './appointments'
 import { registerFormWriteTools } from './forms'
+import { registerAssessmentTools } from './assessments'
 
 export function registerAllTools(server: McpServer, trainerId: string) {
   registerPingTool(server, trainerId)
@@ -26,7 +28,9 @@ export function registerAllTools(server: McpServer, trainerId: string) {
   registerDashboardReadTools(server, trainerId)
   registerMessageWriteTools(server, trainerId)
   registerBillingReadTools(server, trainerId)
+  registerBillingWriteTools(server, trainerId)
   registerConversationReadTools(server, trainerId)
   registerAppointmentTools(server, trainerId)
   registerFormWriteTools(server, trainerId)
+  registerAssessmentTools(server, trainerId)
 }
