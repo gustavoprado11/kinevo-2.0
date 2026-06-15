@@ -21,7 +21,7 @@ type WorkoutType = 'template' | 'assigned'
 // equivalent string-code array ('sun','mon',…,'sat'). The MCP exposes a single
 // integer-array param and converts to the right column per program type.
 
-const DAY_INT_TO_STR: Record<number, string> = {
+export const DAY_INT_TO_STR: Record<number, string> = {
   0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat',
 }
 
@@ -43,7 +43,7 @@ function scheduleColumn(programType: WorkoutType, days: number[]): Record<string
 
 /** Zod schema for one prescribed set inside a `set_scheme`. `set_number` is
  *  assigned automatically from array position, so callers never pass it. */
-const setSchemaZod = z.object({
+export const setSchemaZod = z.object({
   set_type: z.enum(['warmup', 'normal', 'top', 'backoff', 'drop', 'failure', 'cluster', 'amrap'])
     .default('normal')
     .describe("Type of set. 'normal' for straight sets; 'top'/'backoff' for top+backoff; 'drop' for drop-set quedas; 'cluster' for rest-pause; 'warmup'/'failure'/'amrap' as named."),
@@ -61,7 +61,7 @@ const setSchemaZod = z.object({
  *  aggregate `(sets, reps, rest_seconds)` triple mirrored on the parent item.
  *  Mirrors `insertSetSchemeRows` + `aggregatesFromItem` in the web builder so
  *  the MCP writes byte-for-byte the same shape. */
-function materializeScheme(scheme: WorkoutSet[], rounds: number | undefined) {
+export function materializeScheme(scheme: WorkoutSet[], rounds: number | undefined) {
   const safeRounds = Math.max(1, Math.min(20, Math.floor(rounds ?? 1)))
   const useRounds = safeRounds > 1
   const aggregates = useRounds ? summarizeWithRounds(scheme, safeRounds) : summarizeSetScheme(scheme)
@@ -84,7 +84,7 @@ function materializeScheme(scheme: WorkoutSet[], rounds: number | undefined) {
 /** Turn the MCP `set_scheme` input (no set_number) into a validated
  *  `WorkoutSet[]` with contiguous set_number. Returns an error string when the
  *  scheme is incoherent. */
-function buildSetScheme(rawSets: Array<z.infer<typeof setSchemaZod>>): { scheme: WorkoutSet[] } | { error: string } {
+export function buildSetScheme(rawSets: Array<z.infer<typeof setSchemaZod>>): { scheme: WorkoutSet[] } | { error: string } {
   const scheme: WorkoutSet[] = rawSets.map((s, i) => ({
     set_number: i + 1,
     set_type: s.set_type,
