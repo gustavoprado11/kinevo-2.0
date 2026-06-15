@@ -130,6 +130,19 @@ export async function dismissInsight(insightId: string): Promise<{ success: bool
     return { success: !error }
 }
 
+// Marca o insight como tratado após o treinador enviar a mensagem do rascunho.
+// status='acted' sai do feed (getTrainerInsights só carrega 'new'/'read').
+export async function markInsightActed(insightId: string): Promise<{ success: boolean }> {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('assistant_insights')
+        .update({ status: 'acted', updated_at: new Date().toISOString() })
+        .eq('id', insightId)
+
+    return { success: !error }
+}
+
 export async function getInsightCounts(): Promise<InsightCounts> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
