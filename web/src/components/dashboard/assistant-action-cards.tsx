@@ -17,6 +17,7 @@ import { useAssistantChatStore } from '@/stores/assistant-chat-store'
 import { useCommunicationStore } from '@/stores/communication-store'
 import { formatCurrency } from '@/lib/utils/financial'
 import { DraftMessageComposer } from './draft-message-composer'
+import { WinbackComposer } from './winback-composer'
 
 // ── Category config ──
 
@@ -145,6 +146,8 @@ export function AssistantActionCards({
     const [insights, setInsights] = useState<InsightItem[]>(initialInsights)
     const [markingPaid, setMarkingPaid] = useState<string | null>(null)
     const [draftFor, setDraftFor] = useState<{ insight: InsightItem; studentId: string; studentName: string } | null>(null)
+    const [winbackFor, setWinbackFor] = useState<{ studentId: string; planId: string; studentName: string; planTitle: string | null } | null>(null)
+    const [hiddenExpiredPlans, setHiddenExpiredPlans] = useState<Set<string>>(new Set())
     const openChat = useAssistantChatStore(s => s.openChat)
     const { openPanel, openConversation } = useCommunicationStore()
     const P: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
@@ -185,6 +188,7 @@ export function AssistantActionCards({
     }
 
     for (const ep of expiredPlans) {
+        if (hiddenExpiredPlans.has(ep.studentId)) continue
         rows.push({
             id: `ep-${ep.studentId}`, type: 'expired_plan', category: 'financial', priority: 2,
             studentName: ep.studentName, studentId: ep.studentId, avatarUrl: ep.studentAvatar, isNew: false,
@@ -249,6 +253,11 @@ export function AssistantActionCards({
     const handleDraftSent = useCallback((insightId: string) => {
         setInsights(prev => prev.filter(i => i.id !== insightId))
         setDraftFor(null)
+    }, [])
+
+    const handleWinbackSent = useCallback((studentId: string) => {
+        setHiddenExpiredPlans(prev => new Set(prev).add(studentId))
+        setWinbackFor(null)
     }, [])
 
     const handleDirectAction = useCallback((e: React.MouseEvent, action: 'message' | 'program' | 'profile', studentId?: string | null, studentName?: string | null) => {
@@ -468,6 +477,14 @@ export function AssistantActionCards({
                                                     <MessageCircle className="w-3 h-3" />
                                                 </button>
                                             )}
+                                            {row.expiredPlanItem.planId && row.studentId && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setWinbackFor({ studentId: row.studentId!, planId: row.expiredPlanItem!.planId!, studentName: row.studentName, planTitle: row.expiredPlanItem!.planTitle }) }}
+                                                    className="text-[11px] font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500 transition-colors"
+                                                >
+                                                    Reativar
+                                                </button>
+                                            )}
                                             {onSellPlan && row.studentId && (
                                                 <button onClick={(e) => { e.stopPropagation(); onSellPlan(row.studentId!) }} className="text-[11px] font-medium text-[#7C3AED] dark:text-primary hover:opacity-80 transition-colors">
                                                     Vender plano
@@ -495,6 +512,17 @@ export function AssistantActionCards({
                     studentName={draftFor.studentName}
                     onClose={() => setDraftFor(null)}
                     onSent={handleDraftSent}
+                />
+            )}
+
+            {winbackFor && (
+                <WinbackComposer
+                    studentId={winbackFor.studentId}
+                    planId={winbackFor.planId}
+                    studentName={winbackFor.studentName}
+                    planTitle={winbackFor.planTitle}
+                    onClose={() => setWinbackFor(null)}
+                    onSent={handleWinbackSent}
                 />
             )}
         </div>
