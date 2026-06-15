@@ -5,6 +5,16 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import type { McpContext } from './types'
 
 const MCP_RATE_LIMIT = { perMinute: 30, perDay: 1000 }
+// Throttle por IP aplicado ANTES do bcrypt, só no caminho de API key (o caro).
+// Limita amplificação de custo por tokens inválidos. Generoso p/ uso legítimo
+// (integrações server-side de um trainer fazem poucas req/min) e fail-open.
+const API_KEY_PREAUTH_LIMIT = { perMinute: 60, perDay: 5000 }
+
+function clientIp(request: Request): string {
+  const xff = request.headers.get('x-forwarded-for')
+  if (xff) return xff.split(',')[0].trim()
+  return request.headers.get('x-real-ip') ?? 'unknown'
+}
 
 export class McpAuthError extends Error {
   constructor(
@@ -26,13 +36,18 @@ async function validateApiKey(
 ): Promise<{ trainerId: string; keyId: string; apiKeyId: string | null } | null> {
   if (!token.startsWith('kinevo_trainer_')) return null
 
-  const prefix = token.slice(0, 12)
+  // Prefixo único de 23 chars (keys novas) + fallback pro legado de 12 chars
+  // ("kinevo_train", keys criadas antes do fix). Um token inválido casa ~0 keys
+  // novas; só as legadas remanescentes ainda caem no fallback (e se auto-curam
+  // abaixo no primeiro uso bem-sucedido).
+  const newPrefix = token.slice(0, 23)
+  const legacyPrefix = token.slice(0, 12)
   const supabaseAdmin = createAdminClient()
 
   const { data: keys } = await supabaseAdmin
     .from('trainer_api_keys')
-    .select('id, trainer_id, key_hash')
-    .eq('key_prefix', prefix)
+    .select('id, trainer_id, key_hash, key_prefix')
+    .in('key_prefix', [newPrefix, legacyPrefix])
     .is('revoked_at', null)
 
   if (!keys || keys.length === 0) return null
@@ -40,9 +55,17 @@ async function validateApiKey(
   for (const key of keys) {
     const match = await bcrypt.compare(token, key.key_hash)
     if (match) {
+      // Auto-cura: migra o prefixo legado ("kinevo_train") pro formato único de
+      // 23 chars no primeiro uso — temos a key crua aqui. Depois disso, tokens
+      // inválidos param de casar essa key no fallback. Idempotente.
+      const patch: { last_used_at: string; key_prefix?: string } = {
+        last_used_at: new Date().toISOString(),
+      }
+      if (key.key_prefix !== newPrefix) patch.key_prefix = newPrefix
+
       supabaseAdmin
         .from('trainer_api_keys')
-        .update({ last_used_at: new Date().toISOString() })
+        .update(patch)
         .eq('id', key.id)
         .then()
 
@@ -91,9 +114,21 @@ export async function authenticateRequest(
 
   const token = authHeader.slice(7)
 
-  // Try OAuth token first (fast sha256), then API key (slow bcrypt)
-  const result =
-    (await validateOAuthToken(token)) ?? (await validateApiKey(token))
+  // Try OAuth token first (fast sha256).
+  let result = await validateOAuthToken(token)
+
+  // API key path (slow bcrypt): throttle por IP ANTES do bcrypt para limitar
+  // amplificação de custo por tokens inválidos repetidos.
+  if (!result && token.startsWith('kinevo_trainer_')) {
+    const pre = await consumeRateLimit(
+      `mcp-apikey-ip:${clientIp(request)}`,
+      API_KEY_PREAUTH_LIMIT
+    )
+    if (!pre.allowed) {
+      throw new McpAuthError(pre.error ?? 'Rate limit exceeded', 429)
+    }
+    result = await validateApiKey(token)
+  }
 
   if (!result) {
     throw new McpAuthError('Token invalido, expirado ou revogado')

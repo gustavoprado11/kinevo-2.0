@@ -30,7 +30,10 @@ export async function generateApiKey(name?: string) {
 
   const rawKey = `kinevo_trainer_${randomUUID()}`
   const keyHash = await bcrypt.hash(rawKey, 12)
-  const keyPrefix = rawKey.slice(0, 12)
+  // Prefixo indexado de 23 chars = "kinevo_trainer_" (15) + 8 hex do uuid, que
+  // varia por chave. Antes era slice(0,12) = sempre "kinevo_train" (constante),
+  // o que fazia o lookup casar TODAS as keys e rodar N×bcrypt por token inválido.
+  const keyPrefix = rawKey.slice(0, 23)
 
   const { data, error } = await supabaseAdmin
     .from('trainer_api_keys')
