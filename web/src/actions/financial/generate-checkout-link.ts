@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { generateCheckoutCore } from '@/lib/stripe/generate-checkout'
+import { generateCheckoutLinkCore } from './generate-checkout-core'
 import { revalidatePath } from 'next/cache'
 
 export async function generateCheckoutLink({ studentId, planId }: { studentId: string; planId: string }) {
@@ -15,7 +15,7 @@ export async function generateCheckoutLink({ studentId, planId }: { studentId: s
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, email')
+        .select('id')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -23,51 +23,12 @@ export async function generateCheckoutLink({ studentId, planId }: { studentId: s
         return { error: 'Treinador não encontrado' }
     }
 
-    // Check Stripe Connect
-    const { data: settings } = await supabaseAdmin
-        .from('payment_settings')
-        .select('stripe_connect_id, charges_enabled')
-        .eq('user_id', trainer.id)
-        .single()
+    const result = await generateCheckoutLinkCore(supabaseAdmin, trainer.id, { studentId, planId })
 
-    if (!settings?.stripe_connect_id || !settings.charges_enabled) {
-        return { error: 'Conta Stripe não conectada ou não ativa' }
+    if (!result.success) {
+        return { error: result.error }
     }
 
-    // Validate student belongs to trainer
-    const { data: student } = await supabaseAdmin
-        .from('students')
-        .select('id, coach_id')
-        .eq('id', studentId)
-        .single()
-
-    if (!student || student.coach_id !== trainer.id) {
-        return { error: 'Aluno não encontrado' }
-    }
-
-    // Validate plan belongs to trainer
-    const { data: plan } = await supabaseAdmin
-        .from('trainer_plans')
-        .select('id, trainer_id')
-        .eq('id', planId)
-        .single()
-
-    if (!plan || plan.trainer_id !== trainer.id) {
-        return { error: 'Plano não encontrado' }
-    }
-
-    try {
-        const result = await generateCheckoutCore({
-            studentId,
-            planId,
-            trainerId: trainer.id,
-            stripeConnectId: settings.stripe_connect_id,
-        })
-
-        revalidatePath('/financial/subscriptions')
-        return { success: true, url: result.url }
-    } catch (err) {
-        console.error('[generate-checkout-link] Error:', err)
-        return { error: err instanceof Error ? err.message : 'Erro ao gerar link de pagamento' }
-    }
+    revalidatePath('/financial/subscriptions')
+    return { success: true, url: result.url }
 }
