@@ -3,6 +3,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mcpSuccess, mcpError } from '../types'
 import { assignFormCore } from '@/actions/forms/assign-form-core'
+import {
+  createFormSchedulesCore,
+  getStudentFormSchedulesCore,
+} from '@/actions/forms/form-schedules-core'
 
 export function registerFormWriteTools(server: McpServer, trainerId: string) {
   server.tool(
@@ -72,6 +76,58 @@ export function registerFormWriteTools(server: McpServer, trainerId: string) {
         assigned_count: sent,
         skipped_count: skipped,
         message: `Formulário enviado para ${sent} aluno(s)${skipped > 0 ? `; ${skipped} pulado(s) (já tinham este formulário pendente)` : ''}. Os alunos foram notificados.`,
+      })
+    }
+  )
+
+  server.tool(
+    'kinevo_schedule_form',
+    "Set up a RECURRING form/check-in for one or more students: the form is sent automatically on each due date (the student is notified every time). Use for ongoing weekly check-ins, monthly reassessments, etc. For a ONE-OFF send, use kinevo_send_form instead. Pick template_id via kinevo_list_form_templates and student ids via kinevo_list_students. Confirm the frequency with the trainer before scheduling.",
+    {
+      template_id: z.string().uuid().describe('The form template to schedule (from kinevo_list_form_templates).'),
+      student_ids: z.array(z.string().uuid()).min(1).describe('One or more student IDs to put on the recurring schedule.'),
+      frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly']).describe('How often the form repeats.'),
+    },
+    { title: 'Agendar formulário recorrente', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    async ({ template_id, student_ids, frequency }) => {
+      const supabaseAdmin = createAdminClient()
+      const result = await createFormSchedulesCore(supabaseAdmin, trainerId, {
+        formTemplateId: template_id,
+        studentIds: student_ids,
+        frequency,
+      })
+
+      if (!result.success) return mcpError(result.error ?? 'Erro ao agendar formulário.')
+
+      return mcpSuccess({
+        scheduled_count: result.count ?? 0,
+        frequency,
+        message: `Formulário agendado (${frequency}) para ${result.count ?? 0} aluno(s). Será enviado automaticamente em cada vencimento.`,
+      })
+    }
+  )
+
+  server.tool(
+    'kinevo_list_form_schedules',
+    'List the ACTIVE recurring form schedules for a given student (which forms repeat and how often, and when each is next due). Use to review or before changing a student\'s recurring check-ins.',
+    {
+      student_id: z.string().uuid().describe('The student whose recurring schedules to list.'),
+    },
+    { title: 'Listar formulários recorrentes', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    async ({ student_id }) => {
+      const supabaseAdmin = createAdminClient()
+      const schedules = await getStudentFormSchedulesCore(supabaseAdmin, trainerId, student_id)
+
+      return mcpSuccess({
+        schedules: schedules.map(s => ({
+          id: s.id,
+          form_template_id: s.form_template_id,
+          form_template_title: s.form_template_title,
+          frequency: s.frequency,
+          next_due_at: s.next_due_at,
+          last_sent_at: s.last_sent_at,
+        })),
+        total: schedules.length,
       })
     }
   )

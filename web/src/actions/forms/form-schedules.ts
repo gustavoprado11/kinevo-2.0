@@ -2,29 +2,32 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import {
+    createFormSchedulesCore,
+    getStudentFormSchedulesCore,
+    toggleFormScheduleCore,
+    deleteFormScheduleCore,
+    type CreateScheduleInput,
+    type FormScheduleRow,
+    type ScheduleFrequency,
+} from './form-schedules-core'
 
-// ============================================================================
-// Types
-// ============================================================================
+// Re-export para retrocompat com quem importa daqui.
+export type { ScheduleFrequency, FormScheduleRow }
 
-export type ScheduleFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly'
+async function resolveTrainerId(): Promise<{ trainerId?: string; error?: string }> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Não autorizado' }
 
-interface CreateScheduleInput {
-    formTemplateId: string
-    studentIds: string[]
-    frequency: ScheduleFrequency
-}
+    const { data: trainer } = await supabase
+        .from('trainers')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single()
 
-export interface FormScheduleRow {
-    id: string
-    student_id: string
-    form_template_id: string
-    frequency: ScheduleFrequency
-    is_active: boolean
-    next_due_at: string
-    last_sent_at: string | null
-    created_at: string
-    form_template_title?: string
+    if (!trainer) return { error: 'Treinador não encontrado' }
+    return { trainerId: trainer.id }
 }
 
 // ============================================================================
@@ -32,41 +35,16 @@ export interface FormScheduleRow {
 // ============================================================================
 
 export async function createFormSchedules(input: CreateScheduleInput) {
+    const { trainerId, error } = await resolveTrainerId()
+    if (!trainerId) return { success: false, error }
+
     const supabase = await createClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: 'Não autorizado' }
-
-    if (!input.formTemplateId || !input.studentIds?.length || !input.frequency) {
-        return { success: false, error: 'Dados incompletos' }
-    }
-
-    const nextDue = computeNextDue(input.frequency, new Date())
-
-    const rows = input.studentIds.map(studentId => ({
-        trainer_id: user.id,
-        student_id: studentId,
-        form_template_id: input.formTemplateId,
-        frequency: input.frequency,
-        next_due_at: nextDue.toISOString(),
-    }))
-
-    const { data, error } = await supabase
-        .from('form_schedules')
-        .upsert(rows, {
-            onConflict: 'student_id,form_template_id,frequency',
-            ignoreDuplicates: false,
-        })
-        .select('id')
-
-    if (error) {
-        console.error('[createFormSchedules] error:', error)
-        return { success: false, error: error.message }
-    }
+    const result = await createFormSchedulesCore(supabase, trainerId, input)
+    if (!result.success) return result
 
     revalidatePath('/forms')
     revalidatePath('/students')
-    return { success: true, count: data?.length ?? 0 }
+    return result
 }
 
 // ============================================================================
@@ -74,41 +52,11 @@ export async function createFormSchedules(input: CreateScheduleInput) {
 // ============================================================================
 
 export async function getStudentFormSchedules(studentId: string): Promise<FormScheduleRow[]> {
+    const { trainerId } = await resolveTrainerId()
+    if (!trainerId) return []
+
     const supabase = await createClient()
-
-    const { data, error } = await supabase
-        .from('form_schedules')
-        .select(`
-            id,
-            student_id,
-            form_template_id,
-            frequency,
-            is_active,
-            next_due_at,
-            last_sent_at,
-            created_at,
-            form_templates!inner ( title )
-        `)
-        .eq('student_id', studentId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-
-    if (error) {
-        console.error('[getStudentFormSchedules] error:', error)
-        return []
-    }
-
-    return (data ?? []).map((row: any) => ({
-        id: row.id,
-        student_id: row.student_id,
-        form_template_id: row.form_template_id,
-        frequency: row.frequency,
-        is_active: row.is_active,
-        next_due_at: row.next_due_at,
-        last_sent_at: row.last_sent_at,
-        created_at: row.created_at,
-        form_template_title: row.form_templates?.title ?? 'Formulário',
-    }))
+    return getStudentFormSchedulesCore(supabase, trainerId, studentId)
 }
 
 // ============================================================================
@@ -116,20 +64,13 @@ export async function getStudentFormSchedules(studentId: string): Promise<FormSc
 // ============================================================================
 
 export async function toggleFormSchedule(scheduleId: string, isActive: boolean) {
+    const { trainerId, error } = await resolveTrainerId()
+    if (!trainerId) return { success: false, error }
+
     const supabase = await createClient()
-
-    const { error } = await supabase
-        .from('form_schedules')
-        .update({ is_active: isActive })
-        .eq('id', scheduleId)
-
-    if (error) {
-        console.error('[toggleFormSchedule] error:', error)
-        return { success: false, error: error.message }
-    }
-
-    revalidatePath('/students')
-    return { success: true }
+    const result = await toggleFormScheduleCore(supabase, trainerId, scheduleId, isActive)
+    if (result.success) revalidatePath('/students')
+    return result
 }
 
 // ============================================================================
@@ -137,41 +78,11 @@ export async function toggleFormSchedule(scheduleId: string, isActive: boolean) 
 // ============================================================================
 
 export async function deleteFormSchedule(scheduleId: string) {
+    const { trainerId, error } = await resolveTrainerId()
+    if (!trainerId) return { success: false, error }
+
     const supabase = await createClient()
-
-    const { error } = await supabase
-        .from('form_schedules')
-        .delete()
-        .eq('id', scheduleId)
-
-    if (error) {
-        console.error('[deleteFormSchedule] error:', error)
-        return { success: false, error: error.message }
-    }
-
-    revalidatePath('/students')
-    return { success: true }
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function computeNextDue(frequency: ScheduleFrequency, fromDate: Date): Date {
-    const next = new Date(fromDate)
-    switch (frequency) {
-        case 'daily':
-            next.setDate(next.getDate() + 1)
-            break
-        case 'weekly':
-            next.setDate(next.getDate() + 7)
-            break
-        case 'biweekly':
-            next.setDate(next.getDate() + 14)
-            break
-        case 'monthly':
-            next.setMonth(next.getMonth() + 1)
-            break
-    }
-    return next
+    const result = await deleteFormScheduleCore(supabase, trainerId, scheduleId)
+    if (result.success) revalidatePath('/students')
+    return result
 }
