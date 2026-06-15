@@ -39,8 +39,24 @@ interface ExerciseCardProps {
     reps: string;
     restSeconds: number;
     setsData: SetData[];
-    onSetChange: (index: number, field: 'weight' | 'reps', value: string) => void;
-    onToggleSetComplete: (index: number) => void;
+    /** Local (per-card) set-change callback. Optional when the stable
+     *  onSetChangeGlobal + globalIndex pair is supplied instead. */
+    onSetChange?: (index: number, field: 'weight' | 'reps', value: string) => void;
+    /** Local (per-card) toggle callback. Optional when onToggleSetCompleteGlobal
+     *  + globalIndex is supplied instead. */
+    onToggleSetComplete?: (index: number) => void;
+    /** When provided, the card forwards its position so the parent can pass a
+     *  single stable callback instead of allocating per-card closures every
+     *  render (perf: the live workout list). Used by the workout player. */
+    globalIndex?: number;
+    /** Stable variant of onSetChange — receives the card's globalIndex so the
+     *  parent callback identity never changes between renders. Takes priority
+     *  over onSetChange when globalIndex is provided. */
+    onSetChangeGlobal?: (globalIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void;
+    /** Stable variant of onToggleSetComplete (see onSetChangeGlobal). */
+    onToggleSetCompleteGlobal?: (globalIndex: number, setIndex: number) => void;
+    /** Stable variant of onSwapPress — receives the card's globalIndex. */
+    onSwapPressGlobal?: (globalIndex: number) => void;
     videoUrl?: string;
     previousLoad?: string;
     previousSets?: PreviousSetData[];
@@ -73,7 +89,7 @@ function buildSchemeSummary(scheme: SetPrescription[]): { reps: string; rest: nu
     return { reps, rest: Number.isFinite(rest) ? rest : 0 };
 }
 
-export function ExerciseCard({
+export const ExerciseCard = React.memo(function ExerciseCard({
     exerciseName,
     sets,
     reps,
@@ -81,6 +97,10 @@ export function ExerciseCard({
     setsData,
     onSetChange,
     onToggleSetComplete,
+    globalIndex,
+    onSetChangeGlobal,
+    onToggleSetCompleteGlobal,
+    onSwapPressGlobal,
     videoUrl,
     previousLoad,
     previousSets,
@@ -96,6 +116,40 @@ export function ExerciseCard({
 }: ExerciseCardProps) {
     const colors = useV2Colors();
     const isDark = useIsDark();
+
+    // Perf: when the parent supplies the stable *Global callbacks + a
+    // globalIndex, bind them here so the parent never allocates per-card
+    // closures. Falls back to the local per-card callbacks otherwise (the
+    // builder preview / training-room / superset wrapper paths).
+    const handleSetChange = React.useCallback(
+        (setIndex: number, field: 'weight' | 'reps', value: string) => {
+            if (onSetChangeGlobal && globalIndex !== undefined) {
+                onSetChangeGlobal(globalIndex, setIndex, field, value);
+            } else {
+                onSetChange?.(setIndex, field, value);
+            }
+        },
+        [onSetChangeGlobal, globalIndex, onSetChange],
+    );
+
+    const handleToggleSetComplete = React.useCallback(
+        (setIndex: number) => {
+            if (onToggleSetCompleteGlobal && globalIndex !== undefined) {
+                onToggleSetCompleteGlobal(globalIndex, setIndex);
+            } else {
+                onToggleSetComplete?.(setIndex);
+            }
+        },
+        [onToggleSetCompleteGlobal, globalIndex, onToggleSetComplete],
+    );
+
+    const handleSwapPress = React.useCallback(() => {
+        if (onSwapPressGlobal && globalIndex !== undefined) {
+            onSwapPressGlobal(globalIndex);
+        } else {
+            onSwapPress?.();
+        }
+    }, [onSwapPressGlobal, globalIndex, onSwapPress]);
 
     const handleOpenVideo = () => {
         if (videoUrl) {
@@ -231,7 +285,7 @@ export function ExerciseCard({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     {!readOnly && (
                         <TouchableOpacity
-                            onPress={onSwapPress}
+                            onPress={handleSwapPress}
                             style={{ padding: 8, borderRadius: 20, backgroundColor: toRgba(colors.purple[600], 0.1) }}
                         >
                             <ArrowRightLeft size={18} color={colors.purple[600]} />
@@ -320,9 +374,9 @@ export function ExerciseCard({
                                                 weight={set.weight}
                                                 reps={set.reps}
                                                 isCompleted={set.completed}
-                                                onWeightChange={(val) => onSetChange(globalIdx, 'weight', val)}
-                                                onRepsChange={(val) => onSetChange(globalIdx, 'reps', val)}
-                                                onToggleComplete={() => onToggleSetComplete(globalIdx)}
+                                                onWeightChange={(val) => handleSetChange(globalIdx, 'weight', val)}
+                                                onRepsChange={(val) => handleSetChange(globalIdx, 'reps', val)}
+                                                onToggleComplete={() => handleToggleSetComplete(globalIdx)}
                                                 previousWeight={prev?.weight}
                                                 previousReps={prev?.reps}
                                                 setType={prescription?.set_type ?? 'normal'}
@@ -361,9 +415,9 @@ export function ExerciseCard({
                                     weight={set.weight}
                                     reps={set.reps}
                                     isCompleted={set.completed}
-                                    onWeightChange={(val) => onSetChange(index, 'weight', val)}
-                                    onRepsChange={(val) => onSetChange(index, 'reps', val)}
-                                    onToggleComplete={() => onToggleSetComplete(index)}
+                                    onWeightChange={(val) => handleSetChange(index, 'weight', val)}
+                                    onRepsChange={(val) => handleSetChange(index, 'reps', val)}
+                                    onToggleComplete={() => handleToggleSetComplete(index)}
                                     previousWeight={prev?.weight}
                                     previousReps={prev?.reps}
                                     setType={prescription?.set_type ?? 'normal'}
@@ -386,4 +440,4 @@ export function ExerciseCard({
             </View>
         </BlurView>
     );
-}
+});

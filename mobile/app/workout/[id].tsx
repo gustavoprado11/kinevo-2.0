@@ -43,6 +43,22 @@ import { usePreWorkoutDecision } from '../../hooks/usePreWorkoutDecision';
 import { useHealthDashboard } from '../../hooks/useHealthDashboard';
 import { PreWorkoutReadinessSheet } from '../../components/health/PreWorkoutReadinessSheet';
 
+// Unified render list item — built once per [exercises, workoutNotes] change.
+type RenderItem =
+    | { type: 'exercise'; exercise: ExerciseData; globalIndex: number; orderIndex: number }
+    | { type: 'superset'; exercises: ExerciseData[]; supersetId: string; supersetRestSeconds: number; globalIndices: number[]; orderIndex: number }
+    | { type: 'note'; note: WorkoutNote; orderIndex: number }
+    | { type: 'section_header'; label: string; orderIndex: number }
+    | { type: 'warmup_cardio'; exercise: ExerciseData; orderIndex: number };
+
+const FUNCTION_LABELS: Record<string, string> = {
+    warmup: 'AQUECIMENTO',
+    activation: 'ATIVAÇÃO',
+    main: 'PRINCIPAL',
+    accessory: 'ACESSÓRIO',
+    conditioning: 'CONDICIONAMENTO',
+};
+
 export default function WorkoutPlayerScreen() {
     const colors = useV2Colors();
     const { id } = useLocalSearchParams();
@@ -340,7 +356,34 @@ export default function WorkoutPlayerScreen() {
 
     const allSetsCompleted = totalSets > 0 && completedSets === totalSets;
 
-    const openSwapModal = async (exerciseIndex: number) => {
+    // Perf: the workout list re-renders on every keystroke because setExercises
+    // (useWorkoutSession) replaces the array. The memoized cards only skip
+    // re-render when their callback props keep a stable identity. handleSetChange/
+    // handleToggleSetComplete come from the hook and are recreated each render,
+    // so we route them through refs and expose stable wrappers that always call
+    // the latest hook function. Result: only the edited card re-renders.
+    const handleSetChangeRef = useRef(handleSetChange);
+    handleSetChangeRef.current = handleSetChange;
+    const handleToggleSetCompleteRef = useRef(handleToggleSetComplete);
+    handleToggleSetCompleteRef.current = handleToggleSetComplete;
+
+    const onSetChangeStable = useCallback(
+        (globalIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
+            handleSetChangeRef.current(globalIndex, setIndex, field, value);
+        },
+        [],
+    );
+    const onToggleSetCompleteStable = useCallback(
+        (globalIndex: number, setIndex: number) => {
+            handleToggleSetCompleteRef.current(globalIndex, setIndex);
+        },
+        [],
+    );
+    const onVideoPressStable = useCallback((url: string) => {
+        setVideoModalUrl(url);
+    }, []);
+
+    const openSwapModal = useCallback(async (exerciseIndex: number) => {
         setActiveSwapIndex(exerciseIndex);
         setSwapModalVisible(true);
         setSwapModalLoading(true);
@@ -358,7 +401,7 @@ export default function WorkoutPlayerScreen() {
         } finally {
             setSwapModalLoading(false);
         }
-    };
+    }, [loadSubstituteOptions]);
 
     const applySwap = async (option: ExerciseSubstituteOption, forceReset = false) => {
         if (activeSwapIndex === null) return;
@@ -804,6 +847,98 @@ export default function WorkoutPlayerScreen() {
         router.replace('/(tabs)/home');
     }, [router]);
 
+    // Perf: build the unified render list (forEach + map + filter + sort +
+    // section headers — O(n) and O(n²) per superset) only when exercises or
+    // workoutNotes change, not on every keystroke. Logic identical to the old
+    // inline IIFE; only the memoization wrapper is new.
+    const renderList = useMemo<RenderItem[]>(() => {
+        const renderItems: RenderItem[] = [];
+        const processedSupersets = new Set<string>();
+
+        exercises.forEach((exercise, globalIndex) => {
+            // Warmup/Cardio items — render as special cards
+            if (exercise.item_type === 'warmup' || exercise.item_type === 'cardio') {
+                renderItems.push({
+                    type: 'warmup_cardio',
+                    exercise,
+                    orderIndex: exercise.order_index,
+                });
+                return;
+            }
+
+            if (exercise.supersetId) {
+                if (processedSupersets.has(exercise.supersetId)) return;
+                processedSupersets.add(exercise.supersetId);
+
+                const group = exercises
+                    .map((e, i) => ({ ...e, _globalIndex: i }))
+                    .filter((e) => e.supersetId === exercise.supersetId);
+
+                // Use the first child's order_index - 1 to approximate parent superset position
+                // (superset parent always comes before its children in order_index)
+                const groupOrderIndex = (group[0].supersetOrderIndex ?? Math.min(...group.map((e) => e.order_index))) - 0.5;
+
+                renderItems.push({
+                    type: 'superset',
+                    exercises: group,
+                    supersetId: exercise.supersetId,
+                    supersetRestSeconds: exercise.supersetRestSeconds || 60,
+                    globalIndices: group.map((e) => e._globalIndex),
+                    orderIndex: groupOrderIndex,
+                });
+            } else {
+                renderItems.push({
+                    type: 'exercise',
+                    exercise,
+                    globalIndex,
+                    orderIndex: exercise.order_index,
+                });
+            }
+        });
+
+        // Add workout notes into the unified list
+        workoutNotes.forEach((note) => {
+            renderItems.push({ type: 'note', note, orderIndex: note.order_index });
+        });
+
+        // Sort by order_index so items appear in the trainer-defined order
+        renderItems.sort((a, b) => a.orderIndex - b.orderIndex);
+
+        // Insert section headers when exercise_function changes between consecutive items
+        const hasAnyFunction = exercises.some(e => e.exerciseFunction);
+        const finalItems: RenderItem[] = [];
+
+        if (hasAnyFunction) {
+            let lastFunction: string | null | undefined = undefined;
+            for (const item of renderItems) {
+                // Determine this item's exercise function
+                let itemFunction: string | null | undefined = null;
+                if (item.type === 'exercise') {
+                    itemFunction = item.exercise.exerciseFunction;
+                } else if (item.type === 'superset') {
+                    // Use first child's function for the superset
+                    itemFunction = item.exercises[0]?.exerciseFunction;
+                }
+
+                // Insert header if function changed (skip notes — they don't change the function)
+                if (item.type !== 'note' && itemFunction && itemFunction !== lastFunction) {
+                    finalItems.push({
+                        type: 'section_header',
+                        label: FUNCTION_LABELS[itemFunction] || itemFunction.toUpperCase(),
+                        orderIndex: item.orderIndex - 0.1,
+                    });
+                    lastFunction = itemFunction;
+                }
+
+                finalItems.push(item);
+            }
+        } else {
+            finalItems.push(...renderItems);
+        }
+
+        return finalItems;
+    }, [exercises, workoutNotes]);
+
     if (isLoading) {
         return (
             <ScreenWrapper>
@@ -858,193 +993,88 @@ export default function WorkoutPlayerScreen() {
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
-                    {(() => {
-                        // Build unified render list ordered by order_index
-                        type RenderItem =
-                            | { type: 'exercise'; exercise: ExerciseData; globalIndex: number; orderIndex: number }
-                            | { type: 'superset'; exercises: ExerciseData[]; supersetId: string; supersetRestSeconds: number; globalIndices: number[]; orderIndex: number }
-                            | { type: 'note'; note: WorkoutNote; orderIndex: number }
-                            | { type: 'section_header'; label: string; orderIndex: number }
-                            | { type: 'warmup_cardio'; exercise: ExerciseData; orderIndex: number };
-
-                        const FUNCTION_LABELS: Record<string, string> = {
-                            warmup: 'AQUECIMENTO',
-                            activation: 'ATIVAÇÃO',
-                            main: 'PRINCIPAL',
-                            accessory: 'ACESSÓRIO',
-                            conditioning: 'CONDICIONAMENTO',
-                        };
-
-                        const renderItems: RenderItem[] = [];
-                        const processedSupersets = new Set<string>();
-
-                        exercises.forEach((exercise, globalIndex) => {
-                            // Warmup/Cardio items — render as special cards
-                            if (exercise.item_type === 'warmup' || exercise.item_type === 'cardio') {
-                                renderItems.push({
-                                    type: 'warmup_cardio',
-                                    exercise,
-                                    orderIndex: exercise.order_index,
-                                });
-                                return;
-                            }
-
-                            if (exercise.supersetId) {
-                                if (processedSupersets.has(exercise.supersetId)) return;
-                                processedSupersets.add(exercise.supersetId);
-
-                                const group = exercises
-                                    .map((e, i) => ({ ...e, _globalIndex: i }))
-                                    .filter((e) => e.supersetId === exercise.supersetId);
-
-                                // Use the first child's order_index - 1 to approximate parent superset position
-                                // (superset parent always comes before its children in order_index)
-                                const groupOrderIndex = (group[0].supersetOrderIndex ?? Math.min(...group.map((e) => e.order_index))) - 0.5;
-
-                                renderItems.push({
-                                    type: 'superset',
-                                    exercises: group,
-                                    supersetId: exercise.supersetId,
-                                    supersetRestSeconds: exercise.supersetRestSeconds || 60,
-                                    globalIndices: group.map((e) => e._globalIndex),
-                                    orderIndex: groupOrderIndex,
-                                });
-                            } else {
-                                renderItems.push({
-                                    type: 'exercise',
-                                    exercise,
-                                    globalIndex,
-                                    orderIndex: exercise.order_index,
-                                });
-                            }
-                        });
-
-                        // Add workout notes into the unified list
-                        workoutNotes.forEach((note) => {
-                            renderItems.push({ type: 'note', note, orderIndex: note.order_index });
-                        });
-
-                        // Sort by order_index so items appear in the trainer-defined order
-                        renderItems.sort((a, b) => a.orderIndex - b.orderIndex);
-
-                        // Insert section headers when exercise_function changes between consecutive items
-                        const hasAnyFunction = exercises.some(e => e.exerciseFunction);
-                        const finalItems: RenderItem[] = [];
-
-                        if (hasAnyFunction) {
-                            let lastFunction: string | null | undefined = undefined;
-                            for (const item of renderItems) {
-                                // Determine this item's exercise function
-                                let itemFunction: string | null | undefined = null;
-                                if (item.type === 'exercise') {
-                                    itemFunction = item.exercise.exerciseFunction;
-                                } else if (item.type === 'superset') {
-                                    // Use first child's function for the superset
-                                    itemFunction = item.exercises[0]?.exerciseFunction;
-                                }
-
-                                // Insert header if function changed (skip notes — they don't change the function)
-                                if (item.type !== 'note' && itemFunction && itemFunction !== lastFunction) {
-                                    finalItems.push({
-                                        type: 'section_header',
-                                        label: FUNCTION_LABELS[itemFunction] || itemFunction.toUpperCase(),
-                                        orderIndex: item.orderIndex - 0.1,
-                                    });
-                                    lastFunction = itemFunction;
-                                }
-
-                                finalItems.push(item);
-                            }
-                        } else {
-                            finalItems.push(...renderItems);
+                    {renderList.map((item) => {
+                        if (item.type === 'section_header') {
+                            return (
+                                <View key={`header-${item.label}`} style={{ marginTop: 20, marginBottom: 8, paddingHorizontal: 4 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 2, color: colors.text.tertiary }}>
+                                        {item.label}
+                                    </Text>
+                                </View>
+                            );
                         }
-
-                        return (
-                            <>
-                                {finalItems.map((item) => {
-                                    if (item.type === 'section_header') {
-                                        return (
-                                            <View key={`header-${item.label}`} style={{ marginTop: 20, marginBottom: 8, paddingHorizontal: 4 }}>
-                                                <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 2, color: colors.text.tertiary }}>
-                                                    {item.label}
-                                                </Text>
-                                            </View>
-                                        );
-                                    }
-                                    if (item.type === 'warmup_cardio') {
-                                        if (item.exercise.item_type === 'warmup') {
-                                            return (
-                                                <WarmupCard
-                                                    key={item.exercise.id}
-                                                    exercise={item.exercise}
-                                                    onTimerStart={(endTs, totalSecs, warmupType) => {
-                                                        liveActivityRef.current?.updateTimerState({
-                                                            itemType: 'warmup',
-                                                            timerEndTimestamp: endTs,
-                                                            timerTotalSeconds: totalSecs,
-                                                            warmupType,
-                                                        });
-                                                    }}
-                                                    onTimerStop={() => liveActivityRef.current?.clearTimerState()}
-                                                />
-                                            );
-                                        }
-                                        return (
-                                            <CardioCard
-                                                key={item.exercise.id}
-                                                exercise={item.exercise}
-                                                onCardioToggle={toggleCardioComplete}
-                                                onTimerUpdate={(data) => liveActivityRef.current?.updateTimerState(data)}
-                                                onTimerStop={() => liveActivityRef.current?.clearTimerState()}
-                                            />
-                                        );
-                                    }
-                                    if (item.type === 'note') {
-                                        return <WorkoutNoteCard key={item.note.id} note={item.note.notes} />;
-                                    }
-                                    if (item.type === 'superset') {
-                                        return (
-                                            <SupersetGroup
-                                                key={item.supersetId}
-                                                exercises={item.exercises}
-                                                supersetRestSeconds={item.supersetRestSeconds}
-                                                onSetChange={(gi, si, field, value) => handleSetChange(gi, si, field, value)}
-                                                onToggleSetComplete={(gi, si) => handleToggleSetComplete(gi, si)}
-                                                onVideoPress={(url) => setVideoModalUrl(url)}
-                                                onSwapPress={(gi) => openSwapModal(gi)}
-                                                globalIndices={item.globalIndices}
-                                            />
-                                        );
-                                    }
-                                    if (item.type === 'exercise') {
-                                        return (
-                                            <ExerciseCard
-                                                key={item.exercise.id}
-                                                exerciseName={item.exercise.name}
-                                                sets={item.exercise.sets}
-                                                reps={item.exercise.reps}
-                                                restSeconds={item.exercise.rest_seconds}
-                                                videoUrl={item.exercise.video_url}
-                                                previousLoad={item.exercise.previousLoad}
-                                                previousSets={item.exercise.previousSets}
-                                                setsData={item.exercise.setsData}
-                                                onSetChange={(setIndex, field, value) => handleSetChange(item.globalIndex, setIndex, field, value)}
-                                                onToggleSetComplete={(setIndex) => handleToggleSetComplete(item.globalIndex, setIndex)}
-                                                onVideoPress={(url) => setVideoModalUrl(url)}
-                                                onSwapPress={() => openSwapModal(item.globalIndex)}
-                                                isSwapped={item.exercise.swap_source !== 'none'}
-                                                notes={item.exercise.notes}
-                                                setScheme={item.exercise.setScheme}
-                                                methodKey={item.exercise.methodKey}
-                                                rounds={item.exercise.rounds}
-                                            />
-                                        );
-                                    }
-                                    return null;
-                                })}
-                            </>
-                        );
-                    })()}
+                        if (item.type === 'warmup_cardio') {
+                            if (item.exercise.item_type === 'warmup') {
+                                return (
+                                    <WarmupCard
+                                        key={item.exercise.id}
+                                        exercise={item.exercise}
+                                        onTimerStart={(endTs, totalSecs, warmupType) => {
+                                            liveActivityRef.current?.updateTimerState({
+                                                itemType: 'warmup',
+                                                timerEndTimestamp: endTs,
+                                                timerTotalSeconds: totalSecs,
+                                                warmupType,
+                                            });
+                                        }}
+                                        onTimerStop={() => liveActivityRef.current?.clearTimerState()}
+                                    />
+                                );
+                            }
+                            return (
+                                <CardioCard
+                                    key={item.exercise.id}
+                                    exercise={item.exercise}
+                                    onCardioToggle={toggleCardioComplete}
+                                    onTimerUpdate={(data) => liveActivityRef.current?.updateTimerState(data)}
+                                    onTimerStop={() => liveActivityRef.current?.clearTimerState()}
+                                />
+                            );
+                        }
+                        if (item.type === 'note') {
+                            return <WorkoutNoteCard key={item.note.id} note={item.note.notes} />;
+                        }
+                        if (item.type === 'superset') {
+                            return (
+                                <SupersetGroup
+                                    key={item.supersetId}
+                                    exercises={item.exercises}
+                                    supersetRestSeconds={item.supersetRestSeconds}
+                                    onSetChange={onSetChangeStable}
+                                    onToggleSetComplete={onToggleSetCompleteStable}
+                                    onVideoPress={onVideoPressStable}
+                                    onSwapPress={openSwapModal}
+                                    globalIndices={item.globalIndices}
+                                />
+                            );
+                        }
+                        if (item.type === 'exercise') {
+                            return (
+                                <ExerciseCard
+                                    key={item.exercise.id}
+                                    exerciseName={item.exercise.name}
+                                    sets={item.exercise.sets}
+                                    reps={item.exercise.reps}
+                                    restSeconds={item.exercise.rest_seconds}
+                                    videoUrl={item.exercise.video_url}
+                                    previousLoad={item.exercise.previousLoad}
+                                    previousSets={item.exercise.previousSets}
+                                    setsData={item.exercise.setsData}
+                                    globalIndex={item.globalIndex}
+                                    onSetChangeGlobal={onSetChangeStable}
+                                    onToggleSetCompleteGlobal={onToggleSetCompleteStable}
+                                    onSwapPressGlobal={openSwapModal}
+                                    onVideoPress={onVideoPressStable}
+                                    isSwapped={item.exercise.swap_source !== 'none'}
+                                    notes={item.exercise.notes}
+                                    setScheme={item.exercise.setScheme}
+                                    methodKey={item.exercise.methodKey}
+                                    rounds={item.exercise.rounds}
+                                />
+                            );
+                        }
+                        return null;
+                    })}
 
                     {exercises.length === 0 && (
                         <View className="items-center justify-center py-20">

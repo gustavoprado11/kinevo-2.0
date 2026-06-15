@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, LayoutAnimation, Platform, UIManager, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { View, Text, ScrollView, Pressable, LayoutAnimation, Platform, UIManager, TouchableOpacity, FlatList, type ListRenderItem } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     Calendar, Trophy, ChevronDown, Flame, Check, Clock, Dumbbell, Repeat2, ClipboardCheck, FileText,
@@ -233,26 +233,26 @@ export default function LogsScreen() {
                 <FilterPills filter={filter} onChange={setFilter} />
             )}
 
-            <ScrollView
-                style={{ flex: 1, paddingHorizontal: 20 }}
-                contentContainerStyle={{ paddingBottom: 120 }}
-                showsVerticalScrollIndicator={false}
-            >
-                {isLoading ? (
-                    <Text style={{ color: colors.text.tertiary, textAlign: 'center', marginTop: 40 }}>
-                        Carregando histórico...
-                    </Text>
-                ) : activeTab === 'history' ? (
-                    <HistoryList
-                        history={history}
-                        stravaActivities={stravaActivities}
-                        filter={filter}
-                        weeklyGoal={weeklyGoal}
-                    />
-                ) : (
+            {isLoading ? (
+                <Text style={{ color: colors.text.tertiary, textAlign: 'center', marginTop: 40 }}>
+                    Carregando histórico...
+                </Text>
+            ) : activeTab === 'history' ? (
+                <HistoryList
+                    history={history}
+                    stravaActivities={stravaActivities}
+                    filter={filter}
+                    weeklyGoal={weeklyGoal}
+                />
+            ) : (
+                <ScrollView
+                    style={{ flex: 1, paddingHorizontal: 20 }}
+                    contentContainerStyle={{ paddingBottom: 120 }}
+                    showsVerticalScrollIndicator={false}
+                >
                     <PerformanceView stats={stats} history={history} />
-                )}
-            </ScrollView>
+                </ScrollView>
+            )}
         </SafeAreaView>
     );
 }
@@ -361,10 +361,59 @@ function HistoryList({
     weeklyGoal: number;
 }) {
     const colors = useV2Colors();
-    const timeline = buildTimeline(history, stravaActivities, filter);
+    const timeline = useMemo(
+        () => buildTimeline(history, stravaActivities, filter),
+        [history, stravaActivities, filter],
+    );
 
-    if (!timeline.length) {
+    const showWeekGoal = filter !== 'strava' && history.length > 0;
+
+    const keyExtractor = useCallback(
+        (item: TimelineItem) =>
+            item.kind === 'kinevo' ? `k-${item.session.id}` : `s-${item.activity.id}`,
+        [],
+    );
+
+    const renderItem = useCallback<ListRenderItem<TimelineItem>>(({ item, index }) => {
+        // Limita o stagger a um índice máximo: itens distantes não acumulam delay.
+        const delay = Math.min(index, 8) * ANIM.enter.stagger;
         return (
+            <Animated.View
+                entering={FadeInUp.delay(delay).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
+            >
+                {item.kind === 'kinevo' ? (
+                    <HistoryCard session={item.session} />
+                ) : (
+                    <StravaActivityRow activity={item.activity} />
+                )}
+            </Animated.View>
+        );
+    }, []);
+
+    const ListHeader = useMemo(
+        () => (
+            <View>
+                {showWeekGoal && (
+                    <WeekGoalCard data={buildWeekGoalData(history, weeklyGoal)} />
+                )}
+                {timeline.length > 0 && (
+                    <Text
+                        style={{
+                            fontSize: 12, fontWeight: '700', color: colors.text.tertiary,
+                            textTransform: 'uppercase', letterSpacing: 1,
+                            marginBottom: 12, paddingHorizontal: 4,
+                        }}
+                    >
+                        Últimas Atividades
+                    </Text>
+                )}
+            </View>
+        ),
+        [showWeekGoal, history, weeklyGoal, timeline.length, colors.text.tertiary],
+    );
+
+    const ListEmpty = useMemo(
+        () => (
             <Animated.View
                 entering={FadeInUp.delay(100).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
                 style={{ alignItems: 'center', justifyContent: 'center', marginTop: 80 }}
@@ -381,41 +430,25 @@ function HistoryList({
                     Nenhuma atividade registrada ainda.
                 </Text>
             </Animated.View>
-        );
-    }
+        ),
+        [colors.neutral, colors.text.quaternary, colors.text.tertiary],
+    );
 
     return (
-        <View>
-            {filter !== 'strava' && history.length > 0 && (
-                <WeekGoalCard data={buildWeekGoalData(history, weeklyGoal)} />
-            )}
-
-            <Text
-                style={{
-                    fontSize: 12, fontWeight: '700', color: colors.text.tertiary,
-                    textTransform: 'uppercase', letterSpacing: 1,
-                    marginBottom: 12, paddingHorizontal: 4,
-                }}
-            >
-                Últimas Atividades
-            </Text>
-            {timeline.map((item, index) => {
-                const key =
-                    item.kind === 'kinevo' ? `k-${item.session.id}` : `s-${item.activity.id}`;
-                return (
-                    <Animated.View
-                        key={key}
-                        entering={FadeInUp.delay(index * ANIM.enter.stagger).duration(ANIM.enter.duration).easing(ANIM.enter.easing)}
-                    >
-                        {item.kind === 'kinevo' ? (
-                            <HistoryCard session={item.session} />
-                        ) : (
-                            <StravaActivityRow activity={item.activity} />
-                        )}
-                    </Animated.View>
-                );
-            })}
-        </View>
+        <FlatList
+            data={timeline}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            ListHeaderComponent={ListHeader}
+            ListEmptyComponent={ListEmpty}
+            style={{ flex: 1, paddingHorizontal: 20 }}
+            contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
+            showsVerticalScrollIndicator={false}
+            removeClippedSubviews
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={11}
+        />
     );
 }
 

@@ -42,7 +42,7 @@ const isClusterReps = (reps: string) => reps.includes('+');
 // `isAmrapReps` agora vem do shared (set-meta-label) — cobre AMRAP, falha e
 // máximo. Mantido como import pra paridade com PreviewSetRow no web.
 
-export function SetRow({
+export const SetRow = React.memo(function SetRow({
     index,
     weight,
     reps,
@@ -306,4 +306,4 @@ export function SetRow({
             </View>
         </View>
     );
-}
+});

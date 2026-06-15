@@ -31,7 +31,7 @@ function computeRoundInfo(exercises: ExerciseData[]) {
     return { currentRound, totalRounds };
 }
 
-export function SupersetGroup({
+export const SupersetGroup = React.memo(function SupersetGroup({
     exercises,
     supersetRestSeconds,
     onSetChange,
@@ -142,4 +142,4 @@ export function SupersetGroup({
             </View>
         </View>
     );
-}
+});

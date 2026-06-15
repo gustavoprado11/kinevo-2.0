@@ -122,7 +122,8 @@ export function useWorkoutHistory() {
                     )
                 `)
                 .eq('student_id', student.id)
-                .order('completed_at', { ascending: false });
+                .order('completed_at', { ascending: false })
+                .limit(100);
 
             if (error) throw error;
 
