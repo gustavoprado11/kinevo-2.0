@@ -15,6 +15,9 @@ import { registerConversationReadTools } from './conversations'
 import { registerAppointmentTools } from './appointments'
 import { registerFormWriteTools } from './forms'
 import { registerAssessmentTools } from './assessments'
+import { registerExerciseWriteTools } from './exercises-write'
+import { registerInsightToolsAndCheckins } from './insights'
+import { registerLeadTools } from './leads'
 
 export function registerAllTools(server: McpServer, trainerId: string) {
   registerPingTool(server, trainerId)
@@ -33,4 +36,7 @@ export function registerAllTools(server: McpServer, trainerId: string) {
   registerAppointmentTools(server, trainerId)
   registerFormWriteTools(server, trainerId)
   registerAssessmentTools(server, trainerId)
+  registerExerciseWriteTools(server, trainerId)
+  registerInsightToolsAndCheckins(server, trainerId)
+  registerLeadTools(server, trainerId)
 }

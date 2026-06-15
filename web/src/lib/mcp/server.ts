@@ -32,7 +32,13 @@ FINANCEIRO: o treinador acompanha e cobra pelas tools kinevo_list_subscriptions 
 
 AVALIAÇÕES FÍSICAS (antropometria): o treinador mede composição corporal (peso, circunferências, dobras, % gordura, IMC) pelas tools kinevo_*_assessment*.
 • Ler evolução: kinevo_get_assessments (sem session_id lista as sessões; com session_id traz uma sessão completa com medidas e métricas calculadas).
-• Fluxo de uma nova avaliação: (1) escolha um template com kinevo_list_form_templates(category='assessment'); (2) kinevo_create_assessment_session(student_id, template_id[, scheduled_at, subject_sex, subject_age_years]) abre a sessão — informe sexo/idade quando for usar protocolo de % de gordura; (3) kinevo_save_assessment_measurements(session_id, measurements) registra as medidas (pode chamar várias vezes); (4) kinevo_finalize_assessment(session_id) calcula as métricas derivadas, encerra e COMPARTILHA com o aluno — confirme com o treinador antes, é irreversível.`
+• Fluxo de uma nova avaliação: (1) escolha um template com kinevo_list_form_templates(category='assessment'); (2) kinevo_create_assessment_session(student_id, template_id[, scheduled_at, subject_sex, subject_age_years]) abre a sessão — informe sexo/idade quando for usar protocolo de % de gordura; (3) kinevo_save_assessment_measurements(session_id, measurements) registra as medidas (pode chamar várias vezes); (4) kinevo_finalize_assessment(session_id) calcula as métricas derivadas, encerra e COMPARTILHA com o aluno — confirme com o treinador antes, é irreversível.
+
+EXERCÍCIO CUSTOM: kinevo_create_exercise cria um exercício na biblioteca do próprio treinador (ex.: prescrever algo que ainda não está no catálogo). Vincule grupos musculares por nome — os existentes (próprios + de sistema) são casados; nomes não encontrados são reportados (não criados). Depois o exercício aparece em kinevo_list_exercises e no builder.
+
+INSIGHTS & CHECK-INS: kinevo_list_insights lista os alertas de IA do treinador (aluno em risco, queda de adesão, atenção financeira) — bom para "tem algum alerta importante hoje?". kinevo_get_workout_checkins(student_id) lê as respostas dos check-ins de pré/pós-treino de um aluno (como ele se sentiu, dores, energia).
+
+LEADS / CRM: kinevo_list_leads lista os leads (prospects capturados por landing/formulário) com contato, objetivo e status. kinevo_update_lead_status move o lead no funil (new → read → contacted → converted/archived). Converter um lead em conta de aluno é feito no app, não por tool.`
 
 export function createMcpServer(trainerId: string): McpServer {
   const server = new McpServer(
