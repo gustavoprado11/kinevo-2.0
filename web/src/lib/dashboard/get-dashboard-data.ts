@@ -536,8 +536,10 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
     const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
     const rawInsights = insightsResult.data ?? []
 
-    // Resolve student names from already-fetched students
-    const studentNameMap = new Map(activeStudents.map(s => [s.id, s.name]))
+    // Resolve student names from the full fetched list (NOT activeStudents):
+    // insights também existem para o perfil-treinador (is_trainer_profile) e
+    // alunos 'pending', que activeStudents exclui — senão o card cai em "Aluno".
+    const studentNameMap = new Map(students.map(s => [s.id, s.name]))
     const assistantInsights: AssistantInsightItem[] = rawInsights.map((row: any) => ({
         ...row,
         student_name: row.student_id ? (studentNameMap.get(row.student_id) || null) : null,
