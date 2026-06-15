@@ -229,10 +229,12 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
         workouts,
       }
 
-      // Cast do nome até `npm run gen:types` incluir o RPC (mesma convenção de
-      // save_assigned_program_tree em edit-assigned-program-client.tsx).
+      // Passa o trainer por parâmetro: o MCP grava com service-role (sem JWT),
+      // então current_trainer_id() seria NULL no banco. Cast do nome até
+      // `npm run gen:types` incluir o RPC (mesma convenção de save_assigned_program_tree).
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabaseAdmin.rpc('create_program_template_tree' as any, {
+        p_trainer_id: trainerId,
         p_payload: payload,
       })
 
