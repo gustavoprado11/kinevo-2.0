@@ -40,7 +40,7 @@ EXERCÍCIO CUSTOM: kinevo_create_exercise cria um exercício na biblioteca do pr
 
 INSIGHTS & CHECK-INS: kinevo_list_insights lista os alertas de IA do treinador (aluno em risco, queda de adesão, atenção financeira) — bom para "tem algum alerta importante hoje?". kinevo_get_workout_checkins(student_id) lê as respostas dos check-ins de pré/pós-treino de um aluno (como ele se sentiu, dores, energia).
 
-LEADS / CRM: kinevo_list_leads lista os leads (prospects capturados por landing/formulário) com contato, objetivo e status. kinevo_update_lead_status move o lead no funil (new → read → contacted → converted/archived). Converter um lead em conta de aluno é feito no app, não por tool.`
+LEADS / CRM: kinevo_list_leads lista os leads (prospects capturados por landing/formulário) com contato, objetivo e status. kinevo_update_lead_status move o lead no funil (new → read → contacted → converted/archived). kinevo_convert_lead cria a conta de aluno (cortesia, sem contrato) a partir do lead e devolve as credenciais — tem gate de confirmação: chame primeiro SEM confirm para a pré-visualização, mostre ao treinador, e só com confirm=true após aprovação. É idempotente (lead já convertido só revincula).`
 
 export function createMcpServer(trainerId: string): McpServer {
   const server = new McpServer(
