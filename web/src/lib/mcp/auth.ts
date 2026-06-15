@@ -23,7 +23,7 @@ function sha256(input: string): string {
 // Validate a kinevo_trainer_* API Key (bcrypt hash)
 async function validateApiKey(
   token: string
-): Promise<{ trainerId: string; keyId: string } | null> {
+): Promise<{ trainerId: string; keyId: string; apiKeyId: string | null } | null> {
   if (!token.startsWith('kinevo_trainer_')) return null
 
   const prefix = token.slice(0, 12)
@@ -46,7 +46,7 @@ async function validateApiKey(
         .eq('id', key.id)
         .then()
 
-      return { trainerId: key.trainer_id, keyId: key.id }
+      return { trainerId: key.trainer_id, keyId: key.id, apiKeyId: key.id }
     }
   }
 
@@ -56,7 +56,7 @@ async function validateApiKey(
 // Validate a kinevo_at_* OAuth access token (sha256 hash)
 async function validateOAuthToken(
   token: string
-): Promise<{ trainerId: string; keyId: string } | null> {
+): Promise<{ trainerId: string; keyId: string; apiKeyId: string | null } | null> {
   if (!token.startsWith('kinevo_at_')) return null
 
   const tokenHash = sha256(token)
@@ -73,7 +73,9 @@ async function validateOAuthToken(
 
   if (new Date(data.expires_at) < new Date()) return null
 
-  return { trainerId: data.trainer_id, keyId: `oauth:${data.id}` }
+  // keyId is prefixed for the rate-limit key only; apiKeyId is null because an
+  // OAuth token is not an API key (mcp_tool_usage_logs.api_key_id is nullable).
+  return { trainerId: data.trainer_id, keyId: `oauth:${data.id}`, apiKeyId: null }
 }
 
 export async function authenticateRequest(

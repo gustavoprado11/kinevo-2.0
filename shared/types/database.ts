@@ -1801,7 +1801,7 @@ export type Database = {
       }
       mcp_tool_usage_logs: {
         Row: {
-          api_key_id: string
+          api_key_id: string | null
           created_at: string
           duration_ms: number | null
           error: string | null
@@ -1811,7 +1811,7 @@ export type Database = {
           trainer_id: string
         }
         Insert: {
-          api_key_id: string
+          api_key_id?: string | null
           created_at?: string
           duration_ms?: number | null
           error?: string | null
@@ -1821,7 +1821,7 @@ export type Database = {
           trainer_id: string
         }
         Update: {
-          api_key_id?: string
+          api_key_id?: string | null
           created_at?: string
           duration_ms?: number | null
           error?: string | null
@@ -2664,6 +2664,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rate_limit_events: {
+        Row: {
+          created_at: string
+          id: number
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          key: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          key?: string
+        }
+        Relationships: []
       }
       readiness_scores: {
         Row: {
@@ -4099,6 +4117,7 @@ export type Database = {
           callback_url: string | null
           client_id: string
           client_secret: string
+          setup_secret: string | null
           source: string
           updated_at: string
           verification_token: string | null
@@ -4107,6 +4126,7 @@ export type Database = {
           callback_url?: string | null
           client_id: string
           client_secret: string
+          setup_secret?: string | null
           source: string
           updated_at?: string
           verification_token?: string | null
@@ -4115,6 +4135,7 @@ export type Database = {
           callback_url?: string | null
           client_id?: string
           client_secret?: string
+          setup_secret?: string | null
           source?: string
           updated_at?: string
           verification_token?: string | null
@@ -4485,6 +4506,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_draft_program: { Args: { p_program_id: string }; Returns: Json }
       assign_form_to_students: {
         Args: {
           p_due_at?: string
@@ -4493,6 +4515,18 @@ export type Database = {
           p_student_ids: string[]
         }
         Returns: Json
+      }
+      assign_program_from_snapshot: {
+        Args: {
+          p_bump_edits: boolean
+          p_generation_id: string
+          p_is_scheduled: boolean
+          p_snapshot: Json
+          p_start_date: string
+          p_student_id: string
+          p_trainer_id: string
+        }
+        Returns: string
       }
       assign_program_from_template: {
         Args: {
@@ -4531,6 +4565,10 @@ export type Database = {
       can_write_student: { Args: { p_student: string }; Returns: boolean }
       check_student_access: { Args: { p_student_id: string }; Returns: Json }
       cleanup_stale_sessions: { Args: never; Returns: number }
+      consume_rate_limit: {
+        Args: { p_key: string; p_per_day: number; p_per_minute: number }
+        Returns: Json
+      }
       create_assessment_session: {
         Args: {
           p_notes?: string
@@ -4540,6 +4578,7 @@ export type Database = {
         }
         Returns: string
       }
+      create_program_template_tree: { Args: { p_payload: Json }; Returns: Json }
       current_member_org_ids: { Args: never; Returns: string[] }
       current_student_coach_id: { Args: never; Returns: string }
       current_student_id: { Args: never; Returns: string }
@@ -4707,6 +4746,10 @@ export type Database = {
       save_assessment_measurements: {
         Args: { p_measurements: Json; p_session_id: string }
         Returns: number
+      }
+      save_assigned_program_tree: {
+        Args: { p_payload: Json; p_program_id: string }
+        Returns: Json
       }
       send_submission_feedback: {
         Args: { p_feedback: Json; p_submission_id: string }

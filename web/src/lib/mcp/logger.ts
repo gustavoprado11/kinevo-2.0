@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export function logToolUsage(
   trainerId: string,
-  apiKeyId: string,
+  apiKeyId: string | null,
   toolName: string,
   durationMs: number,
   success: boolean,

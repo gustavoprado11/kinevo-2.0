@@ -2,6 +2,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { authenticateRequest, McpAuthError } from '@/lib/mcp/auth'
 import { createMcpServer } from '@/lib/mcp/server'
 import { logToolUsage } from '@/lib/mcp/logger'
+import type { McpContext } from '@/lib/mcp/types'
 import { corsPreflight, withCors, CORS_HEADERS } from '@/lib/mcp/cors'
 
 export function OPTIONS() {
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
   }
 
   // All other methods (tools/call, etc.) require authentication
-  let context: { trainerId: string; keyId: string } | null = null
+  let context: McpContext | null = null
 
   try {
     context = await authenticateRequest(request)
@@ -158,7 +159,7 @@ export async function POST(request: Request) {
     const isError = response.status >= 400
     logToolUsage(
       context.trainerId,
-      context.keyId,
+      context.apiKeyId,
       toolName,
       durationMs,
       !isError,
