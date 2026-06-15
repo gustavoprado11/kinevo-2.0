@@ -59,6 +59,7 @@ interface AssignedProgramData {
     name: string
     description: string | null
     duration_weeks: number | null
+    status?: string | null
     started_at?: string | null
     scheduled_start_date?: string | null
     assigned_workouts: Array<{
@@ -416,8 +417,16 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
             }
 
-            // Update the correct date field and status
-            if (assignmentType === 'immediate') {
+            // Update the correct date field and status.
+            // Rascunho (criado fora do builder, ex.: assistente via MCP) PERMANECE
+            // rascunho ao ser editado — ativá-lo é uma ação explícita ("Ativar").
+            // Sem isso, salvar forçaria status='active' e colidiria com o índice
+            // parcial idx_assigned_programs_active_unique (1 ativo por aluno).
+            if (program.status === 'draft') {
+                updatePayload.status = 'draft'
+                updatePayload.started_at = null
+                updatePayload.scheduled_start_date = null
+            } else if (assignmentType === 'immediate') {
                 updatePayload.started_at = startDate
                 updatePayload.scheduled_start_date = null
                 updatePayload.status = 'active'

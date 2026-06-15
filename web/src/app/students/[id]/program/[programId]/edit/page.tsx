@@ -42,6 +42,7 @@ export default async function EditProgramPage({ params }: PageProps) {
                 name,
                 description,
                 duration_weeks,
+                status,
                 started_at,
                 scheduled_start_date,
                 source_template_id,
