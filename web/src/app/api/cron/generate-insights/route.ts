@@ -4,6 +4,7 @@ import { enrichInsightsWithLLM } from '@/lib/assistant/insight-enricher'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
 import { upsertInsightByKey } from '@/lib/insights/upsert'
+import { evaluateStagnation } from '@/lib/insights/stagnation'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -262,20 +263,23 @@ async function detectTrainingGaps(trainerId: string, today: string): Promise<Ins
 // rep range (those are handled by Detection 5 as "ready to progress").
 
 async function detectLoadStagnation(trainerId: string, today: string): Promise<InsightRow[]> {
-    const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString()
+    // Janela de 6 semanas: precisamos enxergar >= 4 semanas consecutivas no topo
+    // com folga para comparar a tendência de repetições no início vs. fim do platô.
+    const sixWeeksAgo = new Date(Date.now() - 42 * 24 * 60 * 60 * 1000).toISOString()
 
     const { data, error } = await supabaseAdmin
         .from('set_logs')
         .select(`
             exercise_id,
             assigned_workout_item_id,
+            workout_session_id,
             weight,
             reps_completed,
             workout_sessions!inner(student_id, trainer_id, status, completed_at)
         `)
         .eq('workout_sessions.trainer_id', trainerId)
         .eq('workout_sessions.status', 'completed')
-        .gte('workout_sessions.completed_at', fourWeeksAgo)
+        .gte('workout_sessions.completed_at', sixWeeksAgo)
         .gt('weight', 0)
         .eq('is_completed', true)
 
@@ -299,33 +303,43 @@ async function detectLoadStagnation(trainerId: string, today: string): Promise<I
         }
     }
 
-    // Group by student+exercise, track weekly max weights AND recent reps
+    // Group by student+exercise → carga máx por semana, melhor reps NESSA carga,
+    // e sessões distintas (amostra). A decisão fica em evaluateStagnation.
+    interface WeekAgg { maxWeight: number; bestRepsAtMax: number }
     interface StagnationEntry {
         studentId: string
         exerciseId: string
-        weeklyMaxes: Map<string, number>
+        weekly: Map<string, WeekAgg>
+        sessionIds: Set<string>
         recentReps: Array<{ repsCompleted: number; maxPrescribed: number }>
     }
     const map = new Map<string, StagnationEntry>()
 
     for (const row of data as any[]) {
         const key = `${row.workout_sessions.student_id}:${row.exercise_id}`
-        if (!map.has(key)) {
-            map.set(key, {
+        let entry = map.get(key)
+        if (!entry) {
+            entry = {
                 studentId: row.workout_sessions.student_id,
                 exerciseId: row.exercise_id,
-                weeklyMaxes: new Map(),
+                weekly: new Map(),
+                sessionIds: new Set(),
                 recentReps: [],
-            })
+            }
+            map.set(key, entry)
         }
+        if (row.workout_session_id) entry.sessionIds.add(row.workout_session_id)
+
         const weekStart = getWeekStart(new Date(row.workout_sessions.completed_at))
-        const entry = map.get(key)!
-        const current = entry.weeklyMaxes.get(weekStart) || 0
-        if (row.weight > current) {
-            entry.weeklyMaxes.set(weekStart, row.weight)
+        const reps = row.reps_completed ?? 0
+        const wk = entry.weekly.get(weekStart)
+        if (!wk || row.weight > wk.maxWeight) {
+            entry.weekly.set(weekStart, { maxWeight: row.weight, bestRepsAtMax: reps })
+        } else if (row.weight === wk.maxWeight && reps > wk.bestRepsAtMax) {
+            wk.bestRepsAtMax = reps
         }
 
-        // Track reps vs prescribed max for recent sets
+        // Track reps vs prescribed max for recent sets (exclusão "ready_to_progress")
         const maxPrescribed = itemRepsMap.get(row.assigned_workout_item_id)
         if (maxPrescribed && row.reps_completed != null) {
             entry.recentReps.push({ repsCompleted: row.reps_completed, maxPrescribed })
@@ -335,24 +349,18 @@ async function detectLoadStagnation(trainerId: string, today: string): Promise<I
     const insights: InsightRow[] = []
 
     for (const [, entry] of map) {
-        if (entry.weeklyMaxes.size < 3) continue
+        const verdict = evaluateStagnation({
+            weeks: [...entry.weekly.entries()].map(([weekStart, w]) => ({
+                weekStart,
+                maxWeight: w.maxWeight,
+                bestRepsAtMax: w.bestRepsAtMax,
+            })),
+            totalSessions: entry.sessionIds.size,
+            recentRepsAtTop: entry.recentReps,
+        })
+        if (!verdict) continue
 
-        const maxWeights = [...entry.weeklyMaxes.values()]
-        const topWeight = Math.max(...maxWeights)
-        const weeksAtTop = maxWeights.filter(w => w === topWeight).length
-
-        if (weeksAtTop < 3) continue
-
-        // Check if student is at the top of the rep range — if so, skip
-        // (Detection 5 handles this as "ready to progress")
-        if (entry.recentReps.length > 0) {
-            const lastSets = entry.recentReps.slice(-6) // last ~2 sessions worth of sets
-            const atTopCount = lastSets.filter(s => s.repsCompleted >= s.maxPrescribed).length
-            const atTopRatio = atTopCount / lastSets.length
-
-            // If >= 70% of recent sets are at the top of the range, skip
-            if (atTopRatio >= 0.7) continue
-        }
+        const { topWeight, weeksAtTop } = verdict
 
         const [exerciseResult, studentResult] = await Promise.all([
             supabaseAdmin.from('exercises').select('name').eq('id', entry.exerciseId).single(),
