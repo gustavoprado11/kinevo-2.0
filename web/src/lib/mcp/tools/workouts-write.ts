@@ -307,11 +307,14 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         aggregates = { sets, reps, rest_seconds: rest_seconds ?? 90 }
       }
 
-      // Get exercise info for snapshots
+      // Get exercise info for snapshots. Escopo: só exercícios do sistema
+      // (owner_id null) ou do próprio treinador — impede referenciar exercício
+      // privado de OUTRO treinador (vazaria nome/equipamento).
       const { data: exercise } = await supabaseAdmin
         .from('exercises')
         .select('id, name, equipment')
         .eq('id', exercise_id)
+        .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
         .single()
 
       if (!exercise) {
@@ -627,11 +630,14 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       }
 
       // Validate every exercise against the catalog up front (gather snapshots).
+      // Escopo por owner: só sistema (owner_id null) ou do próprio treinador —
+      // exercício de outro treinador cai como "não encontrado" abaixo.
       const catalog = new Map<string, { name: string; equipment: string | null }>()
       const { data: exerciseRows } = await supabaseAdmin
         .from('exercises')
         .select('id, name, equipment')
         .in('id', exercises.map(e => e.exercise_id))
+        .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
 
       for (const row of exerciseRows ?? []) {
         catalog.set(row.id, { name: row.name, equipment: row.equipment })

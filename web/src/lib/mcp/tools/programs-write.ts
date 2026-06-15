@@ -126,10 +126,13 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
         }
       }
       if (exerciseIds.size > 0) {
+        // Escopo por owner: só sistema (owner_id null) ou do próprio treinador
+        // — exercício privado de outro treinador cai como "não encontrado".
         const { data: found } = await supabaseAdmin
           .from('exercises')
           .select('id')
           .in('id', Array.from(exerciseIds))
+          .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
         const known = new Set((found ?? []).map(e => e.id))
         const missing = Array.from(exerciseIds).find(id => !known.has(id))
         if (missing) {
