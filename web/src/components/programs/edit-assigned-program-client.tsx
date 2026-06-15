@@ -51,7 +51,6 @@ import { useCompareMode } from './helpers/use-compare-mode'
 import { useProgramSchedule } from './helpers/use-program-schedule'
 import { useCanvasDnd } from './helpers/use-canvas-dnd'
 import { useBuilderChrome } from './helpers/use-builder-chrome'
-import type { WorkoutSet } from '@kinevo/shared/types/prescription'
 
 
 interface AssignedProgramData {
@@ -113,36 +112,6 @@ interface EditAssignedProgramClientProps {
     formTriggerTemplates?: FormTemplateOption[]
 }
 
-
-/** Persiste as linhas filhas em `assigned_workout_item_sets` para um item
- *  recém-salvo. A expansão por rounds vive em buildSetSchemeRows (núcleo
- *  compartilhado); aqui entram a coluna FK desta tabela e o delete das filhas
- *  órfãs no caminho de UPDATE (item pré-existente que ganhou/perdeu/
- *  reorganizou fases). */
-async function persistAssignedSetSchemeRows(
-    supabase: ReturnType<typeof createClient>,
-    assignedItemId: string,
-    scheme: WorkoutSet[] | null | undefined,
-    rounds: number,
-    isPreExistingItem: boolean,
-): Promise<void> {
-    // UPDATE path: limpa filhas antigas antes de re-materializar.
-    if (isPreExistingItem) {
-        const { error: delError } = await supabase
-            .from('assigned_workout_item_sets')
-            .delete()
-            .eq('assigned_workout_item_id', assignedItemId)
-        if (delError) throw delError
-    }
-
-    const rows = buildSetSchemeRows(scheme, rounds).map(r => ({
-        assigned_workout_item_id: assignedItemId,
-        ...r,
-    }))
-    if (rows.length === 0) return
-    const { error } = await supabase.from('assigned_workout_item_sets').insert(rows)
-    if (error) throw error
-}
 
 export function EditAssignedProgramClient({ trainer, program, exercises, studentId, sourceTemplateId, formTriggers: initialFormTriggers, formTriggerTemplates = [] }: EditAssignedProgramClientProps) {
     const router = useRouter()
@@ -410,234 +379,85 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         const supabase = createClient()
 
         try {
-            // 1. Update Program Details
-            const updatePayload: any = {
+            // Persistência via RPC transacional: monta a árvore inteira do
+            // programa e grava em UMA chamada (save_assigned_program_tree).
+            // Antes o save fazia ~80 requisições sequenciais do browser →
+            // Supabase (cada uma com preflight CORS, ~1-2s na WAN), o que tornava
+            // o save de programas grandes lentíssimo. Agora é 1 round-trip e a
+            // função faz upsert-by-id no servidor, preservando os ids dos itens
+            // (não quebra o histórico de sessões que referencia esses ids).
+            const DAY_MAP: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+            const muscleGroupOf = (ex: any): string | null => {
+                const mg = ex?.muscle_groups?.[0] ?? ex?.muscle_group
+                return typeof mg === 'object' ? (mg?.name ?? null) : (mg ?? null)
+            }
+
+            const base = {
                 name: name.trim(),
                 description: description.trim() || null,
                 duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
             }
+            // Rascunho (ex.: assistente via MCP) PERMANECE rascunho ao ser editado
+            // — ativá-lo é ação explícita ("Ativar"). Sem isso, salvar forçaria
+            // status='active' e colidiria com o índice parcial
+            // idx_assigned_programs_active_unique (1 ativo por aluno).
+            const programPayload =
+                program.status === 'draft'
+                    ? { ...base, status: 'draft', started_at: null, scheduled_start_date: null }
+                    : assignmentType === 'immediate'
+                        ? { ...base, status: 'active', started_at: startDate, scheduled_start_date: null }
+                        : { ...base, status: 'scheduled', started_at: null, scheduled_start_date: startDate }
 
-            // Update the correct date field and status.
-            // Rascunho (criado fora do builder, ex.: assistente via MCP) PERMANECE
-            // rascunho ao ser editado — ativá-lo é uma ação explícita ("Ativar").
-            // Sem isso, salvar forçaria status='active' e colidiria com o índice
-            // parcial idx_assigned_programs_active_unique (1 ativo por aluno).
-            if (program.status === 'draft') {
-                updatePayload.status = 'draft'
-                updatePayload.started_at = null
-                updatePayload.scheduled_start_date = null
-            } else if (assignmentType === 'immediate') {
-                updatePayload.started_at = startDate
-                updatePayload.scheduled_start_date = null
-                updatePayload.status = 'active'
-            } else {
-                updatePayload.scheduled_start_date = startDate
-                updatePayload.started_at = null
-                updatePayload.status = 'scheduled'
-            }
-
-            const { error: updateError } = await supabase
-                .from('assigned_programs')
-                .update(updatePayload)
-                .eq('id', program.id)
-
-            if (updateError) throw updateError
-
-            // 2. Identify Deleted Workouts
-            const currentWorkoutIds = workouts
-                .filter(w => !w.id.startsWith('temp_'))
-                .map(w => w.id)
-
-            // Delete workouts that are no longer in the list
-            // WARNING: This cascades to deletion of session history if configured in DB
-            // We warned the user in deleteWorkout()
-            if (currentWorkoutIds.length > 0) {
-                const { error: deleteError } = await supabase
-                    .from('assigned_workouts')
-                    .delete()
-                    .eq('assigned_program_id', program.id)
-                    .not('id', 'in', `(${currentWorkoutIds.join(',')})`)
-
-                if (deleteError) throw deleteError
-            } else {
-                // If currentWorkoutIds is empty, it means ALL original workouts were removed
-                // But we still have temp workouts potentially
-                // So delete everything from DB for this program
-                const { error: deleteError } = await supabase
-                    .from('assigned_workouts')
-                    .delete()
-                    .eq('assigned_program_id', program.id)
-
-                if (deleteError) throw deleteError
-            }
-
-            // 3. Upsert Workouts
-            for (const workout of workouts) {
-                let workoutId = workout.id
-                const isNewWorkout = workoutId.startsWith('temp_')
-
-                if (isNewWorkout) {
-                    const { data, error: insertError } = await supabase
-                        .from('assigned_workouts')
-                        .insert({
-                            assigned_program_id: program.id,
-                            name: workout.name,
-                            order_index: workout.order_index,
-                            scheduled_days: (workout.frequency || []).map(d => {
-                                const map: Record<string, number> = { 'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6 }
-                                return map[d]
-                            }).filter(x => x !== undefined),
-                        })
-                        .select('id')
-                        .single()
-
-                    if (insertError) throw insertError
-                    workoutId = data.id
-                    // Note: we update local var, but not state, because we're refreshing page anyway
-                } else {
-                    const { error: updateError } = await supabase
-                        .from('assigned_workouts')
-                        .update({
-                            name: workout.name,
-                            order_index: workout.order_index,
-                            scheduled_days: (workout.frequency || []).map(d => {
-                                const map: Record<string, number> = { 'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6 }
-                                return map[d]
-                            }).filter(x => x !== undefined),
-                        })
-                        .eq('id', workoutId)
-
-                    if (updateError) throw updateError
-                }
-
-                // 4. Handle Items
-                const currentItemIds = workout.items
-                    .flatMap(i => [i.id, ...(i.children?.map(c => c.id) || [])])
-                    .filter(id => !id.startsWith('temp_'))
-
-                // Delete missing items
-                if (currentItemIds.length > 0) {
-                    await supabase
-                        .from('assigned_workout_items')
-                        .delete()
-                        .eq('assigned_workout_id', workoutId)
-                        .not('id', 'in', `(${currentItemIds.join(',')})`)
-                } else if (!isNewWorkout) {
-                    // Only delete items if workout existed, otherwise it's empty anyway
-                    await supabase
-                        .from('assigned_workout_items')
-                        .delete()
-                        .eq('assigned_workout_id', workoutId)
-                }
-
-                // Upsert items (Root first, then children)
-                for (const item of workout.items) {
-                    let itemId = item.id
-                    const isPreExistingItem = !itemId.startsWith('temp_')
-
-                    // Fase 4.5i: agregados sempre derivados de
-                    // summarizeWithRounds quando há scheme + rounds.
+            const workoutsPayload = workouts.map(workout => ({
+                id: workout.id.startsWith('temp_') ? null : workout.id,
+                name: workout.name,
+                order_index: workout.order_index,
+                scheduled_days: (workout.frequency || []).map(d => DAY_MAP[d]).filter(x => x !== undefined),
+                items: workout.items.map(item => {
                     const aggs = aggregatesFromItem(item)
                     const itemRounds = effectiveRoundsForItem(item)
-
-                    const payload: any = {
-                        assigned_workout_id: workoutId,
+                    return {
+                        id: item.id.startsWith('temp_') ? null : item.id,
                         item_type: item.item_type,
                         order_index: item.order_index,
-                        exercise_id: item.exercise_id,
+                        exercise_id: item.exercise_id ?? null,
                         substitute_exercise_ids: item.substitute_exercise_ids || [],
                         sets: aggs.sets,
                         reps: aggs.reps,
                         rest_seconds: aggs.rest_seconds,
-                        notes: item.notes,
+                        notes: item.notes ?? null,
                         item_config: item.item_config || {},
-                        parent_item_id: null,
                         method_key: effectiveMethodKey(item),
                         rounds: itemRounds,
-                        // Snapshot data
-                        exercise_name: item.exercise?.name,
-                        exercise_muscle_group: (() => {
-                            const mg = item.exercise?.muscle_groups?.[0] || (item.exercise as any)?.muscle_group
-                            return typeof mg === 'object' ? mg?.name : mg
-                        })(),
-                        exercise_equipment: item.exercise?.equipment
+                        exercise_name: item.exercise?.name ?? null,
+                        exercise_muscle_group: muscleGroupOf(item.exercise),
+                        exercise_equipment: item.exercise?.equipment ?? null,
+                        set_rows: buildSetSchemeRows(item.set_scheme, itemRounds),
+                        children: (item.children || []).map(child => ({
+                            id: child.id.startsWith('temp_') ? null : child.id,
+                            item_type: child.item_type,
+                            order_index: child.order_index,
+                            exercise_id: child.exercise_id ?? null,
+                            substitute_exercise_ids: child.substitute_exercise_ids || [],
+                            sets: child.sets,
+                            reps: child.reps,
+                            rest_seconds: child.rest_seconds,
+                            notes: child.notes ?? null,
+                            item_config: child.item_config || {},
+                            exercise_name: child.exercise?.name ?? null,
+                            exercise_muscle_group: muscleGroupOf(child.exercise),
+                            exercise_equipment: child.exercise?.equipment ?? null,
+                        })),
                     }
+                }),
+            }))
 
-                    if (itemId.startsWith('temp_')) {
-                        const { data, error: itemError } = await supabase
-                            .from('assigned_workout_items')
-                            .insert(payload)
-                            .select('id')
-                            .single()
+            const { error: saveError } = await supabase.rpc('save_assigned_program_tree' as any, {
+                p_program_id: program.id,
+                p_payload: { program: programPayload, workouts: workoutsPayload } as any,
+            })
 
-                        if (itemError) throw itemError
-                        itemId = data.id
-                    } else {
-                        await supabase
-                            .from('assigned_workout_items')
-                            .update(payload)
-                            .eq('id', itemId)
-                    }
-
-                    // Fase 4.5i: persiste/repõe linhas filhas em
-                    // assigned_workout_item_sets. Para itens pré-existentes
-                    // (UPDATE path) deleta órfãs antes — cobre casos onde o
-                    // trainer mudou o método, número de fases ou reduziu
-                    // rounds. Itens recém-criados via temp_id pulam o
-                    // delete (não há linhas antigas).
-                    await persistAssignedSetSchemeRows(
-                        supabase,
-                        itemId,
-                        item.set_scheme,
-                        itemRounds,
-                        isPreExistingItem,
-                    )
-
-                    // Children (Supersets) — V1 não persiste set_scheme em
-                    // filhos de superset. Defesa em profundidade alinhada
-                    // com effectiveMethodKey (retorna null pra children) e
-                    // com a documentação da Fase 1: "supersets bloqueados
-                    // em modo avançado". method_key/rounds vão como null/1.
-                    if (item.children) {
-                        for (const child of item.children) {
-                            const childId = child.id
-                            const childPayload: any = {
-                                assigned_workout_id: workoutId,
-                                item_type: child.item_type,
-                                order_index: child.order_index,
-                                exercise_id: child.exercise_id,
-                                substitute_exercise_ids: child.substitute_exercise_ids || [],
-                                sets: child.sets,
-                                reps: child.reps,
-                                rest_seconds: child.rest_seconds,
-                                notes: child.notes,
-                                item_config: child.item_config || {},
-                                parent_item_id: itemId,
-                                method_key: null,
-                                rounds: 1,
-                                // Snapshot
-                                exercise_name: child.exercise?.name,
-                                exercise_muscle_group: (() => {
-                                    const mg = child.exercise?.muscle_groups?.[0] || (child.exercise as any)?.muscle_group
-                                    return typeof mg === 'object' ? mg?.name : mg
-                                })(),
-                                exercise_equipment: child.exercise?.equipment
-                            }
-
-                            if (childId.startsWith('temp_')) {
-                                await supabase
-                                    .from('assigned_workout_items')
-                                    .insert(childPayload)
-                            } else {
-                                await supabase
-                                    .from('assigned_workout_items')
-                                    .update(childPayload)
-                                    .eq('id', childId)
-                            }
-                        }
-                    }
-                }
-            }
+            if (saveError) throw saveError
 
             // Save form triggers (if source template exists)
             if (sourceTemplateId && (formTriggers.preWorkout || formTriggers.postWorkout)) {
