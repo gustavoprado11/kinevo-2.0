@@ -16,6 +16,7 @@ import type { PendingFinancialItem, PendingFormItem, ExpiredPlanItem } from '@/l
 import { useAssistantChatStore } from '@/stores/assistant-chat-store'
 import { useCommunicationStore } from '@/stores/communication-store'
 import { formatCurrency } from '@/lib/utils/financial'
+import { DraftMessageComposer } from './draft-message-composer'
 
 // ── Category config ──
 
@@ -143,6 +144,7 @@ export function AssistantActionCards({
 }: AssistantActionCardsProps) {
     const [insights, setInsights] = useState<InsightItem[]>(initialInsights)
     const [markingPaid, setMarkingPaid] = useState<string | null>(null)
+    const [draftFor, setDraftFor] = useState<{ insight: InsightItem; studentId: string; studentName: string } | null>(null)
     const openChat = useAssistantChatStore(s => s.openChat)
     const { openPanel, openConversation } = useCommunicationStore()
     const P: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
@@ -231,6 +233,22 @@ export function AssistantActionCards({
         e.stopPropagation()
         setInsights(prev => prev.filter(i => i.id !== insightId))
         await dismissInsight(insightId)
+    }, [])
+
+    // "Mensagem" num card de insight → abre o compositor de rascunho (gera via IA),
+    // em vez de só abrir o chat vazio. Marca como lido ao abrir.
+    const handleOpenDraft = useCallback((e: React.MouseEvent, insight: InsightItem, studentId: string, studentName: string) => {
+        e.stopPropagation()
+        if (insight.status === 'new') {
+            setInsights(prev => prev.map(i => i.id === insight.id ? { ...i, status: 'read' as const } : i))
+            markInsightRead(insight.id)
+        }
+        setDraftFor({ insight, studentId, studentName })
+    }, [])
+
+    const handleDraftSent = useCallback((insightId: string) => {
+        setInsights(prev => prev.filter(i => i.id !== insightId))
+        setDraftFor(null)
     }, [])
 
     const handleDirectAction = useCallback((e: React.MouseEvent, action: 'message' | 'program' | 'profile', studentId?: string | null, studentName?: string | null) => {
@@ -374,7 +392,9 @@ export function AssistantActionCards({
                                                         {secondaryActions.map(da => (
                                                             <button
                                                                 key={da.id}
-                                                                onClick={(e) => handleDirectAction(e, da.action, row.studentId, row.studentName)}
+                                                                onClick={(e) => da.action === 'message' && row.studentId
+                                                                    ? handleOpenDraft(e, row.insight!, row.studentId, row.studentName)
+                                                                    : handleDirectAction(e, da.action, row.studentId, row.studentName)}
                                                                 className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-md border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted hover:text-[#1D1D1F] dark:hover:text-foreground transition-colors"
                                                                 title={da.label}
                                                             >
@@ -387,7 +407,9 @@ export function AssistantActionCards({
                                                 {/* Primary direct action — always visible */}
                                                 {primaryAction && (
                                                     <button
-                                                        onClick={(e) => handleDirectAction(e, primaryAction.action, row.studentId, row.studentName)}
+                                                        onClick={(e) => primaryAction.action === 'message' && row.studentId
+                                                            ? handleOpenDraft(e, row.insight!, row.studentId, row.studentName)
+                                                            : handleDirectAction(e, primaryAction.action, row.studentId, row.studentName)}
                                                         className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted hover:text-[#1D1D1F] dark:hover:text-foreground transition-all hover:shadow-sm"
                                                         title={primaryAction.label}
                                                     >
@@ -464,6 +486,16 @@ export function AssistantActionCards({
                         )
                     })}
                 </div>
+            )}
+
+            {draftFor && (
+                <DraftMessageComposer
+                    insight={draftFor.insight}
+                    studentId={draftFor.studentId}
+                    studentName={draftFor.studentName}
+                    onClose={() => setDraftFor(null)}
+                    onSent={handleDraftSent}
+                />
             )}
         </div>
     )
