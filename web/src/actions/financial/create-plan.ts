@@ -2,23 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { stripe } from '@/lib/stripe'
 import { revalidatePath } from 'next/cache'
-
-interface CreatePlanInput {
-    title: string
-    price: number
-    interval: string
-    description: string
-    visibility: string
-    hasStripeConnect: boolean
-    /** Métodos de pagamento aceitos (Asaas). Defaults: PIX + Cartão crédito. */
-    allowPix?: boolean
-    allowCreditCard?: boolean
-    allowBoleto?: boolean
-    /** Nº máximo de parcelas no cartão (Asaas). 1 = sem parcelamento. */
-    maxInstallmentCount?: number
-}
+import { createPlanCore, type CreatePlanInput } from './plans-core'
 
 export async function createPlan(input: CreatePlanInput) {
     const supabase = await createClient()
@@ -38,93 +23,12 @@ export async function createPlan(input: CreatePlanInput) {
         return { error: 'Treinador não encontrado' }
     }
 
-    let stripeProductId: string | null = null
-    let stripePriceId: string | null = null
-
-    // If trainer has Stripe Connect, create Product + Price on their account
-    if (input.hasStripeConnect) {
-        const { data: settings } = await supabaseAdmin
-            .from('payment_settings')
-            .select('stripe_connect_id, charges_enabled')
-            .eq('user_id', trainer.id)
-            .single()
-
-        if (settings?.stripe_connect_id && settings.charges_enabled) {
-            try {
-                const product = await stripe.products.create({
-                    name: input.title,
-                    description: input.description || undefined,
-                    metadata: { trainer_id: trainer.id },
-                }, {
-                    stripeAccount: settings.stripe_connect_id,
-                })
-
-                const intervalMap: Record<string, 'month' | 'year'> = {
-                    month: 'month',
-                    quarter: 'month',
-                    year: 'year',
-                }
-                const intervalCountMap: Record<string, number> = {
-                    month: 1,
-                    quarter: 3,
-                    year: 1,
-                }
-
-                const price = await stripe.prices.create({
-                    product: product.id,
-                    unit_amount: Math.round(input.price * 100),
-                    currency: 'brl',
-                    recurring: {
-                        interval: intervalMap[input.interval] || 'month',
-                        interval_count: intervalCountMap[input.interval] || 1,
-                    },
-                    metadata: { trainer_id: trainer.id },
-                }, {
-                    stripeAccount: settings.stripe_connect_id,
-                })
-
-                stripeProductId = product.id
-                stripePriceId = price.id
-            } catch (err) {
-                console.error('[create-plan] Stripe error:', err)
-                // Continue without Stripe IDs — plan is still usable for manual billing
-            }
-        }
-    }
-
-    const intervalCountMap: Record<string, number> = {
-        month: 1,
-        quarter: 3,
-        year: 1,
-    }
-
-    const { error: insertError } = await supabaseAdmin.from('trainer_plans').insert({
-        trainer_id: trainer.id,
-        title: input.title,
-        description: input.description || null,
-        price: input.price,
-        interval: input.interval,
-        interval_count: intervalCountMap[input.interval] || 1,
-        is_active: true,
-        visibility: input.visibility || 'public',
-        stripe_product_id: stripeProductId,
-        stripe_price_id: stripePriceId,
-        allow_pix: input.allowPix ?? true,
-        allow_credit_card: input.allowCreditCard ?? true,
-        allow_boleto: input.allowBoleto ?? false,
-        // Parcelamento só faz sentido no cartão; sanitiza pra >=1.
-        max_installment_count: input.allowCreditCard === false
-            ? 1
-            : Math.max(1, Math.floor(input.maxInstallmentCount ?? 1)),
-    })
-
-    if (insertError) {
-        console.error('[create-plan] DB error:', insertError)
-        return { error: 'Erro ao salvar plano' }
+    const result = await createPlanCore(supabaseAdmin, trainer.id, input)
+    if (result.error) {
+        return { error: result.error }
     }
 
     revalidatePath('/financial')
     revalidatePath('/financial/plans')
-
     return { success: true }
 }
