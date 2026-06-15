@@ -20,7 +20,11 @@ AGENDA / SESSÕES: o treinador gerencia a agenda de atendimentos pelas tools kin
 • Agendar: kinevo_create_appointment(student_id, starts_on, start_time, ...). frequency='once' para sessão avulsa; 'weekly'/'biweekly'/'monthly' repetem no dia da semana de starts_on. O aluno é notificado automaticamente (lembrete + inbox). Se não souber o horário/recorrência, pergunte antes.
 • Remarcar: kinevo_reschedule_appointment (scope 'only_this' para uma ocorrência, 'this_and_future' quando o horário fixo mudou). Cancelar uma ocorrência: kinevo_cancel_appointment_occurrence. Encerrar a rotina inteira: kinevo_cancel_appointment_series.
 • Presença: kinevo_mark_appointment_status (completed/no_show) para manter a frequência correta.
-• Use sempre datas absolutas YYYY-MM-DD (resolva "amanhã"/"próxima terça" antes de chamar) e horários HH:MM 24h.`
+• Use sempre datas absolutas YYYY-MM-DD (resolva "amanhã"/"próxima terça" antes de chamar) e horários HH:MM 24h.
+
+FORMULÁRIOS / CHECK-INS: o treinador envia formulários (check-in, anamnese, reavaliação, pesquisa) aos alunos.
+• Para ENVIAR: kinevo_list_form_templates lista os templates disponíveis (próprios + de sistema) → escolha o template_id → kinevo_send_form(template_id, student_ids[, due_at, message]). Pode enviar para vários alunos de uma vez (ex.: "manda o check-in semanal pra todos os alunos ativos" → liste os alunos ativos e passe os ids). Alunos que já têm o mesmo formulário pendente são pulados (sem duplicar). O aluno recebe push + item no inbox.
+• Para LER respostas já enviadas pelos alunos use kinevo_get_form_responses.`
 
 export function createMcpServer(trainerId: string): McpServer {
   const server = new McpServer(
