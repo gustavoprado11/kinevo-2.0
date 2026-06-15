@@ -37,7 +37,15 @@ interface Conn {
     watch_expires_at: string | null;
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+    // Auth: cron-only. Exige x-push-secret (mesmo secret interno do send-push,
+    // migration 206). Roda com verify_jwt=false; fail-closed contra POST anônimo.
+    const expectedSecret = Deno.env.get("PUSH_WEBHOOK_SECRET");
+    const providedSecret = req.headers.get("x-push-secret");
+    if (!expectedSecret || providedSecret !== expectedSecret) {
+        return json({ error: "unauthorized" }, 401);
+    }
+
     const threshold = new Date(Date.now() + EXPIRY_BUFFER_MS).toISOString();
     const { data, error } = await supabaseAdmin
         .from("google_calendar_connections")
