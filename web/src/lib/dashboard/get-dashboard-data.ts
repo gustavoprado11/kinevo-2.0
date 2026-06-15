@@ -50,6 +50,9 @@ export interface ExpiredPlanItem {
     studentName: string
     studentAvatar: string | null
     planTitle: string | null
+    /** Plano do contrato expirado — necessário p/ regerar o link de renovação (winback). */
+    planId: string | null
+    contractId: string
     expiredAt: string
 }
 
@@ -243,7 +246,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         // 4. Expired contracts (canceled + period ended)
         supabaseAdmin
             .from('student_contracts')
-            .select('id, student_id, current_period_end, students!inner(name, avatar_url), trainer_plans(title)')
+            .select('id, student_id, plan_id, current_period_end, students!inner(name, avatar_url), trainer_plans(title)')
             .eq('trainer_id', trainerId)
             .eq('status', 'canceled')
             .not('current_period_end', 'is', null)
@@ -435,6 +438,8 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             studentName: (c.students as unknown as { name: string; avatar_url: string | null })?.name || 'Aluno',
             studentAvatar: (c.students as unknown as { name: string; avatar_url: string | null })?.avatar_url || null,
             planTitle: (c.trainer_plans as unknown as { title: string | null } | null)?.title ?? null,
+            planId: c.plan_id ?? null,
+            contractId: c.id,
             expiredAt: c.current_period_end!,
         }))
 
