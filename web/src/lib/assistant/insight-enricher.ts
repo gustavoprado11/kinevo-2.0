@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { callLLM } from '@/lib/prescription/llm-client'
+import { upsertInsightByKey } from '@/lib/insights/upsert'
 
 // ── Types ──
 
@@ -178,28 +179,28 @@ export async function enrichInsightsWithLLM(
                     .eq('trainer_id', trainerId)
                     .in('insight_key', enriched.replaces)
 
-                // Insert consolidated insight
-                const consolidatedKey = `stagnation_summary:${replacedInsight.student_id}:${today}`
-                await supabaseAdmin
-                    .from('assistant_insights')
-                    .upsert({
-                        trainer_id: trainerId,
+                // Insert consolidated insight via upsertInsightByKey: prefixo
+                // ESTÁVEL (sem a data) para deduplicar — antes a chave datada
+                // criava um resumo NOVO por dia (acumulando dezenas de cards).
+                // O helper também preserva 'dismissed'.
+                await upsertInsightByKey(supabaseAdmin, {
+                    trainerId,
+                    studentId: replacedInsight.student_id,
+                    category: 'progression',
+                    priority: 'medium',
+                    insightKeyPrefix: `stagnation_summary:${replacedInsight.student_id}`,
+                    insightKey: `stagnation_summary:${replacedInsight.student_id}:${today}`,
+                    title,
+                    body,
+                    actionType: 'adjust_load',
+                    actionMetadata: {
                         student_id: replacedInsight.student_id,
-                        category: 'progression',
-                        priority: 'medium',
-                        title,
-                        body,
-                        action_type: 'adjust_load',
-                        action_metadata: {
-                            student_id: replacedInsight.student_id,
-                            consolidated: true,
-                            replaced_keys: enriched.replaces,
-                        },
-                        status: 'new',
-                        insight_key: consolidatedKey,
-                        source: 'llm',
-                        expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-                    }, { onConflict: 'trainer_id,insight_key', ignoreDuplicates: false })
+                        consolidated: true,
+                        replaced_keys: enriched.replaces,
+                    },
+                    source: 'llm',
+                    expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+                })
 
                 consolidatedCount++
             } else {
