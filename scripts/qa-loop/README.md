@@ -73,3 +73,18 @@ Três defesas, todas em `drive.mjs` + o workflow:
   mantenha `playwright-core` recente.
 - Remover nós do DOM (overlays) gera erros `removeChild` do React e polui o
   sinal de console — o driver **oculta** via CSS em vez de remover.
+- **Navegação de rota usa `domcontentloaded`, não `networkidle`**: telas com
+  SSE/realtime aberto (Supabase em messages/insights/notifications) nunca ficam
+  ociosas e davam timeout de 30s → falso `-error.png`. Damos uma janela curta e
+  opcional (`waitForLoadState('networkidle', {timeout:4000}).catch()`) e seguimos.
+- **Re-execução sem reiniciar o Chrome**: o profile de debug é longevo e retém a
+  sessão da run anterior, fazendo `/login` redirecionar pra `/dashboard`. O login
+  faz `clearCookies()` antes, espera o input hidratar e **verifica que o valor
+  colou** (senão o `pressSequentially` corre a hidratação e o form submete vazio
+  → "missing email or phone").
+- **Se TODO screenshot pendura (timeout 30s) com a página `readyState=complete`**:
+  o Chrome de debug longevo degradou. Mate-o (`pkill -f remote-debugging-port=9222`)
+  e rode o `capture.sh` de novo — ele sobe um Chrome fresco.
+- **Não rode `npm run build` com o `npm run dev` ativo**: ambos compartilham
+  `.next` e o build invalida o cache do dev, deixando as rotas lentíssimas
+  (recompilação a frio de 60-90s) na captura seguinte.

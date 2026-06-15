@@ -147,9 +147,27 @@ const manifest = { base: BASE, chrome: cdp.Browser, routes: [], login: null };
 
 // ---- login ----
 try {
+  // O Chrome de debug é longevo; uma sessão de uma run anterior persiste no
+  // profile e faz /login redirecionar pra /dashboard (campo de email some).
+  // Limpar cookies garante que cada run loga do zero, sem reiniciar o Chrome.
+  await ctx.clearCookies();
   await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded", timeout: 30000 });
-  await page.locator('input[type="email"]').first().pressSequentially(account.email, { delay: 8 });
-  await page.locator('input[type="password"]').first().pressSequentially(account.password, { delay: 8 });
+  // Espera o input existir E o React hidratar antes de digitar — senão o
+  // pressSequentially dispara antes do onChange e o form submete vazio
+  // ("missing email or phone"). Digita, e re-tenta se o valor não colou.
+  const emailInput = page.locator('input[type="email"]').first();
+  await emailInput.waitFor({ state: "visible", timeout: 15000 });
+  await page.waitForTimeout(800);
+  const typeInto = async (locator, value) => {
+    await locator.click();
+    await locator.pressSequentially(value, { delay: 20 });
+    if ((await locator.inputValue()) !== value) {
+      await locator.fill("");
+      await locator.pressSequentially(value, { delay: 35 });
+    }
+  };
+  await typeInto(emailInput, account.email);
+  await typeInto(page.locator('input[type="password"]').first(), account.password);
   await page.locator('button[type="submit"]').first().click();
   await page.waitForURL(/\/(dashboard|students|programs)/, { timeout: 30000 });
   manifest.login = "ok";
@@ -173,9 +191,13 @@ for (const r of ROUTES) {
   const entry = { key: r.key, path: r.path, intent: r.intent || "", errors, shot: null, shots: [], httpOk: true, ms: 0 };
   const t0 = Date.now();
   try {
-    const resp = await page.goto(`${BASE}${r.path}`, { waitUntil: "networkidle", timeout: 30000 });
+    // domcontentloaded é determinístico; networkidle pendura em telas com SSE/
+    // realtime aberto (Supabase em messages/insights/notifications) e gerava um
+    // falso timeout -> -error.png. Damos uma janela CURTA e opcional pro idle.
+    const resp = await page.goto(`${BASE}${r.path}`, { waitUntil: "domcontentloaded", timeout: 30000 });
     entry.status = resp?.status() ?? null;
     entry.httpOk = !resp || resp.status() < 400;
+    await page.waitForLoadState("networkidle", { timeout: 4000 }).catch(() => {}); // settle se a rede aquietar; segue se SSE mantém ativa
     await page.waitForTimeout(900); // let client render/animations settle
     await stripOverlays(page);
     await killAnimations(page);
