@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActionSheetIOS, Platform } from "react-native";
-import { Calendar, Sparkles, FileText, Pencil, MoreHorizontal, Trash2 } from "lucide-react-native";
+import { Calendar, Sparkles, FileText, Pencil, MoreHorizontal, Trash2, Play } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getStudentDraftSummary, removeProgramDraft, type ProgramDraftSummary } from "../../../lib/program-drafts";
@@ -97,6 +97,59 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
             setIsMutating(false);
         }
     }, [isMutating, onRefresh]);
+
+    // ── Rascunhos persistidos no banco (criados fora do builder, ex.: assistente via MCP) ──
+    const activateDraft = useCallback(async (programId: string) => {
+        if (isMutating) return;
+        setIsMutating(true);
+        try {
+            // RPC atômica: valida dias agendados, encerra o programa ativo atual,
+            // vira o rascunho em 'active' e notifica o aluno (inbox + realtime).
+            const { error } = await (supabase as any).rpc("activate_draft_program", { p_program_id: programId });
+            if (error) {
+                const msg: string = error.message ?? "";
+                if (msg.includes("missing_scheduled_days")) {
+                    const names = msg.split("missing_scheduled_days:")[1]?.trim();
+                    toast.error(
+                        "Treinos sem dia agendado",
+                        names ? `Agende os dias de: ${names}` : "Todo treino precisa de pelo menos um dia da semana."
+                    );
+                    return;
+                }
+                throw error;
+            }
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
+            toast.success("Programa ativado", "O aluno foi notificado e o programa está disponível no app dele.");
+            await onRefresh?.();
+        } catch (err: any) {
+            if (__DEV__) console.error("[StudentProgramsTab] activate draft failed:", err);
+            toast.error("Erro ao ativar programa", err?.message ?? "Tente novamente em instantes.");
+        } finally {
+            setIsMutating(false);
+        }
+    }, [isMutating, onRefresh]);
+
+    const confirmActivateDraft = useCallback((programId: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { });
+        const message = data.activeProgram
+            ? "Ao ativar este rascunho, o programa ativo atual será encerrado e movido pro histórico. Deseja continuar?"
+            : "O programa ficará disponível no app do aluno. Deseja ativar agora?";
+        Alert.alert("Ativar programa", message, [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Ativar", onPress: () => activateDraft(programId) },
+        ]);
+    }, [data.activeProgram, activateDraft]);
+
+    const confirmDiscardDraft = useCallback((programId: string, name: string) => {
+        Alert.alert(
+            "Descartar rascunho",
+            `"${name}" e seus treinos serão removidos. Esta ação não pode ser desfeita.`,
+            [
+                { text: "Cancelar", style: "cancel" },
+                { text: "Descartar", style: "destructive", onPress: () => deleteProgram(programId, data.student.id) },
+            ]
+        );
+    }, [deleteProgram, data.student.id]);
 
     const openActiveProgramMenu = useCallback(() => {
         if (!data.activeProgram) return;
@@ -233,6 +286,58 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
                     </View>
                 </View>
             )}
+
+            {/* Rascunhos salvos no banco (criados fora do builder, ex.: assistente via MCP).
+                Diferente da prateleira MMKV acima: já são programas persistidos, só
+                precisam ser revisados/ativados. Revisar/editar fica pro painel web. */}
+            {(data.draftPrograms ?? []).map((d) => {
+                const workoutCount = d.workouts.length;
+                return (
+                    <View
+                        key={d.id}
+                        style={{ backgroundColor: "rgba(245,158,11,0.10)", borderColor: "rgba(245,158,11,0.30)", borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 12 }}
+                    >
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                            <FileText size={16} color="#D97706" />
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text.primary, flexShrink: 1 }} numberOfLines={1}>
+                                {d.name}
+                            </Text>
+                            <View style={{ backgroundColor: "rgba(245,158,11,0.18)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                                <Text style={{ fontSize: 10, fontWeight: "700", color: "#D97706" }}>Rascunho</Text>
+                            </View>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 12 }}>
+                            <Sparkles size={12} color={colors.text.secondary} />
+                            <Text style={{ fontSize: 12, color: colors.text.secondary, flexShrink: 1 }}>
+                                {(workoutCount > 0 ? `${workoutCount} ${workoutCount === 1 ? "treino" : "treinos"} · ` : "") + "criado pelo assistente · não ativado"}
+                            </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                            <TouchableOpacity
+                                onPress={() => confirmActivateDraft(d.id)}
+                                disabled={isMutating}
+                                activeOpacity={0.85}
+                                accessibilityRole="button"
+                                accessibilityLabel="Ativar programa"
+                                style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, backgroundColor: colors.purple[600], borderRadius: 12, paddingVertical: 10, opacity: isMutating ? 0.6 : 1 }}
+                            >
+                                <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
+                                <Text style={{ fontSize: 13, fontWeight: "700", color: "#FFFFFF" }}>Ativar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => confirmDiscardDraft(d.id, d.name)}
+                                disabled={isMutating}
+                                activeOpacity={0.7}
+                                accessibilityRole="button"
+                                accessibilityLabel="Descartar rascunho"
+                                style={{ padding: 10, borderRadius: 12 }}
+                            >
+                                <Trash2 size={18} color="#D97706" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                );
+            })}
 
             {/* Active Program */}
             {data.activeProgram ? (

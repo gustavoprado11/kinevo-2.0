@@ -72,18 +72,42 @@ export interface StudentDetailData {
     expectedPerWeek: number;
     totalSessions: number;
     lastSessionDate: string | null;
+    /** Rascunhos persistidos no banco (criados fora do builder, ex.: assistente via MCP). */
+    draftPrograms: {
+        id: string;
+        name: string;
+        workouts: { id: string; name: string; scheduled_days: number[] }[];
+    }[];
 }
 
 export function useStudentDetail(studentId: string | null) {
     const { trainerId } = useRoleMode();
 
     const fetcher = useCallback(async (): Promise<StudentDetailData> => {
-        const { data, error } = await supabase.rpc(
-            "get_student_profile_detail" as any,
-            { p_student_id: studentId }
-        );
-        if (error) throw new Error(error.message);
-        return data as StudentDetailData;
+        // A RPC só retorna o programa ativo + histórico. Os rascunhos de banco
+        // (status='draft', ex.: criados pelo assistente via MCP) são buscados em
+        // paralelo via query direta (RLS garante posse do treinador).
+        const [profileRes, draftsRes] = await Promise.all([
+            supabase.rpc("get_student_profile_detail" as any, { p_student_id: studentId }),
+            (supabase as any)
+                .from("assigned_programs")
+                .select("id, name, assigned_workouts(id, name, order_index, scheduled_days)")
+                .eq("student_id", studentId)
+                .eq("status", "draft")
+                .order("created_at", { ascending: false }),
+        ]);
+        if (profileRes.error) throw new Error(profileRes.error.message);
+
+        const draftPrograms = (draftsRes.data ?? []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            workouts: (p.assigned_workouts ?? [])
+                .slice()
+                .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
+                .map((w: any) => ({ id: w.id, name: w.name, scheduled_days: w.scheduled_days ?? [] })),
+        }));
+
+        return { ...(profileRes.data as StudentDetailData), draftPrograms };
     }, [trainerId, studentId]);
 
     const { data, isLoading, isRefreshing, error, refresh } = useCachedQuery<StudentDetailData>({
