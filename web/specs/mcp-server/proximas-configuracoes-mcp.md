@@ -1,46 +1,51 @@
-# Próximas configurações do MCP do Kinevo
+# Configurações do MCP do Kinevo
 
-> Documento de planejamento. Captura o estado atual do MCP, o padrão de
-> implementação consolidado e as próximas features priorizadas por valor no dia
-> a dia do treinador. Atualizado em 2026-06-15.
+> Documento de planejamento e registro do MCP. Captura o estado atual, o padrão
+> de implementação consolidado e o histórico de entregas. Atualizado em 2026-06-15
+> após a entrega completa dos blocos priorizados (1–7) e o sweep E2E das 55 tools.
 
 ---
 
 ## Estado atual (entregue)
 
-O MCP do Kinevo expõe **28 tools** (`web/src/lib/mcp/tools/`). Cobertura por domínio:
+O MCP do Kinevo expõe **55 tools** (`web/src/lib/mcp/tools/`). Cobertura por domínio:
 
 | Domínio | Tools | Cobertura |
 |---|---|---|
 | Alunos | list/get/create/update_student | leitura + escrita |
-| Programas | list/get_program, create_program, **create_program_template**, assign, expire | leitura + escrita + template completo |
+| Programas | list/get_program, create_program, **create_program_template**, **assign_program**, expire | leitura + escrita + template + atribuição |
 | Treinos | add/update/delete_workout_session, add/update/delete_workout_item, create_superset | escrita (template + assigned) |
-| Exercícios | list_exercises, list_training_methods | **só leitura** |
+| Exercícios | list_exercises, **create_exercise** | leitura + criação no catálogo do treinador |
 | Progresso | get_student_progress, get_form_responses | leitura |
-| **Agenda** | list/create/reschedule/cancel_occurrence/cancel_series/mark_status_appointment | leitura + escrita |
-| **Formulários** | **list_form_templates, send_form** | leitura + envio |
+| Agenda | list/create/reschedule/cancel_occurrence/cancel_series/mark_status_appointment | leitura + escrita |
+| Formulários | list_form_templates, send_form, **schedule_form, list_form_schedules** | leitura + envio + recorrência |
 | Mensagens | list/get_conversation, send_message | leitura + escrita |
-| Financeiro | list_subscriptions, get_revenue_summary | **só leitura** |
+| Financeiro | list_subscriptions, get_revenue_summary, **list_plans, create_plan, update_plan, generate_checkout_link, create_contract, mark_payment_as_paid, cancel_contract** | leitura + escrita completa |
+| Avaliações | **get_assessments, create_assessment_session, save_assessment_measurements, finalize_assessment** | leitura + escrita |
+| Insights | **list_insights, get_workout_checkins** | leitura |
+| Leads / CRM | **list_leads, update_lead_status, convert_lead** | leitura + escrita |
 | Dashboard | get_dashboard_summary | leitura |
 
-Features recentes (jun/2026): **Templates de programa** (tool atômica + incremental),
-**Agenda/Sessões** (6 tools), **Formulários/Check-ins** (enviar). Todas validadas
-E2E no endpoint de produção.
+**Validação:** todas as 55 tools validadas E2E pelo endpoint de produção (sweep de
+15/jun/2026, conta de teste "Trainer Carteira Teste") — **55/55 PASS**.
 
 ---
 
 ## Padrão de implementação (seguir nas próximas)
 
-Três aprendizados viraram padrão obrigatório:
+Quatro aprendizados são padrão obrigatório:
 
 ### 1. Núcleo compartilhado (action ↔ MCP)
 Quando uma operação tem efeitos colaterais (notificações, push, Google sync,
-inbox), **não** reimplemente no handler do MCP. Extraia um núcleo server-only
-(arquivo **sem** `'use server'`) com assinatura `xxxCore(supabase, trainerId, input)`:
+inbox, Stripe/Asaas), **não** reimplemente no handler do MCP. Extraia um núcleo
+server-only (arquivo **sem** `'use server'`) com assinatura
+`xxxCore(supabase, trainerId, input)`:
 - A server action (`'use server'`) vira wrapper de auth: resolve `trainer.id` e delega.
 - A tool MCP chama o núcleo com `createAdminClient()` + o `trainerId` do token.
 - Garante paridade total sem duplicar lógica. Ex.: `actions/appointments/core.ts`,
-  `actions/forms/assign-form-core.ts`.
+  `actions/forms/assign-form-core.ts`, `actions/financial/contracts-core.ts`,
+  `actions/financial/plans-core.ts`, `actions/leads/convert-lead-core.ts`,
+  `actions/create-student-core.ts`.
 
 > Por que arquivo separado: um arquivo `'use server'` trata todo export como
 > server action — params não-serializáveis (SupabaseClient) quebram.
@@ -48,23 +53,33 @@ inbox), **não** reimplemente no handler do MCP. Extraia um núcleo server-only
 ### 2. Bug de service-role em RPCs `SECURITY DEFINER` (CRÍTICO)
 O MCP grava com **service-role (sem JWT)**, então `auth.uid()` e
 `current_trainer_id()` são **NULL**. Qualquer RPC ou trigger que derive o
-treinador de `current_trainer_id()` **falha via MCP**. Já corrigidos:
-- `set_trainer_id` (trigger de `program_templates`) — migration 200
-- `create_program_template_tree` — recebe `p_trainer_id` (migration 200)
-- `assign_form_to_students` — overload com `p_trainer_id` (migration 201)
+treinador de `current_trainer_id()` **falha via MCP**. Já corrigidos via overload
+com `p_trainer_id` (versão antiga vira wrapper / fica intacta, backward-compat):
+- `set_trainer_id` (trigger `program_templates`) + `create_program_template_tree` — migration 200
+- `assign_form_to_students` — migration 201
+- `create/save/finalize/get_assessment_session(s)` (5 RPCs) — migration 202
+- `assign_program_to_student` — migration 203 (encontrado pelo sweep; corrigiu também
+  um bug latente: a RPC checava `students.trainer_id`, coluna inexistente → `coach_id`)
 
-**Antes de expor qualquer escrita nova, audite:**
+**Antes de expor qualquer escrita nova, audite triggers/RPCs auth-dependentes:**
 ```sql
--- triggers auth-dependentes na tabela alvo
-SELECT c.relname, t.tgname, p.proname,
-  (pg_get_functiondef(p.oid) ILIKE '%current_trainer_id%' OR pg_get_functiondef(p.oid) ILIKE '%auth.uid%') AS uses_auth
-FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_proc p ON p.oid=t.tgfoid
-WHERE NOT t.tgisinternal AND c.relname IN ('<tabela>');
+SELECT p.proname, (pg_get_functiondef(p.oid) ILIKE '%current_trainer_id%') AS uses_cti, p.prosecdef
+FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE n.nspname='public' AND p.proname IN ('<rpc>');
 ```
 Se a action chama um RPC que usa `current_trainer_id()`, crie um **overload com
-`p_trainer_id`** e torne a versão antiga um wrapper que delega (backward-compatible).
+`p_trainer_id`** e passe o `trainerId` no handler.
 
-### 3. Validação E2E sem depender do conector
+### 3. Gate de confirmação (preview/dry-run) em ações sensíveis
+Toda tool que **cobra/cancela/cria conta/mexe em dinheiro** recebe um parâmetro
+`confirm: z.boolean().default(false)`. Sem `confirm`, a tool retorna uma
+**pré-visualização** do efeito exato (aluno + valor + consequência) e **não muta
+nada**; só executa com `confirm=true`. Instruções no `server.ts` proíbem o
+assistente de auto-confirmar. Aplicado em: `create_contract`,
+`mark_payment_as_paid`, `cancel_contract`, `convert_lead`. Combine com
+`destructiveHint` correto.
+
+### 4. Validação E2E sem depender do conector
 A lista de tools do conector é **fixa por sessão** — tools novas só aparecem em
 sessão nova pós-reconexão. Para validar antes disso, bata no HTTP MCP direto:
 - `tools/list` é **público** (sem auth) → confirma deploy + tools no ar.
@@ -72,86 +87,42 @@ sessão nova pós-reconexão. Para validar antes disso, bata no HTTP MCP direto:
   (`access_token_hash` = sha256 do token, `client_id`, `trainer_id`, `expires_at`),
   chame via `curl` com `Authorization: Bearer`, **revogue/delete o token no fim** e
   limpe os dados de teste. Use o aluno-teste do próprio treinador para escritas que
-  notificam.
+  notificam. Para sweeps grandes, rotacione vários tokens (rate limit 30/min por key).
 
 ### Checklist por feature nova
 - [ ] Núcleo compartilhado se houver efeitos colaterais
 - [ ] Auditar triggers/RPCs por dependência de `current_trainer_id()`
 - [ ] Ownership por `trainerId` explícito (admin client bypassa RLS)
-- [ ] `readOnlyHint`/`destructiveHint` corretos; confirmação para ações sensíveis
+- [ ] `readOnlyHint`/`destructiveHint` corretos; gate `confirm` em ações sensíveis
 - [ ] Bloco de instruções no `server.ts`
 - [ ] `tsc` limpo + suíte verde + E2E pelo endpoint real
 - [ ] Migration versionada (mesmo que aplicada via MCP) + commit atômico
 
 ---
 
-## Próximas configurações (priorizadas)
+## Histórico de entregas (jun/2026)
 
-### 1. 💰 Financeiro — ações (ALTO valor · risco ALTO: dinheiro)
-Hoje só leitura (`list_subscriptions`, `get_revenue_summary`). Actions disponíveis
-em `actions/financial/`: `create-plan`, `update-plan`, `toggle-plan`, `delete-plan`,
-`create-contract`, `update-contract`, `cancel-contract`, `generate-checkout-link`,
-`mark-as-paid`, `toggle-block-on-fail`, `archive-student`.
+Todas pushadas em `main` (deploy Vercel) e validadas E2E. **+27 tools** (de 28 → 55).
 
-**Tools propostas:**
-- `kinevo_list_plans` (read) — pré-requisito para criar contrato/link.
-- `kinevo_create_plan` / `kinevo_update_plan` — gerenciar planos.
-- `kinevo_generate_checkout_link` — "gera o link de pagamento do plano X pra Maria".
-- `kinevo_create_contract` — vincular aluno a um plano.
-- `kinevo_mark_payment_as_paid` — baixa manual de mensalidade.
-
-**Cuidados:** mexe com Stripe/Asaas e cobrança. `destructiveHint` onde fizer
-sentido; **sempre confirmar** antes de cobrar/marcar pago. Auditar os RPCs por
-`current_trainer_id()`. Não expor delete de plano sem trava. Considerar começar só
-com `list_plans` + `generate_checkout_link` (menor risco, alto valor).
-
-### 2. 📋 Formulários recorrentes — completar (MÉDIO valor · esforço BAIXO)
-Complementa o `send_form` já entregue. Action: `actions/forms/form-schedules.ts`
-(`createFormSchedules`, `getStudentFormSchedules`, `toggle`, `delete`).
-
-**⚠️ Investigar antes:** `createFormSchedules` grava `trainer_id = user.id`
-(auth uid, **não** `trainers.id`) — divergente do resto. Confirmar se
-`form_schedules.trainer_id` referencia `auth.users` (intencional) ou é bug latente.
-Resolver isso primeiro; depois expor `kinevo_schedule_form` / `kinevo_list_form_schedules`.
-
-### 3. 📊 Avaliações físicas (MÉDIO-ALTO valor · esforço MÉDIO)
-Zero cobertura. Actions em `actions/assessments/`: `create-session`,
-`save-measurements`, `finalize-session`, `get-session(s)`, `cancel-session`,
-`update-template`.
-
-**Tools propostas:**
-- `kinevo_create_assessment_session` — abrir avaliação para um aluno.
-- `kinevo_save_assessment_measurements` — peso, circunferências, dobras.
-- `kinevo_finalize_assessment` — fechar e gerar resultado.
-- `kinevo_get_assessments` (read) — histórico/evolução.
-
-**Cuidados:** modelo de medidas pode ser extenso (antropometria, dobras J&P) —
-desenhar schema de input claro. Auditar triggers/RPCs.
-
-### 4. 🏋️ Exercício custom + 🤝 Leads (MENOR valor · esforço BAIXO)
-**Exercícios** (`actions/exercises/`): hoje só `list_exercises`. Adicionar
-`kinevo_create_exercise` (catálogo próprio do treinador, `owner_id = trainerId`) e
-talvez `kinevo_get_exercise_substitutes` (já há `get-substitutes`). Útil quando o
-treinador quer um exercício que não está no catálogo antes de prescrever.
-
-**Leads/CRM** (`actions/leads/`): `convert-lead-to-student`, `update-lead-status`.
-Tools `kinevo_list_leads`, `kinevo_convert_lead`, `kinevo_update_lead_status`.
-Valor depende de quanto o treinador faz captação/vendas pelo chat.
-
-### 5. 🔔 Insights & check-ins de treino (BAIXO esforço · leitura)
-- `kinevo_list_insights` — expor `assistant_insights` (alertas de IA: aluno em risco,
-  queda de adesão) como leitura. Bom para "tem algum alerta importante hoje?".
-- `kinevo_get_workout_checkins` — já há `actions/forms/get-workout-checkins.ts`.
+| Bloco | Entregue | Migration |
+|---|---|---|
+| 1. Financeiro mínimo | `list_plans`, `generate_checkout_link` (gate confirm) | — |
+| 2. Avaliações físicas | `get_assessments`, `create_assessment_session`, `save_assessment_measurements`, `finalize_assessment` | 202 (overloads p_trainer_id) |
+| 3. Formulários recorrentes | `schedule_form`, `list_form_schedules` + **fix bug** `form_schedules.trainer_id` (gravava auth uid contra FK→trainers; tabela tinha 0 linhas) | — |
+| 4. Exercício custom | `create_exercise` (owner_id=trainerId, vincula grupos por nome) | — |
+| 5. Insights & Leads | `list_insights`, `get_workout_checkins`, `list_leads`, `update_lead_status` | — |
+| 6. Financeiro avançado | `create_plan`, `update_plan`, `create_contract`, `mark_payment_as_paid`, `cancel_contract` (gate confirm nas 3 que mexem em dinheiro) | — |
+| 7. Conversão de lead | `convert_lead` (cria conta de aluno + credenciais; gate confirm; idempotente) | — |
+| Sweep E2E + fix | Teste das 55 tools → encontrou e corrigiu `assign_program` | 203 (overload + fix coach_id) |
 
 ---
 
-## Recomendação de sequência
+## Ideias futuras (sob demanda, fora do escopo original)
 
-1. **Financeiro — versão mínima** (`list_plans` + `generate_checkout_link`): maior
-   valor percebido, começando pelo subconjunto de menor risco.
-2. **Avaliações físicas**: fecha um domínio inteiro hoje ausente.
-3. **Formulários recorrentes** (após resolver o `trainer_id`).
-4. **Exercício custom / Leads / Insights**: incrementais, conforme demanda.
+- **Financeiro:** `delete_plan`/`toggle_plan` (com trava), `archive_student`, `toggle_block_on_fail`.
+- **Exercícios:** `get_exercise_substitutes` (existe `get-substitutes`, mas acoplado a item de programa atribuído).
+- **Avaliações:** template de avaliação custom (hoje só usa templates existentes).
+- **Mensagens/Insights:** marcar insight como lido/descartado; anexos em mensagens.
 
-> Regra de ouro: features que **enviam/cobram/notificam** o aluno ou mexem em
-> dinheiro exigem confirmação explícita no fluxo e `destructiveHint` correto.
+> Regra de ouro: features que **enviam/cobram/notificam** o aluno, **criam contas**
+> ou mexem em dinheiro exigem gate `confirm` no input e `destructiveHint` correto.
