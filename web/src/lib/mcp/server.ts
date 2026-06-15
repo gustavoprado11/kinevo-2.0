@@ -13,7 +13,14 @@ Para editar in-place use kinevo_update_workout_session / kinevo_update_workout_i
 TEMPLATES DA BIBLIOTECA DE PROGRAMAS: o treinador pode pedir para criar um programa reutilizável (template) na Biblioteca de Programas, sem aluno específico. Para isso:
 • Forma rápida (preferida): kinevo_create_program_template monta o template inteiro — programa + sessões + exercícios + supersets + set_scheme — numa única chamada transacional. Use sempre que já tiver a estrutura definida. Inclua scheduled_days em cada sessão (mesma convenção 0=domingo … 6=sábado): viram a frequência sugerida e o calendário ao atribuir.
 • Forma incremental: kinevo_create_program SEM student_id cria o template vazio; depois kinevo_add_workout_session / kinevo_add_exercise_to_session / kinevo_create_superset com program_type='template' / workout_type='template' o populam.
-• Depois de pronto, kinevo_assign_program (action 'assign_template') copia o template para um aluno. Liste templates com kinevo_list_programs (type='template').`
+• Depois de pronto, kinevo_assign_program (action 'assign_template') copia o template para um aluno. Liste templates com kinevo_list_programs (type='template').
+
+AGENDA / SESSÕES: o treinador gerencia a agenda de atendimentos pelas tools kinevo_*_appointment*.
+• Consultar: kinevo_list_appointments(range_start, range_end) lista as ocorrências do período com nome do aluno, horário e status — use para "o que tenho hoje/essa semana?". Cada ocorrência traz recurring_appointment_id e occurrence_date, que você passa para remarcar/cancelar/marcar status.
+• Agendar: kinevo_create_appointment(student_id, starts_on, start_time, ...). frequency='once' para sessão avulsa; 'weekly'/'biweekly'/'monthly' repetem no dia da semana de starts_on. O aluno é notificado automaticamente (lembrete + inbox). Se não souber o horário/recorrência, pergunte antes.
+• Remarcar: kinevo_reschedule_appointment (scope 'only_this' para uma ocorrência, 'this_and_future' quando o horário fixo mudou). Cancelar uma ocorrência: kinevo_cancel_appointment_occurrence. Encerrar a rotina inteira: kinevo_cancel_appointment_series.
+• Presença: kinevo_mark_appointment_status (completed/no_show) para manter a frequência correta.
+• Use sempre datas absolutas YYYY-MM-DD (resolva "amanhã"/"próxima terça" antes de chamar) e horários HH:MM 24h.`
 
 export function createMcpServer(trainerId: string): McpServer {
   const server = new McpServer(

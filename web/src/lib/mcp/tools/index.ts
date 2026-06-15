@@ -11,6 +11,7 @@ import { registerDashboardReadTools } from './dashboard'
 import { registerMessageWriteTools } from './messages'
 import { registerBillingReadTools } from './billing'
 import { registerConversationReadTools } from './conversations'
+import { registerAppointmentTools } from './appointments'
 
 export function registerAllTools(server: McpServer, trainerId: string) {
   registerPingTool(server, trainerId)
@@ -25,4 +26,5 @@ export function registerAllTools(server: McpServer, trainerId: string) {
   registerMessageWriteTools(server, trainerId)
   registerBillingReadTools(server, trainerId)
   registerConversationReadTools(server, trainerId)
+  registerAppointmentTools(server, trainerId)
 }
