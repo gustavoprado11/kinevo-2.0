@@ -2,10 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { stripe } from '@/lib/stripe'
-import { logContractEvent } from '@/lib/contract-events'
-import { cancelAsaasRecurring } from '@/lib/asaas/cancel-recurring'
 import { revalidatePath } from 'next/cache'
+import { cancelContractCore } from './contracts-core'
 
 export async function cancelContract({ contractId, cancelAtPeriodEnd }: { contractId: string; cancelAtPeriodEnd?: boolean }) {
     const supabase = await createClient()
@@ -25,114 +23,12 @@ export async function cancelContract({ contractId, cancelAtPeriodEnd }: { contra
         return { error: 'Treinador não encontrado' }
     }
 
-    // Fetch contract and validate ownership
-    const { data: contract } = await supabaseAdmin
-        .from('student_contracts')
-        .select('*')
-        .eq('id', contractId)
-        .single()
-
-    if (!contract) {
-        return { error: 'Contrato não encontrado' }
+    const result = await cancelContractCore(supabaseAdmin, trainer.id, { contractId, cancelAtPeriodEnd })
+    if (result.error) {
+        return { error: result.error }
     }
 
-    if (contract.trainer_id !== trainer.id) {
-        return { error: 'Sem permissão' }
-    }
-
-    try {
-        // If stripe_auto with an active subscription
-        if (contract.billing_type === 'stripe_auto' && contract.stripe_subscription_id) {
-            const { data: settings } = await supabaseAdmin
-                .from('payment_settings')
-                .select('stripe_connect_id')
-                .eq('user_id', trainer.id)
-                .single()
-
-            if (settings?.stripe_connect_id) {
-                if (cancelAtPeriodEnd) {
-                    // Schedule cancellation at period end
-                    await stripe.subscriptions.update(
-                        contract.stripe_subscription_id,
-                        { cancel_at_period_end: true },
-                        { stripeAccount: settings.stripe_connect_id }
-                    )
-
-                    await supabaseAdmin
-                        .from('student_contracts')
-                        .update({
-                            cancel_at_period_end: true,
-                            canceled_by: 'trainer',
-                            canceled_at: new Date().toISOString(),
-                        })
-                        .eq('id', contractId)
-
-                    await logContractEvent({
-                        studentId: contract.student_id,
-                        trainerId: trainer.id,
-                        contractId,
-                        eventType: 'contract_canceled',
-                        metadata: { canceled_by: 'trainer', scheduled: true },
-                    })
-
-                    revalidatePath('/financial')
-                    revalidatePath('/financial/subscriptions')
-
-                    return { success: true, scheduledCancellation: true }
-                } else {
-                    // Immediate cancellation
-                    await stripe.subscriptions.cancel(
-                        contract.stripe_subscription_id,
-                        { stripeAccount: settings.stripe_connect_id }
-                    )
-                }
-            }
-        }
-
-        // Asaas recorrente: cancela a assinatura na Asaas antes do cancelamento local.
-        if (contract.billing_type === 'asaas_auto_recurring') {
-            try {
-                await cancelAsaasRecurring({
-                    trainerId: trainer.id,
-                    billingType: contract.billing_type,
-                    subscriptionId: contract.asaas_subscription_id,
-                })
-            } catch (err) {
-                console.error('[cancel-contract] Asaas cancel failed:', err)
-                return { error: 'Não foi possível cancelar a assinatura na Asaas. Tente novamente.' }
-            }
-        }
-
-        // Update contract status in DB (immediate cancel)
-        const { error: updateError } = await supabaseAdmin
-            .from('student_contracts')
-            .update({
-                status: 'canceled',
-                cancel_at_period_end: false,
-                canceled_by: 'trainer',
-                canceled_at: new Date().toISOString(),
-            })
-            .eq('id', contractId)
-
-        if (updateError) {
-            console.error('[cancel-contract] DB error:', updateError)
-            return { error: 'Erro ao cancelar contrato' }
-        }
-
-        await logContractEvent({
-            studentId: contract.student_id,
-            trainerId: trainer.id,
-            contractId,
-            eventType: 'contract_canceled',
-            metadata: { canceled_by: 'trainer' },
-        })
-
-        revalidatePath('/financial')
-        revalidatePath('/financial/subscriptions')
-
-        return { success: true }
-    } catch (err) {
-        console.error('[cancel-contract] Error:', err)
-        return { error: 'Erro ao cancelar contrato' }
-    }
+    revalidatePath('/financial')
+    revalidatePath('/financial/subscriptions')
+    return result.scheduledCancellation ? { success: true, scheduledCancellation: true } : { success: true }
 }

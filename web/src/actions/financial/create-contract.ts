@@ -2,34 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import type { Database } from '@kinevo/shared/types/database'
-import { logContractEvent } from '@/lib/contract-events'
 import { revalidatePath } from 'next/cache'
-
-interface CreateContractInput {
-    studentId: string
-    planId: string | null
-    billingType: 'manual_recurring' | 'manual_one_off' | 'courtesy'
-    blockOnFail: boolean
-}
-
-function addInterval(date: Date, interval: string): Date {
-    const result = new Date(date)
-    switch (interval) {
-        case 'month':
-            result.setMonth(result.getMonth() + 1)
-            break
-        case 'quarter':
-            result.setMonth(result.getMonth() + 3)
-            break
-        case 'year':
-            result.setFullYear(result.getFullYear() + 1)
-            break
-        default:
-            result.setMonth(result.getMonth() + 1)
-    }
-    return result
-}
+import { createContractCore, type CreateContractInput } from './contracts-core'
 
 export async function createContract(input: CreateContractInput) {
     const supabase = await createClient()
@@ -49,122 +23,12 @@ export async function createContract(input: CreateContractInput) {
         return { error: 'Treinador não encontrado' }
     }
 
-    // Validate student belongs to this trainer
-    const { data: student } = await supabaseAdmin
-        .from('students')
-        .select('id, coach_id, name')
-        .eq('id', input.studentId)
-        .single()
-
-    if (!student) {
-        return { error: 'Aluno não encontrado' }
+    const result = await createContractCore(supabaseAdmin, trainer.id, input)
+    if (result.error) {
+        return { error: result.error }
     }
-
-    if (student.coach_id !== trainer.id) {
-        return { error: 'Este aluno não pertence a você' }
-    }
-
-    // Fetch plan details (optional for courtesy without plan)
-    let plan: { id: string; title: string; price: number; interval: string | null; trainer_id: string } | null = null
-
-    if (input.planId) {
-        const { data: planData } = await supabaseAdmin
-            .from('trainer_plans')
-            .select('id, title, price, interval, trainer_id')
-            .eq('id', input.planId)
-            .single()
-
-        if (!planData) {
-            return { error: 'Plano não encontrado' }
-        }
-
-        if (planData.trainer_id !== trainer.id) {
-            return { error: 'Este plano não pertence a você' }
-        }
-
-        plan = planData
-    } else if (input.billingType !== 'courtesy') {
-        return { error: 'Selecione um plano.' }
-    }
-
-    // Cancel any existing active contract for this student
-    await supabaseAdmin
-        .from('student_contracts')
-        .update({ status: 'canceled' })
-        .eq('student_id', input.studentId)
-        .eq('trainer_id', trainer.id)
-        .in('status', ['active', 'past_due', 'pending'])
-
-    const now = new Date()
-    let contractData: Database['public']['Tables']['student_contracts']['Insert']
-
-    if (input.billingType === 'courtesy') {
-        contractData = {
-            student_id: input.studentId,
-            trainer_id: trainer.id,
-            plan_id: input.planId,
-            amount: 0,
-            status: 'active',
-            billing_type: 'courtesy',
-            block_on_fail: false,
-            start_date: now.toISOString(),
-            current_period_end: null,
-        }
-    } else if (input.billingType === 'manual_one_off') {
-        const endDate = addInterval(now, plan!.interval || 'month')
-        contractData = {
-            student_id: input.studentId,
-            trainer_id: trainer.id,
-            plan_id: input.planId,
-            amount: plan!.price,
-            status: 'active',
-            billing_type: 'manual_one_off',
-            block_on_fail: input.blockOnFail,
-            start_date: now.toISOString(),
-            end_date: endDate.toISOString(),
-            current_period_end: endDate.toISOString(),
-        }
-    } else {
-        // manual_recurring
-        const periodEnd = addInterval(now, plan!.interval || 'month')
-        contractData = {
-            student_id: input.studentId,
-            trainer_id: trainer.id,
-            plan_id: input.planId,
-            amount: plan!.price,
-            status: 'active',
-            billing_type: 'manual_recurring',
-            block_on_fail: input.blockOnFail,
-            start_date: now.toISOString(),
-            current_period_end: periodEnd.toISOString(),
-        }
-    }
-
-    const { data: newContract, error: insertError } = await supabaseAdmin
-        .from('student_contracts')
-        .insert(contractData)
-        .select('id')
-        .single()
-
-    if (insertError || !newContract) {
-        console.error('[create-contract] DB error:', insertError)
-        return { error: 'Erro ao criar contrato' }
-    }
-
-    await logContractEvent({
-        studentId: input.studentId,
-        trainerId: trainer.id,
-        contractId: newContract.id,
-        eventType: 'contract_created',
-        metadata: {
-            billing_type: input.billingType,
-            amount: plan?.price ?? 0,
-            plan_title: plan?.title ?? 'Acesso Gratuito',
-        },
-    })
 
     revalidatePath('/financial')
     revalidatePath('/financial/subscriptions')
-
     return { success: true }
 }
