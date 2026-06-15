@@ -72,6 +72,7 @@ interface StudentsSelectChain {
 
 interface ActivationUpdateChain {
     eq: () => ActivationUpdateChain
+    in: () => ActivationUpdateChain
     select: (_columns: string) => Promise<ActivationUpdateResponse>
 }
 
@@ -129,6 +130,7 @@ function stubSuccessfulActivation(options?: {
                     if (payload.status === 'active') {
                         const chain: ActivationUpdateChain = {
                             eq: () => chain,
+                            in: () => chain,
                             select: activationUpdate,
                         }
                         return chain
