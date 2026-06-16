@@ -21,6 +21,7 @@ import {
 } from '@/lib/assistant/tool-policy'
 
 export type AiSurface =
+    | 'chat'
     | 'command_bar'
     | 'workspace'
     | 'canvas'
