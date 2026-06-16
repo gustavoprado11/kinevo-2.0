@@ -12,33 +12,163 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
+      ai_credit_topups: {
+        Row: {
+          consumed_in_period: string | null
+          cost_brl_cents: number
+          created_at: string
+          credits: number
+          id: string
+          stripe_payment_intent_id: string | null
+          trainer_id: string
+        }
+        Insert: {
+          consumed_in_period?: string | null
+          cost_brl_cents: number
+          created_at?: string
+          credits: number
+          id?: string
+          stripe_payment_intent_id?: string | null
+          trainer_id: string
+        }
+        Update: {
+          consumed_in_period?: string | null
+          cost_brl_cents?: number
+          created_at?: string
+          credits?: number
+          id?: string
+          stripe_payment_intent_id?: string | null
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_credit_topups_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_free_trials: {
+        Row: {
+          action_class: string
+          trainer_id: string
+          used_at: string
+        }
+        Insert: {
+          action_class: string
+          trainer_id: string
+          used_at?: string
+        }
+        Update: {
+          action_class?: string
+          trainer_id?: string
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_free_trials_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_events: {
+        Row: {
+          action_class: string
+          cached_input_tokens: number | null
+          cost_usd_micros: number | null
+          created_at: string
+          credits: number
+          id: string
+          input_tokens: number | null
+          model: string | null
+          output_tokens: number | null
+          surface: string | null
+          trainer_id: string
+        }
+        Insert: {
+          action_class: string
+          cached_input_tokens?: number | null
+          cost_usd_micros?: number | null
+          created_at?: string
+          credits: number
+          id?: string
+          input_tokens?: number | null
+          model?: string | null
+          output_tokens?: number | null
+          surface?: string | null
+          trainer_id: string
+        }
+        Update: {
+          action_class?: string
+          cached_input_tokens?: number | null
+          cost_usd_micros?: number | null
+          created_at?: string
+          credits?: number
+          id?: string
+          input_tokens?: number | null
+          model?: string | null
+          output_tokens?: number | null
+          surface?: string | null
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_events_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_periods: {
+        Row: {
+          cost_usd_micros: number
+          credits_used: number
+          id: string
+          period_start: string
+          period_type: string
+          trainer_id: string
+          turns_count: number
+          updated_at: string
+        }
+        Insert: {
+          cost_usd_micros?: number
+          credits_used?: number
+          id?: string
+          period_start: string
+          period_type: string
+          trainer_id: string
+          turns_count?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_usd_micros?: number
+          credits_used?: number
+          id?: string
+          period_start?: string
+          period_type?: string
+          trainer_id?: string
+          turns_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_periods_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       android_tester_queue: {
         Row: {
           added_at: string | null
@@ -681,6 +811,57 @@ export type Database = {
           },
           {
             foreignKeyName: "assistant_insights_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_llm_usage: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          feature: string
+          id: string
+          input_tokens: number
+          insight_id: string | null
+          model: string
+          output_tokens: number
+          trainer_id: string
+        }
+        Insert: {
+          cost_usd?: number
+          created_at?: string
+          feature: string
+          id?: string
+          input_tokens?: number
+          insight_id?: string | null
+          model: string
+          output_tokens?: number
+          trainer_id: string
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          feature?: string
+          id?: string
+          input_tokens?: number
+          insight_id?: string | null
+          model?: string
+          output_tokens?: number
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_llm_usage_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_insights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_llm_usage_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
@@ -3344,6 +3525,7 @@ export type Database = {
           id: string
           status: string
           stripe_customer_id: string
+          stripe_price_id: string | null
           stripe_subscription_id: string
           trainer_id: string
           updated_at: string
@@ -3355,6 +3537,7 @@ export type Database = {
           id?: string
           status?: string
           stripe_customer_id: string
+          stripe_price_id?: string | null
           stripe_subscription_id: string
           trainer_id: string
           updated_at?: string
@@ -3366,6 +3549,7 @@ export type Database = {
           id?: string
           status?: string
           stripe_customer_id?: string
+          stripe_price_id?: string | null
           stripe_subscription_id?: string
           trainer_id?: string
           updated_at?: string
@@ -3848,6 +4032,7 @@ export type Database = {
       trainers: {
         Row: {
           ai_prescriptions_enabled: boolean
+          ai_tier: string
           auth_user_id: string
           auto_publish_reports: boolean
           avatar_url: string | null
@@ -3890,6 +4075,7 @@ export type Database = {
         }
         Insert: {
           ai_prescriptions_enabled?: boolean
+          ai_tier?: string
           auth_user_id: string
           auto_publish_reports?: boolean
           avatar_url?: string | null
@@ -3932,6 +4118,7 @@ export type Database = {
         }
         Update: {
           ai_prescriptions_enabled?: boolean
+          ai_tier?: string
           auth_user_id?: string
           auto_publish_reports?: boolean
           avatar_url?: string | null
@@ -4507,15 +4694,26 @@ export type Database = {
     }
     Functions: {
       activate_draft_program: { Args: { p_program_id: string }; Returns: Json }
-      assign_form_to_students: {
-        Args: {
-          p_due_at?: string
-          p_form_template_id: string
-          p_message?: string
-          p_student_ids: string[]
-        }
-        Returns: Json
-      }
+      assign_form_to_students:
+        | {
+            Args: {
+              p_due_at?: string
+              p_form_template_id: string
+              p_message?: string
+              p_student_ids: string[]
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_due_at?: string
+              p_form_template_id: string
+              p_message?: string
+              p_student_ids: string[]
+              p_trainer_id: string
+            }
+            Returns: Json
+          }
       assign_program_from_snapshot: {
         Args: {
           p_bump_edits: boolean
@@ -4540,14 +4738,24 @@ export type Database = {
         }
         Returns: string
       }
-      assign_program_to_student: {
-        Args: {
-          p_start_date?: string
-          p_student_id: string
-          p_template_id: string
-        }
-        Returns: string
-      }
+      assign_program_to_student:
+        | {
+            Args: {
+              p_start_date?: string
+              p_student_id: string
+              p_template_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_start_date?: string
+              p_student_id: string
+              p_template_id: string
+              p_trainer_id: string
+            }
+            Returns: string
+          }
       block_overdue_students: {
         Args: never
         Returns: {
@@ -4569,16 +4777,30 @@ export type Database = {
         Args: { p_key: string; p_per_day: number; p_per_minute: number }
         Returns: Json
       }
-      create_assessment_session: {
-        Args: {
-          p_notes?: string
-          p_scheduled_at?: string
-          p_student_id: string
-          p_template_id: string
-        }
-        Returns: string
+      create_assessment_session:
+        | {
+            Args: {
+              p_notes?: string
+              p_scheduled_at?: string
+              p_student_id: string
+              p_template_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_notes?: string
+              p_scheduled_at?: string
+              p_student_id: string
+              p_template_id: string
+              p_trainer_id: string
+            }
+            Returns: string
+          }
+      create_program_template_tree: {
+        Args: { p_payload: Json; p_trainer_id: string }
+        Returns: Json
       }
-      create_program_template_tree: { Args: { p_payload: Json }; Returns: Json }
       current_member_org_ids: { Args: never; Returns: string[] }
       current_student_coach_id: { Args: never; Returns: string }
       current_student_id: { Args: never; Returns: string }
@@ -4599,23 +4821,48 @@ export type Database = {
         Args: { p_template_id: string }
         Returns: string
       }
-      finalize_assessment_session: {
-        Args: {
-          p_computed_metrics: Json
-          p_notes?: string
-          p_session_id: string
-        }
-        Returns: Json
-      }
+      finalize_assessment_session:
+        | {
+            Args: {
+              p_computed_metrics: Json
+              p_notes?: string
+              p_session_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_computed_metrics: Json
+              p_notes?: string
+              p_session_id: string
+              p_trainer_id: string
+            }
+            Returns: Json
+          }
       get_active_workout_triggers: {
         Args: { p_assigned_program_id: string }
         Returns: Json
       }
-      get_assessment_session: { Args: { p_session_id: string }; Returns: Json }
-      get_assessment_sessions: {
-        Args: { p_limit?: number; p_status?: string; p_student_id?: string }
-        Returns: Json
-      }
+      get_assessment_session:
+        | { Args: { p_session_id: string }; Returns: Json }
+        | {
+            Args: { p_session_id: string; p_trainer_id: string }
+            Returns: Json
+          }
+      get_assessment_sessions:
+        | {
+            Args: { p_limit?: number; p_status?: string; p_student_id?: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_limit?: number
+              p_status?: string
+              p_student_id?: string
+              p_trainer_id: string
+            }
+            Returns: Json
+          }
       get_contract_events: { Args: { p_contract_id: string }; Returns: Json }
       get_financial_dashboard: { Args: never; Returns: Json }
       get_financial_students: {
@@ -4734,6 +4981,16 @@ export type Database = {
       get_trainer_students_list: { Args: never; Returns: Json }
       get_training_room_students: { Args: never; Returns: Json }
       get_unread_notification_count: { Args: never; Returns: number }
+      increment_ai_usage: {
+        Args: {
+          p_cost_micros: number
+          p_credits: number
+          p_period_start: string
+          p_period_type: string
+          p_trainer_id: string
+        }
+        Returns: undefined
+      }
       is_org_manager: { Args: { p_org: string }; Returns: boolean }
       is_org_member: { Args: { p_org: string }; Returns: boolean }
       is_student: { Args: never; Returns: boolean }
@@ -4743,10 +5000,19 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: undefined
       }
-      save_assessment_measurements: {
-        Args: { p_measurements: Json; p_session_id: string }
-        Returns: number
-      }
+      save_assessment_measurements:
+        | {
+            Args: { p_measurements: Json; p_session_id: string }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_measurements: Json
+              p_session_id: string
+              p_trainer_id: string
+            }
+            Returns: number
+          }
       save_assigned_program_tree: {
         Args: { p_payload: Json; p_program_id: string }
         Returns: Json
@@ -4965,9 +5231,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       billing_type: [
