@@ -3,6 +3,9 @@ import { openai } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { buildChatContext } from '@/lib/assistant/context-builder'
+import { buildInstructions, PROMPT_VERSION } from '@/lib/assistant/system-prompt'
+import { recordTurnTrace, toolResultOk, type TraceToolCall } from '@/lib/assistant/turn-trace'
+import { logAssistantError } from '@/lib/assistant/errors'
 import { generateProgram } from '@/actions/prescription/generate-program'
 import { enrichStudentContext } from '@/lib/prescription/context-enricher'
 import { consumeRateLimit } from '@/lib/rate-limit'
@@ -139,8 +142,10 @@ export async function POST(req: Request) {
             })
             .filter((m) => m.content.length > 0)
 
-        // 5. Build context
-        const systemPrompt = await buildChatContext(trainer.id, trainer.name, studentId)
+        // 5. Build context. Instruções estáveis (system-prompt v2) primeiro; contexto
+        //    dinâmico (data/hora, alunos, snapshot) em seguida.
+        const dynamicContext = await buildChatContext(trainer.id, trainer.name, studentId)
+        const systemPrompt = buildInstructions(CHAT_SURFACE) + '\n\n' + dynamicContext
 
         // Student ID context for tools (when in contextual mode)
         const studentIdHint = studentId
@@ -185,7 +190,7 @@ export async function POST(req: Request) {
             //    - pago: cobra créditos no período (increment_ai_usage) + loga o
             //      evento com o custo do LLM (tokens→USD) em ai_usage_events.
             //    - free: marca cada classe de ação testada em ai_free_trials (1× cada).
-            onFinish: async ({ usage: turnUsage, steps }) => {
+            onFinish: async ({ usage: turnUsage, steps, text }) => {
                 try {
                     const turnCalls: TurnToolCall[] = []
                     const testedClasses = new Set<ActionClass>()
@@ -233,6 +238,44 @@ export async function POST(req: Request) {
                 } catch (meteringError) {
                     console.error('[CHAT API] metering onFinish error:', meteringError)
                 }
+
+                // Trace do turno (best-effort — observabilidade + dataset de evals).
+                const traceTools: TraceToolCall[] = []
+                for (const step of steps) {
+                    const resultById = new Map<string, unknown>()
+                    for (const r of step.toolResults ?? []) {
+                        resultById.set((r as { toolCallId: string }).toolCallId, (r as { result?: unknown }).result)
+                    }
+                    for (const call of step.toolCalls) {
+                        const id = (call as { toolCallId: string }).toolCallId
+                        traceTools.push({
+                            toolName: call.toolName,
+                            args: (call as { args?: Record<string, unknown> }).args ?? {},
+                            ok: toolResultOk(resultById.get(id)),
+                        })
+                    }
+                }
+                const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
+                const tokenUsageTrace: TokenUsage = {
+                    inputTokens: turnUsage.promptTokens ?? 0,
+                    outputTokens: turnUsage.completionTokens ?? 0,
+                }
+                await recordTurnTrace(supabaseAdmin, {
+                    trainerId: trainer.id,
+                    studentId,
+                    kind: 'turn',
+                    surface: CHAT_SURFACE,
+                    promptVersion: PROMPT_VERSION,
+                    model: CHAT_MODEL,
+                    input: lastUser,
+                    output: text ?? '',
+                    tools: traceTools,
+                    confirmation: null,
+                    credits: computeTurnCredits(traceTools.map((t) => ({ tool: t.toolName }))),
+                    inputTokens: tokenUsageTrace.inputTokens,
+                    outputTokens: tokenUsageTrace.outputTokens,
+                    costMicros: turnCostMicros(CHAT_MODEL, tokenUsageTrace),
+                })
             },
             tools: {
                 generateProgram: tool({
@@ -330,9 +373,9 @@ export async function POST(req: Request) {
 
         return result.toDataStreamResponse()
     } catch (error) {
-        console.error('[CHAT API] ERROR:', error)
+        const message = logAssistantError('CHAT API', error)
         return new Response(
-            JSON.stringify({ error: error instanceof Error ? error.message : 'Internal error' }),
+            JSON.stringify({ error: 'internal_error', message }),
             { status: 500, headers: { 'Content-Type': 'application/json' } }
         )
     }

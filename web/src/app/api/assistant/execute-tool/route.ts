@@ -24,6 +24,10 @@ import {
     recordFreeTrial,
 } from '@/lib/ai-usage/quota'
 import { recordAiUsage, type AiSurface } from '@/lib/ai-usage/metering'
+import { recordTurnTrace, toolResultOk } from '@/lib/assistant/turn-trace'
+import { validateConfirmArgs } from '@/lib/assistant/arg-validation'
+import { limitSensitive } from '@/lib/assistant/rate-limits'
+import { assistantErrorResponse } from '@/lib/assistant/errors'
 
 export const maxDuration = 60
 
@@ -76,6 +80,12 @@ export async function POST(req: NextRequest) {
             )
         }
 
+        // 3b. Rate-limit de ações sensíveis (G6) — anti-loop / anti-engano em sequência.
+        const rl = await limitSensitive(trainer.id)
+        if (!rl.allowed) {
+            return NextResponse.json({ error: 'rate_limited', message: rl.error }, { status: 429 })
+        }
+
         // 4. Tier + gate de cota (defense-in-depth)
         const tier = await getAiTierForTrainer(supabaseAdmin, trainer.id)
         const actionClass = actionClassForTool(toolName)
@@ -108,8 +118,43 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // 4b. Validação semântica (G5) — defense-in-depth. Mesmo após o card, revalida
+        //     posse/estado do alvo; bloqueia se inválido (alvo errado, já cancelado...).
+        const validation = await validateConfirmArgs(
+            supabaseAdmin,
+            trainer.id,
+            toolName,
+            (args ?? {}) as Record<string, unknown>,
+        )
+        if (!validation.ok) {
+            return NextResponse.json(
+                { error: 'validation_failed', message: validation.reason },
+                { status: 422 },
+            )
+        }
+
         // 5. Executar a tool real por nome (ponte in-memory, tenant-escopada por trainerId)
         const result = await executeMcpToolByName(trainer.id, toolName, args)
+
+        // 5b. Trace de auditoria da ação sensível confirmada (best-effort).
+        const argStudentId =
+            args && typeof args === 'object' && typeof (args as { student_id?: unknown }).student_id === 'string'
+                ? (args as { student_id: string }).student_id
+                : null
+        await recordTurnTrace(supabaseAdmin, {
+            trainerId: trainer.id,
+            studentId: argStudentId,
+            kind: 'confirmed_action',
+            surface: surface ?? null,
+            tools: [
+                {
+                    toolName,
+                    args: args as Record<string, unknown>,
+                    ok: toolResultOk(result),
+                },
+            ],
+            credits,
+        })
 
         // 6. Registrar uso (Free → free-trial; pago → crédito). costMicros=0:
         //    a execução de tool não chama LLM (o custo do LLM é medido no turno do chat).
@@ -128,10 +173,6 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true, result })
     } catch (error) {
-        console.error('[execute-tool] error:', error)
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Internal error' },
-            { status: 500 },
-        )
+        return assistantErrorResponse('execute-tool', error)
     }
 }

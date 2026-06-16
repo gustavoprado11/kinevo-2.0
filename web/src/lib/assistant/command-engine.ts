@@ -37,6 +37,9 @@ import { checkQuota } from '@/lib/ai-usage/quota'
 import { getAiTierForTrainer, type AiTier } from '@/lib/auth/get-ai-tier'
 import type { ToolConfirmationRequest } from '@/lib/assistant/hitl-types'
 import { buildChatContext } from '@/lib/assistant/context-builder'
+import { buildInstructions, PROMPT_VERSION } from '@/lib/assistant/system-prompt'
+import { recordTurnTrace, toolResultOk } from '@/lib/assistant/turn-trace'
+import { validateConfirmArgs } from '@/lib/assistant/arg-validation'
 import { generateProgram } from '@/actions/prescription/generate-program'
 import type { LLMModel } from '@/lib/prescription/llm-client'
 
@@ -298,13 +301,21 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             }),
         }
 
-        // 2. Prompt + histórico. studentId enriquece o contexto (perfil do aluno).
-        const baseContext = await buildChatContext(trainerId, trainerName ?? '', opts.studentId)
+        // 2. Prompt + histórico. Instruções estáveis (system-prompt v2) primeiro;
+        //    bloco HITL/MCP em seguida; contexto dinâmico por último (studentId
+        //    enriquece com o perfil do aluno).
+        const dynamicContext = await buildChatContext(trainerId, trainerName ?? '', opts.studentId)
         const routeHint = opts.route ? `\nTela atual do treinador: ${opts.route}.` : ''
         const studentHint = opts.studentId
             ? `\nAluno em foco (UUID): ${opts.studentId}. Use esse UUID nas tools quando a intenção for sobre este aluno.`
             : ''
-        const system = baseContext + routeHint + studentHint + ASSISTANT_INSTRUCTIONS
+        const system =
+            buildInstructions(surface) +
+            MCP_HITL_INSTRUCTIONS +
+            '\n\n' +
+            dynamicContext +
+            routeHint +
+            studentHint
 
         const history = (opts.history ?? []).slice(-MAX_HISTORY)
         const messages = [...history, { role: 'user' as const, content: input }]
@@ -342,12 +353,27 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         }
 
         let confirmation: ToolConfirmationRequest | null = null
+        let blockedReason: string | null = null
         for (const tc of toolCalls) {
             if (!executedIds.has(tc.toolCallId) && CONFIRM_TOOLS.has(tc.toolName)) {
-                confirmation = buildConfirmation(tc.toolName, tc.args ?? {})
+                const card = buildConfirmation(tc.toolName, tc.args ?? {})
+                // G5: valida os args ANTES de mostrar o card. Inválido → não mostra
+                // card, vira clarificação. Válido com alvo → resumo legível no card.
+                const validation = await validateConfirmArgs(admin, trainerId, tc.toolName, tc.args ?? {})
+                if (!validation.ok) {
+                    blockedReason = validation.reason
+                } else {
+                    if (validation.target) card.summary = validation.target.label
+                    confirmation = card
+                }
                 break
             }
         }
+
+        // Se a validação barrou a ação, devolve uma clarificação em vez do card.
+        const finalText = blockedReason
+            ? `${result.text ? result.text + '\n\n' : ''}⚠️ ${blockedReason}`
+            : result.text
 
         // 5. Metering do turno (CONFIRM_TOOLS NÃO entram — cobradas no execute-tool).
         const turnCalls: TurnToolCall[] = executed.map((e) => ({
@@ -395,8 +421,34 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
 
         const summary = await getAiUsageSummary(admin, trainerId)
 
+        // 6. Trace do turno (best-effort — observabilidade + dataset de evals).
+        await recordTurnTrace(admin, {
+            trainerId,
+            studentId: opts.studentId,
+            kind: 'turn',
+            surface,
+            route: opts.route,
+            promptVersion: PROMPT_VERSION,
+            model: ASSISTANT_MODEL,
+            input,
+            output: finalText,
+            tools: executed.map((e) => ({
+                toolName: e.toolName,
+                args: e.args,
+                ok: toolResultOk(e.result),
+            })),
+            confirmation: confirmation
+                ? { toolName: confirmation.toolName, destructive: confirmation.destructive }
+                : null,
+            intents,
+            credits,
+            inputTokens: result.usage.promptTokens,
+            outputTokens: result.usage.completionTokens,
+            costMicros,
+        })
+
         return {
-            text: result.text,
+            text: finalText,
             confirmation,
             executed: executed.map((e) => ({ toolName: e.toolName, result: e.result })),
             credits,
@@ -407,14 +459,20 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
     }
 }
 
-const ASSISTANT_INSTRUCTIONS = `
+/**
+ * Bloco específico do caminho MCP (⌘K + workspace): política HITL e dicas de tools
+ * que só existem aqui (catálogo MCP). A persona/regras comuns vêm de buildInstructions.
+ */
+const MCP_HITL_INSTRUCTIONS = `
 
-Você é o Assistente do Kinevo: o treinador conversa em linguagem natural e você OPERA o Kinevo por ele.
-- Resolva a intenção com o MENOR número de ações. Use as tools disponíveis; não invente dados.
-- Para LEITURAS e ações simples, execute direto e responda de forma clara e objetiva o que foi feito/encontrado.
-- Ações sensíveis (registrar/cancelar pagamento, cancelar contrato, converter lead, finalizar avaliação,
-  excluir treino/exercício, cancelar sessão da agenda) PRECISAM de confirmação humana: apenas CHAME a tool
-  com os argumentos corretos — o app mostra o card de confirmação. NÃO peça confirmação por texto.
-- Ao usar tools com aluno, passe sempre o UUID do aluno (formato xxxxxxxx-xxxx-...). Nunca o nome.
-- Para gerar um programa de treino completo, use generateProgram (gera rascunho para revisão).
-- Seja direto e em português. Sem rodeios.`
+# Ações no Kinevo (HITL)
+- Leituras e escritas reversíveis (atualizar aluno, criar rascunho de programa, agendar formulário):
+  execute direto e relate objetivamente o que foi feito.
+- Ações SENSÍVEIS (registrar/cancelar pagamento, cancelar contrato, converter lead, finalizar avaliação,
+  excluir treino/exercício, cancelar sessão ou série da agenda) PRECISAM de confirmação humana:
+  apenas CHAME a tool com os argumentos corretos — o app mostra o card de confirmação.
+  NÃO peça confirmação por texto, NÃO descreva o card.
+- Nunca dispare uma ação sensível em lote sem o treinador ter pedido explicitamente o alvo.
+- Para o progresso de um aluno, use kinevo_get_student_progress antes de responder.
+- Ao prescrever ou editar sessões, defina os dias da semana (scheduled_days) — é parte de uma boa
+  prescrição e dispara os lembretes do aluno.`

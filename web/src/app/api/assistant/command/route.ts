@@ -22,6 +22,8 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { PRO_TIERS, gateAssistant, runAssistantTurn, UUID_RE } from '@/lib/assistant/command-engine'
+import { limitTurn } from '@/lib/assistant/rate-limits'
+import { assistantErrorResponse } from '@/lib/assistant/errors'
 
 export const maxDuration = 60
 
@@ -74,6 +76,12 @@ export async function POST(req: NextRequest) {
             .single()
         if (!trainer) return NextResponse.json({ error: 'Trainer not found' }, { status: 404 })
 
+        // 2b. Rate-limit de turno (G6) — anti-amplificação de custo.
+        const rl = await limitTurn(trainer.id)
+        if (!rl.allowed) {
+            return NextResponse.json({ error: 'rate_limited', message: rl.error }, { status: 429 })
+        }
+
         // 3. Gate (Pro+ + cota) — compartilhado com a aba dedicada.
         const gate = await gateAssistant(supabaseAdmin, trainer.id)
         if (!gate.allowed) {
@@ -114,10 +122,6 @@ export async function POST(req: NextRequest) {
             summary: turn.summary,
         })
     } catch (error) {
-        console.error('[command POST] error:', error)
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Internal error' },
-            { status: 500 },
-        )
+        return assistantErrorResponse('command POST', error)
     }
 }

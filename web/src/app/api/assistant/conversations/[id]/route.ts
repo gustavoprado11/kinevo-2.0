@@ -13,6 +13,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { gateAssistant, runAssistantTurn } from '@/lib/assistant/command-engine'
+import { limitTurn } from '@/lib/assistant/rate-limits'
+import { assistantErrorResponse } from '@/lib/assistant/errors'
 import {
     getConversationWithMessages,
     assertOwnership,
@@ -49,8 +51,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 })
         return NextResponse.json(data)
     } catch (error) {
-        console.error('[conversation GET] error:', error)
-        return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+        return assistantErrorResponse('conversation GET', error)
     }
 }
 
@@ -71,8 +72,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         }
         return NextResponse.json({ error: 'Nada para atualizar.' }, { status: 400 })
     } catch (error) {
-        console.error('[conversation PATCH] error:', error)
-        return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+        return assistantErrorResponse('conversation PATCH', error)
     }
 }
 
@@ -110,6 +110,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         const rawInput: unknown = body?.input
         const input = typeof rawInput === 'string' ? rawInput.trim().slice(0, MAX_INPUT_CHARS) : ''
         if (input.length === 0) return NextResponse.json({ error: 'Mensagem vazia.' }, { status: 400 })
+
+        // Rate-limit de turno (G6) — anti-amplificação de custo.
+        const rl = await limitTurn(trainer.id)
+        if (!rl.allowed) {
+            return NextResponse.json({ error: 'rate_limited', message: rl.error }, { status: 429 })
+        }
 
         const gate = await gateAssistant(supabaseAdmin, trainer.id)
         if (!gate.allowed) {
@@ -173,10 +179,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             summary: turn.summary,
         })
     } catch (error) {
-        console.error('[conversation POST] error:', error)
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Internal error' },
-            { status: 500 },
-        )
+        return assistantErrorResponse('conversation POST', error)
     }
 }
