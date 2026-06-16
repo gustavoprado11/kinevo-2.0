@@ -29,6 +29,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/cron/morning-briefing",
+      "schedule": "30 9 * * *"
+    },
+    {
       "path": "/api/cron/cleanup-orphan-signups",
       "schedule": "0 3 * * *"
     }
