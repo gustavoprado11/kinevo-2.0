@@ -1,5 +1,7 @@
 'use server'
 
+import { isStudentManagementLockedForTrainer, STUDENT_MANAGEMENT_LOCKED_ERROR } from '@/lib/limits/student-readonly'
+
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
@@ -16,6 +18,10 @@ export async function deleteProgram(programId: string) {
             .eq('auth_user_id', user.id)
             .single()
         if (!trainer) throw new Error('Unauthorized')
+
+        if (await isStudentManagementLockedForTrainer(trainer.id)) {
+            throw new Error(STUDENT_MANAGEMENT_LOCKED_ERROR)
+        }
 
         // Get program and verify trainer ownership
         const { data: program } = await supabase

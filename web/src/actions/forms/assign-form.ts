@@ -1,5 +1,7 @@
 'use server'
 
+import { isStudentManagementLockedForTrainer, STUDENT_MANAGEMENT_LOCKED_ERROR } from '@/lib/limits/student-readonly'
+
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
@@ -21,6 +23,9 @@ export async function assignFormToStudents(input: AssignFormInput) {
         .eq('auth_user_id', user.id)
         .single()
     if (!trainer) return { success: false, error: 'Treinador não encontrado' }
+    if (await isStudentManagementLockedForTrainer(trainer.id)) {
+        return { success: false, error: STUDENT_MANAGEMENT_LOCKED_ERROR }
+    }
 
     // RPC assign_form_to_students (5-arg) é service-role-only desde a migration
     // 204 (lockdown MCP). trainer.id vem da sessão autenticada acima (não é input

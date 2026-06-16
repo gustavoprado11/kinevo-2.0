@@ -1,5 +1,7 @@
 'use server'
 
+import { isStudentManagementLockedForTrainer, STUDENT_MANAGEMENT_LOCKED_ERROR } from '@/lib/limits/student-readonly'
+
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { activateAssignedProgram } from '@/lib/programs/activate-assigned-program'
@@ -19,6 +21,10 @@ export async function activateProgram(assignedProgramId: string) {
             .single()
 
         if (!trainer) throw new Error('Trainer not found')
+
+        if (await isStudentManagementLockedForTrainer(trainer.id)) {
+            throw new Error(STUDENT_MANAGEMENT_LOCKED_ERROR)
+        }
 
         // 2. Get program details — with trainer_id ownership filter
         const { data: program } = await supabase

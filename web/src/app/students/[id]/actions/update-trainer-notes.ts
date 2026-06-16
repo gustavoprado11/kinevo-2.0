@@ -2,10 +2,14 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
+import { isStudentManagementLockedForTrainer, STUDENT_MANAGEMENT_LOCKED_ERROR } from '@/lib/limits/student-readonly'
 
 export async function updateTrainerNotes(studentId: string, notes: string) {
     try {
         const { trainer } = await getTrainerWithSubscription()
+        if (await isStudentManagementLockedForTrainer(trainer.id)) {
+            return { success: false, error: STUDENT_MANAGEMENT_LOCKED_ERROR }
+        }
         const supabase = await createClient()
 
         // Verify the student belongs to this trainer

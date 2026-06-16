@@ -1,5 +1,7 @@
 'use server'
 
+import { isStudentManagementLockedForTrainer, STUDENT_MANAGEMENT_LOCKED_ERROR } from '@/lib/limits/student-readonly'
+
 import { createClient } from '@/lib/supabase/server'
 import { generateReport } from '@/lib/reports/program-report-service'
 
@@ -17,6 +19,9 @@ export async function completeProgram(programId: string, studentId: string) {
             .eq('auth_user_id', user.id)
             .single()
         if (!trainer) return { success: false, error: 'Treinador não encontrado' }
+        if (await isStudentManagementLockedForTrainer(trainer.id)) {
+            return { success: false, error: STUDENT_MANAGEMENT_LOCKED_ERROR }
+        }
 
         // Verify trainer owns this student
         const { data: student } = await supabase

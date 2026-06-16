@@ -1,5 +1,7 @@
 'use server'
 
+import { isStudentManagementLockedForTrainer, STUDENT_MANAGEMENT_LOCKED_ERROR } from '@/lib/limits/student-readonly'
+
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
@@ -43,6 +45,10 @@ export async function archiveStudent({
 
     if (!trainer) {
         return { error: 'Treinador não encontrado' }
+    }
+
+    if (await isStudentManagementLockedForTrainer(trainer.id)) {
+        return { error: STUDENT_MANAGEMENT_LOCKED_ERROR }
     }
 
     // Verify student belongs to trainer

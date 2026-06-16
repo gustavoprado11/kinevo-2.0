@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
 import type { OnboardingState, TrainerModalityFocus } from '@kinevo/shared/types/onboarding'
+import { getAiTier, type AiTier } from '@/lib/auth/get-ai-tier'
+import { isStudentManagementLocked } from '@/lib/limits/student-readonly'
 
 interface TrainerRecord {
     id: string
@@ -85,13 +87,27 @@ export async function getTrainerWithSubscription(userId?: string) {
         redirect('/login')
     }
 
-    const isActive = subscription?.status === 'trialing' || subscription?.status === 'active'
+    // Fase 1 · Trilha 3 — Free substitui o hard-block.
+    // Antes: assinatura não-ativa → redirect('/subscription/blocked').
+    // Agora: ninguém é barrado na entrada. Quem não tem plano pago ativo resolve
+    // para o tier 'free' (via getAiTier) e ENTRA limitado. O pagante ativo segue
+    // exatamente como antes — getAiTier deriva o tier do price e nunca devolve
+    // 'free' para uma assinatura active/trialing.
+    const tier: AiTier = getAiTier(trainer, subscription)
 
-    if (!isActive) {
-        redirect('/subscription/blocked')
+    // `studentsLocked`: ex-pagante que caiu para o Free e ainda tem alunos reais.
+    // A gestão de alunos vira read-only (dados preservados). Só contamos quando o
+    // tier é 'free' — pagante ativo nunca paga o custo da contagem.
+    let studentsLocked = false
+    if (tier === 'free') {
+        const { count } = await supabase
+            .from('students')
+            .select('id', { count: 'exact', head: true })
+            .eq('coach_id', trainer.id)
+        studentsLocked = isStudentManagementLocked(tier, count ?? 0)
     }
 
-    return { trainer, subscription: subscription! }
+    return { trainer, subscription, tier, studentsLocked }
 }
 
 // Embedded subscriptions come back as an array (one-to-many FK). Prefer the
