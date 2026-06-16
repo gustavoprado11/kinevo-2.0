@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, FlatList, RefreshControl, Pressable } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Users, Plus, ChevronRight } from "lucide-react-native";
+import { Users, Plus, ChevronRight, Lock } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import Animated, { FadeIn, FadeInUp, Easing } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -15,6 +15,7 @@ import { EmptyState } from "../../components/shared/EmptyState";
 import { AddStudentModal } from "../../components/trainer/students/AddStudentModal";
 import { MasterDetailLayout } from "../../components/shared/MasterDetailLayout";
 import { useResponsive } from "../../hooks/useResponsive";
+import { useAiStatus } from "../../hooks/useAiStatus";
 import { v2 } from "@kinevo/shared/tokens";
 import {
     KCard,
@@ -126,6 +127,10 @@ export default function StudentsScreen() {
     const insets = useSafeAreaInsets();
     const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
     const [showAddStudent, setShowAddStudent] = useState(false);
+    // Gate de tier: no Free já no limite de alunos, o backend recusa a criação.
+    // Aqui espelhamos isso na UX trocando o FAB por um CTA de assinatura.
+    const { status: aiStatus } = useAiStatus();
+    const studentsLocked = aiStatus?.studentsLocked ?? false;
 
     useEffect(() => {
         if (isTablet && students.length > 0 && !selectedStudentId) {
@@ -287,38 +292,89 @@ export default function StudentsScreen() {
                 placeholder={<StudentDetailPlaceholder />}
                 masterWidthPercent={35}
             />
-            {/* FAB V2 — gradient roxo + glow */}
-            <Pressable
-                onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    setShowAddStudent(true);
-                }}
-                accessibilityLabel="Adicionar aluno"
-                accessibilityRole="button"
-                style={{
-                    position: "absolute",
-                    right: spacing[5],
-                    bottom: insets.bottom + 90,
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    overflow: "hidden",
-                    shadowColor: colors.purple[600],
-                    shadowOffset: { width: 0, height: 8 },
-                    shadowOpacity: 0.32,
-                    shadowRadius: 24,
-                    elevation: 12,
-                }}
-            >
-                <LinearGradient
-                    colors={[colors.purple[600], colors.purple[700]]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+            {studentsLocked ? (
+                /* Free no limite de alunos: CTA de assinatura (gate revalidado no backend). */
+                <Pressable
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        router.push("/profile/subscription");
+                    }}
+                    accessibilityLabel="Assine para adicionar alunos"
+                    accessibilityRole="button"
+                    style={{
+                        position: "absolute",
+                        left: spacing[5],
+                        right: spacing[5],
+                        bottom: insets.bottom + 90,
+                        height: 52,
+                        borderRadius: 26,
+                        overflow: "hidden",
+                        shadowColor: colors.purple[600],
+                        shadowOffset: { width: 0, height: 8 },
+                        shadowOpacity: 0.32,
+                        shadowRadius: 24,
+                        elevation: 12,
+                    }}
                 >
-                    <Plus size={26} color="#FFFFFF" strokeWidth={2.5} />
-                </LinearGradient>
-            </Pressable>
+                    <LinearGradient
+                        colors={[colors.purple[600], colors.purple[700]]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{
+                            flex: 1,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: spacing[2],
+                        }}
+                    >
+                        <Lock size={18} color="#FFFFFF" strokeWidth={2.5} />
+                        <Text
+                            style={{
+                                fontFamily: "PlusJakartaSans_700Bold",
+                                fontSize: 15,
+                                color: "#FFFFFF",
+                                letterSpacing: -0.01,
+                            }}
+                        >
+                            Assine para adicionar alunos
+                        </Text>
+                    </LinearGradient>
+                </Pressable>
+            ) : (
+                /* FAB V2 — gradient roxo + glow */
+                <Pressable
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        setShowAddStudent(true);
+                    }}
+                    accessibilityLabel="Adicionar aluno"
+                    accessibilityRole="button"
+                    style={{
+                        position: "absolute",
+                        right: spacing[5],
+                        bottom: insets.bottom + 90,
+                        width: 56,
+                        height: 56,
+                        borderRadius: 28,
+                        overflow: "hidden",
+                        shadowColor: colors.purple[600],
+                        shadowOffset: { width: 0, height: 8 },
+                        shadowOpacity: 0.32,
+                        shadowRadius: 24,
+                        elevation: 12,
+                    }}
+                >
+                    <LinearGradient
+                        colors={[colors.purple[600], colors.purple[700]]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+                    >
+                        <Plus size={26} color="#FFFFFF" strokeWidth={2.5} />
+                    </LinearGradient>
+                </Pressable>
+            )}
             <AddStudentModal
                 visible={showAddStudent}
                 onClose={() => setShowAddStudent(false)}
