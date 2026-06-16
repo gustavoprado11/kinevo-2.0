@@ -6,13 +6,14 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
     LayoutDashboard, Users, Dumbbell, Calendar, CalendarDays, Wallet, FileText,
-    Activity, Megaphone,
+    Megaphone,
     MessageSquarePlus, Headphones,
-    LogOut, BookOpen, ChevronRight, ChevronLeft, Settings,
+    LogOut, BookOpen, ChevronRight, ChevronLeft, Settings, Sparkles,
 } from 'lucide-react'
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
 import { createClient } from '@/lib/supabase/client'
+import { fetchAiAccess, OPEN_AI_COMMAND_EVENT } from '@/components/assistant/command-bar/command-bar'
 
 interface NavItem {
     name: string
@@ -95,7 +96,23 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     const [feedbackOpen, setFeedbackOpen] = useState(false)
     const [bibliotecaOpen, setBibliotecaOpen] = useState(false)
     const [profileOpen, setProfileOpen] = useState(false)
+    const [aiAllowed, setAiAllowed] = useState(false)
     const profileRef = useRef<HTMLDivElement>(null)
+
+    // Item "Assistente" só aparece nos planos Pro+ (gate de superfície de IA).
+    useEffect(() => {
+        let active = true
+        fetchAiAccess().then((a) => {
+            if (active && a) setAiAllowed(a.allowed)
+        })
+        return () => {
+            active = false
+        }
+    }, [])
+
+    const openAssistant = () => {
+        window.dispatchEvent(new CustomEvent(OPEN_AI_COMMAND_EVENT))
+    }
 
     const initials = trainerName
         .split(' ')
@@ -226,6 +243,31 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                         </div>
                     )
                 })}
+
+                {/* Assistente IA (⌘K) — só nos planos Pro+ */}
+                {aiAllowed && (
+                    <div className="relative group/nav">
+                        <button
+                            onClick={openAssistant}
+                            className={`relative flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium tracking-tight transition-all duration-200 ease-out text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#7C3AED] dark:hover:text-foreground hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
+                        >
+                            <Sparkles size={18} strokeWidth={1.5} className="shrink-0 text-[#7C3AED] dark:text-violet-400" />
+                            <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100 flex-1 text-left'}`}>
+                                Assistente
+                            </span>
+                            {!isCollapsed && (
+                                <kbd className="ml-auto rounded border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 font-mono text-[9px] text-[#AEAEB2]">
+                                    ⌘K
+                                </kbd>
+                            )}
+                        </button>
+                        {isCollapsed && (
+                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                                Assistente
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Bibliotecas accordion */}
                 <div className="mt-1">
