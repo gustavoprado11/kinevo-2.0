@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { AppLayout } from '@/components/layout'
 import { BillingSection } from '@/components/settings/billing-section'
+import { AiPlanSection } from '@/components/settings/ai-plan-section'
+import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { ProfileForm } from '@/components/settings/profile-form'
 import { ThemeSelector } from '@/components/settings/theme-selector'
 import { ReportsPreferencesSection } from '@/components/settings/reports-preferences-section'
@@ -122,10 +124,10 @@ export default async function SettingsPage() {
     // Estúdio: dono/coach de academia é liberado pela assinatura da ACADEMIA,
     // não pela solo. (Reusa o sistema atual; ver get-trainer.ts / org-access.)
     const orgCtx = await getOrganizationContext()
-    if (!isActive) {
-        if (!orgCtx) {
-            redirect('/subscription/blocked')
-        }
+    // Solo sem assinatura ativa NÃO é mais bloqueado (decisão Gustavo: cai no Gratuito,
+    // entra limitado) — e vê justamente esta tela para fazer upgrade. Só o estúdio
+    // mantém o gate de organização.
+    if (!isActive && orgCtx) {
         const orgStatus = orgCtx.organization.subscription_status
         if (orgStatus !== 'active' && orgStatus !== 'trialing') {
             redirect('/estudio/blocked')
@@ -155,6 +157,16 @@ export default async function SettingsPage() {
     // ao layout original: 01 Você · 02 Marca · 03 Preferências · 04 Org? · 04/05 Assinatura.
     const orgNumber = orgCtx ? '04' : null
     const assinaturaNumber = orgCtx ? '05' : '04'
+    const aiPlanNumber = orgCtx ? '06' : '05'
+
+    // Resumo de uso de IA do ciclo (medidor + tier atual). Tenant isolation:
+    // só o trainer da sessão. Não trava se falhar — degrada pra GUI (null → sem medidor).
+    let aiUsage: Awaited<ReturnType<typeof getAiUsageSummary>> | null = null
+    try {
+        aiUsage = await getAiUsageSummary(supabaseAdmin, trainer.id)
+    } catch (e) {
+        console.error('[settings] getAiUsageSummary falhou — seção de IA sem medidor:', e)
+    }
 
     return (
         <AppLayout
@@ -238,6 +250,11 @@ export default async function SettingsPage() {
                     />
                 </SettingsSection>
             )}
+
+            {/* ── 05/06 · Plano e IA ── */}
+            <SettingsSection number={aiPlanNumber} title="Plano e IA" hint="Seus créditos de IA e os planos disponíveis">
+                <AiPlanSection summary={aiUsage} />
+            </SettingsSection>
         </AppLayout>
     )
 }
