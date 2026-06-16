@@ -1,6 +1,20 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { enrichStudentContext, type EnrichedStudentContext } from '@/lib/prescription/context-enricher'
 
+// ── Contexto temporal ──
+// TODO: usar o timezone por treinador quando existir coluna no schema (trainers.timezone).
+const DEFAULT_TZ = 'America/Sao_Paulo'
+
+/** Linha "Data e hora atuais" — o agente precisa disso para resolver "hoje/amanhã/quinta". */
+function nowLine(tz: string = DEFAULT_TZ): string {
+    const formatted = new Date().toLocaleString('pt-BR', {
+        timeZone: tz,
+        dateStyle: 'full',
+        timeStyle: 'short',
+    })
+    return `Data e hora atuais: ${formatted} (${tz}).`
+}
+
 // ── Types ──
 
 interface StudentSnapshot {
@@ -180,22 +194,14 @@ async function buildGeneralSnapshot(trainerId: string): Promise<GeneralSnapshot>
 
 // ── System prompt builder ──
 
+/**
+ * Monta o CONTEXTO DINÂMICO do assistente (data/hora, treinador, alunos, programa,
+ * progressão, insights). As REGRAS/persona NÃO vivem mais aqui — ficam em
+ * `system-prompt.ts` (`buildInstructions`), prependido por cada caminho. Assim os
+ * dois consumidores (command-engine e chat/route) compartilham as mesmas instruções
+ * estáveis e este arquivo cuida só do que muda a cada turno.
+ */
 export async function buildChatContext(trainerId: string, trainerName: string, studentId?: string): Promise<string> {
-    const base = `Você é o Assistente Kinevo, um assistente inteligente para personal trainers.
-
-Seu papel é ajudar o trainer a entender o progresso dos seus alunos, identificar problemas, e sugerir ações baseadas em dados reais de treino.
-
-Regras:
-- Responda sempre em português brasileiro
-- Seja direto e objetivo — trainers são profissionais ocupados
-- Baseie suas respostas nos dados fornecidos, não invente informações
-- Quando sugerir ajustes de carga ou programa, explique o raciocínio
-- Use terminologia de musculação/fitness (séries, reps, carga, volume, periodização, etc.)
-- Não faça diagnósticos médicos — quando houver menção a dor/lesão, sugira que o trainer encaminhe o aluno a um profissional de saúde
-- Formate respostas com markdown quando útil (listas, negrito para ênfase)
-- Seja conciso — respostas longas demais cansam
-- Quando o trainer perguntar sobre um aluno específico, SEMPRE use a tool analyzeStudentProgress com o ID do aluno (listado no contexto) antes de responder. Nunca diga que não há dados sem consultar a tool primeiro.`
-
     if (studentId) {
         const snapshot = await buildStudentSnapshot(trainerId, studentId)
 
@@ -221,9 +227,9 @@ Regras:
             ? `Insights ativos:\n${snapshot.activeInsights.map(i => `  - [${i.category}] ${i.title}: ${i.body}`).join('\n')}`
             : ''
 
-        return `${base}
-
-Contexto do trainer: ${trainerName}
+        return `# Contexto
+${nowLine()}
+Treinador: ${trainerName}
 
 ═══ Aluno: ${snapshot.name} ═══
 
@@ -252,9 +258,9 @@ ${insightsStr}`.trim()
         ? `\nInsights ativos:\n${snapshot.insights.map(i => `  - [${i.category}] ${i.student_name ? `${i.student_name}: ` : ''}${i.title}`).join('\n')}`
         : ''
 
-    return `${base}
-
-Contexto do trainer: ${trainerName} — ${snapshot.students.length} alunos ativos
+    return `# Contexto
+${nowLine()}
+Treinador: ${trainerName} — ${snapshot.students.length} alunos ativos
 
 Alunos:
 ${studentsStr}
