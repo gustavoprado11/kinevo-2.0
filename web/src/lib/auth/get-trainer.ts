@@ -11,6 +11,7 @@ interface TrainerRecord {
     avatar_url: string | null
     theme: 'light' | 'dark' | 'system' | null
     ai_prescriptions_enabled?: boolean
+    ai_tier?: string | null
     onboarding_state: OnboardingState | null
     modality_focus: TrainerModalityFocus
     [key: string]: any
@@ -47,8 +48,8 @@ export async function getTrainerWithSubscription(userId?: string) {
     const { data: t1, error: e1 } = await supabase
         .from('trainers')
         .select(
-            'id, name, email, avatar_url, theme, ai_prescriptions_enabled, onboarding_state, modality_focus, ' +
-            'subscriptions(status, current_period_end, cancel_at_period_end, stripe_customer_id, created_at)'
+            'id, name, email, avatar_url, theme, ai_prescriptions_enabled, ai_tier, onboarding_state, modality_focus, ' +
+            'subscriptions(status, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_price_id, created_at)'
         )
         .eq('auth_user_id', authUserId)
         .single()
@@ -62,8 +63,8 @@ export async function getTrainerWithSubscription(userId?: string) {
         const { data: t2 } = await supabase
             .from('trainers')
             .select(
-                'id, name, email, avatar_url, theme, ai_prescriptions_enabled, ' +
-                'subscriptions(status, current_period_end, cancel_at_period_end, stripe_customer_id, created_at)'
+                'id, name, email, avatar_url, theme, ai_prescriptions_enabled, ai_tier, ' +
+                'subscriptions(status, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_price_id, created_at)'
             )
             .eq('auth_user_id', authUserId)
             .single()

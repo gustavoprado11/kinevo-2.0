@@ -40,6 +40,7 @@ const WEBHOOK_SECRET = 'whsec_test'
 const TRAINER_ID = 'trainer-1'
 const PERIOD_END_UNIX = 1_770_000_000
 const PERIOD_END_ISO = new Date(PERIOD_END_UNIX * 1000).toISOString()
+const PRICE_ID = 'price_test_123'
 
 let stub: SupabaseAdminStub
 let originalSecret: string | undefined
@@ -60,7 +61,7 @@ function stubSubscription(overrides: Record<string, unknown> = {}): Stripe.Respo
         id: 'sub_1',
         status: 'active',
         cancel_at_period_end: false,
-        items: { data: [{ current_period_end: PERIOD_END_UNIX }] },
+        items: { data: [{ current_period_end: PERIOD_END_UNIX, price: { id: PRICE_ID } }] },
         ...overrides,
     } as unknown as Stripe.Response<Stripe.Subscription>
 }
@@ -170,6 +171,7 @@ describe('POST /api/webhooks/stripe', () => {
                 status: 'active',
                 current_period_end: PERIOD_END_ISO,
                 cancel_at_period_end: false,
+                stripe_price_id: PRICE_ID,
             })
             expect(upserts[0].options).toEqual({ onConflict: 'trainer_id' })
         })
@@ -229,7 +231,7 @@ describe('POST /api/webhooks/stripe', () => {
 
             const updates = stub.calls('subscriptions', 'update')
             expect(updates.length).toBe(1)
-            expect(updates[0].payload).toEqual({ status: 'active', current_period_end: PERIOD_END_ISO })
+            expect(updates[0].payload).toEqual({ status: 'active', current_period_end: PERIOD_END_ISO, stripe_price_id: PRICE_ID })
             expect(hasFilter(updates[0], 'eq', 'stripe_subscription_id', 'sub_2')).toBe(true)
         })
 
@@ -261,7 +263,7 @@ describe('POST /api/webhooks/stripe', () => {
                 id: 'sub_4',
                 status: 'past_due',
                 cancel_at_period_end: true,
-                items: { data: [{ current_period_end: PERIOD_END_UNIX }] },
+                items: { data: [{ current_period_end: PERIOD_END_UNIX, price: { id: PRICE_ID } }] },
             }))
             const res = await POST(makeRequest())
             expect(res.status).toBe(200)
@@ -271,6 +273,7 @@ describe('POST /api/webhooks/stripe', () => {
                 status: 'past_due',
                 current_period_end: PERIOD_END_ISO,
                 cancel_at_period_end: true,
+                stripe_price_id: PRICE_ID,
             })
             expect(hasFilter(updates[0], 'eq', 'stripe_subscription_id', 'sub_4')).toBe(true)
         })

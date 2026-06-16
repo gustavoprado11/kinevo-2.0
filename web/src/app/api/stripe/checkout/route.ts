@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
+import { priceToTier, priceIdForTier, type AiTier } from '@/lib/auth/get-ai-tier'
+import { assertCanDowngradeToFree, StudentDowngradeError } from '@/lib/limits/student-cap'
+
+const PAID_TIERS: ReadonlySet<string> = new Set<AiTier>(['essencial', 'pro_ia', 'premium_ia'])
 
 export async function POST(request: NextRequest) {
     const isMobile = request.nextUrl.searchParams.get('source') === 'mobile'
@@ -20,6 +24,53 @@ export async function POST(request: NextRequest) {
 
     if (!trainer) {
         return NextResponse.json({ error: 'Trainer not found' }, { status: 404 })
+    }
+
+    // Resolve o price alvo. NUNCA aceitar price arbitrário do cliente: só os do
+    // mapa de env. Backward-compat: sem body → STRIPE_PRICE_ID (Essencial atual).
+    const body = await request.json().catch(() => null)
+    const requestedTier: unknown = body?.tier
+    const requestedPriceId: unknown = body?.priceId
+
+    let priceId: string | null = null
+    if (typeof requestedPriceId === 'string' && requestedPriceId.length > 0) {
+        const mapped = priceToTier(requestedPriceId)
+        if (!mapped || !PAID_TIERS.has(mapped)) {
+            return NextResponse.json({ error: 'Price inválido' }, { status: 400 })
+        }
+        priceId = requestedPriceId
+    } else if (typeof requestedTier === 'string') {
+        if (requestedTier === 'free') {
+            // Downgrade pro Gratuito não passa por checkout; bloqueia se houver alunos.
+            try {
+                await assertCanDowngradeToFree(supabaseAdmin, trainer.id)
+            } catch (e) {
+                if (e instanceof StudentDowngradeError) {
+                    return NextResponse.json({ error: e.message }, { status: 409 })
+                }
+                throw e
+            }
+            return NextResponse.json(
+                { error: 'O plano Gratuito não usa checkout.' },
+                { status: 400 },
+            )
+        }
+        if (!PAID_TIERS.has(requestedTier)) {
+            return NextResponse.json({ error: 'Tier inválido' }, { status: 400 })
+        }
+        priceId = priceIdForTier(requestedTier as AiTier)
+        if (!priceId) {
+            return NextResponse.json(
+                { error: `Price não configurado para o tier ${requestedTier}` },
+                { status: 500 },
+            )
+        }
+    } else {
+        priceId = process.env.STRIPE_PRICE_ID ?? null
+    }
+
+    if (!priceId) {
+        return NextResponse.json({ error: 'Price não configurado' }, { status: 500 })
     }
 
     // Check for existing Stripe customer
@@ -49,7 +100,7 @@ export async function POST(request: NextRequest) {
         payment_method_types: ['card'],
         allow_promotion_codes: true,
         line_items: [{
-            price: process.env.STRIPE_PRICE_ID!,
+            price: priceId,
             quantity: 1,
         }],
         subscription_data: {

@@ -15,6 +15,15 @@ function getPeriodEnd(subscription: Stripe.Subscription): string | null {
     return null
 }
 
+// Price ID do plano (primeiro item da subscription). Deriva o tier de IA por
+// env em tempo de LEITURA (lib/auth/get-ai-tier). IMPORTANTE: NÃO gravamos
+// trainers.ai_tier aqui — esse campo é só override manual; como a resolução
+// trata "ai_tier != 'free'" como override, escrevê-lo congelaria upgrades
+// futuros derivados do price. O webhook persiste só o stripe_price_id.
+function getPriceId(subscription: Stripe.Subscription): string | null {
+    return subscription.items?.data?.[0]?.price?.id ?? null
+}
+
 // In Stripe v20+, Invoice.subscription moved to Invoice.parent.subscription_details.subscription
 function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
     const sub = invoice.parent?.subscription_details?.subscription
@@ -133,6 +142,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         status: subscription.status as string,
         current_period_end: getPeriodEnd(subscription),
         cancel_at_period_end: subscription.cancel_at_period_end,
+        stripe_price_id: getPriceId(subscription),
     }, { onConflict: 'trainer_id' })
 
     if (upsertError) {
@@ -155,6 +165,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
         .update({
             status: subscription.status as string,
             current_period_end: getPeriodEnd(subscription),
+            stripe_price_id: getPriceId(subscription),
         })
         .eq('stripe_subscription_id', subscription.id)
 }
@@ -174,6 +185,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
             status: subscription.status as string,
             current_period_end: getPeriodEnd(subscription),
             cancel_at_period_end: subscription.cancel_at_period_end,
+            stripe_price_id: getPriceId(subscription),
         })
         .eq('stripe_subscription_id', subscription.id)
 }
