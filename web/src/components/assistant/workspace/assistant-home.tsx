@@ -57,8 +57,8 @@ export function AssistantHome({
                     <span className="mx-auto mb-3.5 flex h-[34px] w-[34px] items-center justify-center text-[#7C3AED]">
                         <Sparkles className="h-[34px] w-[34px]" strokeWidth={1.4} />
                     </span>
-                    <div className="mb-1.5 text-[14px] font-semibold text-[#86868B]">{greeting()}, {firstName}.</div>
-                    <h1 className="font-serif text-[36px] font-medium leading-[1.1] tracking-[-.015em] text-[#1D1D1F]" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                    <div className="mb-2 text-[14px] font-medium text-[#86868B]">{greeting()}, {firstName}.</div>
+                    <h1 className="font-display text-[34px] font-light leading-tight tracking-tight text-[#1D1D1F]">
                         O que vamos resolver hoje?
                     </h1>
                 </div>

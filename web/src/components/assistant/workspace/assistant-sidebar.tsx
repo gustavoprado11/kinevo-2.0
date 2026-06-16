@@ -7,6 +7,7 @@
  */
 
 import Link from 'next/link'
+import Image from 'next/image'
 import {
     Sparkles, Plus, Search, LayoutGrid, LayoutDashboard, Users,
     CalendarDays, Wallet, Calendar, Dumbbell,
@@ -72,9 +73,9 @@ export function AssistantSidebar({
     return (
         <aside className="flex w-[248px] min-w-[248px] flex-col bg-white shadow-[1px_0_0_rgba(0,0,0,0.06)]">
             {/* Brand */}
-            <div className="flex items-center gap-2.5 px-[18px] pb-3.5 pt-[22px]">
-                <span className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] bg-gradient-to-br from-[#7C3AED] to-[#a78bfa] text-[16px] font-extrabold text-white">K</span>
-                <b className="text-[17px] font-bold tracking-tight">Kinevo</b>
+            <div className="flex items-center gap-3 px-[18px] pb-3.5 pt-[22px]">
+                <Image src="/logo-icon.png" alt="Kinevo" width={32} height={32} className="shrink-0 rounded-lg" />
+                <span className="text-lg font-semibold tracking-tight text-[#1D1D1F]">Kinevo</span>
             </div>
 
             {/* Toggle Início */}
