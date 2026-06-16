@@ -1,10 +1,9 @@
 /**
- * /assistente — aba dedicada do Assistente (IA do Treinador).
+ * /assistente — modo Assistente (Cowork). Shell próprio (sem AppLayout):
+ * home conversacional + sidebar (toggle/nav/Alunos/Conversas). Gate Pro+.
  *
- * Server Component: gate Pro+ (defense-in-depth — a sidebar já esconde), e carga
- * inicial (threads + medidor + alunos p/ o seletor de contexto). A interação fica
- * no workspace client. Mesmo motor MCP+HITL do ⌘K, porém conversacional e
- * persistido (ai_conversations / ai_messages, migration 209).
+ * O motor MCP+HITL é o mesmo do ⌘K (lib/assistant/command-engine), aqui
+ * conversacional e persistido (ai_conversations / ai_messages, migration 209).
  */
 
 import { redirect } from 'next/navigation'
@@ -13,9 +12,9 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
 import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { listConversations } from '@/lib/assistant/conversations'
+import { getAttentionInsights } from '@/lib/assistant/home-data'
 import { PRO_TIERS } from '@/lib/assistant/command-engine'
-import { AppLayout } from '@/components/layout/app-layout'
-import { AssistantWorkspace } from '@/components/assistant/workspace/assistant-workspace'
+import { AssistantShell } from '@/components/assistant/workspace/assistant-shell'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,17 +31,13 @@ export default async function AssistentePage() {
     if (!trainer) redirect('/login')
 
     const tier = await getAiTierForTrainer(supabaseAdmin, trainer.id)
-    // Não-Pro: a aba é Pro+. Manda pro plano (a sidebar já não mostra o item).
     if (!PRO_TIERS.has(tier)) redirect('/settings')
 
-    const [summary, conversations, studentsRes] = await Promise.all([
+    const [summary, conversations, studentsRes, attention] = await Promise.all([
         getAiUsageSummary(supabaseAdmin, trainer.id),
         listConversations(supabaseAdmin, trainer.id),
-        supabase
-            .from('students')
-            .select('id, name, status')
-            .eq('coach_id', trainer.id)
-            .order('name', { ascending: true }),
+        supabase.from('students').select('id, name, status').eq('coach_id', trainer.id).order('name', { ascending: true }),
+        getAttentionInsights(supabaseAdmin, trainer.id),
     ])
 
     const students = (studentsRes.data ?? []).map((s) => ({
@@ -52,13 +47,12 @@ export default async function AssistentePage() {
     }))
 
     return (
-        <AppLayout trainerName={trainer.name ?? 'Treinador'} students={students}>
-            <AssistantWorkspace
-                initialSummary={summary}
-                initialConversations={conversations}
-                students={students.map((s) => ({ id: s.id, name: s.name }))}
-                trainerName={trainer.name}
-            />
-        </AppLayout>
+        <AssistantShell
+            initialSummary={summary}
+            initialConversations={conversations}
+            students={students}
+            attention={attention}
+            trainerName={trainer.name}
+        />
     )
 }
