@@ -6,12 +6,57 @@ import { buildChatContext } from '@/lib/assistant/context-builder'
 import { generateProgram } from '@/actions/prescription/generate-program'
 import { enrichStudentContext } from '@/lib/prescription/context-enricher'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
+import {
+    recordAiUsage,
+    turnCostMicros,
+    type AiSurface,
+    type TokenUsage,
+} from '@/lib/ai-usage/metering'
+import { recordFreeTrial, getQuotaForTier, checkFreeTrial } from '@/lib/ai-usage/quota'
+import {
+    computeTurnCredits,
+    actionClassForTool,
+    type ActionClass,
+    type TurnToolCall,
+} from '@/lib/assistant/tool-policy'
 
 export const maxDuration = 60
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const MAX_MESSAGE_CHARS = 8000
 const MAX_MESSAGES = 50
+
+// Modelo do chat contextual (single source — usado no streamText e no metering).
+const CHAT_MODEL = 'gpt-4.1-mini' as const
+
+/** Surface deste handler para o log de uso (ai_usage_events.surface). */
+const CHAT_SURFACE: AiSurface = 'chat'
+
+/**
+ * Classe de ação das 3 tools do chat contextual (não são tools MCP do catálogo;
+ * `actionClassForTool` as classificaria como 'write' por padrão). Mapeamento
+ * explícito para metering/free-trial corretos.
+ */
+const CHAT_TOOL_ACTION_CLASS: Record<string, ActionClass> = {
+    generateProgram: 'prescription',
+    analyzeStudentProgress: 'query',
+    getStudentInsights: 'query',
+}
+
+function chatToolActionClass(toolName: string): ActionClass {
+    return CHAT_TOOL_ACTION_CLASS[toolName] ?? actionClassForTool(toolName)
+}
+
+// Prioridade para o evento-resumo do turno (qual classe representa o turno).
+const ACTION_CLASS_PRIORITY: readonly ActionClass[] = ['prescription', 'bulk', 'write', 'query']
+
+function dominantActionClass(classes: ReadonlySet<ActionClass>): ActionClass {
+    for (const c of ACTION_CLASS_PRIORITY) {
+        if (classes.has(c)) return c
+    }
+    return 'query'
+}
 
 // JSON Schema definitions (zod v4 serialization is incompatible with OpenAI function calling)
 const studentIdSchema = jsonSchema<{ studentId: string }>({
@@ -45,6 +90,30 @@ export async function POST(req: Request) {
         const limit = await consumeRateLimit(rateLimitKey, { perMinute: 15, perDay: 300 })
         if (!limit.allowed) {
             return new Response(limit.error || 'Rate limit exceeded', { status: 429 })
+        }
+
+        // 3b. Tier + gate de cota ANTES do turno (defense-in-depth via service role).
+        //     `getAiUsageSummary.exhausted` unifica os dois mundos:
+        //       - pago  → balde mensal de créditos esgotado;
+        //       - free  → todas as classes de ação 1× já testadas.
+        //     Estouro NÃO trava o app: devolvemos 402 amigável para a UI degradar
+        //     pra GUI (banner/upsell). O resto do app segue normal.
+        const usage = await getAiUsageSummary(supabaseAdmin, trainer.id)
+        const tier = usage.tier
+        if (usage.exhausted) {
+            const message =
+                tier === 'free'
+                    ? 'Você já testou os recursos de IA do plano Gratuito. Assine um plano para continuar com a IA — o resto do app segue normal.'
+                    : 'Cota de IA do período atingida. A IA volta no próximo ciclo; você pode continuar usando o app normalmente.'
+            return new Response(
+                JSON.stringify({
+                    error: 'ai_quota_exhausted',
+                    tier,
+                    message,
+                    resetAt: usage.periodEnd,
+                }),
+                { status: 402, headers: { 'Content-Type': 'application/json' } },
+            )
         }
 
         // 4. Parse body + sanitize messages.
@@ -106,17 +175,80 @@ export async function POST(req: Request) {
 
         // 5. Stream with tools
         const result = streamText({
-            model: openai('gpt-4.1-mini'),
+            model: openai(CHAT_MODEL),
             system: systemPrompt + studentIdHint + TOOL_INSTRUCTIONS,
             messages,
             maxTokens: 1500,
             temperature: 0.7,
             maxSteps: 3,
+            // 6. Metering do turno (best-effort — NUNCA derruba a resposta).
+            //    - pago: cobra créditos no período (increment_ai_usage) + loga o
+            //      evento com o custo do LLM (tokens→USD) em ai_usage_events.
+            //    - free: marca cada classe de ação testada em ai_free_trials (1× cada).
+            onFinish: async ({ usage: turnUsage, steps }) => {
+                try {
+                    const turnCalls: TurnToolCall[] = []
+                    const testedClasses = new Set<ActionClass>()
+                    for (const step of steps) {
+                        for (const call of step.toolCalls) {
+                            turnCalls.push({ tool: call.toolName })
+                            testedClasses.add(chatToolActionClass(call.toolName))
+                        }
+                    }
+                    // Turno só de conversa/leitura conta como 'query'.
+                    if (testedClasses.size === 0) testedClasses.add('query')
+
+                    if (tier === 'free') {
+                        for (const actionClass of testedClasses) {
+                            await recordFreeTrial(supabaseAdmin, trainer.id, actionClass)
+                        }
+                        return
+                    }
+
+                    const credits = computeTurnCredits(turnCalls)
+                    const tokenUsage: TokenUsage = {
+                        inputTokens: turnUsage.promptTokens ?? 0,
+                        outputTokens: turnUsage.completionTokens ?? 0,
+                    }
+                    const costMicros = turnCostMicros(CHAT_MODEL, tokenUsage)
+                    const periodType = getQuotaForTier(tier)?.period ?? 'month'
+
+                    await recordAiUsage(supabaseAdmin, {
+                        trainerId: trainer.id,
+                        periodType,
+                        credits,
+                        costMicros,
+                        events: [
+                            {
+                                actionClass: dominantActionClass(testedClasses),
+                                credits,
+                                surface: CHAT_SURFACE,
+                                model: CHAT_MODEL,
+                                inputTokens: tokenUsage.inputTokens,
+                                outputTokens: tokenUsage.outputTokens,
+                                costMicros,
+                            },
+                        ],
+                    })
+                } catch (meteringError) {
+                    console.error('[CHAT API] metering onFinish error:', meteringError)
+                }
+            },
             tools: {
                 generateProgram: tool({
                     description: 'Gera um novo programa de treino para o aluno. Usar quando o trainer pedir para criar/gerar um programa, ou quando o programa atual expirou. O programa é salvo como rascunho para revisão.',
                     parameters: studentIdSchema,
                     execute: async ({ studentId: rawId }) => {
+                        // Free: "1× cada ação" — a geração de programa aciona o motor de
+                        // prescrição (caro). O gate global (exhausted) só bloqueia quando TODAS
+                        // as classes foram testadas; aqui auto-gate por classe para que o free
+                        // não gere prescrições ilimitadas enquanto outra classe segue não-testada.
+                        if (tier === 'free') {
+                            const trial = await checkFreeTrial(supabaseAdmin, trainer.id, 'prescription')
+                            if (trial.alreadyUsed) {
+                                return { success: false, error: 'No plano Gratuito você já testou a geração de programa. Assine um plano para gerar mais.' }
+                            }
+                        }
                         const sid = await resolveStudentId(rawId)
                         if (!sid) return { success: false, error: `Aluno "${rawId}" não encontrado` }
                         try {
