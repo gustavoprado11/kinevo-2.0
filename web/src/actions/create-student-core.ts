@@ -11,6 +11,8 @@ import crypto from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
+import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
+import { assertCanCreateStudent, StudentCapError } from '@/lib/limits/student-cap'
 
 export interface CreateStudentInput {
     name: string
@@ -34,6 +36,18 @@ export async function createStudentCore(
     data: CreateStudentInput,
 ): Promise<CreateStudentResult> {
     try {
+        // Gate de limite de alunos por tier (Free = 1; pago = ilimitado).
+        // Cobre a action createStudent E convertLeadToStudentCore (que chama o core).
+        try {
+            const tier = await getAiTierForTrainer(supabaseAdmin, trainerId)
+            await assertCanCreateStudent(supabaseAdmin, trainerId, tier)
+        } catch (capError) {
+            if (capError instanceof StudentCapError) {
+                return { success: false, error: capError.message }
+            }
+            throw capError
+        }
+
         // Senha gerada de forma criptograficamente segura
         const generatedPassword = crypto.randomBytes(8).toString('base64url')
 

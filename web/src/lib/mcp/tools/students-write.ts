@@ -2,6 +2,8 @@ import crypto from 'crypto'
 import { z } from 'zod'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
+import { assertCanCreateStudent, StudentCapError } from '@/lib/limits/student-cap'
 import { mcpSuccess, mcpError } from '../types'
 
 export function registerStudentWriteTools(server: McpServer, trainerId: string) {
@@ -23,6 +25,17 @@ export function registerStudentWriteTools(server: McpServer, trainerId: string) 
     { title: 'Criar aluno', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ name, email, phone, objective, modality, training_level, medical_restrictions }) => {
       const supabaseAdmin = createAdminClient()
+
+      // 0. Gate de limite de alunos por tier (Free = 1; pago = ilimitado).
+      try {
+        const tier = await getAiTierForTrainer(supabaseAdmin, trainerId)
+        await assertCanCreateStudent(supabaseAdmin, trainerId, tier)
+      } catch (capError) {
+        if (capError instanceof StudentCapError) {
+          return mcpError(capError.message)
+        }
+        throw capError
+      }
 
       // 1. Create auth user
       const password = crypto.randomBytes(8).toString('base64url')
