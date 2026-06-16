@@ -14,7 +14,8 @@ import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { listConversations } from '@/lib/assistant/conversations'
 import { getAttentionInsights } from '@/lib/assistant/home-data'
 import { PRO_TIERS } from '@/lib/assistant/command-engine'
-import { AssistantShell } from '@/components/assistant/workspace/assistant-shell'
+import { AppLayout } from '@/components/layout/app-layout'
+import { AssistantWorkspace } from '@/components/assistant/workspace/assistant-workspace'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,12 +48,15 @@ export default async function AssistentePage() {
     }))
 
     return (
-        <AssistantShell
-            initialSummary={summary}
-            initialConversations={conversations}
-            students={students}
-            attention={attention}
-            trainerName={trainer.name}
-        />
+        <AppLayout trainerName={trainer.name} trainerEmail={user.email ?? undefined} students={students} fullBleed>
+            <AssistantWorkspace
+                initialSummary={summary}
+                initialConversations={conversations}
+                students={students}
+                attention={attention}
+                trainerName={trainer.name}
+                trainerEmail={user.email ?? null}
+            />
+        </AppLayout>
     )
 }

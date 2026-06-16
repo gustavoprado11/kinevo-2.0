@@ -4,7 +4,9 @@ import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton'
 export default function DashboardLoading() {
     return (
         <AppLayout trainerName="" trainerEmail="">
-            <DashboardSkeleton />
+            <div className="kv-mode-in">
+                <DashboardSkeleton />
+            </div>
         </AppLayout>
     )
 }

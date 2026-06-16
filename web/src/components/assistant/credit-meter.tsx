@@ -47,7 +47,7 @@ export function CreditMeter({ summary, compact = false }: CreditMeterProps) {
 
     // Esgotado → vermelho; >80% → âmbar; senão violeta (identidade Kinevo).
     const fillStyle: CSSProperties = exhausted
-        ? { width: `${pct}%`, background: 'linear-gradient(90deg, #FF3B30, #FF6B61)' }
+        ? { width: `${pct}%`, background: 'linear-gradient(90deg, #EF4444, #F87171)' }
         : warning
           ? { width: `${pct}%`, background: 'linear-gradient(90deg, #F59E0B, #FBBF6B)' }
           : { width: `${pct}%`, background: 'linear-gradient(90deg, #7C3AED, #A78BFA)' }
@@ -70,7 +70,7 @@ export function CreditMeter({ summary, compact = false }: CreditMeterProps) {
     )
 
     const bar = (
-        <div className="my-2 h-[9px] overflow-hidden rounded-full bg-[#EDEDF0]">
+        <div className="my-2 h-[9px] overflow-hidden rounded-full bg-[#F5F3FF]">
             <div className="h-full rounded-full transition-[width] duration-300" style={fillStyle} />
         </div>
     )

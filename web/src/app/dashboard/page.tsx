@@ -8,9 +8,9 @@ import { CheckoutPolling } from './checkout-polling'
 export default async function DashboardPage({
     searchParams,
 }: {
-    searchParams: Promise<{ checkout?: string }>
+    searchParams: Promise<{ checkout?: string; h?: string }>
 }) {
-    const { checkout } = await searchParams
+    const { checkout, h } = await searchParams
 
     // Single getUser() call for the entire page — validates the JWT once via
     // Supabase Auth API, then passes userId down to avoid redundant roundtrips.
@@ -40,8 +40,11 @@ export default async function DashboardPage({
     }
 
     // Preferência de Início (migration 210): se o treinador escolheu o home do
-    // Assistente, redireciona — exceto ao voltar do checkout (mostra o dashboard).
-    if (checkout !== 'success') {
+    // Assistente, redireciona — exceto ao voltar do checkout (mostra o dashboard)
+    // ou quando o toggle Assistente→Clássico passou ?h=classic (navegação
+    // otimista; a preferência é gravada em background e ainda pode estar
+    // 'assistant' nesta carga — não fazer bounce).
+    if (checkout !== 'success' && h !== 'classic') {
         const { data: pref } = await supabase
             .from('trainers')
             .select('home_style')

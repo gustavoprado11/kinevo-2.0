@@ -1,29 +1,19 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useTransition } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-    LayoutDashboard, Users, Dumbbell, Calendar, CalendarDays, Wallet, FileText,
-    Megaphone,
-    MessageSquarePlus, Headphones,
+    MessageSquarePlus, Headphones, Loader2,
     LogOut, BookOpen, ChevronRight, ChevronLeft, Settings, Sparkles, LayoutGrid,
 } from 'lucide-react'
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
 import { createClient } from '@/lib/supabase/client'
-import { fetchAiAccess } from '@/components/assistant/command-bar/command-bar'
+import { fetchAiAccess, getCachedAiAllowed, getCachedHomeStyle, setCachedHomeStyle, type HomeStyle } from '@/components/assistant/command-bar/command-bar'
 import { setHomeStyle } from '@/actions/assistant/set-home-style'
-
-interface NavItem {
-    name: string
-    href: string
-    icon: React.ElementType
-    onboardingId?: string
-    /** Extra path prefixes that also activate this nav item (e.g. /forms item ativa em /avaliacoes) */
-    extraActivePrefixes?: string[]
-}
+import { MAIN_NAV as navigation, BIBLIOTECA_NAV as bibliotecaItems, type NavItem } from '@/components/layout/nav-items'
 
 interface SidebarProps {
     financialBadge?: React.ReactNode
@@ -31,62 +21,6 @@ interface SidebarProps {
     trainerEmail?: string
     trainerAvatarUrl?: string | null
 }
-
-const navigation: NavItem[] = [
-    {
-        name: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutDashboard,
-        onboardingId: 'sidebar-dashboard',
-    },
-    {
-        name: 'Alunos',
-        href: '/students',
-        icon: Users,
-        onboardingId: 'sidebar-students',
-    },
-    {
-        name: 'Marketing',
-        href: '/marketing',
-        icon: Megaphone,
-        onboardingId: 'sidebar-marketing',
-        extraActivePrefixes: ['/leads', '/landing'],
-    },
-    {
-        name: 'Agenda',
-        href: '/schedule',
-        icon: CalendarDays,
-        onboardingId: 'sidebar-schedule',
-    },
-    {
-        name: 'Formulários e Avaliações',
-        href: '/forms',
-        icon: FileText,
-        onboardingId: 'sidebar-forms',
-        extraActivePrefixes: ['/avaliacoes'],
-    },
-    {
-        name: 'Financeiro',
-        href: '/financial',
-        icon: Wallet,
-        onboardingId: 'sidebar-financial',
-    },
-]
-
-const bibliotecaItems: NavItem[] = [
-    {
-        name: 'Programas',
-        href: '/programs',
-        icon: Calendar,
-        onboardingId: 'sidebar-programs',
-    },
-    {
-        name: 'Exercícios',
-        href: '/exercises',
-        icon: Dumbbell,
-        onboardingId: 'sidebar-exercises',
-    },
-]
 
 const SUPPORT_PHONE = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '5531999064997'
 
@@ -97,19 +31,36 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     const [feedbackOpen, setFeedbackOpen] = useState(false)
     const [bibliotecaOpen, setBibliotecaOpen] = useState(false)
     const [profileOpen, setProfileOpen] = useState(false)
-    const [aiAllowed, setAiAllowed] = useState(false)
+    // Lazy init do cache: em navegação client-side (ex.: voltar do Assistente)
+    // o toggle já aparece na 1ª pintura. No SSR retorna false (consistente com
+    // o HTML do servidor); o fetch abaixo confirma/atualiza.
+    const [aiAllowed, setAiAllowed] = useState(getCachedAiAllowed)
+    // Modo de Início (classic|assistant): dirige o pill e o destino do "Dashboard".
+    // Lê o cache (síncrono, sem flash) e confirma no fetch abaixo.
+    const [homeStyle, setHomeStyleState] = useState<HomeStyle>(getCachedHomeStyle)
+    const [switchingAssistant, startSwitch] = useTransition()
     const profileRef = useRef<HTMLDivElement>(null)
+
+    const assistantMode = homeStyle === 'assistant'
 
     // Item "Assistente" só aparece nos planos Pro+ (gate de superfície de IA).
     useEffect(() => {
         let active = true
         fetchAiAccess().then((a) => {
-            if (active && a) setAiAllowed(a.allowed)
+            if (active && a) {
+                setAiAllowed(a.allowed)
+                if (a.homeStyle) setHomeStyleState(a.homeStyle)
+            }
         })
         return () => {
             active = false
         }
     }, [])
+
+    // Aquece a rota do Assistente p/ a troca de modo ser instantânea (Pro+).
+    useEffect(() => {
+        if (aiAllowed) router.prefetch('/assistente')
+    }, [aiAllowed, router])
 
     const initials = trainerName
         .split(' ')
@@ -125,9 +76,22 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     }
 
     // Toggle de modo de trabalho (Início): clássico (atual) ⇄ Assistente (Cowork).
-    const goAssistant = async () => {
-        await setHomeStyle('assistant')
-        router.push('/assistente')
+    // Navegação ótimista: o pill move na hora (estado+cache) e a preferência é
+    // gravada em background — /assistente não depende dela para renderizar.
+    const goAssistant = () => {
+        setHomeStyleState('assistant')
+        setCachedHomeStyle('assistant')
+        void setHomeStyle('assistant')
+        startSwitch(() => { router.push('/assistente') })
+    }
+
+    // Clássico: ?h=classic evita o bounce de volta ao Assistente se a escrita da
+    // preferência ainda não sincronizou nesta carga (espelha o AssistantWorkspace).
+    const goClassic = () => {
+        setHomeStyleState('classic')
+        setCachedHomeStyle('classic')
+        void setHomeStyle('classic')
+        router.push('/dashboard?h=classic')
     }
 
     const isActive = (hrefOrItem: string | NavItem) => {
@@ -198,20 +162,20 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                 {isCollapsed ? <ChevronRight size={14} strokeWidth={2} /> : <ChevronLeft size={14} strokeWidth={2} />}
             </button>
 
-            {/* Toggle de modo (Pro+): Clássico ⇄ Assistente. Espelha o modo Cowork. */}
+            {/* Toggle de modo (Pro+): Clássico ⇄ Assistente. O pill move na hora. */}
             {aiAllowed && !isCollapsed && (
                 <div className="mx-4 mb-3 flex gap-[3px] rounded-[11px] border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-glass-bg p-[3px]">
                     <button
-                        onClick={() => { void setHomeStyle('classic') }}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-white dark:bg-glass-bg-active py-[7px] text-[12px] font-semibold text-[#7C3AED] dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
+                        onClick={goClassic}
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-[8px] py-[7px] text-[12px] font-semibold transition-all duration-200 ${assistantMode ? 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground' : 'bg-white dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]'}`}
                     >
                         <LayoutGrid size={14} strokeWidth={2} /> Clássico
                     </button>
                     <button
                         onClick={goAssistant}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-[8px] py-[7px] text-[12px] font-semibold text-[#6E6E73] dark:text-muted-foreground/60 transition hover:text-[#1D1D1F] dark:hover:text-foreground"
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-[8px] py-[7px] text-[12px] font-semibold transition-all duration-200 ${assistantMode ? 'bg-white dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]' : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground'}`}
                     >
-                        <Sparkles size={14} strokeWidth={2} /> Assistente
+                        {switchingAssistant ? <Loader2 size={14} strokeWidth={2} className="animate-spin" /> : <Sparkles size={14} strokeWidth={2} />} Assistente
                     </button>
                 </div>
             )}
@@ -219,12 +183,16 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
             {/* Navigation */}
             <nav className={`flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden ${isCollapsed ? 'px-2' : 'px-4'}`}>
                 {navigation.map((item) => {
-                    const active = isActive(item)
+                    // No modo Assistente, o "Dashboard" é a tela de chat (/assistente):
+                    // aponta para lá e fica ativo lá. Os demais itens não mudam.
+                    const isDashboard = item.href === '/dashboard'
+                    const href = isDashboard && assistantMode ? '/assistente' : item.href
+                    const active = isDashboard && assistantMode ? isActive('/assistente') : isActive(item)
                     const Icon = item.icon
                     return (
                         <div key={item.name} className="relative group/nav">
                             <Link
-                                href={item.href}
+                                href={href}
                                 data-onboarding={item.onboardingId}
                                 className={`
                                     relative flex items-center gap-3 py-2 rounded-lg text-sm tracking-tight transition-all duration-200 ease-out group

@@ -27,14 +27,67 @@ import type { ToolConfirmationResult } from '@/lib/assistant/hitl-types'
 // ----------------------------------------------------------------------------
 // Acesso (gate de UI) — compartilhado por sidebar e command-palette.
 // ----------------------------------------------------------------------------
+export type HomeStyle = 'classic' | 'assistant'
+
 export interface AiAccess {
     tier: AiTier
     allowed: boolean
+    /** Preferência de Início do treinador (migration 210). Ausente em respostas antigas. */
+    homeStyle?: HomeStyle
     summary: AiUsageSummary
 }
 
 /** Evento global para abrir a barra de comando de IA (ex.: item da sidebar). */
 export const OPEN_AI_COMMAND_EVENT = 'kinevo:open-ai-command'
+
+// Cache do gate de UI (allowed) para o toggle Clássico/Assistente aparecer
+// imediatamente em navegações client-side (ex.: voltar do Assistente), sem
+// esperar o fetch. Memo em memória + localStorage. NUNCA ler no servidor (o
+// módulo é compartilhado entre requests — vazaria entre usuários).
+const AI_ALLOWED_CACHE_KEY = 'kinevo:ai-allowed'
+let aiAllowedMemo: boolean | null = null
+
+/** Grava o cache do gate de IA (client-only). */
+export function setCachedAiAllowed(v: boolean): void {
+    if (typeof window === 'undefined') return
+    aiAllowedMemo = v
+    try { window.localStorage.setItem(AI_ALLOWED_CACHE_KEY, v ? '1' : '0') } catch { /* noop */ }
+}
+
+/** Leitura síncrona do último acesso conhecido (client-only; false no server). */
+export function getCachedAiAllowed(): boolean {
+    if (typeof window === 'undefined') return false
+    if (aiAllowedMemo !== null) return aiAllowedMemo
+    try {
+        return window.localStorage.getItem(AI_ALLOWED_CACHE_KEY) === '1'
+    } catch {
+        return false
+    }
+}
+
+// Cache do modo de Início (classic|assistant) — mesmo motivo do aiAllowed: o
+// toggle e o destino do "Dashboard" precisam refletir o modo já na 1ª pintura,
+// sem flash. Memo + localStorage. NUNCA ler no servidor.
+const HOME_STYLE_CACHE_KEY = 'kinevo:home-style'
+let homeStyleMemo: HomeStyle | null = null
+
+/** Grava o cache do modo de Início (client-only). */
+export function setCachedHomeStyle(v: HomeStyle): void {
+    if (typeof window === 'undefined') return
+    homeStyleMemo = v
+    try { window.localStorage.setItem(HOME_STYLE_CACHE_KEY, v) } catch { /* noop */ }
+}
+
+/** Leitura síncrona do último modo conhecido (client-only; 'classic' no server). */
+export function getCachedHomeStyle(): HomeStyle {
+    if (typeof window === 'undefined') return 'classic'
+    if (homeStyleMemo !== null) return homeStyleMemo
+    try {
+        return window.localStorage.getItem(HOME_STYLE_CACHE_KEY) === 'assistant' ? 'assistant' : 'classic'
+    } catch {
+        return 'classic'
+    }
+}
 
 /**
  * Lê o acesso à superfície de IA (tier + cota) do treinador logado.
@@ -46,6 +99,9 @@ export async function fetchAiAccess(): Promise<AiAccess | null> {
         if (!res.ok) return null
         const data = (await res.json()) as AiAccess
         if (!data || typeof data.allowed !== 'boolean') return null
+        aiAllowedMemo = data.allowed
+        try { window.localStorage.setItem(AI_ALLOWED_CACHE_KEY, data.allowed ? '1' : '0') } catch { /* noop */ }
+        if (data.homeStyle === 'assistant' || data.homeStyle === 'classic') setCachedHomeStyle(data.homeStyle)
         return data
     } catch {
         return null

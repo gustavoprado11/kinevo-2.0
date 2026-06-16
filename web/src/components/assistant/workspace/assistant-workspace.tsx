@@ -1,15 +1,17 @@
 'use client'
 
 /**
- * AssistantShell — orquestrador do modo Assistente (Cowork). Shell próprio
- * (sem AppLayout): sidebar (toggle/nav/Alunos/Conversas) + main (home OU chat).
- * Detém o estado e os handlers (criar/abrir conversa, enviar turno, HITL, toggle).
+ * AssistantWorkspace — conteúdo do Dashboard no modo Assistente.
+ *
+ * Renderiza DENTRO do AppLayout (a navegação/toggle/perfil vêm da Sidebar global).
+ * Aqui só o que é exclusivo do chat: o rail de Conversas/Alunos + a área principal
+ * (home OU conversa). Detém o estado e os handlers (criar/abrir conversa, enviar
+ * turno, HITL). O toggle de modo agora vive na Sidebar global, não aqui.
  */
 
-import { useCallback, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { setHomeStyle } from '@/actions/assistant/set-home-style'
-import { AssistantSidebar, type SidebarStudent } from './assistant-sidebar'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { setCachedAiAllowed, setCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
+import { AssistantRail, type SidebarStudent } from './assistant-rail'
 import { AssistantHome } from './assistant-home'
 import { ConversationView } from './conversation-view'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
@@ -24,10 +26,10 @@ interface Props {
     students: StudentLite[]
     attention: AttentionItem[]
     trainerName: string | null
+    trainerEmail: string | null
 }
 
-export function AssistantShell({ initialSummary, initialConversations, students, attention, trainerName }: Props) {
-    const router = useRouter()
+export function AssistantWorkspace({ initialSummary, initialConversations, students, attention, trainerName }: Props) {
     const [summary, setSummary] = useState(initialSummary)
     const [conversations, setConversations] = useState(initialConversations)
     const [activeId, setActiveId] = useState<string | null>(null)
@@ -45,14 +47,14 @@ export function AssistantShell({ initialSummary, initialConversations, students,
         [focusedStudentId, students],
     )
 
-    // Alunos da sidebar: pinta de âmbar quem tem insight ativo (precisa de atenção).
+    // Alunos do rail: pinta de âmbar quem tem insight ativo (precisa de atenção).
     const attentionByStudent = useMemo(() => {
         const m = new Map<string, string>()
         for (const a of attention) if (a.studentId && !m.has(a.studentId)) m.set(a.studentId, a.title)
         return m
     }, [attention])
 
-    const sidebarStudents: SidebarStudent[] = useMemo(
+    const railStudents: SidebarStudent[] = useMemo(
         () => students.map((s) => {
             const att = attentionByStudent.get(s.id)
             return {
@@ -89,7 +91,6 @@ export function AssistantShell({ initialSummary, initialConversations, students,
     }, [])
 
     const goHome = useCallback(() => { setActiveId(null); setMessages([]) }, [])
-    const newConversation = useCallback(() => { setActiveId(null); setFocusedStudentId(null); setMessages([]); setInput('') }, [])
 
     const send = useCallback(async (override?: string) => {
         const text = (override ?? input).trim()
@@ -161,16 +162,17 @@ export function AssistantShell({ initialSummary, initialConversations, students,
         } catch { /* noop */ }
     }, [activeId])
 
-    const chooseMode = useCallback(async (mode: 'classic' | 'assistant') => {
-        await setHomeStyle(mode)
-        if (mode === 'classic') router.push('/dashboard')
-    }, [router])
+    // Estamos no Assistente (⇒ Pro+ + modo 'assistant'): semeia o cache do gate de
+    // IA e do modo para a Sidebar global pintar o toggle correto já na 1ª pintura.
+    useEffect(() => {
+        setCachedAiAllowed(true)
+        setCachedHomeStyle('assistant')
+    }, [])
 
     return (
-        <div className="flex h-[100dvh] overflow-hidden bg-[#F5F5F7] text-[#1D1D1F]">
-            <AssistantSidebar
-                trainerName={trainerName}
-                students={sidebarStudents}
+        <div className="kv-mode-in flex h-full min-h-0 overflow-hidden bg-[#F5F5F7] text-[#1D1D1F]">
+            <AssistantRail
+                students={railStudents}
                 conversations={conversations}
                 activeConversationId={activeId}
                 focusedStudentId={focusedStudentId}
@@ -178,11 +180,8 @@ export function AssistantShell({ initialSummary, initialConversations, students,
                 search={search}
                 onSegment={setSegment}
                 onSearch={setSearch}
-                onNewConversation={newConversation}
                 onSelectStudent={selectStudent}
                 onSelectConversation={selectConversation}
-                onToggleClassic={() => chooseMode('classic')}
-                onToggleAssistant={() => chooseMode('assistant')}
             />
 
             {active ? (

@@ -43,9 +43,11 @@ interface AppLayoutProps {
     onboardingState?: OnboardingState | null
     trainerModalityFocus?: TrainerModalityFocus
     students?: Student[]
+    /** Conteúdo de altura cheia, sem padding (ex.: tela de chat do Assistente). */
+    fullBleed?: boolean
 }
 
-export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUrl, trainerTheme, onboardingState, trainerModalityFocus, students }: AppLayoutProps) {
+export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUrl, trainerTheme, onboardingState, trainerModalityFocus, students, fullBleed = false }: AppLayoutProps) {
     const isCollapsed = useSidebarStore(state => state.isCollapsed)
     const isChatOpen = useAssistantChatStore(state => state.isOpen)
 
@@ -64,9 +66,9 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
             />
 
             {/* Main content area — shrinks on xl+ when chat panel is open */}
-            <div suppressHydrationWarning className={`bg-surface-primary min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'pl-[68px]' : 'pl-64'} ${isChatOpen ? 'xl:pr-[420px]' : ''}`}>
-                {/* Page content */}
-                <main className="p-8">
+            <div suppressHydrationWarning className={`bg-surface-primary transition-all duration-300 ease-in-out ${fullBleed ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'} ${isCollapsed ? 'pl-[68px]' : 'pl-64'} ${isChatOpen ? 'xl:pr-[420px]' : ''}`}>
+                {/* Page content — fullBleed: altura cheia sem padding (chat) */}
+                <main className={fullBleed ? 'h-full' : 'p-8'}>
                     <OnboardingProvider initialState={onboardingState ?? null} trainerModalityFocus={trainerModalityFocus}>
                         {children}
                     </OnboardingProvider>

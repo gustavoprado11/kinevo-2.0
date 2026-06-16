@@ -1,22 +1,24 @@
 /** Utilitários de UI compartilhados pelo shell/sidebar/home/conversa do Assistente. */
 
-export const AV_GRADIENTS = [
-    'linear-gradient(135deg,#FF6482,#FF2D92)',
-    'linear-gradient(135deg,#0A84FF,#06B6D4)',
-    'linear-gradient(135deg,#30D158,#A3E635)',
-    'linear-gradient(135deg,#FF9F0A,#FF6482)',
-    'linear-gradient(135deg,#7C3AED,#A78BFA)',
-    'linear-gradient(135deg,#5E5CE6,#0A84FF)',
+/** Tiles suaves (bg) + iniciais coloridas (fg) — paleta sóbria on-brand Kinevo. */
+export const AV_TINTS = [
+    { bg: '#EDE9FE', fg: '#6D28D9' }, // violeta (marca)
+    { bg: '#EFF6FF', fg: '#2563EB' }, // azul
+    { bg: '#ECFDF5', fg: '#15803D' }, // verde
+    { bg: '#FFFBEB', fg: '#B45309' }, // âmbar
+    { bg: '#FEF2F2', fg: '#BE123C' }, // rosa/erro (uso raro)
+    { bg: '#EEF2FF', fg: '#4338CA' }, // índigo
 ] as const
 
-export function avatarFor(name: string | null): { initials: string; bg: string } {
+export function avatarFor(name: string | null): { initials: string; bg: string; fg: string } {
     const n = (name ?? '').trim()
     const initials = n
         ? n.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('')
         : '?'
     let hash = 0
     for (let i = 0; i < n.length; i++) hash = (hash * 31 + n.charCodeAt(i)) >>> 0
-    return { initials: initials || '?', bg: AV_GRADIENTS[hash % AV_GRADIENTS.length] }
+    const t = AV_TINTS[hash % AV_TINTS.length]
+    return { initials: initials || '?', bg: t.bg, fg: t.fg }
 }
 
 function startOfDay(d: Date): number {

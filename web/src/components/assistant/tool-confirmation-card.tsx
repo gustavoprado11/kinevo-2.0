@@ -73,18 +73,20 @@ export function ToolConfirmationCard({
         onCancel?.()
     }
 
-    const accentBg = destructive ? '#FF3B30' : '#F59E0B'
-    const wrapBorder = destructive ? 'border-[#F5C2C0]' : 'border-[#E7DBC0]'
-    const wrapBg = destructive
-        ? 'bg-gradient-to-r from-[#FEF2F2] to-white'
-        : 'bg-gradient-to-r from-[#FEF9ED] to-white'
+    const wrapBorder = destructive ? 'border-[#F5C2C0]' : 'border-[#DDD6FE]'
+    const wrapShadow = destructive
+        ? 'shadow-[0_6px_20px_-10px_rgba(239,68,68,0.30)]'
+        : 'shadow-[0_6px_20px_-10px_rgba(124,58,237,0.30)]'
+    const tile = destructive
+        ? { background: '#FEF2F2', color: '#BE123C' }
+        : { background: '#EDE9FE', color: '#7C3AED' }
 
     return (
-        <div className={`mx-2.5 rounded-xl border ${wrapBorder} ${wrapBg} p-3.5`}>
+        <div className={`mx-2.5 rounded-[16px] border bg-white ${wrapBorder} ${wrapShadow} p-3.5`}>
             <div className="flex items-start gap-3">
                 <div
-                    className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] text-white"
-                    style={{ background: accentBg }}
+                    className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px]"
+                    style={tile}
                 >
                     {destructive ? (
                         <AlertTriangle className="h-[18px] w-[18px]" strokeWidth={2} />
@@ -94,8 +96,8 @@ export function ToolConfirmationCard({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                    <b className="block text-sm font-semibold text-[#1D1D1F]">{request.title}</b>
-                    <span className="block text-xs text-[#6E6E73]">{request.summary}</span>
+                    <b className="block text-[13.5px] font-bold text-[#1D1D1F]">{request.title}</b>
+                    <span className="block text-[11.5px] text-[#86868B]">{request.summary}</span>
                     <code className="mt-1 inline-block rounded bg-[#F4F1FE] px-1.5 py-0.5 font-mono text-[11px] text-[#7C3AED]">
                         {request.toolName}
                     </code>
@@ -104,10 +106,10 @@ export function ToolConfirmationCard({
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span
-                    className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${
                         destructive
-                            ? 'border-[#F0BABA] bg-[#FDE3E3] text-[#B91C1C]'
-                            : 'border-[#F0E0BA] bg-[#FDF1D6] text-[#B45309]'
+                            ? 'border-[rgba(239,68,68,0.28)] bg-[#FEF2F2] text-[#BE123C]'
+                            : 'border-[rgba(245,158,11,0.28)] bg-[#FFFBEB] text-[#B45309]'
                     }`}
                 >
                     {destructive ? 'Ação destrutiva — requer confirmação' : 'Requer confirmação'}
@@ -130,8 +132,8 @@ export function ToolConfirmationCard({
                             type="button"
                             onClick={handleConfirm}
                             disabled={status === 'running'}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-opacity disabled:opacity-60"
-                            style={{ background: destructive ? '#FF3B30' : '#7C3AED' }}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-[0_6px_16px_-6px_rgba(124,58,237,0.55)] transition hover:brightness-[1.07] disabled:opacity-60"
+                            style={{ background: destructive ? '#EF4444' : 'linear-gradient(135deg,#7C3AED,#8b5cf6)' }}
                         >
                             {status === 'running' ? (
                                 <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.5} />
@@ -142,7 +144,7 @@ export function ToolConfirmationCard({
                         </button>
                     )}
                     {status === 'done' && (
-                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#DCFCE7] px-3 py-1.5 text-xs font-bold text-[#15803D]">
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#F0FDF4] px-3 py-1.5 text-xs font-bold text-[#15803D]">
                             <Check className="h-3 w-3" strokeWidth={3} />
                             Feito
                         </span>
@@ -151,7 +153,7 @@ export function ToolConfirmationCard({
             </div>
 
             {errorMsg && (
-                <p className="mt-2 text-xs font-medium text-[#FF3B30]">{errorMsg}</p>
+                <p className="mt-2 text-xs font-medium text-[#EF4444]">{errorMsg}</p>
             )}
         </div>
     )

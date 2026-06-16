@@ -3,7 +3,7 @@
 /**
  * ConversationView — o chat de uma conversa (Assistente). Header de contexto +
  * stream de mensagens (com ações executadas e cards HITL) + composer.
- * Apresentacional: estado e handlers vêm do AssistantShell.
+ * Apresentacional: estado e handlers vêm do AssistantWorkspace.
  */
 
 import { useEffect, useRef } from 'react'
@@ -67,9 +67,9 @@ export function ConversationView({
                     <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.8} />
                 </button>
                 <div className="flex items-center gap-2.5 rounded-[12px] border border-[#D2D2D7] bg-white px-3 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-[9px] text-[12px] font-bold text-white"
-                        style={{ background: active.student_id ? av.bg : 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
-                        {active.student_id ? av.initials : <Sparkles className="h-4 w-4" strokeWidth={2} />}
+                    <span className="flex h-8 w-8 items-center justify-center rounded-[9px] text-[12px] font-bold"
+                        style={active.student_id ? { background: av.bg, color: av.fg } : { background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', color: '#fff' }}>
+                        {active.student_id ? av.initials : <Sparkles className="h-4 w-4 text-white" strokeWidth={2} />}
                     </span>
                     <div>
                         <b className="block text-[13.5px] tracking-tight">{active.studentName ?? 'Geral · visão geral dos alunos'}</b>
@@ -120,18 +120,18 @@ export function ConversationView({
 
 function MessageRow({ message, trainerAv, onConfirmResolved }: {
     message: AssistantMessage
-    trainerAv: { initials: string; bg: string }
+    trainerAv: { initials: string; bg: string; fg: string }
     onConfirmResolved: (toolName: string, confirmed: boolean, result?: unknown) => void
 }) {
     const isUser = message.role === 'user'
     return (
         <div className="mb-6 flex gap-3.5">
-            <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] text-[12px] font-bold text-white"
-                style={{ background: isUser ? trainerAv.bg : 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
-                {isUser ? trainerAv.initials : <Sparkles className="h-[17px] w-[17px]" strokeWidth={1.8} />}
+            <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] text-[12px] font-bold"
+                style={isUser ? { background: trainerAv.bg, color: trainerAv.fg } : { background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', color: '#fff' }}>
+                {isUser ? trainerAv.initials : <Sparkles className="h-[17px] w-[17px] text-white" strokeWidth={1.8} />}
             </span>
             <div className="min-w-0 flex-1 pt-0.5">
-                <div className="mb-1.5 text-[11.5px] font-bold tracking-wide" style={{ color: isUser ? '#007AFF' : '#7C3AED' }}>
+                <div className="mb-1.5 text-[11.5px] font-bold tracking-wide" style={{ color: isUser ? '#6E6E73' : '#7C3AED' }}>
                     {isUser ? 'Você' : 'Assistente Kinevo'}
                 </div>
                 {message.content && (
@@ -157,9 +157,9 @@ function PartView({ part, onConfirmResolved }: {
         const r = part.result as { success?: boolean } | null
         const failed = r && typeof r === 'object' && r.success === false
         return (
-            <div className={`mt-3 inline-flex items-center gap-2.5 rounded-[12px] border px-3.5 py-2.5 text-[12.5px] ${failed ? 'border-[rgba(255,59,48,0.28)] bg-[rgba(255,59,48,0.07)] text-[#B91C1C]' : 'border-[rgba(52,199,89,0.28)] bg-[rgba(52,199,89,0.09)] text-[#1c7a3e]'}`}>
+            <div className={`mt-3 inline-flex items-center gap-2.5 rounded-[12px] border px-3.5 py-2.5 text-[12.5px] ${failed ? 'border-[rgba(239,68,68,0.28)] bg-[#FEF2F2] text-[#BE123C]' : 'border-[rgba(22,163,74,0.28)] bg-[#F0FDF4] text-[#15803D]'}`}>
                 {!failed && (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#34C759]"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#16A34A]"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>
                 )}
                 <span className="font-semibold">{executedText(part)}</span>
             </div>

@@ -39,17 +39,22 @@ export async function GET() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+        // home_style (migration 210) ainda não está no database.ts gerado → generic
+        // explícito no single<T>() para evitar o SelectQueryError do inferidor.
         const { data: trainer } = await supabase
             .from('trainers')
-            .select('id')
+            .select('id, home_style')
             .eq('auth_user_id', user.id)
-            .single()
+            .single<{ id: string; home_style: string | null }>()
         if (!trainer) return NextResponse.json({ error: 'Trainer not found' }, { status: 404 })
+
+        const homeStyle = trainer.home_style === 'assistant' ? 'assistant' : 'classic'
 
         const summary = await getAiUsageSummary(supabaseAdmin, trainer.id)
         return NextResponse.json({
             tier: summary.tier,
             allowed: PRO_TIERS.has(summary.tier),
+            homeStyle,
             summary,
         })
     } catch (error) {
