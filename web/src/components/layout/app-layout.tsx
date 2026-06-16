@@ -15,6 +15,10 @@ const CommandPaletteWrapper = dynamic(
     () => import('@/components/command-palette').then(m => m.CommandPalette),
     { ssr: false }
 )
+const AssistantLauncher = dynamic(
+    () => import('@/components/assistant/assistant-launcher').then(m => m.AssistantLauncher),
+    { ssr: false }
+)
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useAssistantChatStore } from '@/stores/assistant-chat-store'
 import type {
@@ -77,6 +81,9 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
 
             {/* Command Palette — global, ⌘K to open */}
             <CommandPaletteWrapper students={students} />
+
+            {/* Floating launcher — acesso rápido à aba do Assistente (Pro+) */}
+            <AssistantLauncher />
         </div>
     )
 }

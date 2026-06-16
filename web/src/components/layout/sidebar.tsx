@@ -13,7 +13,7 @@ import {
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
 import { createClient } from '@/lib/supabase/client'
-import { fetchAiAccess, OPEN_AI_COMMAND_EVENT } from '@/components/assistant/command-bar/command-bar'
+import { fetchAiAccess } from '@/components/assistant/command-bar/command-bar'
 
 interface NavItem {
     name: string
@@ -109,10 +109,6 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
             active = false
         }
     }, [])
-
-    const openAssistant = () => {
-        window.dispatchEvent(new CustomEvent(OPEN_AI_COMMAND_EVENT))
-    }
 
     const initials = trainerName
         .split(' ')
@@ -244,30 +240,38 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                     )
                 })}
 
-                {/* Assistente IA (⌘K) — só nos planos Pro+ */}
-                {aiAllowed && (
-                    <div className="relative group/nav">
-                        <button
-                            onClick={openAssistant}
-                            className={`relative flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium tracking-tight transition-all duration-200 ease-out text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#7C3AED] dark:hover:text-foreground hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
-                        >
-                            <Sparkles size={18} strokeWidth={1.5} className="shrink-0 text-[#7C3AED] dark:text-violet-400" />
-                            <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100 flex-1 text-left'}`}>
-                                Assistente
-                            </span>
-                            {!isCollapsed && (
-                                <kbd className="ml-auto rounded border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 font-mono text-[9px] text-[#AEAEB2]">
-                                    ⌘K
-                                </kbd>
+                {/* Assistente IA — aba dedicada (Pro+). O ⌘K segue como atalho da barra de comando. */}
+                {aiAllowed && (() => {
+                    const active = isActive('/assistente')
+                    return (
+                        <div className="relative group/nav">
+                            <Link
+                                href="/assistente"
+                                className={`relative flex items-center gap-3 w-full py-2 rounded-lg text-sm tracking-tight transition-all duration-200 ease-out ${isCollapsed ? 'justify-center px-0' : 'px-3'} ${active
+                                    ? 'bg-[#7C3AED]/10 dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground font-semibold'
+                                    : 'font-medium text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#7C3AED] dark:hover:text-foreground hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg'}`}
+                            >
+                                {active && (
+                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#7C3AED] dark:bg-violet-500 rounded-r-full" />
+                                )}
+                                <Sparkles size={18} strokeWidth={1.5} className="shrink-0 text-[#7C3AED] dark:text-violet-400" />
+                                <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100 flex-1 text-left'}`}>
+                                    Assistente IA
+                                </span>
+                                {!isCollapsed && (
+                                    <span className="ml-auto rounded-md border border-[rgba(124,58,237,0.2)] bg-[#7C3AED]/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#7C3AED]">
+                                        novo
+                                    </span>
+                                )}
+                            </Link>
+                            {isCollapsed && (
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                                    Assistente IA
+                                </div>
                             )}
-                        </button>
-                        {isCollapsed && (
-                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
-                                Assistente
-                            </div>
-                        )}
-                    </div>
-                )}
+                        </div>
+                    )
+                })()}
 
                 {/* Bibliotecas accordion */}
                 <div className="mt-1">
