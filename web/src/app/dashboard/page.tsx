@@ -39,6 +39,17 @@ export default async function DashboardPage({
         }
     }
 
+    // Preferência de Início (migration 210): se o treinador escolheu o home do
+    // Assistente, redireciona — exceto ao voltar do checkout (mostra o dashboard).
+    if (checkout !== 'success') {
+        const { data: pref } = await supabase
+            .from('trainers')
+            .select('home_style')
+            .eq('auth_user_id', user.id)
+            .maybeSingle<{ home_style?: string | null }>()
+        if (pref?.home_style === 'assistant') redirect('/assistente')
+    }
+
     const { trainer } = await getTrainerWithSubscription(user.id)
 
     // Fetch dashboard data, students, and templates in parallel
