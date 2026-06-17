@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinevo IA — Agente proativo</title>
+<style>
+  :root{--bg:#F5F5F7;--card:#fff;--fg:#1D1D1F;--muted:#6E6E73;--muted2:#8A8A8E;--border:#D2D2D7;--bsub:#E8E8ED;
+    --violet:#7C3AED;--vbg:#EDE9FE;--vsoft:#F4F1FE;--blue:#007AFF;--bbg:#DBEAFE;--green:#34C759;--gbg:#DCFCE7;--amber:#F59E0B;--abg:#FEF3C7;--red:#FF3B30;--rbg:#FEE2E2;
+    --sh:0 1px 2px rgba(0,0,0,.04),0 8px 24px -12px rgba(0,0,0,.12);--shl:0 4px 12px rgba(0,0,0,.06),0 24px 60px -24px rgba(0,0,0,.22)}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(900px 500px at 88% -5%,#efeafd 0,transparent 60%),#ECECEF;font:14px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;color:var(--fg);-webkit-font-smoothing:antialiased;padding:36px 22px 70px}
+  .h{max-width:1140px;margin:0 auto 22px}
+  .h .eb{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--violet);font-weight:700}
+  .h h1{font-size:26px;margin:7px 0 5px;letter-spacing:-.02em;font-weight:800}
+  .h p{margin:0;color:var(--muted);font-size:14.5px;max-width:800px}.h p b{color:var(--fg)}
+  .stage{max-width:1140px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:30px;align-items:start}
+  @media(max-width:1080px){.stage{grid-template-columns:1fr;justify-items:center}}
+
+  .browser{width:100%;background:var(--card);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shl)}
+  .chrome{display:flex;align-items:center;gap:8px;padding:10px 13px;background:#FBFBFD;border-bottom:1px solid var(--bsub)}
+  .dots{display:flex;gap:6px}.dots i{width:11px;height:11px;border-radius:50%}.dots i:nth-child(1){background:#FF5F57}.dots i:nth-child(2){background:#FEBC2E}.dots i:nth-child(3){background:#28C840}
+  .url{flex:1;margin-left:6px;background:#fff;border:1px solid var(--bsub);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--muted)}
+  .canvas{background:var(--bg);padding:24px;min-height:620px}
+
+  .brief-hd{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px}
+  .brief-hd .sun{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#7C3AED,#a78bfa);color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 46px;box-shadow:0 8px 20px -8px rgba(124,58,237,.55)}
+  .brief-hd .sun svg{width:24px;height:24px}
+  .brief-hd h2{margin:0;font-size:21px;letter-spacing:-.02em}
+  .brief-hd p{margin:3px 0 0;color:var(--muted);font-size:13.5px}
+  .brief-hd .cta{margin-left:auto;display:flex;gap:9px}
+  .btn{border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;border:1px solid var(--border);background:#fff;cursor:pointer}
+  .btn.ghost{color:var(--muted)} .btn.primary{background:var(--violet);border-color:var(--violet);color:#fff}
+
+  .qcard{background:#fff;border:1px solid var(--bsub);border-radius:14px;padding:0;box-shadow:var(--sh);margin-bottom:13px;overflow:hidden}
+  .qtop{display:flex;align-items:center;gap:11px;padding:13px 16px}
+  .qtop . av{width:36px;height:36px;border-radius:11px;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex:0 0 36px}
+  .qtop .info{flex:1;min-width:0}
+  .qtop .info b{font-size:14px} .qtop .info .why{font-size:12px;color:var(--muted)}
+  .qtype{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:7px;text-transform:uppercase;letter-spacing:.03em}
+  .ty-risk{background:var(--rbg);color:#DC2626}.ty-money{background:var(--abg);color:#B45309}.ty-prog{background:var(--vbg);color:var(--violet)}
+  .qbody{margin:0 16px 13px;background:var(--bg);border-radius:11px;padding:12px 13px;font-size:13px;color:#3a3a40;line-height:1.5;position:relative}
+  .qbody .draftlab{position:absolute;top:-9px;left:12px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--violet);background:#fff;border:1px solid #E4DCFA;padding:2px 8px;border-radius:6px}
+  .qbody.msg{font-style:italic}
+  .qacts{display:flex;align-items:center;gap:9px;padding:0 16px 14px}
+  .qacts .sp{margin-left:auto;display:flex;gap:8px}
+  .smallnote{font-size:11.5px;color:var(--muted2)}
+
+  .feed{margin-top:22px;border-top:1px solid var(--bsub);padding-top:14px}
+  .feed h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);margin:0 0 10px;font-weight:700}
+  .fitem{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);padding:6px 0}
+  .fitem .fi{width:22px;height:22px;border-radius:7px;background:var(--gbg);color:#15803D;display:flex;align-items:center;justify-content:center;flex:0 0 22px}
+  .fitem .fi svg{width:13px;height:13px}
+  .fitem b{color:var(--fg);font-weight:600} .fitem .undo{margin-left:auto;color:var(--violet);font-weight:600;font-size:12px}
+
+  /* ===== MOBILE column ===== */
+  .mcol{display:flex;flex-direction:column;gap:22px;align-items:center}
+  .mcap{font-size:12.5px;color:var(--muted);text-align:center;margin-bottom:-12px;font-weight:600}
+  .phone{width:300px;background:#000;border-radius:44px;padding:9px;box-shadow:var(--shl);position:relative}
+  .pscreen{border-radius:36px;overflow:hidden;height:600px;position:relative;display:flex;flex-direction:column}
+  .notch{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:98px;height:24px;background:#000;border-radius:14px;z-index:20}
+
+  /* lockscreen push */
+  .lock{background:linear-gradient(165deg,#3a2a6e,#1a1330);height:100%;display:flex;flex-direction:column;color:#fff;padding:0}
+  .lock .time{text-align:center;margin-top:54px}.lock .time .hr{font-size:64px;font-weight:300;letter-spacing:-.02em;line-height:1}.lock .time .dt{font-size:14px;opacity:.85;margin-top:4px}
+  .push{margin:auto 12px 16px;background:rgba(255,255,255,.16);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:13px 14px;display:flex;gap:11px}
+  .push .pic{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7C3AED,#a78bfa);display:flex;align-items:center;justify-content:center;flex:0 0 34px}
+  .push .pic svg{width:18px;height:18px;color:#fff}
+  .push .pt b{font-size:13.5px;display:block} .push .pt span{font-size:12.5px;opacity:.92;line-height:1.4;display:block;margin-top:1px}
+  .push .pt small{opacity:.65;font-size:11px}
+
+  /* voice state */
+  .vhead{background:#fff;padding:42px 16px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bsub)}
+  .vhead .back{color:var(--blue);font-size:22px}
+  .vhead .av{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#7C3AED,#a78bfa);color:#fff;display:flex;align-items:center;justify-content:center}.vhead .av svg{width:17px;height:17px}
+  .vhead b{font-size:15px}
+  .vbody{background:var(--bg);flex:1;display:flex;flex-direction:column;padding:16px}
+  .vmsg{align-self:flex-end;background:#1D1D1F;color:#fff;border-radius:16px 16px 5px 16px;padding:9px 13px;font-size:13.5px;max-width:85%}
+  .vconfirm{align-self:flex-start;width:100%;background:#fff;border:1px solid #E7DBC0;border-radius:15px;overflow:hidden;box-shadow:var(--sh);margin-top:12px}
+  .vconfirm .t{display:flex;align-items:center;gap:8px;padding:10px 13px;background:#FEF6E3;border-bottom:1px solid #F0E6CC}.vconfirm .t .ic{width:21px;height:21px;border-radius:6px;background:var(--amber);color:#fff;display:flex;align-items:center;justify-content:center}.vconfirm .t .ic svg{width:12px;height:12px}.vconfirm .t b{font-size:12.5px}
+  .vconfirm .d{padding:11px 13px;font-size:12.5px;color:var(--muted);line-height:1.5}.vconfirm .d b{color:var(--fg)}
+  .vconfirm .a{display:flex;gap:8px;padding:0 13px 13px}.vbtn{flex:1;padding:10px;border-radius:11px;font-size:13px;font-weight:700;border:1px solid var(--border);background:#fff}.vbtn.p{background:var(--violet);color:#fff;border-color:var(--violet);display:flex;align-items:center;justify-content:center;gap:6px}.vbtn.p svg{width:13px;height:13px}
+  .vmic{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 0 6px}
+  .wave{display:flex;align-items:center;gap:4px;height:30px}
+  .wave i{width:4px;border-radius:2px;background:var(--violet);animation:wv 1s ease-in-out infinite}
+  .wave i:nth-child(1){height:10px;animation-delay:0s}.wave i:nth-child(2){height:22px;animation-delay:.1s}.wave i:nth-child(3){height:30px;animation-delay:.2s}.wave i:nth-child(4){height:18px;animation-delay:.3s}.wave i:nth-child(5){height:26px;animation-delay:.15s}.wave i:nth-child(6){height:12px;animation-delay:.25s}
+  @keyframes wv{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
+  .vmic .lbl{font-size:11.5px;color:var(--muted)}
+  .vmic .micbtn{width:56px;height:56px;border-radius:50%;background:var(--violet);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -6px rgba(124,58,237,.6)}.vmic .micbtn svg{width:24px;height:24px}
+
+  .note{max-width:1140px;margin:26px auto 0;background:#fff;border:1px solid var(--bsub);border-radius:14px;padding:18px 22px;box-shadow:var(--sh);font-size:13px;color:var(--muted);line-height:1.55}
+  .note b{color:var(--fg)}.note code{background:var(--vsoft);color:var(--violet);padding:1px 6px;border-radius:5px;font:12px ui-monospace,Menlo,monospace}
+</style>
+</head>
+<body>
+  <div class="h">
+    <div class="eb">Caminho D + E · Agente proativo & voz</div>
+    <h1>A IA chega trabalhando</h1>
+    <p>Em vez de esperar o treinador perguntar, a IA usa o <b>cron de insights</b> (que já roda) e os <b>drafts</b> (que já existem) para montar um <b>briefing matinal</b> com ações <b>já rascunhadas</b> — é só revisar e aprovar. No mobile, chega por push e resolve por voz + Face ID.</p>
+  </div>
+
+  <div class="stage">
+    <!-- WEB briefing -->
+    <div class="browser">
+      <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">app.kinevoapp.com/dashboard</div></div>
+      <div class="canvas">
+        <div class="brief-hd">
+          <div class="sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></div>
+          <div><h2>Bom dia, Gustavo</h2><p>Revisei seus 22 alunos e o financeiro. <b style="color:var(--fg)">3 ações</b> esperam seu OK — preparei tudo.</p></div>
+          <div class="cta"><button class="btn ghost">Pular tudo</button><button class="btn primary">Aprovar as 3</button></div>
+        </div>
+
+        <!-- item 1: recuperar (drafted message) -->
+        <div class="qcard">
+          <div class="qtop"><div class="av" style="background:#FF453A">ML</div><div class="info"><b>Recuperar Marina Lanza</b><div class="why">Sem treino há 12 dias · adesão 90% → 40%</div></div><span class="qtype ty-risk">Risco de churn</span></div>
+          <div class="qbody msg"><span class="draftlab">Mensagem rascunhada pela IA</span>“Oi Marina! Senti sua falta essa semana 💜 Tá tudo bem? Se a rotina apertou, a gente ajusta o treino pra caber no seu tempo. Bora marcar?”</div>
+          <div class="qacts"><span class="smallnote">Envia no app + WhatsApp</span><div class="sp"><button class="btn ghost">Editar</button><button class="btn ghost">Pular</button><button class="btn primary">Aprovar e enviar</button></div></div>
+        </div>
+
+        <!-- item 2: cobrança -->
+        <div class="qcard">
+          <div class="qtop"><div class="av" style="background:#FF9F0A">MS</div><div class="info"><b>Cobrar Maria Silva</b><div class="why">Mensalidade R$199,90 venceu ontem</div></div><span class="qtype ty-money">Financeiro</span></div>
+          <div class="qbody"><span class="draftlab">Ação preparada</span>Gerar link de pagamento (Mensal · R$199,90) e enviar com a mensagem de lembrete. <b style="color:var(--fg)">Requer sua confirmação</b> por mexer em cobrança.</div>
+          <div class="qacts"><span class="smallnote"><code style="background:#F4F1FE;color:#7C3AED;padding:0 4px;border-radius:4px">generate_checkout_link</code></span><div class="sp"><button class="btn ghost">Pular</button><button class="btn primary">Revisar e cobrar</button></div></div>
+        </div>
+
+        <!-- item 3: progressão -->
+        <div class="qcard">
+          <div class="qtop"><div class="av" style="background:#0a84ff">JP</div><div class="info"><b>Progredir carga do João Pedro</b><div class="why">Supino estagnado há 6 semanas no topo da faixa</div></div><span class="qtype ty-prog">Progressão</span></div>
+          <div class="qbody"><span class="draftlab">Sugestão da IA</span>Subir o supino reto de <b style="color:var(--fg)">60kg → 65kg</b> e aplicar top-set + back-off. Abro o treino editável pra você revisar antes de salvar.</div>
+          <div class="qacts"><span class="smallnote">Abre card editável (UI generativa)</span><div class="sp"><button class="btn ghost">Pular</button><button class="btn primary">Ajustar treino</button></div></div>
+        </div>
+
+        <div class="feed">
+          <h3>A IA já fez hoje</h3>
+          <div class="fitem"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span>Enviou <b>check-in semanal</b> para 14 alunos ativos</span><span class="undo">desfazer</span></div>
+          <div class="fitem"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span>Confirmou <b>3 presenças</b> de ontem na agenda</span><span class="undo">desfazer</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE -->
+    <div class="mcol">
+      <div class="mcap">Push de manhã → abre o briefing</div>
+      <div class="phone"><div class="notch"></div><div class="pscreen">
+        <div class="lock">
+          <div class="time"><div class="hr">7:12</div><div class="dt">segunda, 15 de junho</div></div>
+          <div class="push">
+            <div class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10z"/></svg></div>
+            <div class="pt"><b>Kinevo · Bom dia ☀️</b><span>3 ações esperando você: recuperar a Marina, cobrar a Maria e progredir o João.</span><small>agora · toque para revisar</small></div>
+          </div>
+        </div>
+      </div></div>
+
+      <div class="mcap">Resolver por voz + Face ID</div>
+      <div class="phone"><div class="notch"></div><div class="pscreen">
+        <div class="vhead"><span class="back">‹</span><div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10z"/></svg></div><b>Assistente</b></div>
+        <div class="vbody">
+          <div class="vmsg">“Aprova a recuperação da Marina e marca o pagamento da Maria”</div>
+          <div class="vconfirm">
+            <div class="t"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 9v4M12 17h.01"/></svg></div><b>2 ações</b></div>
+            <div class="d">1 · Enviar mensagem de recuperação à <b>Marina</b>.<br>2 · Registrar <b>R$ 199,90</b> da <b>Maria</b> (PIX).</div>
+            <div class="a"><button class="vbtn">Revisar</button><button class="vbtn p"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><rect x="5" y="11" width="14" height="10" rx="2"/></svg>Face ID</button></div>
+          </div>
+          <div class="vmic"><div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="lbl">Ouvindo… toque para parar</span><div class="micbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Por que fecha com o código:</b> o <code>cron/generate-insights</code> já produz os 6 tipos com <code>action_type</code> + <code>action_metadata</code> (contact_student, generate_program, adjust_load…). <code>draft-message</code> e <code>winback-draft</code> já escrevem as mensagens. O que falta é a <b>fila/UI de aprovação</b> e ligar cada “Aprovar” à tool correspondente (com o gate <code>confirm</code> nas sensíveis). Push→tela já é suportado (deep-link por <code>data.type</code>). Voz exige adicionar <code>expo-speech</code>/Whisper (não existe hoje). O <b>feed “a IA fez X” com desfazer</b> dá auditoria e confiança — diferencial de ter o estado no nosso banco.
+  </div>
+</body>
+</html>

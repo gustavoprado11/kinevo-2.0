@@ -100,9 +100,9 @@ export function ConversationView({
 
     return (
         // Superfície branca full-bleed (ponta a ponta) — flat, sem moldura, estilo Claude.
-        <div className="flex min-h-0 flex-1 flex-col bg-white">
-            <header className="flex shrink-0 items-center gap-1.5 border-b border-[#EDEDF0] px-4 py-2.5">
-                <button onClick={onBackHome} className="flex h-9 w-9 items-center justify-center rounded-[10px] text-[#86868B] transition hover:bg-[#F5F5F7] hover:text-[#1D1D1F]" title="Voltar ao início">
+        <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-surface-card">
+            <header className="flex shrink-0 items-center gap-1.5 border-b border-[#EDEDF0] dark:border-k-border-subtle px-4 py-2.5">
+                <button onClick={onBackHome} className="flex h-9 w-9 items-center justify-center rounded-[10px] text-[#86868B] dark:text-muted-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg hover:text-[#1D1D1F] dark:hover:text-foreground" title="Voltar ao início">
                     <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.9} />
                 </button>
                 <div className="flex min-w-0 items-center gap-2.5 pl-1">
@@ -111,12 +111,12 @@ export function ConversationView({
                         {active.student_id ? av.initials : <Sparkles className="h-4 w-4 text-white" strokeWidth={1.7} />}
                     </span>
                     <div className="min-w-0 leading-tight">
-                        <b className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-[#1D1D1F]">{active.studentName ?? 'Geral · visão geral dos alunos'}</b>
-                        <span className="block truncate text-[11px] text-[#86868B]">{active.student_id ? 'Conversa sobre o aluno' : 'Todos os alunos'}</span>
+                        <b className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-[#1D1D1F] dark:text-foreground">{active.studentName ?? 'Geral · visão geral dos alunos'}</b>
+                        <span className="block truncate text-[11px] text-[#86868B] dark:text-muted-foreground">{active.student_id ? 'Conversa sobre o aluno' : 'Todos os alunos'}</span>
                     </div>
                 </div>
                 <div className="flex-1" />
-                <button onClick={onRename} className="hidden h-9 w-9 items-center justify-center rounded-[10px] text-[#86868B] transition hover:bg-[#F5F5F7] hover:text-[#1D1D1F] sm:flex" title="Renomear conversa">
+                <button onClick={onRename} className="hidden h-9 w-9 items-center justify-center rounded-[10px] text-[#86868B] dark:text-muted-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg hover:text-[#1D1D1F] dark:hover:text-foreground sm:flex" title="Renomear conversa">
                     <Pencil className="h-[16px] w-[16px]" strokeWidth={1.8} />
                 </button>
                 <div className="hidden lg:block"><CreditMeter summary={summary} pill /></div>
@@ -125,7 +125,7 @@ export function ConversationView({
             <div ref={streamRef} className="min-h-0 flex-1 overflow-y-auto py-9" aria-live="polite" aria-busy={sending}>
                 <div className="mx-auto max-w-[760px] px-6">
                     {loadingMessages && (
-                        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#AEAEB2]" /></div>
+                        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#AEAEB2] dark:text-muted-foreground/60" /></div>
                     )}
                     {messages.map((m) => (
                         <MessageRow key={m.id} message={m} onConfirmResolved={onConfirmResolved} />
@@ -148,13 +148,13 @@ export function ConversationView({
                         <div className="mb-2.5 flex flex-wrap items-center gap-2">
                             {suggestions.map((s) => (
                                 <button key={s} onClick={() => onSendText(s)} disabled={sending}
-                                    className="inline-flex items-center rounded-full border border-[#E8E8ED] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#6E6E73] transition hover:border-[#D2D2D7] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] disabled:opacity-50">
+                                    className="inline-flex items-center rounded-full border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-3 py-1.5 text-[12.5px] font-medium text-[#6E6E73] dark:text-muted-foreground/80 transition hover:border-[#D2D2D7] dark:hover:border-k-border-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg hover:text-[#1D1D1F] dark:hover:text-foreground disabled:opacity-50">
                                     {s}
                                 </button>
                             ))}
                         </div>
                     )}
-                    <div className="flex items-end gap-2 rounded-[22px] border border-[#E2E2E7] bg-white px-2.5 py-2 transition focus-within:border-[#C7C7CC] focus-within:shadow-[0_0_0_3px_rgba(60,60,67,0.07)]">
+                    <div className="flex items-end gap-2 rounded-[22px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-2.5 py-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_3px_rgba(60,60,67,0.07)]">
                         <MicButton disabled={sending} onTranscript={(t) => onInput(input ? `${input} ${t}` : t)} />
                         <textarea
                             ref={inputRef}
@@ -167,15 +167,15 @@ export function ConversationView({
                             placeholder={active.studentName ? `Diga o que fazer com ${active.studentName.split(' ')[0]}…` : 'Diga o que fazer no Kinevo…'}
                             // outline inline: vence a regra global unlayered `:focus-visible`; foco fica na borda do card.
                             style={{ outline: 'none' }}
-                            className="max-h-[200px] flex-1 resize-none overflow-y-auto bg-transparent px-1.5 py-2 text-[15px] leading-[1.5] placeholder:text-[#AEAEB2]"
+                            className="max-h-[200px] flex-1 resize-none overflow-y-auto bg-transparent px-1.5 py-2 text-[15px] leading-[1.5] text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60"
                         />
                         <button onClick={onSend} disabled={sending || !input.trim()}
                             className="flex h-[36px] items-center gap-1.5 rounded-[14px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 text-[13px] font-bold text-white transition hover:brightness-105 disabled:opacity-40">
                             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-[15px] w-[15px]" strokeWidth={2} />} Agir
                         </button>
                     </div>
-                    <div className="mt-2 flex justify-center gap-4 text-[10.5px] text-[#AEAEB2]">
-                        <span><kbd className="rounded border border-[#E8E8ED] bg-white px-1.5 font-mono text-[#86868B]">Enter</kbd> enviar</span>
+                    <div className="mt-2 flex justify-center gap-4 text-[10.5px] text-[#AEAEB2] dark:text-muted-foreground/60">
+                        <span><kbd className="rounded border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-1.5 font-mono text-[#86868B] dark:text-muted-foreground">Enter</kbd> enviar</span>
                         <span>ações sensíveis sempre pedem confirmação</span>
                     </div>
                 </div>
@@ -196,14 +196,14 @@ function StudentPicker({ students, onPick, onSearchOther }: {
                 const a = avatarFor(s.name)
                 return (
                     <button key={s.id} onClick={() => onPick(s.name)}
-                        className="inline-flex items-center gap-2 rounded-full border border-[#E8E8ED] bg-white py-[5px] pl-[5px] pr-[13px] text-[12.5px] font-medium text-[#1D1D1F] transition hover:border-[#D2D2D7] hover:bg-[#F5F5F7]">
+                        className="inline-flex items-center gap-2 rounded-full border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated py-[5px] pl-[5px] pr-[13px] text-[12.5px] font-medium text-[#1D1D1F] dark:text-foreground transition hover:border-[#D2D2D7] dark:hover:border-k-border-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg">
                         <span className="flex h-6 w-6 items-center justify-center rounded-[7px] text-[10px] font-bold" style={{ background: a.bg, color: a.fg }}>{a.initials}</span>
                         {s.name}
                     </button>
                 )
             })}
             <button onClick={onSearchOther}
-                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#D2D2D7] px-[13px] py-1.5 text-[12.5px] font-medium text-[#86868B] transition hover:border-[#AEAEB2] hover:text-[#6E6E73]">
+                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#E2E2E7] dark:border-k-border-subtle px-[13px] py-1.5 text-[12.5px] font-medium text-[#86868B] dark:text-muted-foreground transition hover:border-[#AEAEB2] dark:hover:border-k-border-primary hover:text-[#6E6E73] dark:hover:text-foreground">
                 <Search className="h-[13px] w-[13px]" strokeWidth={2} /> Buscar outro…
             </button>
         </div>
@@ -219,7 +219,7 @@ function MessageRow({ message, onConfirmResolved }: {
     if (isUser) {
         return (
             <div className="kv-msg-in mb-7 flex justify-end">
-                <div className="max-w-[78%] whitespace-pre-wrap rounded-[18px] rounded-tr-[6px] bg-[#F4F4F7] px-4 py-2.5 text-[15px] leading-[1.55] text-[#1D1D1F]">
+                <div className="max-w-[78%] whitespace-pre-wrap rounded-[18px] rounded-tr-[6px] bg-[#F4F4F7] dark:bg-glass-bg px-4 py-2.5 text-[15px] leading-[1.55] text-[#1D1D1F] dark:text-foreground">
                     {message.content}
                 </div>
             </div>
@@ -229,7 +229,7 @@ function MessageRow({ message, onConfirmResolved }: {
     return (
         <div className="kv-msg-in mb-7">
             {message.content && (
-                <div className="whitespace-pre-wrap text-[15.5px] leading-[1.7] text-[#1D1D1F]">{message.content}</div>
+                <div className="whitespace-pre-wrap text-[15.5px] leading-[1.7] text-[#1D1D1F] dark:text-foreground">{message.content}</div>
             )}
             {message.parts.map((part, i) => (
                 <PartView key={i} part={part} onConfirmResolved={onConfirmResolved} />
@@ -246,10 +246,10 @@ function PartView({ part, onConfirmResolved }: {
         const r = part.result as { success?: boolean } | null
         const failed = r && typeof r === 'object' && r.success === false
         return (
-            <div className={`mt-3 inline-flex items-center gap-2 rounded-[10px] px-3 py-1.5 text-[12.5px] font-medium ${failed ? 'bg-[#FEF2F2] text-[#BE123C]' : 'bg-[#F5F5F7] text-[#6E6E73]'}`}>
+            <div className={`mt-3 inline-flex items-center gap-2 rounded-[10px] px-3 py-1.5 text-[12.5px] font-medium ${failed ? 'bg-[#FEF2F2] dark:bg-rose-500/10 text-[#BE123C] dark:text-rose-300' : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-muted-foreground/80'}`}>
                 {failed
-                    ? <span className="text-[#BE123C]">✕</span>
-                    : <Check className="h-[13px] w-[13px] text-[#16A34A]" strokeWidth={2.6} />}
+                    ? <span className="text-[#BE123C] dark:text-rose-300">✕</span>
+                    : <Check className="h-[13px] w-[13px] text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} />}
                 <span>{executedText(part.toolName, part.result)}</span>
             </div>
         )
@@ -263,7 +263,7 @@ function PartView({ part, onConfirmResolved }: {
         )
     }
     return (
-        <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-[#F5F5F7] px-3 py-1.5 text-[12px] text-[#86868B]">
+        <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-1.5 text-[12px] text-[#86868B] dark:text-muted-foreground">
             {part.status === 'confirmed' ? 'Ação confirmada' : 'Ação cancelada'}
         </div>
     )

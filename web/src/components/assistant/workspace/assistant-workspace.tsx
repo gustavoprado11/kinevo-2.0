@@ -1,16 +1,16 @@
 'use client'
 
 /**
- * AssistantWorkspace — conteúdo do Dashboard no modo Assistente.
+ * AssistantWorkspace — casca própria do modo Assistente (tela de chat).
  *
- * Renderiza DENTRO do AppLayout (a navegação/toggle/perfil vêm da Sidebar global).
- * Aqui só o que é exclusivo do chat: o rail de Conversas/Alunos + a área principal
- * (home OU conversa). Detém o estado e os handlers (criar/abrir conversa, enviar
- * turno, HITL). O toggle de modo agora vive na Sidebar global, não aqui.
+ * Coluna única conversa-first: a AssistantSidebar (marca + toggle + "Nova
+ * conversa" + "Ir para…" + Alunos/Conversas + perfil) à esquerda e a área
+ * principal (home OU conversa) à direita. Detém o estado e os handlers
+ * (criar/abrir conversa, enviar turno, HITL).
  */
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { setHomeStyle } from '@/actions/assistant/set-home-style'
 import { setCachedAiAllowed, setCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
 import type { SidebarStudent } from './assistant-rail'
@@ -36,6 +36,7 @@ interface Props {
 
 export function AssistantWorkspace({ initialSummary, initialConversations, students, attention, trainerName, trainerEmail, trainerAvatarUrl }: Props) {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [summary, setSummary] = useState(initialSummary)
     const [conversations, setConversations] = useState(initialConversations)
     const [activeId, setActiveId] = useState<string | null>(null)
@@ -214,6 +215,16 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     useEffect(() => {
         setCachedAiAllowed(true)
         setCachedHomeStyle('assistant')
+    }, [])
+
+    // Ao chegar de outra aba pelo rail persistente (AssistantNavSidebar), abre o
+    // contexto pedido na URL: ?c=<conversa> ou ?s=<aluno em foco>. ?new = home limpa.
+    useEffect(() => {
+        const c = searchParams.get('c')
+        const s = searchParams.get('s')
+        if (c) selectConversation(c)
+        else if (s) { selectStudent(s); setSegment('alunos') }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     // Banner ativo: erro de turno tem prioridade; senão cota esgotada (persistente).

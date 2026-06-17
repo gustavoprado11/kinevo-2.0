@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP dentro do Kinevo — Web & Mobile</title>
+<style>
+  :root{
+    --bg:#0b0b0f; --bg2:#141420; --card:#17171f; --card2:#1d1d28;
+    --line:#2a2a38; --line2:#34344a;
+    --tx:#e9e9f0; --tx2:#a9a9bd; --tx3:#74748a;
+    --violet:#8b5cf6; --violet2:#a78bfa; --violet-bg:rgba(139,92,246,.12);
+    --blue:#007AFF; --green:#34c759; --amber:#ffb020; --red:#ff453a; --teal:#2dd4bf;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:radial-gradient(1200px 700px at 80% -10%, #1a1330 0%, var(--bg) 55%);
+    color:var(--tx); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; padding-bottom:80px;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 22px}
+  header.hero{padding:60px 0 30px}
+  .kick{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--violet2); font-weight:700; background:var(--violet-bg); border:1px solid var(--line2); padding:6px 12px; border-radius:999px}
+  h1{font-size:40px; line-height:1.1; margin:18px 0 10px; letter-spacing:-.02em; font-weight:800}
+  h1 .g{background:linear-gradient(90deg,#a78bfa,#2dd4bf); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .sub{color:var(--tx2); font-size:17px; max-width:760px}
+  .meta{margin-top:18px; color:var(--tx3); font-size:13px; display:flex; gap:18px; flex-wrap:wrap}
+  .meta b{color:var(--tx2); font-weight:600}
+
+  h2{font-size:13px; letter-spacing:.16em; text-transform:uppercase; color:var(--tx3); margin:54px 0 18px; font-weight:700; display:flex; align-items:center; gap:12px}
+  h2::after{content:""; flex:1; height:1px; background:linear-gradient(90deg,var(--line),transparent)}
+  h3{font-size:18px; margin:0 0 8px; letter-spacing:-.01em}
+
+  .grid{display:grid; gap:16px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:820px){.g2,.g3{grid-template-columns:1fr}}
+
+  .card{background:linear-gradient(180deg,var(--card),var(--card2)); border:1px solid var(--line); border-radius:var(--radius); padding:22px}
+  .card.accent{border-color:var(--line2); box-shadow:0 0 0 1px rgba(139,92,246,.10), 0 20px 50px -30px rgba(139,92,246,.5)}
+  .card p{color:var(--tx2); margin:8px 0 0}
+  .tag{display:inline-block; font-size:11px; font-weight:700; letter-spacing:.04em; padding:3px 9px; border-radius:7px; text-transform:uppercase}
+  .t-live{background:rgba(52,199,89,.14); color:#5be37e; border:1px solid rgba(52,199,89,.3)}
+  .t-build{background:var(--violet-bg); color:var(--violet2); border:1px solid var(--line2)}
+  .t-idea{background:rgba(255,176,32,.12); color:var(--amber); border:1px solid rgba(255,176,32,.28)}
+  .t-gap{background:rgba(255,69,58,.12); color:#ff7a70; border:1px solid rgba(255,69,58,.28)}
+
+  .lead{font-size:16px; color:var(--tx2)}
+  ul.clean{margin:12px 0 0; padding:0; list-style:none}
+  ul.clean li{position:relative; padding:6px 0 6px 24px; color:var(--tx2); border-bottom:1px dashed var(--line)}
+  ul.clean li:last-child{border-bottom:0}
+  ul.clean li::before{content:""; position:absolute; left:4px; top:13px; width:7px; height:7px; border-radius:2px; background:var(--violet)}
+  ul.clean li b{color:var(--tx)}
+  code{background:#0e0e16; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font:12.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:#c9b6ff}
+
+  /* diagram */
+  .diagram{background:#0e0e16; border:1px solid var(--line); border-radius:var(--radius); padding:26px; overflow:hidden}
+  .node{border:1px solid var(--line2); border-radius:12px; padding:14px 16px; background:var(--card); text-align:center}
+  .node .nt{font-weight:700; font-size:14px}
+  .node .nd{font-size:12px; color:var(--tx3); margin-top:2px}
+  .core{background:linear-gradient(180deg,#241a45,#1b1430); border-color:var(--violet); box-shadow:0 0 40px -12px var(--violet)}
+  .core .nt{color:var(--violet2)}
+  .arrowcol{display:flex; align-items:center; justify-content:center; color:var(--tx3); font-size:22px}
+  .rowdiag{display:grid; grid-template-columns:1fr 60px 1.3fr; gap:0; align-items:center}
+  @media(max-width:820px){.rowdiag{grid-template-columns:1fr; gap:10px} .arrowcol{transform:rotate(90deg)}}
+  .consumers{display:flex; flex-direction:column; gap:10px}
+
+  table{width:100%; border-collapse:collapse; margin-top:6px; font-size:13.5px}
+  th,td{text-align:left; padding:11px 12px; border-bottom:1px solid var(--line)}
+  th{color:var(--tx3); font-weight:600; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase}
+  td{color:var(--tx2)} td b{color:var(--tx)}
+  tr:last-child td{border-bottom:0}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; vertical-align:middle}
+  .d-g{background:var(--green)} .d-v{background:var(--violet)} .d-a{background:var(--amber)} .d-r{background:var(--red)}
+
+  .callout{border-left:3px solid var(--violet); background:var(--violet-bg); border-radius:0 12px 12px 0; padding:16px 18px; margin-top:16px}
+  .callout.amber{border-color:var(--amber); background:rgba(255,176,32,.08)}
+  .callout.teal{border-color:var(--teal); background:rgba(45,212,191,.08)}
+  .callout h4{margin:0 0 6px; font-size:14px}
+  .callout p{margin:0; color:var(--tx2); font-size:14px}
+
+  .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .pill{font-size:12px; padding:5px 11px; border-radius:999px; border:1px solid var(--line2); color:var(--tx2); background:var(--card)}
+
+  .phase{display:flex; gap:16px; align-items:flex-start; padding:16px 0; border-bottom:1px solid var(--line)}
+  .phase:last-child{border-bottom:0}
+  .pnum{flex:0 0 46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; background:var(--violet-bg); color:var(--violet2); border:1px solid var(--line2)}
+  .phase .pc{flex:1} .phase .pc p{margin:4px 0 0}
+
+  .q{display:flex; gap:12px; padding:12px 0; border-bottom:1px dashed var(--line)}
+  .q:last-child{border-bottom:0}
+  .q .num{color:var(--violet2); font-weight:800; flex:0 0 28px}
+  .q b{color:var(--tx)}
+
+  .foot{margin-top:50px; color:var(--tx3); font-size:13px; text-align:center}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; font-size:12.5px; color:var(--tx3)}
+  .legend span{display:inline-flex; align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="kick">● Kinevo · Estratégia de produto</span>
+    <h1>Como os <span class="g">MCPs</span> entram<br>na Kinevo web e mobile</h1>
+    <p class="sub">Hoje as 55 tools do MCP servem um cliente externo (Claude/ChatGPT). A pergunta: como trazer essa mesma inteligência <b>para dentro</b> do app do treinador — uma superfície de conversa que opera o Kinevo — sem duplicar catálogo nem forkar o produto.</p>
+    <div class="meta">
+      <span><b>Base:</b> 55 tools MCP · assistente in-app já existe (3 tools)</span>
+      <span><b>Direção:</b> "chat-first workspace" (spec escrita)</span>
+      <span><b>Doc:</b> brainstorm · 15/jun/2026</span>
+    </div>
+  </header>
+
+  <!-- ESTADO ATUAL -->
+  <h2>1 · O que já existe (e não conversa entre si)</h2>
+  <div class="grid g3">
+    <div class="card">
+      <span class="tag t-live">Em produção</span>
+      <h3 style="margin-top:12px">MCP — 55 tools</h3>
+      <p><code>createMcpServer(trainerId)</code> + endpoint HTTP, auth OAuth/API-key. Cobre alunos, programas, treinos, agenda, formulários, financeiro, avaliações, insights, leads. Hints <code>readOnly</code>/<code>destructive</code> declarados.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-live">Em produção</span>
+      <h3 style="margin-top:12px">Assistente in-app (web)</h3>
+      <p><code>api/assistant/chat</code> — AI SDK, <code>gpt-4.1-mini</code>, streaming, <b>só 3 tools</b>, <code>maxSteps:3</code>, hardening anti-prompt-injection, rate-limit em memória. Vive no painel de comunicação.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-idea">Hoje: mensageria</span>
+      <h3 style="margin-top:12px">Mobile (Expo)</h3>
+      <p>App com abas de treinador, <code>chat.tsx</code> = chat treinador↔aluno (não-IA). Já consome <code>www.kinevoapp.com</code> via <code>EXPO_PUBLIC_WEB_URL</code> (oura/strava/webviews).</p>
+    </div>
+  </div>
+  <div class="callout amber">
+    <h4>⚠ O problema central</h4>
+    <p>Há <b>dois cérebros</b> desconectados: o assistente in-app sabe conversar mas só tem 3 tools; o MCP tem 55 tools mas só fala com clientes externos. O mobile não tem IA nenhuma. Trazer o MCP "pra dentro" = <b>unificar o catálogo</b> e plugá-lo nas superfícies certas.</p>
+  </div>
+
+  <!-- ARQUITETURA -->
+  <h2>2 · A chave de arco — 1 catálogo, N consumidores</h2>
+  <p class="lead">A decisão técnica já fechada: <b>ponte in-memory</b>. O mesmo <code>createMcpServer(trainerId)</code> é ligado a um cliente MCP em memória (<code>InMemoryTransport.createLinkedPair()</code> + <code>experimental_createMCPClient</code>) e entregue ao <code>streamText</code>. Um catálogo serve <b>todos</b> os consumidores — sem reescrever tool nenhuma.</p>
+
+  <div class="diagram" style="margin-top:18px">
+    <div class="rowdiag">
+      <div class="node core">
+        <div class="nt">lib/mcp/tools — 55 tools</div>
+        <div class="nd">núcleo único · escopo por trainerId · hints read/write</div>
+      </div>
+      <div class="arrowcol">→</div>
+      <div class="consumers">
+        <div class="node"><div class="nt">🔌 Conector externo</div><div class="nd">Claude / ChatGPT · OAuth · HTTP (hoje)</div></div>
+        <div class="node" style="border-color:var(--violet)"><div class="nt">💬 Chat in-app web</div><div class="nd">ponte in-memory · sessão Supabase · streamText</div></div>
+        <div class="node" style="border-color:var(--teal)"><div class="nt">📱 Chat mobile</div><div class="nd">mesma API <code>/api/assistant/chat</code> · token da sessão</div></div>
+      </div>
+    </div>
+    <div class="legend">
+      <span>A mesma tool roda nos 3 caminhos. Diferença = só <b>transporte + auth</b>.</span>
+    </div>
+  </div>
+
+  <div class="callout teal">
+    <h4>★ Insight desta sessão: o gate <code>confirm</code> já é o HITL</h4>
+    <p>As tools sensíveis (<code>create_contract</code>, <code>mark_payment_as_paid</code>, <code>cancel_contract</code>, <code>convert_lead</code>) ganharam um <b>gate <code>confirm=true</code> com preview/dry-run</b>: sem confirmar, devolvem o efeito exato e não mutam nada. Isso foi feito por segurança no MCP — mas é <b>exatamente o "human-in-the-loop"</b> que o chat in-app precisa para ações de escrita. A UI in-app transforma esse preview em um <b>card de confirmação</b> (botão "Confirmar"). Mesma mecânica, dois benefícios.</p>
+  </div>
+
+  <!-- ATUALIZAÇÃO DE COBERTURA -->
+  <h2>3 · O que mudou desde a spec (cobertura)</h2>
+  <p class="lead">A direção "chat-first" foi escrita quando o MCP tinha <b>27 tools cobrindo só 3 de 9 áreas</b>. Com <b>55 tools</b>, o chat agora <i>executa de verdade</i> a maior parte do app — encolhendo as lacunas que antes exigiam deep-link.</p>
+  <table>
+    <thead><tr><th>Área</th><th>Na spec (27 tools)</th><th>Hoje (55 tools)</th></tr></thead>
+    <tbody>
+      <tr><td><b>Alunos · Prescrição · Comunicação</b></td><td><span class="dot d-g"></span>Full</td><td><span class="dot d-g"></span>Full</td></tr>
+      <tr><td><b>Financeiro</b></td><td><span class="dot d-a"></span>Só leitura</td><td><span class="dot d-g"></span>Planos, contratos, baixa, cancelar (c/ confirm)</td></tr>
+      <tr><td><b>Formulários / Avaliações</b></td><td><span class="dot d-a"></span>Só leitura</td><td><span class="dot d-g"></span>Enviar, recorrência, avaliação completa</td></tr>
+      <tr><td><b>Leads / CRM</b></td><td><span class="dot d-r"></span>Zero</td><td><span class="dot d-g"></span>Listar, mover funil, converter em aluno</td></tr>
+      <tr><td><b>Exercícios (criar)</b></td><td><span class="dot d-r"></span>Zero</td><td><span class="dot d-g"></span>create_exercise no catálogo do treinador</td></tr>
+      <tr><td><b>Treino ao vivo · Settings</b></td><td><span class="dot d-r"></span>Zero</td><td><span class="dot d-r"></span>Zero → <b>deep-link pra GUI</b></td></tr>
+    </tbody>
+  </table>
+  <div class="legend">
+    <span><span class="dot d-g"></span>executável por chat</span>
+    <span><span class="dot d-a"></span>parcial</span>
+    <span><span class="dot d-r"></span>lacuna → deep-link</span>
+  </div>
+
+  <!-- WEB -->
+  <h2>4 · Entrada no WEB — superfícies</h2>
+  <div class="grid g2">
+    <div class="card accent">
+      <span class="tag t-build">Núcleo v1</span>
+      <h3 style="margin-top:12px">Workspace chat-first</h3>
+      <p>Rota dedicada com app-shell + sidebar vivos (navegação preservada). Preferência "Chat como tela inicial" (Premium). Uma superfície, dois modos de entrada — sem forkar o dashboard.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-idea">Alto valor / baixo custo</span>
+      <h3 style="margin-top:12px">Insights → starters acionáveis</h3>
+      <p>Os <code>assistant_insights</code> proativos (já gerados no cron) viram <b>botões que injetam um prompt com contexto</b> ("Aluno X em risco → falar com ele"). Resolve a "página em branco" e absorve a dashboard.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-idea">Reuso</span>
+      <h3 style="margin-top:12px">Command palette / ⌘K</h3>
+      <p>Já existe palette. Entrada natural pro chat: "criar avaliação para Maria" abre o chat já com a intenção. Atalho onipresente sem nova tela.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-gap">Para as lacunas</span>
+      <h3 style="margin-top:12px">Deep-link pra GUI</h3>
+      <p>Treino ao vivo, settings e fluxos sem tool → o chat <b>leva</b> o treinador pra tela certa em vez de fingir que executa. Honesto e barato; nenhuma tool nova no v1.</p>
+    </div>
+  </div>
+  <div class="callout">
+    <h4>Decisão de implementação (já investigada)</h4>
+    <p>AI SDK 4.3.19 <b>descarta as annotations</b> das tools MCP (lê só name/description/schema) e dá <code>execute</code> automático a todas. Logo: (1) a classificação read/write tem que ser <b>estática</b> em <code>tool-policy.ts</code>; (2) HITL exige <b>tirar o execute</b> das tools de confirmação e ter um endpoint <code>execute-tool</code> que reusa a ponte. Imports validados.</p>
+  </div>
+
+  <!-- MOBILE -->
+  <h2>5 · Entrada no MOBILE — o caminho mais curto</h2>
+  <p class="lead">O mobile não precisa de cérebro próprio: ele consome a <b>mesma</b> <code>/api/assistant/chat</code> que o web. A ponte e as tools vivem no servidor Next; o app só renderiza a conversa. Auth = token da sessão Supabase que o app já tem.</p>
+  <div class="grid g3">
+    <div class="card">
+      <span class="tag t-build">Reaproveita backend</span>
+      <h3 style="margin-top:12px">Tela de chat IA nativa</h3>
+      <p>Nova aba/tela RN que streama de <code>www.kinevoapp.com/api/assistant/chat</code> com o JWT do Supabase. Render nativo das mensagens + dos <b>cards de confirmação</b> (HITL) e de deep-link.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-idea">Vantagem mobile</span>
+      <h3 style="margin-top:12px">Voz → ação</h3>
+      <p>"Marca o pagamento da Maria como pago" por voz (speech-to-text nativo) → preview → confirma com Face ID. O mobile é onde o treinador está <b>na quadra/academia</b>, sem teclado.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-idea">Push como gancho</span>
+      <h3 style="margin-top:12px">Insight → push → chat</h3>
+      <p>O cron já manda push de insight. Tocar no push abre o chat já com o starter daquele aluno. Loop proativo nativo: notificação que vira ação em 2 toques.</p>
+    </div>
+  </div>
+  <div class="callout amber">
+    <h4>Cuidados do mobile</h4>
+    <p><b>Deep-link reverso:</b> quando o chat não tem tool (treino ao vivo), precisa navegar pra rota Expo certa — mapear tool-gaps → rotas <code>app/*</code>. <b>Streaming:</b> validar SSE/streaming no fetch RN (ou cair pra polling). <b>Custo:</b> voz incentiva uso pesado → o metering por créditos vale ainda mais aqui. <b>Deploy:</b> tela nova = release na App Store/Play (web é instantâneo) — começar pelo web, mobile como fast-follow.</p>
+  </div>
+
+  <!-- TRANSVERSAIS -->
+  <h2>6 · Transversais (valem pros dois)</h2>
+  <table>
+    <thead><tr><th>Tema</th><th>Decisão / estado</th></tr></thead>
+    <tbody>
+      <tr><td><b>Auth</b></td><td>In-app (web+mobile) = <b>sessão Supabase</b> (sem OAuth). O <code>trainerId</code> sai da sessão e entra na ponte. Externo segue OAuth.</td></tr>
+      <tr><td><b>HITL / escrita</b></td><td>Reusar o <b>gate <code>confirm</code></b> das tools sensíveis como card de confirmação. Tools <code>destructive</code> nunca auto-executam.</td></tr>
+      <tr><td><b>Metering</b></td><td>Rate-limit atual é <b>em memória</b> (anti-abuso, não billing). Cota real precisa de tabela (<code>ai_usage_periods</code>/<code>ai_usage_events</code> + RPC atômica). Medir por <b>créditos</b> (prescrição pesa ~10×), capturar <code>usage</code> no <code>onFinish</code>.</td></tr>
+      <tr><td><b>Planos / tier</b></td><td>Hoje acesso é <b>binário</b> (active/trialing). Precisa <code>trainers.ai_tier</code> + popular <code>subscriptions.stripe_price_id</code>. Tiers: Essencial R$79,90 · Pro IA R$129,90 · Premium IA R$199,90.</td></tr>
+      <tr><td><b>Custo / modelo</b></td><td>Chat é <b>input-dominated</b> (system prompt c/ 55 schemas re-enviado por step). <b>Prompt caching é a alavanca #1</b>. Rotear "gera programa" pra action determinística (1 call) em vez de 20 writes.</td></tr>
+      <tr><td><b>Segurança</b></td><td>Hardening anti-prompt-injection já existe no chat. Tools são isoladas por <code>trainerId</code> (admin client + ownership explícito). Não reduzir isso.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout amber">
+    <h4>⚠ Custo escala com sucesso</h4>
+    <p>Power-user via chat ≈ <b>R$180/mês de API</b> (prescrição-via-chat ~R$0,55/turno, 15-25 tool calls). O cap de créditos é <b>proteção de margem</b>, não só UX — tem que existir antes de abrir a feature.</p>
+  </div>
+
+  <!-- ROADMAP -->
+  <h2>7 · Sequência sugerida</h2>
+  <div class="card">
+    <div class="phase"><div class="pnum">F0</div><div class="pc"><h3>Fundações</h3><p>Ponte in-memory + <code>tool-policy.ts</code> (read/write/peso) + metering (tabela + RPC) + <code>trainers.ai_tier</code>. Nada visível ainda. <span class="pill" style="margin-left:6px">prompt F0 já existe na spec</span></p></div></div>
+    <div class="phase"><div class="pnum">F1</div><div class="pc"><h3>Workspace MVP (web)</h3><p>Rota de chat com as 55 tools via ponte + HITL (cards de confirmação reusando o gate <code>confirm</code>) + gate de plano. Deep-link pras lacunas.</p></div></div>
+    <div class="phase"><div class="pnum">F2</div><div class="pc"><h3>Chat-as-home + insights-starters (web)</h3><p>Preferência "chat como tela inicial" (Premium) + insights proativos viram botões de conversa. Aqui o chat "absorve" a dashboard.</p></div></div>
+    <div class="phase"><div class="pnum">F3</div><div class="pc"><h3>Mobile fast-follow</h3><p>Tela de chat IA nativa consumindo a mesma API + voz + push→chat. Mapear deep-links reversos pras rotas Expo. Release App Store/Play.</p></div></div>
+  </div>
+
+  <!-- PERGUNTAS -->
+  <h2>8 · Decisões em aberto pra discutir</h2>
+  <div class="card">
+    <div class="q"><span class="num">1</span><div><b>Web-first ou paralelo?</b> Mobile reusa 90% do backend, mas tela nova = release nas lojas. Sugiro web F1→F2, mobile como F3 — concorda?</div></div>
+    <div class="q"><span class="num">2</span><div><b>Quão "chat-first"?</b> Chat absorve a dashboard (tela inicial Premium) ou fica como painel/aba ao lado da GUI atual? A spec aponta pro primeiro, faseado.</div></div>
+    <div class="q"><span class="num">3</span><div><b>Escopo de escrita no v1.</b> Liberar todas as 55 (incl. financeiro/cancelar com confirm) ou começar só leitura + comunicação + prescrição, e abrir o resto por fase?</div></div>
+    <div class="q"><span class="num">4</span><div><b>Modelo de cobrança.</b> Créditos por plano (Essencial/Pro/Premium) com reset semanal + top-up — fechar pesos e caps antes de codar.</div></div>
+    <div class="q"><span class="num">5</span><div><b>Voz no mobile</b> entra no v1 mobile ou é um v2? Muda a expectativa de custo/uso.</div></div>
+  </div>
+
+  <div class="foot">
+    Ancorado em: <code>lib/mcp/*</code> · <code>api/assistant/chat</code> · <code>web/specs/active/chat-first-workspace/SPEC.md</code> · memórias <i>inapp_mcp_chat</i> + <i>llm_surfaces</i>.<br>
+    Documento de brainstorm — nada implementado. Próximo passo: escolher as decisões do §8 e atualizar a spec (que ainda assume 27 tools).
+  </div>
+
+</div>
+</body>
+</html>

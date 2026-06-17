@@ -10,10 +10,10 @@
  * ícones quando colapsada, e o mesmo componente de perfil (foto + popover Sair).
  */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
     LayoutGrid, BookOpen, ChevronRight, ChevronLeft, Settings, Plus,
     MessageSquarePlus, Headphones, LogOut,
@@ -46,14 +46,17 @@ interface Props {
     onSelectConversation: (id: string) => void
     onToggleClassic: () => void
     switchingClassic?: boolean
+    /** Posiciona a sidebar como `fixed` (uso na casca AppLayout, fora da home do chat). */
+    fixed?: boolean
 }
 
 export function AssistantSidebar({
     trainerName, trainerEmail, trainerAvatarUrl, students, conversations, activeConversationId, focusedStudentId,
     segment, search, onSegment, onSearch, onHome, onNewConversation, onSelectStudent,
-    onSelectConversation, onToggleClassic, switchingClassic = false,
+    onSelectConversation, onToggleClassic, switchingClassic = false, fixed = false,
 }: Props) {
     const router = useRouter()
+    const pathname = usePathname()
     const { isCollapsed, toggle } = useSidebarStore()
     const [navOpen, setNavOpen] = useState(false)
     const [bibliotecaOpen, setBibliotecaOpen] = useState(false)
@@ -61,7 +64,29 @@ export function AssistantSidebar({
     const [profileOpen, setProfileOpen] = useState(false)
     const profileRef = useRef<HTMLDivElement>(null)
 
-    const isHome = activeConversationId === null
+    // Posicionamento: `fixed` na casca AppLayout (outras abas); `relative` (flex) na home do chat.
+    const positionCls = fixed ? 'fixed inset-y-0 left-0 z-sidebar' : 'relative'
+
+    // "Home" = estamos na tela do chat sem conversa aberta. Em outras abas (uso fixed),
+    // nunca é home — quem fica ativo é a aba da rota atual.
+    const onAssistantHome = pathname?.startsWith('/assistente') ?? false
+    const isHome = onAssistantHome && activeConversationId === null
+
+    const matchPath = (p: string) => !!pathname && (pathname === p || pathname.startsWith(p + '/'))
+    const isPathActive = (item: { href: string; extraActivePrefixes?: string[] }) =>
+        matchPath(item.href) || (item.extraActivePrefixes?.some(matchPath) ?? false)
+
+    // Aba ativa pela rota (exceto Dashboard, que no Assistente é o próprio chat).
+    const activeNavItem = useMemo<{ name: string; href: string; icon: React.ElementType } | null>(() => {
+        if (onAssistantHome) return null
+        for (const n of MAIN_NAV) if (n.href !== '/dashboard' && isPathActive(n)) return n
+        for (const n of BIBLIOTECA_NAV) if (isPathActive(n)) return n
+        if (matchPath('/settings')) return { name: 'Configurações', href: '/settings', icon: Settings }
+        return null
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pathname, onAssistantHome])
+    const ActiveIcon = activeNavItem?.icon
+
     const initials = (trainerName ?? 'T').split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
 
     useEffect(() => {
@@ -135,7 +160,7 @@ export function AssistantSidebar({
                 : <button onClick={onClick} className={cls}>{content}{tip}</button>
         }
         return (
-            <aside className="relative flex w-[68px] min-w-[68px] flex-col items-center bg-white py-[18px] shadow-[1px_0_0_rgba(0,0,0,0.06)]">
+            <aside className={`${positionCls} flex w-[68px] min-w-[68px] flex-col items-center bg-white py-[18px] shadow-[1px_0_0_rgba(0,0,0,0.06)]`}>
                 {edgeToggle}
                 <Image src="/logo-icon.png" alt="Kinevo" width={34} height={34} className="mb-4 shrink-0 rounded-lg" />
                 <button onClick={onNewConversation} title="Nova conversa"
@@ -148,10 +173,10 @@ export function AssistantSidebar({
                         const icon = <Icon size={18} strokeWidth={1.5} />
                         return n.href === '/dashboard'
                             ? <div key={n.href}>{iconRow(isHome, icon, n.name, onHome)}</div>
-                            : <div key={n.href}>{iconRow(false, icon, n.name, undefined, n.href)}</div>
+                            : <div key={n.href}>{iconRow(isPathActive(n), icon, n.name, undefined, n.href)}</div>
                     })}
-                    {iconRow(false, <BookOpen size={18} strokeWidth={1.5} />, 'Bibliotecas', undefined, BIBLIOTECA_NAV[0]?.href ?? '/programs')}
-                    {iconRow(false, <Settings size={18} strokeWidth={1.5} />, 'Configurações', undefined, '/settings')}
+                    {iconRow(BIBLIOTECA_NAV.some(isPathActive), <BookOpen size={18} strokeWidth={1.5} />, 'Bibliotecas', undefined, BIBLIOTECA_NAV[0]?.href ?? '/programs')}
+                    {iconRow(matchPath('/settings'), <Settings size={18} strokeWidth={1.5} />, 'Configurações', undefined, '/settings')}
                 </nav>
                 <div className="mt-2">{profile}</div>
                 <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
@@ -161,7 +186,7 @@ export function AssistantSidebar({
 
     // ── Expandida: conversa-first ──
     return (
-        <aside className="relative flex w-64 min-w-64 flex-col bg-white shadow-[1px_0_0_rgba(0,0,0,0.06)]">
+        <aside className={`${positionCls} flex w-64 min-w-64 flex-col bg-white shadow-[1px_0_0_rgba(0,0,0,0.06)]`}>
             {edgeToggle}
 
             {/* Marca */}
@@ -178,18 +203,32 @@ export function AssistantSidebar({
                 onAssistant={() => { /* já estamos no Assistente */ }}
             />
 
-            {/* Ação primária: Nova conversa */}
+            {/* Ação primária: Nova conversa — linha estilo "Ir para…" com leve destaque violeta. */}
             <button onClick={onNewConversation}
-                className="mx-4 mb-2 flex items-center justify-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] py-[11px] text-[13.5px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(124,58,237,0.65)] transition hover:brightness-[1.06]">
-                <Plus className="h-[15px] w-[15px]" strokeWidth={2.4} /> Nova conversa
+                className="group mx-4 mb-1 flex items-center gap-3 rounded-lg bg-[#7C3AED]/[0.06] px-3 py-2 text-sm font-semibold text-[#7C3AED] transition hover:bg-[#7C3AED]/[0.12]">
+                <Plus className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
+                <span className="flex-1 text-left">Nova conversa</span>
             </button>
 
-            {/* "Ir para…" — navegação recolhida, em linhas estilo Clássico. */}
+            {/* "Ir para…" — recolhida. Em outras abas, o gatilho mostra a aba ATIVA. */}
             <div className="px-4 pb-1">
-                <button onClick={() => setNavOpen((o) => !o)} className={`w-full ${navLinkClass}`}>
-                    <LayoutGrid className={navIconClass} strokeWidth={1.5} />
-                    <span className="flex-1 text-left">Ir para…</span>
-                    <ChevronRight className={`h-3.5 w-3.5 text-[#AEAEB2] transition-transform ${navOpen ? 'rotate-90' : ''}`} strokeWidth={2} />
+                <button onClick={() => setNavOpen((o) => !o)}
+                    className={`w-full ${activeNavItem && ActiveIcon
+                        ? 'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold tracking-tight text-[#7C3AED] transition hover:bg-[#7C3AED]/[0.06]'
+                        : navLinkClass}`}>
+                    {activeNavItem && ActiveIcon ? (
+                        <>
+                            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#7C3AED]" />
+                            <ActiveIcon className="h-[18px] w-[18px] shrink-0 text-[#7C3AED]" strokeWidth={1.5} />
+                            <span className="flex-1 text-left">{activeNavItem.name}</span>
+                        </>
+                    ) : (
+                        <>
+                            <LayoutGrid className={navIconClass} strokeWidth={1.5} />
+                            <span className="flex-1 text-left">Ir para…</span>
+                        </>
+                    )}
+                    <ChevronRight className={`h-3.5 w-3.5 transition-transform ${activeNavItem ? 'text-[#7C3AED]/70' : 'text-[#AEAEB2]'} ${navOpen ? 'rotate-90' : ''}`} strokeWidth={2} />
                 </button>
                 {navOpen && (
                     <nav className="mt-0.5 space-y-0.5">
@@ -207,9 +246,14 @@ export function AssistantSidebar({
                                     </button>
                                 )
                             }
+                            const act = isPathActive(n)
                             return (
-                                <Link key={n.href} href={n.href} className={navLinkClass}>
-                                    <Icon className={navIconClass} strokeWidth={1.5} />
+                                <Link key={n.href} href={n.href}
+                                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
+                                        ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED]'
+                                        : 'font-medium text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]'}`}>
+                                    {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#7C3AED]" />}
+                                    <Icon className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-[#7C3AED]' : 'text-[#AEAEB2] group-hover:text-[#6E6E73]'}`} strokeWidth={1.5} />
                                     <span className="flex-1">{n.name}</span>
                                 </Link>
                             )
@@ -224,9 +268,13 @@ export function AssistantSidebar({
                             <div className="space-y-0.5 pl-3">
                                 {BIBLIOTECA_NAV.map((n) => {
                                     const Icon = n.icon
+                                    const act = isPathActive(n)
                                     return (
-                                        <Link key={n.href} href={n.href} className={navLinkClass}>
-                                            <Icon className={navIconClass} strokeWidth={1.5} />
+                                        <Link key={n.href} href={n.href}
+                                            className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
+                                                ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED]'
+                                                : 'font-medium text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]'}`}>
+                                            <Icon className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-[#7C3AED]' : 'text-[#AEAEB2] group-hover:text-[#6E6E73]'}`} strokeWidth={1.5} />
                                             <span className="flex-1">{n.name}</span>
                                         </Link>
                                     )
@@ -234,10 +282,19 @@ export function AssistantSidebar({
                             </div>
                         )}
 
-                        <Link href="/settings" className={navLinkClass}>
-                            <Settings className={navIconClass} strokeWidth={1.5} />
-                            <span className="flex-1">Configurações</span>
-                        </Link>
+                        {(() => {
+                            const act = matchPath('/settings')
+                            return (
+                                <Link href="/settings"
+                                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
+                                        ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED]'
+                                        : 'font-medium text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]'}`}>
+                                    {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#7C3AED]" />}
+                                    <Settings className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-[#7C3AED]' : 'text-[#AEAEB2] group-hover:text-[#6E6E73]'}`} strokeWidth={1.5} />
+                                    <span className="flex-1">Configurações</span>
+                                </Link>
+                            )
+                        })()}
 
                         <div className="my-1 h-px bg-[#EDEDF0]" />
 

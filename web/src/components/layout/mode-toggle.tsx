@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * ModeToggle — pílula Clássico ⇄ Assistente, FONTE ÚNICA usada pela Sidebar
- * Clássica (components/layout/sidebar.tsx) e pela Sidebar do Assistente
- * (components/assistant/workspace/assistant-sidebar.tsx). Compartilhar o componente
- * garante que os dois fiquem pixel-idênticos (não duplicar a marcação).
+ * ModeToggle — pílula Clássico ⇄ Assistente. FONTE ÚNICA, renderizada apenas
+ * pela Sidebar global (components/layout/sidebar.tsx) — que serve os dois modos
+ * na casca única. Como a casca é a mesma, o "contorno" do toggle é idêntico nos
+ * dois modos por construção. Não duplicar a marcação em outro lugar.
  *
  * - `active`: modo atualmente ativo (sem transição).
  * - `switchingTo`: durante a navegação ótimista, qual lado já aparece ativo + spinner.

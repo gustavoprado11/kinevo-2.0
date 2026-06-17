@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kinevo · Sidebar — Opção 2: Conversa-first</title>
+<style>
+  :root{
+    --bg:#F5F5F7; --panel:#fff; --ink:#1D1D1F; --ink2:#6E6E73; --ink3:#86868B; --ink4:#AEAEB2;
+    --line:#E8E8ED; --line2:#EDEDF0; --violet:#7C3AED; --violet2:#8b5cf6; --violet-soft:rgba(124,58,237,.10);
+    --green:#16A34A; --amber:#F59E0B; --shadow:0 1px 3px rgba(0,0,0,.06);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:var(--font);background:#E9E9EE;color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;align-items:center;justify-content:center;padding:26px}
+  .frame{width:min(1320px,100%);height:min(860px,92vh);background:var(--bg);border-radius:18px;overflow:hidden;display:flex;box-shadow:0 30px 80px -30px rgba(20,18,40,.35),0 2px 8px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.05);position:relative}
+  .badge{position:absolute;top:18px;right:18px;background:#1D1D1F;color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em;padding:6px 11px;border-radius:999px;z-index:9;opacity:.92}
+
+  /* ---------- ASSISTANT COLUMN ---------- */
+  .acol{width:312px;min-width:312px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column}
+  .brand{display:flex;align-items:center;gap:11px;padding:18px 18px 12px}
+  .brandmark{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,#7C3AED,#5B21B6);display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px -6px rgba(124,58,237,.6)}
+  .brand b{font-size:18px;letter-spacing:-.01em}
+  .pad{padding:0 16px}
+  .toggle{display:flex;gap:3px;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .toggle button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:0;background:transparent;font-family:var(--font);font-size:12px;font-weight:600;color:var(--ink2);padding:7px;border-radius:8px;cursor:pointer;transition:.18s}
+  .toggle button.on{background:#fff;color:var(--violet);box-shadow:var(--shadow)}
+  .newchat{margin:10px 0 4px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:12px;background:linear-gradient(135deg,#7C3AED,#8b5cf6);color:#fff;font-family:var(--font);font-weight:600;font-size:13.5px;cursor:pointer;box-shadow:0 8px 20px -8px rgba(124,58,237,.65);transition:.18s}
+  .newchat:hover{filter:brightness(1.06);transform:translateY(-1px)}
+
+  /* disclosure nav */
+  .goto{margin:10px 16px 4px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+  .goto>summary{list-style:none;display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;font-size:13px;font-weight:600;color:var(--ink2);user-select:none}
+  .goto>summary::-webkit-details-marker{display:none}
+  .goto .chev{margin-left:auto;color:var(--ink4);transition:.2s}
+  .goto[open] .chev{transform:rotate(90deg)}
+  .goto[open]>summary{color:var(--ink);border-bottom:1px solid var(--line2)}
+  .navgrid{padding:6px}
+  .nav{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:9px;color:var(--ink2);font-size:13.5px;font-weight:500;cursor:pointer;transition:.14s}
+  .nav:hover{background:var(--bg);color:var(--ink)}
+  .nav svg{color:var(--ink4)}
+  .nav.active{color:var(--violet);font-weight:600}
+  .nav.active svg{color:var(--violet)}
+
+  .sectionhead{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px}
+  .sectionhead .t{font-size:10px;font-weight:700;letter-spacing:.09em;color:var(--ink4)}
+  .sectionhead .add{display:flex;align-items:center;gap:5px;color:var(--violet);font-size:11.5px;font-weight:600;cursor:pointer}
+  .seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px;margin:0 16px}
+  .seg button{flex:1;border:0;background:transparent;font-family:var(--font);font-size:12px;font-weight:600;color:var(--ink3);padding:7px;border-radius:8px;cursor:pointer;transition:.18s}
+  .seg button.on{background:#fff;color:var(--violet);box-shadow:var(--shadow)}
+  .seg .count{color:var(--ink4)}
+  .search{margin:10px 16px 4px;display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .search input{border:0;background:transparent;outline:0;font-family:var(--font);font-size:12.5px;width:100%}
+  .search input::placeholder{color:var(--ink4)}
+  .list{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 10px 8px}
+  .list::-webkit-scrollbar{width:8px}.list::-webkit-scrollbar-thumb{background:#E3E3E8;border-radius:8px;border:2px solid #fff}
+  .row{display:flex;align-items:center;gap:11px;padding:9px;border-radius:11px;cursor:pointer;transition:.14s}
+  .row:hover{background:var(--bg)}.row.active{background:var(--violet-soft)}
+  .ava{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-weight:700;font-size:11px;flex-shrink:0}
+  .row .body{min-width:0;flex:1}
+  .row .name{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .sub{display:block;font-size:11.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}.dot.g{background:var(--green)}.dot.a{background:var(--amber)}
+  .profile{display:flex;align-items:center;gap:11px;border-top:1px solid var(--line);padding:11px 16px}
+  .profile .pa{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#7C3AED,#A78BFA);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px}
+  .profile .name{font-size:13px;font-weight:600}.profile .sub{font-size:11px;color:var(--ink3)}
+  .profile .more{margin-left:auto;color:var(--ink4)}
+
+  /* chat */
+  .chat{flex:1;display:flex;flex-direction:column;align-items:center;padding:64px 40px;position:relative;overflow:hidden}
+  .chat .halo{position:absolute;top:30px;left:50%;transform:translateX(-50%);width:520px;height:240px;background:radial-gradient(closest-side,rgba(124,58,237,.10),transparent);filter:blur(10px)}
+  .spark{width:58px;height:58px;border-radius:17px;background:var(--violet-soft);display:grid;place-items:center;color:var(--violet);z-index:1}
+  .hi{margin-top:14px;color:var(--ink3);font-size:14px;z-index:1}
+  .h1{margin-top:4px;font-size:38px;font-weight:800;letter-spacing:-.02em;z-index:1}
+  .composer{margin-top:26px;width:min(640px,100%);background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px 18px 14px;box-shadow:0 18px 40px -28px rgba(20,18,40,.4);z-index:1}
+  .composer .ph{color:var(--ink4);font-size:15px}
+  .composer .bar{display:flex;align-items:center;justify-content:space-between;margin-top:34px}
+  .iconbtn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;color:var(--ink2)}
+  .send{display:flex;align-items:center;gap:7px;background:#C9B8F3;color:#fff;border:0;border-radius:12px;padding:10px 16px;font-weight:700;font-size:13px;font-family:var(--font)}
+  .chips{margin-top:16px;display:flex;gap:10px;z-index:1}
+  .chip{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 13px;font-size:12.5px;color:var(--ink2);font-weight:500}
+  .chip.dash{border-style:dashed;color:var(--ink3)}
+  @keyframes fin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .acol>*{animation:fin .5s both}.brand{animation-delay:.02s}.goto{animation-delay:.1s}.list{animation-delay:.16s}
+  .chat .spark{animation:fin .6s both .1s}.chat .hi{animation:fin .6s both .16s}.chat .h1{animation:fin .6s both .22s}.chat .composer{animation:fin .6s both .3s}.chat .chips{animation:fin .6s both .38s}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="badge">OPÇÃO 2 · Conversa-first</div>
+  <section class="acol">
+    <div class="brand"><span class="brandmark"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M7 4v16M7 12l8-8M7 12l8 8" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>Kinevo</b></div>
+    <div class="pad">
+      <div class="toggle">
+        <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/></svg>Clássico</button>
+        <button class="on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3z" fill="currentColor"/><circle cx="18.5" cy="5.5" r="1.4" fill="currentColor"/></svg>Assistente</button>
+      </div>
+      <button class="newchat"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>Nova conversa</button>
+    </div>
+
+    <details class="goto">
+      <summary>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/></svg>
+        Ir para…
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </summary>
+      <div class="navgrid">
+        <a class="nav active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/></svg>Dashboard</a>
+        <a class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 18c.6-2.6 3-4 5.5-4s4.9 1.4 5.5 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Alunos</a>
+        <a class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M3 11l14-6v13l-14-3v-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Marketing</a>
+        <a class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Agenda</a>
+        <a class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h8l4 4V20a1 1 0 01-1 1H6a1 1 0 01-1-1V4.5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M13.5 3.5V8h4" stroke="currentColor" stroke-width="1.7"/></svg>Formulários e Avaliações</a>
+        <a class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.7"/></svg>Financeiro</a>
+        <a class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 5.5A1.5 1.5 0 016.5 4H12v15H6.5A1.5 1.5 0 015 17.5v-12z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 4h5.5A1.5 1.5 0 0119 5.5v12a1.5 1.5 0 01-1.5 1.5H12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Bibliotecas</a>
+        <a class="nav"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v2.5M12 18.5V21M21 12h-2.5M5.5 12H3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Configurações</a>
+      </div>
+    </details>
+
+    <div class="sectionhead"><span class="t">CONVERSAS & ALUNOS</span></div>
+    <div class="seg">
+      <button class="on">Alunos <span class="count">4</span></button>
+      <button>Conversas <span class="count">2</span></button>
+    </div>
+    <div class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="#AEAEB2" stroke-width="1.8"/><path d="M20 20l-3.2-3.2" stroke="#AEAEB2" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input placeholder="Buscar aluno…">
+    </div>
+    <div class="list">
+      <div class="row"><span class="ava" style="background:#EDE9FE;color:#6D28D9">AL</span><span class="body"><span class="name">Alysson Lanza</span><span class="sub">Nota do treinador</span></span><span class="dot a"></span></div>
+      <div class="row"><span class="ava" style="background:#EFF6FF;color:#2563EB">GP</span><span class="body"><span class="name">Giovanna Prado</span><span class="sub">Em dia · 4/4 treinos</span></span><span class="dot g"></span></div>
+      <div class="row active"><span class="ava" style="background:#ECFDF5;color:#15803D">GP</span><span class="body"><span class="name">Gustavo Prado</span><span class="sub">Supino com Barra estagnado</span></span><span class="dot a"></span></div>
+      <div class="row"><span class="ava" style="background:#FEF2F2;color:#BE123C">ML</span><span class="body"><span class="name">Marina Lanza</span><span class="sub">Pronto para evoluir · 6 exercícios</span></span><span class="dot a"></span></div>
+      <div class="row"><span class="ava" style="background:#EEF2FF;color:#4338CA">RC</span><span class="body"><span class="name">Rafael Costa</span><span class="sub">Sem treinar há 9 dias</span></span><span class="dot a"></span></div>
+      <div class="row"><span class="ava" style="background:#FFFBEB;color:#B45309">TS</span><span class="body"><span class="name">Tatiana Souza</span><span class="sub">Em dia · 3/3 treinos</span></span><span class="dot g"></span></div>
+    </div>
+    <div class="profile"><span class="pa">GP</span><span><span class="name">Gustavo Prado</span><br><span class="sub">Personal trainer</span></span><svg class="more" width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg></div>
+  </section>
+
+  <main class="chat">
+    <div class="halo"></div>
+    <div class="spark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3z" fill="currentColor"/><circle cx="18.5" cy="5.5" r="1.5" fill="currentColor"/></svg></div>
+    <div class="hi">Boa noite, Gustavo.</div>
+    <div class="h1">O que vamos resolver hoje?</div>
+    <div class="composer">
+      <div class="ph">Diga o que fazer no Kinevo — ou escolha um aluno…</div>
+      <div class="bar"><div class="iconbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><button class="send"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 12l16-7-7 16-2.5-6.5L4 12z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>Agir</button></div>
+    </div>
+    <div class="chips"><span class="chip">Aluno em foco</span><span class="chip dash">Geral · visão geral dos alunos</span></div>
+  </main>
+</div>
+</body>
+</html>

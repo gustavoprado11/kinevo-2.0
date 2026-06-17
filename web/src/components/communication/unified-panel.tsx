@@ -8,7 +8,14 @@ import { useCommunicationStore } from '@/stores/communication-store'
 import { AssistantPanelContent } from './assistant-panel-content'
 import { MessagesPanelContent } from './messages-panel-content'
 
-export function UnifiedCommunicationPanel() {
+interface Props {
+    /** Modo Assistente: painel ancorado (reserva espaço, sem backdrop, persistente). */
+    docked?: boolean
+    /** Fechar no modo docked memoriza a dispensa pela sessão (AppLayout). */
+    onDockDismiss?: () => void
+}
+
+export function UnifiedCommunicationPanel({ docked = false, onDockDismiss }: Props) {
     const {
         isOpen,
         activeTab,
@@ -18,6 +25,10 @@ export function UnifiedCommunicationPanel() {
         openChat,
         openConversation,
     } = useCommunicationStore()
+
+    // No modo docked, fechar passa pelo AppLayout (lembra a dispensa). No overlay
+    // clássico, fecha direto.
+    const close = docked && onDockDismiss ? onDockDismiss : closePanel
 
     const searchParams = useSearchParams()
 
@@ -40,24 +51,27 @@ export function UnifiedCommunicationPanel() {
     useEffect(() => {
         if (!isOpen) return
         const handleKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') closePanel()
+            if (e.key === 'Escape') close()
         }
         window.addEventListener('keydown', handleKey)
         return () => window.removeEventListener('keydown', handleKey)
-    }, [isOpen, closePanel])
+    }, [isOpen, close])
 
     return (
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-dropdown bg-black/20 backdrop-blur-sm"
-                        onClick={closePanel}
-                    />
+                    {/* Backdrop — só no overlay clássico. No modo docked o painel
+                        coexiste com a página (clicar na sidebar/navegar mantém o chat). */}
+                    {!docked && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-dropdown bg-black/20 backdrop-blur-sm"
+                            onClick={closePanel}
+                        />
+                    )}
 
                     {/* Panel */}
                     <motion.aside
@@ -65,7 +79,7 @@ export function UnifiedCommunicationPanel() {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed right-0 top-0 z-modal flex h-full w-full max-w-[450px] flex-col border-l border-border bg-background shadow-2xl"
+                        className={`fixed right-0 top-0 z-modal flex h-full w-full flex-col border-l border-border bg-background shadow-2xl ${docked ? 'max-w-[420px]' : 'max-w-[450px]'}`}
                     >
                         {/* Header with tabs */}
                         <header className="flex items-center border-b border-border">
@@ -104,7 +118,7 @@ export function UnifiedCommunicationPanel() {
                                 )}
                             </button>
                             <button
-                                onClick={closePanel}
+                                onClick={close}
                                 className="p-2 mr-2 rounded-lg hover:bg-muted transition-colors flex-shrink-0"
                             >
                                 <X className="w-4 h-4 text-muted-foreground" />

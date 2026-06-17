@@ -6,7 +6,9 @@ import type { ComponentType, ReactNode } from 'react'
 
 const LOGGED_AREA_PREFIXES = ['/dashboard', '/students', '/programs', '/exercises', '/schedule', '/settings', '/forms', '/avaliacoes', '/financial', '/training-room', '/marketing', '/leads', '/landing']
 const FORCE_LIGHT_ROUTES = ['/', '/login', '/signup']
-const FORCE_LIGHT_PREFIXES = ['/auth']
+// /assistente tem casca própria "light-only" (coluna única conversa-first):
+// forçamos claro para a casca e o miolo do chat ficarem sempre consistentes.
+const FORCE_LIGHT_PREFIXES = ['/auth', '/assistente']
 const FORCE_DARK_ROUTES = ['/terms', '/privacy', '/subscription']
 
 function getThemeForRoute(pathname: string): 'light' | 'dark' | undefined {

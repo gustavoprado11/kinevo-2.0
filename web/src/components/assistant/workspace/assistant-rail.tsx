@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * AssistantRail — bloco de Conversas/Alunos embutido na sidebar única do Assistente
+ * AssistantRail — bloco de Conversas/Alunos da home conversacional do Assistente
  * (segmento Alunos/Conversas + busca + lista). Content-only: NÃO tem casca/largura
- * própria — quem dá largura/borda é o AssistantSidebar. Apresentacional: dados e
- * callbacks vêm do AssistantWorkspace.
+ * própria — quem dá largura/borda é a coluna da home no AssistantWorkspace.
+ * Apresentacional: dados e callbacks vêm do AssistantWorkspace.
  */
 
 import Image from 'next/image'
@@ -77,24 +77,24 @@ export function AssistantRail({
         <div className="flex min-h-0 flex-1 flex-col">
             {/* Segmento Alunos / Conversas */}
             <div className="px-4 pb-2 pt-1.5">
-                <div className="flex rounded-[10px] bg-[#F5F5F7] p-[3px]">
+                <div className="flex rounded-[10px] bg-[#F5F5F7] dark:bg-glass-bg p-[3px]">
                     <button onClick={() => onSegment('alunos')}
-                        className={`flex-1 rounded-[8px] py-1.5 text-[12px] font-semibold transition ${segment === 'alunos' ? 'bg-white text-[#7C3AED] shadow-[0_1px_3px_rgba(0,0,0,0.06)]' : 'text-[#86868B]'}`}>
-                        Alunos <span className="font-medium text-[#AEAEB2]">{students.length}</span>
+                        className={`flex-1 rounded-[8px] py-1.5 text-[12px] font-semibold transition ${segment === 'alunos' ? 'bg-white dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]' : 'text-[#86868B] dark:text-muted-foreground'}`}>
+                        Alunos <span className="font-medium text-[#AEAEB2] dark:text-muted-foreground/60">{students.length}</span>
                     </button>
                     <button onClick={() => onSegment('conversas')}
-                        className={`flex-1 rounded-[8px] py-1.5 text-[12px] font-semibold transition ${segment === 'conversas' ? 'bg-white text-[#7C3AED] shadow-[0_1px_3px_rgba(0,0,0,0.06)]' : 'text-[#86868B]'}`}>
-                        Conversas <span className="font-medium text-[#AEAEB2]">{conversations.length}</span>
+                        className={`flex-1 rounded-[8px] py-1.5 text-[12px] font-semibold transition ${segment === 'conversas' ? 'bg-white dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]' : 'text-[#86868B] dark:text-muted-foreground'}`}>
+                        Conversas <span className="font-medium text-[#AEAEB2] dark:text-muted-foreground/60">{conversations.length}</span>
                     </button>
                 </div>
             </div>
 
             {/* Busca */}
-            <div className="mx-4 mb-1.5 flex items-center gap-2 rounded-[9px] bg-[#F5F5F7] px-2.5 py-2">
-                <Search className="h-3.5 w-3.5 text-[#AEAEB2]" strokeWidth={1.8} />
+            <div className="mx-4 mb-1.5 flex items-center gap-2 rounded-[9px] bg-[#F5F5F7] dark:bg-glass-bg px-2.5 py-2">
+                <Search className="h-3.5 w-3.5 text-[#AEAEB2] dark:text-muted-foreground/60" strokeWidth={1.8} />
                 <input value={search} onChange={(e) => onSearch(e.target.value)}
                     placeholder={segment === 'alunos' ? 'Buscar aluno…' : 'Buscar conversa…'}
-                    className="w-full bg-transparent text-[12.5px] outline-none placeholder:text-[#AEAEB2]" />
+                    className="w-full bg-transparent text-[12.5px] text-[#1D1D1F] dark:text-foreground outline-none placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60" />
             </div>
 
             {/* Lista */}
@@ -105,29 +105,29 @@ export function AssistantRail({
                             const on = s.id === focusedStudentId
                             return (
                                 <button key={s.id} onClick={() => onSelectStudent(s.id)}
-                                    className={`flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)]' : 'hover:bg-[#F5F5F7]'}`}>
+                                    className={`flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)] dark:bg-glass-bg-active' : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'}`}>
                                     <Avatar name={s.name} url={s.avatarUrl} />
                                     <span className="min-w-0 flex-1">
-                                        <b className="block truncate text-[13px] font-semibold text-[#1D1D1F]">{s.name}</b>
-                                        {s.subtitle && <span className="block truncate text-[11px] text-[#86868B]">{s.subtitle}</span>}
+                                        <b className="block truncate text-[13px] font-semibold text-[#1D1D1F] dark:text-foreground">{s.name}</b>
+                                        {s.subtitle && <span className="block truncate text-[11px] text-[#86868B] dark:text-muted-foreground">{s.subtitle}</span>}
                                     </span>
                                     <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${DOT[s.dot]}`} />
                                 </button>
                             )
                         })}
-                        {filteredStudents.length === 0 && <p className="px-3 py-6 text-center text-[12px] text-[#AEAEB2]">Nenhum aluno.</p>}
+                        {filteredStudents.length === 0 && <p className="px-3 py-6 text-center text-[12px] text-[#AEAEB2] dark:text-muted-foreground/60">Nenhum aluno.</p>}
                     </>
                 ) : (
                     <>
                         {groupedConvs.map((g) => (
                             <div key={g.label}>
-                                <div className="px-2 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#AEAEB2]">{g.label}</div>
+                                <div className="px-2 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#AEAEB2] dark:text-muted-foreground/60">{g.label}</div>
                                 {g.items.map((c) => {
                                     const isGeneral = !c.student_id
                                     const on = c.id === activeConversationId
                                     return (
                                         <button key={c.id} onClick={() => onSelectConversation(c.id)}
-                                            className={`mb-0.5 flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)]' : 'hover:bg-[#F5F5F7]'}`}>
+                                            className={`mb-0.5 flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)] dark:bg-glass-bg-active' : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'}`}>
                                             {isGeneral ? (
                                                 <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
                                                     <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2} />
@@ -137,17 +137,17 @@ export function AssistantRail({
                                             )}
                                             <span className="min-w-0 flex-1">
                                                 <span className="flex items-center gap-1.5">
-                                                    <b className="truncate text-[13px] font-semibold text-[#1D1D1F]">{c.studentName ?? (isGeneral ? 'Geral' : c.title)}</b>
-                                                    <span className="ml-auto shrink-0 text-[10px] text-[#AEAEB2]">{timeShort(c.last_message_at)}</span>
+                                                    <b className="truncate text-[13px] font-semibold text-[#1D1D1F] dark:text-foreground">{c.studentName ?? (isGeneral ? 'Geral' : c.title)}</b>
+                                                    <span className="ml-auto shrink-0 text-[10px] text-[#AEAEB2] dark:text-muted-foreground/60">{timeShort(c.last_message_at)}</span>
                                                 </span>
-                                                <span className="block truncate text-[11px] text-[#86868B]">{c.title}</span>
+                                                <span className="block truncate text-[11px] text-[#86868B] dark:text-muted-foreground">{c.title}</span>
                                             </span>
                                         </button>
                                     )
                                 })}
                             </div>
                         ))}
-                        {filteredConvs.length === 0 && <p className="px-3 py-6 text-center text-[12px] text-[#AEAEB2]">Nenhuma conversa ainda.</p>}
+                        {filteredConvs.length === 0 && <p className="px-3 py-6 text-center text-[12px] text-[#AEAEB2] dark:text-muted-foreground/60">Nenhuma conversa ainda.</p>}
                     </>
                 )}
             </div>

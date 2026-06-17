@@ -83,7 +83,7 @@ export function CreditMeter({ summary, compact = false, pill = false }: CreditMe
     if (pill) {
         return (
             <div
-                className="flex items-center gap-[11px] rounded-[12px] border border-[#E8E8ED] bg-white px-[14px] py-2 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+                className="flex items-center gap-[11px] rounded-[12px] border border-[#EDEDF0] bg-white px-[14px] py-2 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
                 aria-label={`${creditsUsed} de ${creditsTotal} ${unitLabel} usados`}
             >
                 <Coins className="h-4 w-4 shrink-0 text-[#F59E0B]" strokeWidth={1.8} />

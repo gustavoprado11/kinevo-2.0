@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kinevo · Sidebar — Opção 1: Rail de ícones</title>
+<style>
+  :root{
+    --bg:#F5F5F7; --panel:#fff; --ink:#1D1D1F; --ink2:#6E6E73; --ink3:#86868B; --ink4:#AEAEB2;
+    --line:#E8E8ED; --line2:#EDEDF0; --violet:#7C3AED; --violet2:#8b5cf6; --violet-soft:rgba(124,58,237,.10);
+    --green:#16A34A; --amber:#F59E0B; --shadow:0 1px 3px rgba(0,0,0,.06);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:var(--font);background:#E9E9EE;color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;align-items:center;justify-content:center;padding:26px}
+  .frame{width:min(1320px,100%);height:min(860px,92vh);background:var(--bg);border-radius:18px;overflow:hidden;display:flex;box-shadow:0 30px 80px -30px rgba(20,18,40,.35),0 2px 8px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.05)}
+
+  /* ---------- ICON RAIL ---------- */
+  .rail{width:64px;min-width:64px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:14px 0 10px}
+  .brandmark{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#7C3AED,#5B21B6);display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px -6px rgba(124,58,237,.6);margin-bottom:14px}
+  .rail .group{display:flex;flex-direction:column;gap:4px;width:100%;align-items:center}
+  .ri{position:relative;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:var(--ink4);cursor:pointer;transition:.18s ease}
+  .ri:hover{background:var(--bg);color:var(--ink2)}
+  .ri.active{color:var(--violet);background:var(--violet-soft)}
+  .ri.active::before{content:"";position:absolute;left:-11px;top:50%;transform:translateY(-50%);width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--violet)}
+  .ri .tip{position:absolute;left:52px;top:50%;transform:translateY(-50%) translateX(-4px);background:#1D1D1F;color:#fff;font-size:12px;font-weight:600;padding:5px 9px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:.16s ease;z-index:5;box-shadow:0 8px 20px -8px rgba(0,0,0,.4)}
+  .ri .tip::before{content:"";position:absolute;left:-4px;top:50%;transform:translateY(-50%) rotate(45deg);width:8px;height:8px;background:#1D1D1F}
+  .ri:hover .tip{opacity:1;transform:translateY(-50%) translateX(0)}
+  .rail .spacer{flex:1}
+  .rail .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#7C3AED,#A78BFA);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;margin-top:6px;cursor:pointer}
+
+  /* ---------- ASSISTANT COLUMN ---------- */
+  .acol{width:288px;min-width:288px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column}
+  .acol .top{padding:16px 16px 8px}
+  .toggle{display:flex;gap:3px;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .toggle button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:0;background:transparent;font-family:var(--font);font-size:12px;font-weight:600;color:var(--ink2);padding:7px;border-radius:8px;cursor:pointer;transition:.18s}
+  .toggle button.on{background:#fff;color:var(--violet);box-shadow:var(--shadow)}
+  .newchat{margin:10px 0 2px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:11px;background:linear-gradient(135deg,#7C3AED,#8b5cf6);color:#fff;font-family:var(--font);font-weight:600;font-size:13.5px;cursor:pointer;box-shadow:0 8px 20px -8px rgba(124,58,237,.65);transition:.18s}
+  .newchat:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  .seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px;margin:12px 16px 0}
+  .seg button{flex:1;border:0;background:transparent;font-family:var(--font);font-size:12px;font-weight:600;color:var(--ink3);padding:7px;border-radius:8px;cursor:pointer;transition:.18s}
+  .seg button.on{background:#fff;color:var(--violet);box-shadow:var(--shadow)}
+  .seg .count{color:var(--ink4);font-weight:600}
+  .search{margin:10px 16px 6px;display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .search input{border:0;background:transparent;outline:0;font-family:var(--font);font-size:12.5px;color:var(--ink);width:100%}
+  .search input::placeholder{color:var(--ink4)}
+  .list{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 10px 12px}
+  .list::-webkit-scrollbar{width:8px}.list::-webkit-scrollbar-thumb{background:#E3E3E8;border-radius:8px;border:2px solid #fff}
+  .lbl{font-size:10px;font-weight:700;letter-spacing:.09em;color:var(--ink4);padding:12px 8px 5px}
+  .row{display:flex;align-items:center;gap:11px;padding:9px 9px;border-radius:11px;cursor:pointer;transition:.14s}
+  .row:hover{background:var(--bg)}
+  .row.active{background:var(--violet-soft)}
+  .ava{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-weight:700;font-size:11px;flex-shrink:0}
+  .row .body{min-width:0;flex:1}
+  .row .name{display:block;font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .sub{display:block;font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .dot.g{background:var(--green)}.dot.a{background:var(--amber)}
+
+  /* ---------- CHAT ---------- */
+  .chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:64px 40px;overflow:hidden;position:relative}
+  .chat .halo{position:absolute;top:30px;left:50%;transform:translateX(-50%);width:520px;height:240px;background:radial-gradient(closest-side,rgba(124,58,237,.10),transparent);filter:blur(10px)}
+  .spark{width:58px;height:58px;border-radius:17px;background:var(--violet-soft);display:grid;place-items:center;color:var(--violet);position:relative;z-index:1}
+  .hi{margin-top:14px;color:var(--ink3);font-size:14px;position:relative;z-index:1}
+  .h1{margin-top:4px;font-size:38px;font-weight:800;letter-spacing:-.02em;position:relative;z-index:1}
+  .composer{margin-top:26px;width:min(640px,100%);background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px 18px 14px;box-shadow:0 18px 40px -28px rgba(20,18,40,.4);position:relative;z-index:1}
+  .composer .ph{color:var(--ink4);font-size:15px}
+  .composer .bar{display:flex;align-items:center;justify-content:space-between;margin-top:34px}
+  .iconbtn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;color:var(--ink2);cursor:pointer}
+  .send{display:flex;align-items:center;gap:7px;background:#C9B8F3;color:#fff;border:0;border-radius:12px;padding:10px 16px;font-family:var(--font);font-weight:700;font-size:13px}
+  .chips{margin-top:16px;display:flex;gap:10px;position:relative;z-index:1}
+  .chip{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 13px;font-size:12.5px;color:var(--ink2);font-weight:500}
+  .chip.dash{border-style:dashed;color:var(--ink3)}
+
+  /* load anim */
+  @keyframes fin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .acol>*{animation:fin .5s both}.acol .top{animation-delay:.02s}.acol .seg{animation-delay:.06s}.acol .search{animation-delay:.1s}.acol .list{animation-delay:.14s}
+  .chat .spark{animation:fin .6s both .1s}.chat .hi{animation:fin .6s both .16s}.chat .h1{animation:fin .6s both .22s}.chat .composer{animation:fin .6s both .3s}.chat .chips{animation:fin .6s both .38s}
+  .badge{position:absolute;top:18px;right:18px;background:#1D1D1F;color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em;padding:6px 11px;border-radius:999px;z-index:9;opacity:.92}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="badge">OPÇÃO 1 · Rail de ícones</div>
+
+  <!-- icon rail -->
+  <nav class="rail">
+    <div class="brandmark">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 4v16M7 12l8-8M7 12l8 8" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="group">
+      <div class="ri active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/></svg><span class="tip">Dashboard</span></div>
+      <div class="ri"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19c.6-3 3-4.5 5.5-4.5s4.9 1.5 5.5 4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.2a3 3 0 010 5.6M18 19c-.3-2-1.2-3.4-2.6-4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="tip">Alunos</span></div>
+      <div class="ri"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 11l14-6v13l-14-3v-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 12v4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="tip">Marketing</span></div>
+      <div class="ri"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="tip">Agenda</span></div>
+      <div class="ri"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 3.5h8l4 4V20a1 1 0 01-1 1H6a1 1 0 01-1-1V4.5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M13.5 3.5V8h4M8.5 13h7M8.5 16.5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="tip">Formulários</span></div>
+      <div class="ri"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.7"/><circle cx="16.5" cy="14.5" r="1.2" fill="currentColor"/></svg><span class="tip">Financeiro</span></div>
+      <div class="ri"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 5.5A1.5 1.5 0 016.5 4H12v15H6.5A1.5 1.5 0 015 17.5v-12z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 4h5.5A1.5 1.5 0 0119 5.5v12a1.5 1.5 0 01-1.5 1.5H12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span class="tip">Bibliotecas</span></div>
+      <div class="ri"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v2.5M12 18.5V21M21 12h-2.5M5.5 12H3M18 6l-1.7 1.7M7.7 16.3 6 18M18 18l-1.7-1.7M7.7 7.7 6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="tip">Configurações</span></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="avatar">GP</div>
+  </nav>
+
+  <!-- assistant column -->
+  <section class="acol">
+    <div class="top">
+      <div class="toggle">
+        <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/></svg>Clássico</button>
+        <button class="on"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3z" fill="currentColor"/><circle cx="18.5" cy="5.5" r="1.4" fill="currentColor"/></svg>Assistente</button>
+      </div>
+      <button class="newchat"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>Nova conversa</button>
+    </div>
+    <div class="seg">
+      <button class="on">Alunos <span class="count">4</span></button>
+      <button>Conversas <span class="count">2</span></button>
+    </div>
+    <div class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="#AEAEB2" stroke-width="1.8"/><path d="M20 20l-3.2-3.2" stroke="#AEAEB2" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input placeholder="Buscar aluno…">
+    </div>
+    <div class="list">
+      <div class="row"><span class="ava" style="background:#EDE9FE;color:#6D28D9">AL</span><span class="body"><span class="name">Alysson Lanza</span><span class="sub">Nota do treinador</span></span><span class="dot a"></span></div>
+      <div class="row"><span class="ava" style="background:#EFF6FF;color:#2563EB">GP</span><span class="body"><span class="name">Giovanna Prado</span><span class="sub">Em dia · 4/4 treinos</span></span><span class="dot g"></span></div>
+      <div class="row active"><span class="ava" style="background:#ECFDF5;color:#15803D">GP</span><span class="body"><span class="name">Gustavo Prado</span><span class="sub">Supino com Barra estagnado</span></span><span class="dot a"></span></div>
+      <div class="row"><span class="ava" style="background:#FEF2F2;color:#BE123C">ML</span><span class="body"><span class="name">Marina Lanza</span><span class="sub">Pronto para evoluir · 6 exercícios</span></span><span class="dot a"></span></div>
+    </div>
+  </section>
+
+  <!-- chat -->
+  <main class="chat">
+    <div class="halo"></div>
+    <div class="spark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3z" fill="currentColor"/><circle cx="18.5" cy="5.5" r="1.5" fill="currentColor"/></svg></div>
+    <div class="hi">Boa noite, Gustavo.</div>
+    <div class="h1">O que vamos resolver hoje?</div>
+    <div class="composer">
+      <div class="ph">Diga o que fazer no Kinevo — ou escolha um aluno…</div>
+      <div class="bar">
+        <div class="iconbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <button class="send"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 12l16-7-7 16-2.5-6.5L4 12z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>Agir</button>
+      </div>
+    </div>
+    <div class="chips">
+      <span class="chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 18c.6-2.6 3-4 5.5-4s4.9 1.4 5.5 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Aluno em foco</span>
+      <span class="chip dash"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 12h17M12 3.5c2.5 2.2 2.5 14.8 0 17M12 3.5c-2.5 2.2-2.5 14.8 0 17" stroke="currentColor" stroke-width="1.4"/></svg>Geral · visão geral dos alunos</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>

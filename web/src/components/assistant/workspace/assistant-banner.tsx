@@ -49,10 +49,10 @@ export function bannerFromError(status: number, data: unknown): AssistantBannerD
 export function AssistantBanner({ data, onDismiss }: { data: AssistantBannerData; onDismiss?: () => void }) {
     const warning = data.tone === 'warning'
     const wrap = warning
-        ? 'border-[#F0E0BA] bg-[#FEF9ED]'
-        : 'border-[#F5C2C0] bg-[#FEF2F2]'
-    const icon = warning ? 'text-[#B45309]' : 'text-[#BE123C]'
-    const text = warning ? 'text-[#92580C]' : 'text-[#9F1239]'
+        ? 'border-[#F0E0BA] dark:border-amber-500/30 bg-[#FEF9ED] dark:bg-amber-500/10'
+        : 'border-[#F5C2C0] dark:border-rose-500/30 bg-[#FEF2F2] dark:bg-rose-500/10'
+    const icon = warning ? 'text-[#B45309] dark:text-amber-300' : 'text-[#BE123C] dark:text-rose-300'
+    const text = warning ? 'text-[#92580C] dark:text-amber-200' : 'text-[#9F1239] dark:text-rose-200'
 
     return (
         <div

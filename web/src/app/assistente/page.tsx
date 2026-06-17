@@ -1,6 +1,7 @@
 /**
- * /assistente — modo Assistente (Cowork). Shell próprio (sem AppLayout):
- * home conversacional + sidebar (toggle/nav/Alunos/Conversas). Gate Pro+.
+ * /assistente — modo Assistente (Cowork). Casca própria de COLUNA ÚNICA
+ * (sem AppLayout): a AssistantSidebar (toggle/nav recolhida/Alunos/Conversas/
+ * perfil) à esquerda e a home conversacional à direita. Gate Pro+.
  *
  * O motor MCP+HITL é o mesmo do ⌘K (lib/assistant/command-engine), aqui
  * conversacional e persistido (ai_conversations / ai_messages, migration 209).
@@ -9,7 +10,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
+import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { listConversations } from '@/lib/assistant/conversations'
 import { getAttentionInsights } from '@/lib/assistant/home-data'
@@ -23,14 +24,7 @@ export default async function AssistentePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    const { data: trainer } = await supabase
-        .from('trainers')
-        .select('id, name, avatar_url')
-        .eq('auth_user_id', user.id)
-        .single()
-    if (!trainer) redirect('/login')
-
-    const tier = await getAiTierForTrainer(supabaseAdmin, trainer.id)
+    const { trainer, tier } = await getTrainerWithSubscription(user.id)
     if (!PRO_TIERS.has(tier)) redirect('/settings')
 
     const [summary, conversations, studentsRes, attention] = await Promise.all([
@@ -54,8 +48,8 @@ export default async function AssistentePage() {
             students={students}
             attention={attention}
             trainerName={trainer.name}
-            trainerEmail={user.email ?? null}
-            trainerAvatarUrl={(trainer as { avatar_url?: string | null }).avatar_url ?? null}
+            trainerEmail={trainer.email}
+            trainerAvatarUrl={trainer.avatar_url}
         />
     )
 }

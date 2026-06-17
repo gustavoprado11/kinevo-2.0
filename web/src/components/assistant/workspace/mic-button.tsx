@@ -117,8 +117,8 @@ export function MicButton({ disabled, onTranscript, studentId }: MicButtonProps)
                 recording
                     ? 'border-[#7C3AED] bg-[#7C3AED] text-white'
                     : isError
-                      ? 'border-[#F5C2C0] bg-[#FEF2F2] text-[#BE123C]'
-                      : 'border-[#E8E8ED] text-[#6E6E73] hover:bg-[#F5F5F7]'
+                      ? 'border-[#F5C2C0] dark:border-rose-500/30 bg-[#FEF2F2] dark:bg-rose-500/10 text-[#BE123C] dark:text-rose-300'
+                      : 'border-[#E8E8ED] dark:border-k-border-subtle text-[#6E6E73] dark:text-muted-foreground/80 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
             }`}
         >
             {busy ? (

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinevo IA — Copiloto de UI generativa</title>
+<style>
+  :root{--bg:#F5F5F7;--card:#fff;--fg:#1D1D1F;--muted:#6E6E73;--muted2:#8A8A8E;--border:#D2D2D7;--bsub:#E8E8ED;
+    --violet:#7C3AED;--vbg:#EDE9FE;--vsoft:#F4F1FE;--blue:#007AFF;--bbg:#DBEAFE;--green:#34C759;--gbg:#DCFCE7;--amber:#F59E0B;--abg:#FEF3C7;--red:#FF3B30;--rbg:#FEE2E2;
+    --sh:0 1px 2px rgba(0,0,0,.04),0 8px 24px -12px rgba(0,0,0,.12);--shl:0 4px 12px rgba(0,0,0,.06),0 24px 60px -24px rgba(0,0,0,.22)}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(900px 500px at 88% -5%,#efeafd 0,transparent 60%),#ECECEF;font:14px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;color:var(--fg);-webkit-font-smoothing:antialiased;padding:36px 22px 70px}
+  .h{max-width:1080px;margin:0 auto 22px}
+  .h .eb{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--violet);font-weight:700}
+  .h h1{font-size:26px;margin:7px 0 5px;letter-spacing:-.02em;font-weight:800}
+  .h p{margin:0;color:var(--muted);font-size:14.5px;max-width:760px}
+  .h p b{color:var(--fg)}
+  .browser{max-width:1080px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:15px;overflow:hidden;box-shadow:var(--shl)}
+  .chrome{display:flex;align-items:center;gap:8px;padding:10px 13px;background:#FBFBFD;border-bottom:1px solid var(--bsub)}
+  .dots{display:flex;gap:6px}.dots i{width:11px;height:11px;border-radius:50%}.dots i:nth-child(1){background:#FF5F57}.dots i:nth-child(2){background:#FEBC2E}.dots i:nth-child(3){background:#28C840}
+  .url{flex:1;margin-left:6px;background:#fff;border:1px solid var(--bsub);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--muted)}
+  .app{display:grid;grid-template-columns:62px 1fr;height:712px}
+  .rail{background:#fff;border-right:1px solid var(--bsub);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:5px}
+  .rail .lg{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7C3AED,#a78bfa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;margin-bottom:8px}
+  .rail .ri{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;color:#9a9aa3}
+  .rail .ri svg{width:19px;height:19px}
+  .rail .ri.on{background:var(--vbg);color:var(--violet)}
+  .main{background:var(--bg);display:flex;flex-direction:column;min-width:0}
+  .top{display:flex;align-items:center;gap:10px;padding:13px 22px;border-bottom:1px solid var(--bsub);background:rgba(245,245,247,.85);backdrop-filter:blur(8px)}
+  .top .t{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+  .top .t .d{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(52,199,89,.18)}
+  .top .ctx{margin-left:auto;display:inline-flex;align-items:center;gap:7px;background:var(--bbg);border:1px solid #BBD9FF;border-radius:9px;padding:4px 9px;font-size:11.5px;font-weight:600;color:#0050b3}
+  .top .ctx .mini{width:16px;height:16px;border-radius:5px;background:#0a84ff;color:#fff;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .scroll{flex:1;overflow:hidden;padding:20px 26px 8px;display:flex;flex-direction:column;gap:16px}
+  .turn{display:flex;gap:11px;max-width:760px}
+  .turn.user{align-self:flex-end} .turn.user .b{background:#1D1D1F;color:#fff;border-radius:15px 15px 4px 15px;padding:9px 13px;font-size:14px}
+  .ava{flex:0 0 30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#7C3AED,#a78bfa);color:#fff;display:flex;align-items:center;justify-content:center}
+  .body{flex:1;min-width:0} .body .nm{font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .body p{margin:0 0 10px}
+  .tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--green);font-weight:600;margin-bottom:8px}
+  .tag svg{width:14px;height:14px}
+
+  /* ===== ARTIFACT: editable program table ===== */
+  .art{background:#fff;border:1px solid var(--bsub);border-radius:15px;overflow:hidden;box-shadow:var(--sh);max-width:600px}
+  .art .ah{display:flex;align-items:center;gap:10px;padding:12px 15px;border-bottom:1px solid var(--bsub)}
+  .art .ah .ic{width:26px;height:26px;border-radius:8px;background:var(--vbg);color:var(--violet);display:flex;align-items:center;justify-content:center}
+  .art .ah .ic svg{width:15px;height:15px}
+  .art .ah b{font-size:13.5px} .art .ah .sub{font-size:11.5px;color:var(--muted2)}
+  .art .ah .live{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--green);background:var(--gbg);padding:3px 9px;border-radius:7px}
+  .art .ah .live .pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pl 1.4s infinite}
+  @keyframes pl{0%,100%{opacity:1}50%{opacity:.3}}
+  .ptable{width:100%;border-collapse:collapse;font-size:13px}
+  .ptable th{text-align:left;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2);font-weight:600;padding:9px 15px;border-bottom:1px solid var(--bsub)}
+  .ptable td{padding:8px 15px;border-bottom:1px solid #F2F2F4}
+  .ptable tr:last-child td{border-bottom:0}
+  .ex{font-weight:600} .ex .mg{display:block;font-size:11px;color:var(--muted2);font-weight:400}
+  .cell{display:inline-flex;align-items:center;border:1px solid var(--bsub);border-radius:8px;padding:4px 9px;font-weight:600;font-size:12.5px;background:#fff;min-width:42px;justify-content:center}
+  .cell.edit{border-color:#C9BCF5;background:var(--vsoft);color:var(--violet)}
+  .row-add{background:var(--gbg)} .row-add td{position:relative}
+  .row-add .ex::after{content:"+ adicionado";font-size:9.5px;color:#15803D;font-weight:700;margin-left:8px;background:#fff;padding:1px 6px;border-radius:5px;vertical-align:middle}
+  .row-rm td{opacity:.5} .row-rm .ex{text-decoration:line-through;color:var(--red)}
+  .row-rm .ex::after{content:"removido";font-size:9.5px;color:var(--red);font-weight:700;margin-left:8px;text-decoration:none;display:inline-block}
+  .row-ch .cell.edit::after{content:"";}
+  .afoot{display:flex;align-items:center;gap:10px;padding:11px 15px;border-top:1px solid var(--bsub);background:#FCFCFD}
+  .afoot .saved{font-size:12px;color:var(--green);font-weight:600;display:flex;align-items:center;gap:6px}
+  .afoot .saved svg{width:14px;height:14px}
+  .afoot .sp{margin-left:auto;display:flex;gap:8px}
+  .btn{border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:700;border:1px solid var(--border);background:#fff;cursor:pointer}
+  .btn.ghost{color:var(--muted)} .btn.primary{background:var(--violet);border-color:var(--violet);color:#fff}
+
+  /* ===== ARTIFACT 2: cobrança card ===== */
+  .pay{background:#fff;border:1px solid #E7DBC0;border-radius:14px;overflow:hidden;box-shadow:var(--sh);max-width:420px}
+  .pay .ph{display:flex;align-items:center;gap:9px;padding:11px 14px;background:#FEF6E3;border-bottom:1px solid #F0E6CC}
+  .pay .ph .ic{width:24px;height:24px;border-radius:7px;background:var(--amber);color:#fff;display:flex;align-items:center;justify-content:center}
+  .pay .ph .ic svg{width:14px;height:14px}.pay .ph b{font-size:13px}.pay .ph .gate{margin-left:auto;font-size:10px;font-weight:700;color:#B45309;background:#FDF1D6;border:1px solid #F0E0BA;padding:2px 7px;border-radius:6px}
+  .pay .pb{padding:13px 14px;display:flex;flex-direction:column;gap:9px}
+  .pln{display:flex;justify-content:space-between;font-size:12.5px}.pln span{color:var(--muted)}.pln b{font-weight:700}
+  .pamt{display:flex;align-items:center;gap:8px}
+  .pamt .field{border:1px solid #C9BCF5;background:var(--vsoft);border-radius:8px;padding:5px 10px;font-weight:700;color:var(--violet)}
+  .pacts{display:flex;gap:9px;padding:0 14px 14px}
+  .pacts .btn{flex:1}
+
+  .compose{padding:14px 26px 18px;border-top:1px solid var(--bsub);background:#fff}
+  .cbox{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:14px;padding:9px 9px 9px 15px}
+  .cbox input{flex:1;border:0;outline:0;font-size:14px;background:transparent}.cbox input::placeholder{color:var(--muted2)}
+  .cbox .mode{display:inline-flex;align-items:center;gap:6px;border:1px solid #DDD2FB;background:var(--vsoft);color:var(--violet);border-radius:9px;padding:5px 10px;font-size:12px;font-weight:600}
+  .cbox .mode svg{width:13px;height:13px}
+  .cbox .send{width:34px;height:34px;border-radius:10px;background:var(--violet);color:#fff;border:0;display:flex;align-items:center;justify-content:center}
+  .cbox .send svg{width:16px;height:16px}
+
+  .note{max-width:1080px;margin:26px auto 0;background:#fff;border:1px solid var(--bsub);border-radius:14px;padding:18px 22px;box-shadow:var(--sh);font-size:13px;color:var(--muted);line-height:1.55}
+  .note b{color:var(--fg)} .note code{background:var(--vsoft);color:var(--violet);padding:1px 6px;border-radius:5px;font:12px ui-monospace,Menlo,monospace}
+</style>
+</head>
+<body>
+  <div class="h">
+    <div class="eb">Caminho C · Copiloto de UI generativa</div>
+    <h1>A IA devolve o app, não a descrição</h1>
+    <p>O treinador pede um ajuste em linguagem natural e recebe de volta o <b>próprio componente do Kinevo — vivo e editável</b>, já refletido no estado. Isso é impossível no conector externo (que só devolve texto). Usa <code style="background:#F4F1FE;color:#7C3AED;padding:1px 5px;border-radius:4px">streamUI</code> renderizando componentes que já existem no produto.</p>
+  </div>
+
+  <div class="browser">
+    <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><div class="url">app.kinevoapp.com/assistente · contexto: Marina Lanza</div></div>
+    <div class="app">
+      <aside class="rail">
+        <div class="lg">K</div>
+        <div class="ri on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10z"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+        <div class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5l11 11M3 3l1 1M18 22l4-4"/></svg></div>
+      </aside>
+      <main class="main">
+        <div class="top"><div class="t"><span class="d"></span>Assistente</div>
+          <div class="ctx"><span class="mini">ML</span>Marina Lanza</div>
+        </div>
+        <div class="scroll">
+          <div class="turn user"><div class="b">No treino A da Marina: tira o leg press, aumenta o agachamento pra 4×6 e adiciona afundo búlgaro 3×10</div></div>
+
+          <div class="turn">
+            <div class="ava">✦</div>
+            <div class="body">
+              <div class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Editei o Treino A — revise e ajuste ao vivo</div>
+              <div class="art">
+                <div class="ah"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+                  <div><b>Treino A — Pernas</b><span class="sub">Hipertrofia · Fase 2</span></div>
+                  <span class="live"><span class="pulse"></span>Ao vivo</span>
+                </div>
+                <table class="ptable">
+                  <thead><tr><th>Exercício</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th></tr></thead>
+                  <tbody>
+                    <tr class="row-ch"><td class="ex">Agachamento livre<span class="mg">Quadríceps</span></td><td><span class="cell edit">4×</span></td><td><span class="cell edit">6</span></td><td><span class="cell">80 kg</span></td><td><span class="cell">120s</span></td></tr>
+                    <tr class="row-rm"><td class="ex">Leg press 45°</td><td><span class="cell">4×</span></td><td><span class="cell">12</span></td><td><span class="cell">160 kg</span></td><td><span class="cell">90s</span></td></tr>
+                    <tr class="row-add"><td class="ex">Afundo búlgaro</td><td><span class="cell edit">3×</span></td><td><span class="cell edit">10</span></td><td><span class="cell">—</span></td><td><span class="cell">75s</span></td></tr>
+                    <tr><td class="ex">Cadeira flexora<span class="mg">Posterior</span></td><td><span class="cell">3×</span></td><td><span class="cell">12</span></td><td><span class="cell">45 kg</span></td><td><span class="cell">60s</span></td></tr>
+                    <tr><td class="ex">Panturrilha em pé<span class="mg">Tríceps sural</span></td><td><span class="cell">4×</span></td><td><span class="cell">15</span></td><td><span class="cell">90 kg</span></td><td><span class="cell">45s</span></td></tr>
+                  </tbody>
+                </table>
+                <div class="afoot">
+                  <span class="saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Salvo no programa da Marina</span>
+                  <div class="sp"><button class="btn ghost">Desfazer</button><button class="btn primary">Abrir no editor</button></div>
+                </div>
+              </div>
+              <p style="margin-top:12px">A Marina vê o treino atualizado no app dela. Quer que eu avise por mensagem?</p>
+            </div>
+          </div>
+
+          <div class="turn user"><div class="b">Sim, e cobra a mensalidade dela que venceu</div></div>
+
+          <div class="turn">
+            <div class="ava">✦</div>
+            <div class="body">
+              <div class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Mensagem enviada · 1 ação de cobrança pra confirmar</div>
+              <div class="pay">
+                <div class="ph"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div><b>Gerar link de cobrança</b><span class="gate">Confirme</span></div>
+                <div class="pb">
+                  <div class="pln"><span>Aluno</span><b>Marina Lanza</b></div>
+                  <div class="pln"><span>Plano</span><b>Mensal · recorrente</b></div>
+                  <div class="pln"><span>Valor</span><div class="pamt"><span class="field">R$ 199,90</span><span style="font-size:11px;color:var(--muted2)">editável</span></div></div>
+                </div>
+                <div class="pacts"><button class="btn ghost">Cancelar</button><button class="btn primary">Gerar e enviar link</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="compose">
+          <div class="cbox">
+            <span class="mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>Agir</span>
+            <input placeholder="Peça um ajuste — ex.: “troca o método do supino pra pirâmide 12/10/8/6”">
+            <button class="send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Por que fecha com o código:</b> a tabela e o card são os <b>mesmos componentes do Kinevo</b> (reuso de <code>ProgramTable</code>/<code>ContractCard</code>), montados pela IA via <code>streamUI</code>. Editar a célula chama a server action / tool real (<code>kinevo_update_workout_item</code>, <code>generate_checkout_link</code>) — então o que aparece no card <b>é</b> o estado, com salvamento otimista. A cobrança continua passando pelo gate <code>confirm</code>. Diff visual (linha verde = adicionada, riscada = removida, roxo = alterado) deixa a IA <b>auditável</b>.
+  </div>
+</body>
+</html>

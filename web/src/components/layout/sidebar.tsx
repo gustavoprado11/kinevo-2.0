@@ -15,6 +15,7 @@ import { fetchAiAccess, getCachedAiAllowed, getCachedHomeStyle, setCachedHomeSty
 import { setHomeStyle } from '@/actions/assistant/set-home-style'
 import { MAIN_NAV as navigation, BIBLIOTECA_NAV as bibliotecaItems, type NavItem } from '@/components/layout/nav-items'
 import { ModeToggle } from '@/components/layout/mode-toggle'
+import { useCommunicationStore } from '@/stores/communication-store'
 
 interface SidebarProps {
     financialBadge?: React.ReactNode
@@ -41,6 +42,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     const [homeStyle, setHomeStyleState] = useState<HomeStyle>(getCachedHomeStyle)
     const [switchingAssistant, startSwitch] = useTransition()
     const profileRef = useRef<HTMLDivElement>(null)
+    const openChat = useCommunicationStore(s => s.openChat)
 
     const assistantMode = homeStyle === 'assistant'
 
@@ -176,8 +178,10 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
             {/* Navigation */}
             <nav className={`flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden ${isCollapsed ? 'px-2' : 'px-4'}`}>
                 {navigation.map((item) => {
-                    // No modo Assistente, o "Dashboard" é a tela de chat (/assistente):
-                    // aponta para lá e fica ativo lá. Os demais itens não mudam.
+                    // No modo Assistente o "Dashboard" É o chat (a home conversacional):
+                    // reaponta para /assistente e fica ativo lá. Isso NÃO troca o
+                    // homeStyle — é só navegação; o modo só muda pelo ModeToggle. Os
+                    // demais itens levam às páginas normais, iguais ao Clássico.
                     const isDashboard = item.href === '/dashboard'
                     const href = isDashboard && assistantMode ? '/assistente' : item.href
                     const active = isDashboard && assistantMode ? isActive('/assistente') : isActive(item)
@@ -226,20 +230,15 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                     )
                 })}
 
-                {/* Assistente IA — aba dedicada (Pro+). O ⌘K segue como atalho da barra de comando. */}
-                {aiAllowed && (() => {
-                    const active = isActive('/assistente')
+                {/* Assistente IA — FEATURE do modo Clássico (Pro+): abre o dock à
+                    direita SEM trocar o homeStyle e SEM navegar para casca separada.
+                    No modo Assistente este item NÃO existe — lá o próprio "Dashboard"
+                    já É o chat. O ⌘K segue como atalho da barra de comando. */}
+                {aiAllowed && !assistantMode && (() => {
+                    const cls = `relative flex items-center gap-3 w-full py-2 rounded-lg text-sm tracking-tight transition-all duration-200 ease-out ${isCollapsed ? 'justify-center px-0' : 'px-3'} font-medium text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#7C3AED] dark:hover:text-foreground hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg`
                     return (
                         <div className="relative group/nav">
-                            <Link
-                                href="/assistente"
-                                className={`relative flex items-center gap-3 w-full py-2 rounded-lg text-sm tracking-tight transition-all duration-200 ease-out ${isCollapsed ? 'justify-center px-0' : 'px-3'} ${active
-                                    ? 'bg-[#7C3AED]/10 dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground font-semibold'
-                                    : 'font-medium text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#7C3AED] dark:hover:text-foreground hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg'}`}
-                            >
-                                {active && (
-                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#7C3AED] dark:bg-violet-500 rounded-r-full" />
-                                )}
+                            <button type="button" onClick={() => openChat()} className={cls}>
                                 <Sparkles size={18} strokeWidth={1.5} className="shrink-0 text-[#7C3AED] dark:text-violet-400" />
                                 <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100 flex-1 text-left'}`}>
                                     Assistente IA
@@ -249,7 +248,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                                         novo
                                     </span>
                                 )}
-                            </Link>
+                            </button>
                             {isCollapsed && (
                                 <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                                     Assistente IA

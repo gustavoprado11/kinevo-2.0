@@ -70,13 +70,6 @@ const KIND_TAG: Record<AttentionKind, { label: string; bg: string; fg: string; i
     nota: { label: 'Nota', bg: '#EFF6FF', fg: '#2563EB', icon: FileText },
 }
 
-// Faixa de prioridade à esquerda do card: alta → erro; senão por tipo.
-const KIND_STRIPE: Record<AttentionKind, string> = {
-    estagnado: '#F59E0B',
-    pronto_para_evoluir: '#16A34A',
-    nota: '#3B82F6',
-}
-
 /** Prompt otimizado p/ o card de atenção: contexto do insight + o que produzir. */
 function attentionPrompt(item: AttentionItem): string {
     const ctx = item.studentName ? `${item.studentName}: ${item.title}` : item.title
@@ -141,27 +134,21 @@ export function AssistantHome({
     }
 
     return (
-        <main className="min-h-0 flex-1 overflow-y-auto bg-[#F5F5F7]">
+        <main className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-surface-card">
             <div className="mx-auto max-w-[720px] px-7 pb-16 pt-[72px]">
-                {/* Hero */}
+                {/* Hero — plano, sem glow (idioma da conversa) */}
                 <div className="mb-7 text-center">
-                    <span
-                        className="mx-auto mb-4 flex h-[56px] w-[56px] items-center justify-center rounded-[17px]"
-                        style={{
-                            background: 'linear-gradient(135deg,#F5F3FF,#EDE9FE)',
-                            boxShadow: '0 8px 24px -8px rgba(124,58,237,.45), inset 0 0 0 1px rgba(124,58,237,.10)',
-                        }}
-                    >
-                        <Sparkles className="h-7 w-7 text-[#7C3AED]" strokeWidth={1.6} />
+                    <span className="mx-auto mb-4 flex h-[52px] w-[52px] items-center justify-center rounded-[16px] bg-[#F5F3FF] dark:bg-violet-500/15">
+                        <Sparkles className="h-[26px] w-[26px] text-[#7C3AED] dark:text-violet-400" strokeWidth={1.6} />
                     </span>
-                    <div className="mb-2 text-[14px] font-medium text-[#86868B]">{greeting()}, {firstName}.</div>
-                    <h1 className="font-display text-[36px] font-bold leading-[1.1] tracking-[-0.03em] text-[#1D1D1F]">
+                    <div className="mb-2 text-[14px] font-medium text-[#86868B] dark:text-muted-foreground">{greeting()}, {firstName}.</div>
+                    <h1 className="font-display text-[36px] font-bold leading-[1.1] tracking-[-0.03em] text-[#1D1D1F] dark:text-foreground">
                         O que vamos resolver hoje?
                     </h1>
                 </div>
 
-                {/* Composer */}
-                <div className="rounded-[20px] border border-[#D2D2D7] bg-white p-2 shadow-[0_8px_28px_-16px_rgba(0,0,0,0.18)] transition focus-within:border-[#C7C7CC] focus-within:shadow-[0_0_0_4px_rgba(60,60,67,0.07)]">
+                {/* Composer — mesma moldura/foco da conversa (flat, cinza suave) */}
+                <div className="rounded-[22px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated p-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_4px_rgba(60,60,67,0.07)]">
                     <textarea
                         ref={composerRef}
                         value={input}
@@ -174,13 +161,13 @@ export function AssistantHome({
                         // globals.css (Tailwind v4 layered perde p/ unlayered). O foco fica só
                         // na borda do card (focus-within), não no textarea interno.
                         style={{ outline: 'none' }}
-                        className="max-h-[280px] w-full resize-none overflow-y-auto bg-transparent px-4 py-3 text-[16px] leading-relaxed placeholder:text-[#AEAEB2]"
+                        className="max-h-[280px] w-full resize-none overflow-y-auto bg-transparent px-4 py-3 text-[16px] leading-relaxed text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60"
                     />
                     <div className="flex items-center gap-2.5 px-2 pb-1 pt-1">
                         <MicButton disabled={sending} onTranscript={(t) => onInput(input ? `${input} ${t}` : t)} />
                         <span className="flex-1" />
                         <button onClick={onSend} disabled={sending || !input.trim()}
-                            className="flex h-10 items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-[18px] text-[14px] font-bold text-white shadow-[0_6px_16px_-6px_rgba(124,58,237,0.6)] transition hover:brightness-[1.07] disabled:opacity-50">
+                            className="flex h-10 items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-[18px] text-[14px] font-bold text-white transition hover:brightness-[1.07] disabled:opacity-50">
                             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" strokeWidth={2} />} Agir
                         </button>
                     </div>
@@ -196,27 +183,27 @@ export function AssistantHome({
                 {/* Contexto */}
                 <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
                     {!hasStudents ? (
-                        <Link href="/students" className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-3.5 py-[7px] text-[12.5px] font-semibold text-[#7C3AED] transition hover:bg-[rgba(124,58,237,0.14)]">
+                        <Link href="/students" className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] dark:border-violet-400/30 bg-[rgba(124,58,237,0.08)] dark:bg-violet-500/10 px-3.5 py-[7px] text-[12.5px] font-semibold text-[#7C3AED] dark:text-violet-300 transition hover:bg-[rgba(124,58,237,0.14)] dark:hover:bg-violet-500/20">
                             <UserPlus className="h-3.5 w-3.5" strokeWidth={2} /> Crie seu primeiro aluno
                         </Link>
                     ) : focusedStudentName ? (
-                        <button onClick={onClearFocus} className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-3.5 py-[7px] text-[12.5px] font-semibold text-[#7C3AED]">
+                        <button onClick={onClearFocus} className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] dark:border-violet-400/30 bg-[rgba(124,58,237,0.08)] dark:bg-violet-500/10 px-3.5 py-[7px] text-[12.5px] font-semibold text-[#7C3AED] dark:text-violet-300">
                             <User className="h-3.5 w-3.5" strokeWidth={2} /> {focusedStudentName}
-                            <span className="text-[#a78bfa]">×</span>
+                            <span className="text-[#a78bfa] dark:text-violet-400">×</span>
                         </button>
                     ) : (
-                        <button onClick={onPickFocus} className="inline-flex items-center gap-2 rounded-full border border-[#E8E8ED] bg-white px-3.5 py-[7px] text-[12.5px] font-semibold text-[#6E6E73] shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-                            <User className="h-3.5 w-3.5 text-[#8b5cf6]" strokeWidth={2} /> Aluno em foco <ChevronDown className="h-3.5 w-3.5 text-[#AEAEB2]" strokeWidth={2} />
+                        <button onClick={onPickFocus} className="inline-flex items-center gap-2 rounded-full border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card px-3.5 py-[7px] text-[12.5px] font-semibold text-[#6E6E73] dark:text-muted-foreground/80 transition hover:bg-[#FAFAFA] dark:hover:bg-glass-bg">
+                            <User className="h-3.5 w-3.5 text-[#8b5cf6] dark:text-violet-400" strokeWidth={2} /> Aluno em foco <ChevronDown className="h-3.5 w-3.5 text-[#AEAEB2] dark:text-muted-foreground/60" strokeWidth={2} />
                         </button>
                     )}
                     {hasStudents && !focusedStudentName && (
-                        <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-[#D2D2D7] px-3.5 py-[7px] text-[12.5px] font-semibold text-[#86868B]">
-                            <Globe className="h-3.5 w-3.5 text-[#AEAEB2]" strokeWidth={2} /> Geral · visão geral dos alunos
+                        <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-[#E2E2E7] dark:border-k-border-subtle px-3.5 py-[7px] text-[12.5px] font-semibold text-[#86868B] dark:text-muted-foreground">
+                            <Globe className="h-3.5 w-3.5 text-[#AEAEB2] dark:text-muted-foreground/60" strokeWidth={2} /> Geral · visão geral dos alunos
                         </span>
                     )}
-                    <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-[#86868B]">
+                    <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-[#86868B] dark:text-muted-foreground">
                         <Coins className="h-[15px] w-[15px] text-[#F59E0B]" strokeWidth={1.8} />
-                        <b className="font-bold text-[#1D1D1F] [font-variant-numeric:tabular-nums]">{summary.creditsRemaining.toLocaleString('pt-BR')}</b> de {summary.creditsTotal.toLocaleString('pt-BR')} créditos
+                        <b className="font-bold text-[#1D1D1F] dark:text-foreground [font-variant-numeric:tabular-nums]">{summary.creditsRemaining.toLocaleString('pt-BR')}</b> de {summary.creditsTotal.toLocaleString('pt-BR')} créditos
                     </span>
                 </div>
 
@@ -224,22 +211,20 @@ export function AssistantHome({
                 {attention.length > 0 && (
                     <section className="mt-9">
                         <div className="mb-3 flex items-center gap-2">
-                            <span className="text-[11.5px] font-bold uppercase tracking-[0.09em] text-[#86868B]">Precisa de atenção</span>
+                            <span className="text-[11.5px] font-bold uppercase tracking-[0.09em] text-[#86868B] dark:text-muted-foreground">Precisa de atenção</span>
                             <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-[#F59E0B] px-1.5 py-px text-[10.5px] font-bold leading-none text-white [font-variant-numeric:tabular-nums]">{attention.length}</span>
                         </div>
                         <div className="flex flex-col gap-2.5">
                             {attention.map((a) => {
                                 const kind = attentionKind(a)
                                 const tag = KIND_TAG[kind]
-                                const stripe = a.priority === 'high' ? '#EF4444' : KIND_STRIPE[kind]
                                 const av = avatarFor(a.studentName)
                                 const prompt = attentionPrompt(a)
                                 const heading = a.studentName ?? a.title
                                 const TagIcon = tag.icon
                                 return (
                                     <button key={a.id} onClick={() => fillFromCard(prompt)}
-                                        className="group relative flex items-center gap-3.5 overflow-hidden rounded-[16px] border border-[#E8E8ED] bg-white py-[15px] pl-[18px] pr-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-[transform,box-shadow] duration-[180ms] ease-[cubic-bezier(.16,1,.3,1)] hover:-translate-y-px hover:shadow-[0_6px_18px_-8px_rgba(0,0,0,0.14)]">
-                                        <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: stripe }} />
+                                        className="group flex items-center gap-3.5 rounded-[14px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card py-[14px] pl-4 pr-4 text-left transition hover:bg-[#FAFAFA] dark:hover:bg-white/5">
                                         {a.studentName ? (
                                             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] text-[13px] font-bold" style={{ background: av.bg, color: av.fg }}>{av.initials}</span>
                                         ) : (
@@ -254,9 +239,9 @@ export function AssistantHome({
                                                     <TagIcon className="h-[11px] w-[11px]" strokeWidth={2.2} /> {tag.label}
                                                 </span>
                                             </span>
-                                            <span className="mt-0.5 block truncate text-[12.5px] text-[#86868B]">{a.studentName ? a.title : a.body}</span>
+                                            <span className="mt-0.5 block truncate text-[12.5px] text-[#86868B] dark:text-muted-foreground">{a.studentName ? a.title : a.body}</span>
                                         </span>
-                                        <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[#C4B5FD]" strokeWidth={2} />
+                                        <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[#C7C7CC] dark:text-muted-foreground/50" strokeWidth={2} />
                                     </button>
                                 )
                             })}
@@ -266,20 +251,20 @@ export function AssistantHome({
 
                 {/* Comece por aqui */}
                 <section className="mt-9">
-                    <div className="mb-3 text-[11.5px] font-bold uppercase tracking-[0.09em] text-[#86868B]">Comece por aqui</div>
+                    <div className="mb-3 text-[11.5px] font-bold uppercase tracking-[0.09em] text-[#86868B] dark:text-muted-foreground">Comece por aqui</div>
                     <div className="grid grid-cols-2 gap-2.5">
                         {STARTERS.map((s) => (
-                            <div key={s.label} className="rounded-[16px] border border-[#E8E8ED] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+                            <div key={s.label} className="rounded-[14px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card p-4">
                                 <div className="mb-2 flex items-center gap-2.5">
                                     <span className="flex h-7 w-7 items-center justify-center rounded-[9px]" style={{ background: s.bg, color: s.color }}>
                                         <s.icon className="h-[15px] w-[15px]" strokeWidth={2} />
                                     </span>
-                                    <b className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#86868B]">{s.label}</b>
+                                    <b className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#86868B] dark:text-muted-foreground">{s.label}</b>
                                 </div>
                                 {s.prompts.map((p, i) => (
                                     <button key={p.label} onClick={() => fillFromCard(p.prompt)}
-                                        className={`flex w-full items-center justify-between gap-2 py-[5px] text-left text-[13px] text-[#1D1D1F] transition hover:text-[#7C3AED] ${i > 0 ? 'border-t border-[#F5F5F7]' : ''}`}>
-                                        {p.label} <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#AEAEB2]" strokeWidth={2} />
+                                        className={`flex w-full items-center justify-between gap-2 py-[5px] text-left text-[13px] text-[#1D1D1F] dark:text-foreground transition hover:text-[#7C3AED] dark:hover:text-violet-400 ${i > 0 ? 'border-t border-[#F5F5F7] dark:border-white/5' : ''}`}>
+                                        {p.label} <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#AEAEB2] dark:text-muted-foreground/60" strokeWidth={2} />
                                     </button>
                                 ))}
                             </div>
@@ -290,22 +275,22 @@ export function AssistantHome({
                 {/* Conversas recentes */}
                 {recents.length > 0 && (
                     <section className="mt-9">
-                        <div className="mb-3 text-[11.5px] font-bold uppercase tracking-[0.09em] text-[#86868B]">Conversas recentes</div>
+                        <div className="mb-3 text-[11.5px] font-bold uppercase tracking-[0.09em] text-[#86868B] dark:text-muted-foreground">Conversas recentes</div>
                         <div className="flex flex-col">
                             {recents.slice(0, 5).map((c) => {
                                 const av = avatarFor(c.studentName)
                                 const isGeneral = !c.student_id
                                 return (
                                     <button key={c.id} onClick={() => onOpenConversation(c.id)}
-                                        className="flex items-center gap-3 border-b border-[#E8E8ED] py-2.5 text-left last:border-0">
+                                        className="flex items-center gap-3 border-b border-[#EDEDF0] dark:border-k-border-subtle py-2.5 text-left last:border-0">
                                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[11px] font-bold" style={isGeneral ? { background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', color: '#fff' } : { background: av.bg, color: av.fg }}>
                                             {isGeneral ? <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2} /> : av.initials}
                                         </span>
                                         <span className="min-w-0 flex-1">
-                                            <b className="block text-[13.5px]">{c.studentName ?? 'Geral · estúdio'}</b>
-                                            <span className="block truncate text-[12px] text-[#86868B]">{c.title}</span>
+                                            <b className="block text-[13.5px] text-[#1D1D1F] dark:text-foreground">{c.studentName ?? 'Geral · estúdio'}</b>
+                                            <span className="block truncate text-[12px] text-[#86868B] dark:text-muted-foreground">{c.title}</span>
                                         </span>
-                                        <span className="shrink-0 text-[11px] text-[#AEAEB2]">{timeShort(c.last_message_at)}</span>
+                                        <span className="shrink-0 text-[11px] text-[#AEAEB2] dark:text-muted-foreground/60">{timeShort(c.last_message_at)}</span>
                                     </button>
                                 )
                             })}

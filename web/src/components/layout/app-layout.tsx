@@ -1,6 +1,9 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Sidebar } from './sidebar'
+import { AssistantNavSidebar } from './assistant-nav-sidebar'
 import { FinancialBadge } from './financial-badge'
 import { ThemeSync } from '@/components/theme-sync'
 import { OnboardingProvider } from '@/components/onboarding/onboarding-provider'
@@ -20,7 +23,8 @@ const AssistantLauncher = dynamic(
     { ssr: false }
 )
 import { useSidebarStore } from '@/stores/sidebar-store'
-import { useAssistantChatStore } from '@/stores/assistant-chat-store'
+import { useCommunicationStore } from '@/stores/communication-store'
+import { fetchAiAccess, getCachedAiAllowed, getCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
 import type {
     OnboardingState,
     TrainerModalityFocus,
@@ -43,11 +47,51 @@ interface AppLayoutProps {
     onboardingState?: OnboardingState | null
     trainerModalityFocus?: TrainerModalityFocus
     students?: Student[]
+    /**
+     * Classe do <main>. Default `p-8`. A home conversacional do Assistente passa
+     * full-bleed (`p-0 h-[100dvh] overflow-hidden`) para gerenciar a própria
+     * altura/scroll dentro da casca única.
+     */
+    mainClassName?: string
 }
 
-export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUrl, trainerTheme, onboardingState, trainerModalityFocus, students }: AppLayoutProps) {
+// A home do Assistente é a conversa em tela cheia: lá o dock NÃO aparece (seria
+// um segundo chat). Nas demais telas o dock é a apresentação "docked".
+const ASSISTANT_HOME_PREFIX = '/assistente'
+// Marca, por sessão do navegador, que o treinador fechou o dock no modo
+// Assistente — para não reabri-lo automaticamente a cada navegação/reload.
+const DOCK_DISMISSED_KEY = 'kinevo:assistant-dock-dismissed'
+
+export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUrl, trainerTheme, onboardingState, trainerModalityFocus, students, mainClassName = 'p-8' }: AppLayoutProps) {
+    const pathname = usePathname()
     const isCollapsed = useSidebarStore(state => state.isCollapsed)
-    const isChatOpen = useAssistantChatStore(state => state.isOpen)
+    const isChatOpen = useCommunicationStore(state => state.isOpen)
+    const closePanel = useCommunicationStore(state => state.closePanel)
+
+    const isAssistantHome = pathname?.startsWith(ASSISTANT_HOME_PREFIX) ?? false
+
+    // Modo de trabalho (classic|assistant). Lê o cache síncrono (sem flash) e
+    // confirma no fetch. Só o ModeToggle altera o homeStyle — aqui é leitura.
+    const [assistantMode, setAssistantMode] = useState(() => getCachedAiAllowed() && getCachedHomeStyle() === 'assistant')
+    useEffect(() => {
+        let active = true
+        fetchAiAccess().then((a) => {
+            if (active && a) setAssistantMode(a.allowed && a.homeStyle === 'assistant')
+        })
+        return () => { active = false }
+    }, [])
+
+    // Auto-abertura do dock desativada: no modo Assistente a AssistantNavSidebar
+    // (rail persistente em todas as abas) já é a navegação para o chat. O dock
+    // segue disponível sob demanda (launcher / ⌘K), como overlay.
+    const handleDockDismiss = () => {
+        try { sessionStorage.setItem(DOCK_DISMISSED_KEY, '1') } catch { /* noop */ }
+        closePanel()
+    }
+
+    // Sem reserva de espaço: o dock, quando aberto manualmente, fica como overlay.
+    const docked = false
+    const reserveChatSpace = docked && isChatOpen
 
     // Zustand persist restores from localStorage on mount — server always renders
     // with the default (false). suppressHydrationWarning on the affected element
@@ -55,18 +99,27 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
     return (
         <div className="min-h-screen bg-background text-foreground">
             <ThemeSync trainerTheme={trainerTheme} />
-            {/* Sidebar */}
-            <Sidebar
-                financialBadge={<FinancialBadge />}
-                trainerName={trainerName}
-                trainerEmail={trainerEmail}
-                trainerAvatarUrl={trainerAvatarUrl}
-            />
+            {/* Sidebar — global no Clássico; no Assistente, a sidebar conversa-first
+                persiste em TODAS as abas (com a aba atual em destaque). */}
+            {assistantMode ? (
+                <AssistantNavSidebar
+                    trainerName={trainerName}
+                    trainerEmail={trainerEmail}
+                    trainerAvatarUrl={trainerAvatarUrl}
+                />
+            ) : (
+                <Sidebar
+                    financialBadge={<FinancialBadge />}
+                    trainerName={trainerName}
+                    trainerEmail={trainerEmail}
+                    trainerAvatarUrl={trainerAvatarUrl}
+                />
+            )}
 
-            {/* Main content area — shrinks on xl+ when chat panel is open */}
-            <div suppressHydrationWarning className={`bg-surface-primary min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'pl-[68px]' : 'pl-64'} ${isChatOpen ? 'xl:pr-[420px]' : ''}`}>
+            {/* Main content area — shrinks on xl+ when the docked chat is open */}
+            <div suppressHydrationWarning className={`bg-surface-primary min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'pl-[68px]' : 'pl-64'} ${reserveChatSpace ? 'xl:pr-[420px]' : ''}`}>
                 {/* Page content */}
-                <main className="p-8">
+                <main className={mainClassName}>
                     <OnboardingProvider initialState={onboardingState ?? null} trainerModalityFocus={trainerModalityFocus}>
                         {children}
                     </OnboardingProvider>
@@ -76,13 +129,17 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
             {/* Onboarding Checklist Widget — floating, all pages */}
             <OnboardingChecklist />
 
-            {/* Unified Communication Panel — global, slides in from right */}
-            <UnifiedCommunicationPanel />
+            {/* Dock do Assistente — painel ancorado à direita. Some na home (que já
+                é o chat em tela cheia). Docked (persistente, sem backdrop) no modo
+                Assistente; overlay no Clássico. */}
+            {!isAssistantHome && (
+                <UnifiedCommunicationPanel docked={docked} onDockDismiss={handleDockDismiss} />
+            )}
 
             {/* Command Palette — global, ⌘K to open */}
             <CommandPaletteWrapper students={students} />
 
-            {/* Floating launcher — acesso rápido à aba do Assistente (Pro+) */}
+            {/* Floating launcher — abre o mesmo dock (Pro+) */}
             <AssistantLauncher />
         </div>
     )

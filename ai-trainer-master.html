@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinevo IA — Caminhos para o treinador operar o Kinevo via IA</title>
+<style>
+  :root{
+    --bg:#0c0c11; --panel:#15151d; --panel2:#1b1b26; --line:#2a2a39; --line2:#37374c;
+    --tx:#ececf2; --tx2:#a7a7bd; --tx3:#72728a;
+    --violet:#8b5cf6; --violet2:#a78bfa; --vbg:rgba(139,92,246,.13);
+    --blue:#3b9bff; --green:#34d27a; --amber:#ffb84d; --teal:#2dd4bf; --pink:#f472b6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 650px at 82% -8%,#1b1238 0,var(--bg) 55%),var(--bg);
+    color:var(--tx);font:15px/1.62 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:90px}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+  a{color:var(--violet2);text-decoration:none}
+  header.hero{padding:64px 0 22px}
+  .kick{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--violet2);font-weight:700;background:var(--vbg);border:1px solid var(--line2);padding:6px 13px;border-radius:999px}
+  h1{font-size:43px;line-height:1.08;margin:20px 0 12px;letter-spacing:-.025em;font-weight:800;max-width:880px}
+  h1 .g{background:linear-gradient(92deg,#a78bfa,#2dd4bf 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--tx2);font-size:18px;max-width:820px}
+  .meta{margin-top:20px;color:var(--tx3);font-size:13px;display:flex;gap:20px;flex-wrap:wrap}
+  .meta b{color:var(--tx2);font-weight:600}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
+  .toc a{font-size:12.5px;color:var(--tx2);border:1px solid var(--line);background:var(--panel);padding:6px 12px;border-radius:8px}
+  .toc a:hover{border-color:var(--line2);color:var(--tx)}
+
+  h2{font-size:13px;letter-spacing:.17em;text-transform:uppercase;color:var(--tx3);margin:62px 0 20px;font-weight:700;display:flex;align-items:center;gap:13px}
+  h2 .nº{color:var(--violet2)} h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  h3{font-size:19px;margin:0 0 8px;letter-spacing:-.01em}
+  p.lead{font-size:16.5px;color:var(--tx2);max-width:840px}
+
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:16px;padding:24px}
+  .grid{display:grid;gap:16px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:860px){.g2,.g3{grid-template-columns:1fr}}
+  code{background:#0c0c14;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font:12.5px ui-monospace,Menlo,monospace;color:#c9b6ff}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:7px;text-transform:uppercase}
+  .t-have{background:rgba(52,210,122,.14);color:#56e08c;border:1px solid rgba(52,210,122,.3)}
+  .t-near{background:var(--vbg);color:var(--violet2);border:1px solid var(--line2)}
+  .t-new{background:rgba(255,184,77,.13);color:var(--amber);border:1px solid rgba(255,184,77,.3)}
+
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+  th,td{text-align:left;padding:12px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--tx3);font-weight:600;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase}
+  td{color:var(--tx2)} td b,td strong{color:var(--tx)}
+  tr:last-child td{border-bottom:0}
+  .yes{color:#56e08c;font-weight:700} .no{color:#ff7a70;font-weight:700} .mid{color:var(--amber);font-weight:700}
+
+  .callout{border-left:3px solid var(--violet);background:var(--vbg);border-radius:0 12px 12px 0;padding:17px 20px;margin-top:18px}
+  .callout.teal{border-color:var(--teal);background:rgba(45,212,191,.08)}
+  .callout.amber{border-color:var(--amber);background:rgba(255,184,77,.08)}
+  .callout h4{margin:0 0 6px;font-size:14.5px} .callout p{margin:0;color:var(--tx2);font-size:14.5px}
+
+  /* path cards */
+  .path{position:relative;overflow:hidden}
+  .path .pid{position:absolute;top:-14px;right:-6px;font-size:96px;font-weight:800;color:rgba(255,255,255,.03);letter-spacing:-.05em}
+  .path .hd{display:flex;align-items:center;gap:11px;margin-bottom:4px}
+  .path .ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;background:var(--vbg);border:1px solid var(--line2)}
+  .path .meta2{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .pill{font-size:11.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--tx2);background:#0e0e16}
+  .pill b{color:var(--tx)}
+  .path ul{margin:10px 0 0;padding:0;list-style:none}
+  .path ul li{position:relative;padding:5px 0 5px 20px;color:var(--tx2);font-size:14px}
+  .path ul li::before{content:"";position:absolute;left:3px;top:12px;width:6px;height:6px;border-radius:2px;background:var(--violet)}
+  .fit{margin-top:13px;font-size:13px;color:var(--tx3);border-top:1px dashed var(--line);padding-top:11px}
+  .fit b{color:var(--teal)}
+  .refs{margin-top:9px;font-size:12.5px;color:var(--tx3)}
+
+  /* matrix */
+  .matrix{position:relative;height:440px;background:#0b0b12;border:1px solid var(--line);border-radius:16px;margin-top:8px;overflow:hidden}
+  .matrix .axis{position:absolute;color:var(--tx3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .matrix .ay{left:12px;top:50%;transform:rotate(-90deg) translateX(50%);transform-origin:left}
+  .matrix .ax{bottom:10px;left:50%;transform:translateX(-50%)}
+  .matrix .quad{position:absolute;font-size:11px;color:var(--tx3);opacity:.5}
+  .dotp{position:absolute;transform:translate(-50%,-50%);background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:7px 11px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 8px 20px -10px rgba(0,0,0,.6)}
+  .dotp small{display:block;color:var(--tx3);font-weight:500;font-size:10px}
+  .dotp.hot{border-color:var(--violet);box-shadow:0 0 22px -6px var(--violet)}
+  .grid-l{position:absolute;background:var(--line);opacity:.4}
+
+  /* architecture */
+  .arch{background:#0b0b12;border:1px solid var(--line);border-radius:16px;padding:26px}
+  .layer{border:1px solid var(--line2);border-radius:13px;padding:14px 16px;margin-bottom:12px;background:var(--panel)}
+  .layer .lt{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px}
+  .layer .lt .lb{font-size:10px;font-weight:700;color:var(--tx3);border:1px solid var(--line2);padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.05em}
+  .layer .row{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+  .chip2{font-size:12px;background:#0e0e16;border:1px solid var(--line);border-radius:8px;padding:6px 11px;color:var(--tx2)}
+  .chip2.new{border-color:var(--line2);color:var(--violet2)}
+  .chip2.have{border-color:rgba(52,210,122,.3);color:#56e08c}
+  .archarrow{text-align:center;color:var(--tx3);margin:-4px 0 8px;font-size:18px}
+  .core-band{background:linear-gradient(180deg,#241a46,#1a1330);border-color:var(--violet)}
+
+  .phase{display:flex;gap:16px;align-items:flex-start;padding:15px 0;border-bottom:1px solid var(--line)}
+  .phase:last-child{border-bottom:0}
+  .pn{flex:0 0 64px;font-weight:800;font-size:13px;color:var(--violet2);background:var(--vbg);border:1px solid var(--line2);border-radius:10px;padding:8px 0;text-align:center}
+  .phase .pc p{margin:4px 0 0;color:var(--tx2);font-size:14px}
+
+  .q{display:flex;gap:13px;padding:12px 0;border-bottom:1px dashed var(--line)} .q:last-child{border-bottom:0}
+  .q .n{color:var(--violet2);font-weight:800;flex:0 0 26px} .q b{color:var(--tx)}
+
+  .reflist{columns:2;column-gap:26px;font-size:13.5px}
+  @media(max-width:760px){.reflist{columns:1}}
+  .reflist div{break-inside:avoid;margin-bottom:9px;color:var(--tx2)}
+
+  .foot{margin-top:54px;color:var(--tx3);font-size:13px;text-align:center;border-top:1px solid var(--line);padding-top:24px}
+  .files{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+  .files span{font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 11px;color:var(--tx2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="kick">● Kinevo · Planejamento · IA do treinador</span>
+    <h1>O treinador <span class="g">operando o Kinevo</span> por IA — caminhos e oportunidades</h1>
+    <p class="sub">Não é um chatbot, e não é IA para o aluno. É dar ao <b>treinador</b> uma forma de <b>executar o trabalho dentro do Kinevo</b> conversando, falando ou com um toque. A tese deste documento: como temos <b>controle total do código</b>, podemos fundir IA e produto de um jeito que o conector externo (Claude/ChatGPT) nunca alcança.</p>
+    <div class="meta">
+      <span><b>Base real:</b> 55 tools MCP · assistente in-app (3 tools) · cron de insights · drafts de IA</span>
+      <span><b>Sem código alterado</b> — só caminhos + mocks</span>
+      <span><b>jun/2026</b></span>
+    </div>
+    <div class="toc">
+      <a href="#tese">A tese</a><a href="#unlock">O que o código desbloqueia</a><a href="#paths">5 caminhos</a>
+      <a href="#matrix">Oportunidades</a><a href="#arch">Como fecha com o código</a><a href="#seq">Sequência</a><a href="#risks">Riscos</a><a href="#ref">Referências</a>
+    </div>
+  </header>
+
+  <!-- TESE -->
+  <h2 id="tese"><span class="nº">01</span> A reformulação</h2>
+  <p class="lead">O MCP já prova que a IA <i>sabe</i> operar o Kinevo — 55 ações cobrindo alunos, prescrição, agenda, financeiro, avaliações, formulários e leads. Mas no Claude isso vive <b>fora</b> do produto: texto entra, texto sai, e o treinador alterna de app. Dentro do Kinevo, a IA pode deixar de ser uma "caixa de conversa" e virar <b>uma camada de operação do próprio app</b>.</p>
+  <div class="grid g3" style="margin-top:18px">
+    <div class="card"><span class="tag t-have">Hoje · externo</span><h3 style="margin-top:11px">Conector MCP</h3><p style="color:var(--tx2);margin:8px 0 0;font-size:14px">Claude/ChatGPT chamam as 55 tools por OAuth. Ótimo, mas é outro app, sem UI do Kinevo, sem estado compartilhado, sem proatividade.</p></div>
+    <div class="card"><span class="tag t-near">Hoje · interno</span><h3 style="margin-top:11px">Assistente in-app</h3><p style="color:var(--tx2);margin:8px 0 0;font-size:14px"><code>api/assistant/chat</code> com <code>gpt-4.1-mini</code> e <b>só 3 tools</b>. Tem streaming, contexto por aluno e hardening — mas é subutilizado.</p></div>
+    <div class="card path" style="border-color:var(--line2)"><span class="tag t-new">A construir</span><h3 style="margin-top:11px">Camada de operação</h3><p style="color:var(--tx2);margin:8px 0 0;font-size:14px">Uma <b>engine única</b> (as 55 tools via ponte in-memory) alimentando várias superfícies dentro do app: chat, barra de comando, UI generativa, agente proativo, voz.</p></div>
+  </div>
+
+  <!-- UNLOCK -->
+  <h2 id="unlock"><span class="nº">02</span> O que ter o código desbloqueia (vs. conector externo)</h2>
+  <p class="lead">Esta é a justificativa estratégica. Cada linha é algo <b>impossível ou ruim</b> no Claude externo e <b>natural</b> dentro do Kinevo:</p>
+  <table>
+    <thead><tr><th style="width:26%">Capacidade</th><th>No conector externo (Claude)</th><th>Dentro do Kinevo (código nosso)</th></tr></thead>
+    <tbody>
+      <tr><td><b>UI generativa</b></td><td class="no">✗ só texto/markdown e JSON</td><td class="yes">✓ devolve <b>componentes vivos do Kinevo</b> (tabela de treino editável, card financeiro, gráfico) via <code>streamUI</code></td></tr>
+      <tr><td><b>Estado compartilhado</b></td><td class="no">✗ resultado fica no chat</td><td class="yes">✓ a ação reflete <b>na hora na GUI</b> (otimista) — chat e tela são o mesmo estado</td></tr>
+      <tr><td><b>Embutido nas telas</b></td><td class="no">✗ é outro app</td><td class="yes">✓ barra de comando (⌘K) e IA contextual <b>em cada página</b> (no perfil do aluno, na agenda…)</td></tr>
+      <tr><td><b>Proatividade</b></td><td class="no">✗ só reativo</td><td class="yes">✓ usa o <b>cron de insights</b> e os <b>drafts</b> que já existem → briefing matinal, fila de aprovação</td></tr>
+      <tr><td><b>Voz & nativo</b></td><td class="mid">~ via apps do Claude</td><td class="yes">✓ voz no mobile + <b>Siri/App Intents</b> ("Ei Siri, marca o pagamento da Maria")</td></tr>
+      <tr><td><b>Confirmar/desfazer</b></td><td class="no">✗ sem undo, sem auditoria</td><td class="yes">✓ card de confirmação (HITL) + <b>feed "a IA fez X" com desfazer</b></td></tr>
+      <tr><td><b>Roteamento determinístico</b></td><td class="mid">~ 20 tool-calls p/ prescrever</td><td class="yes">✓ "gera programa" cai na action <code>generateProgram</code> (1 call, barato, validado)</td></tr>
+      <tr><td><b>Auth & custo</b></td><td class="mid">OAuth + tokens</td><td class="yes">✓ <b>sessão Supabase</b> (sem OAuth) — a mesma tool roda com o JWT do treinador</td></tr>
+    </tbody>
+  </table>
+  <div class="callout teal">
+    <h4>★ O grande diferencial: UI generativa + estado compartilhado</h4>
+    <p>No Claude, "ajuste o treino da Marina" devolve <i>texto descrevendo</i> o ajuste. No Kinevo, a IA devolve a <b>própria tabela de treino, editável</b>, já refletida no programa — o treinador ajusta a carga ali e está salvo. A IA deixa de "falar sobre o app" e passa a <b>renderizar o app</b>. <span style="color:var(--tx3)">(AI SDK <code>streamUI</code>/<code>createStreamableUI</code> — hoje não usado, mas suportado.)</span></p>
+  </div>
+
+  <!-- PATHS -->
+  <h2 id="paths"><span class="nº">03</span> Cinco caminhos (não excludentes)</h2>
+  <p class="lead">São <b>superfícies diferentes sobre a mesma engine</b>. Dá pra escolher uma como ponta-de-lança e somar as outras — todas reaproveitam a ponte in-memory + tool-policy. Da mais "conversacional" à mais "embutida":</p>
+
+  <div class="grid g2" style="margin-top:18px">
+
+    <div class="card path">
+      <div class="pid">A</div>
+      <div class="hd"><div class="ico">💬</div><div><h3>Chat-first workspace</h3><span class="tag t-near">Já especificado</span></div></div>
+      <p style="color:var(--tx2);margin:6px 0 0;font-size:14.5px">Uma rota dedicada de conversa que opera o app, com app-shell e sidebar vivos. "Chat como tela inicial" no Premium.</p>
+      <div class="meta2"><span class="pill">Esforço <b>médio</b></span><span class="pill">Familiar p/ quem já usa Claude</span></div>
+      <ul><li>Melhor para tarefas longas e exploratórias ("monta um programa, agenda e cobra")</li><li>Insights viram <b>starters acionáveis</b> (resolve a página em branco)</li></ul>
+      <div class="refs">Ref.: ChatGPT/Claude · spec <code>chat-first-workspace/SPEC.md</code> (F0–F3)</div>
+      <div class="fit"><b>Fecha com o código:</b> ponte in-memory + <code>tool-policy.ts</code> + rota <code>/assistente</code>. Já mapeado na spec.</div>
+    </div>
+
+    <div class="card path">
+      <div class="pid">B</div>
+      <div class="hd"><div class="ico">⌘</div><div><h3>Barra de comando ambiente</h3><span class="tag t-new">Alto retorno</span></div></div>
+      <p style="color:var(--tx2);margin:6px 0 0;font-size:14.5px">A IA dentro do <code>⌘K</code> que <b>já existe</b> — opera a <b>tela atual</b>, sem destino separado. "marca pago", "reagenda a Maria pra terça", "manda check-in pros ativos" de qualquer página.</p>
+      <div class="meta2"><span class="pill">Esforço <b>baixo-médio</b></span><span class="pill">Onipresente</span></div>
+      <ul><li>Reaproveita <code>command-palette.tsx</code> (hoje só navega)</li><li>Sem nova tela; entra no fluxo onde o treinador já está</li><li>Resultado inline + card de confirmação</li></ul>
+      <div class="refs">Ref.: <a href="https://www.raycast.com/github/github-copilot">Raycast</a>, Linear, Superhuman (command bar + IA)</div>
+      <div class="fit"><b>Fecha com o código:</b> estende o palette existente; mesma engine; deep-link nativo via <code>router.push</code>.</div>
+    </div>
+
+    <div class="card path" style="border-color:var(--line2);box-shadow:0 0 0 1px rgba(139,92,246,.12)">
+      <div class="pid">C</div>
+      <div class="hd"><div class="ico">🎛️</div><div><h3>Copiloto de UI generativa</h3><span class="tag t-new">O diferencial</span></div></div>
+      <p style="color:var(--tx2);margin:6px 0 0;font-size:14.5px">A IA devolve <b>componentes vivos e editáveis do Kinevo</b> — não texto. A conversa vira um <b>canvas</b>: tabela de treino, card de cobrança, calendário, ficha do aluno, tudo manipulável e já salvo no estado.</p>
+      <div class="meta2"><span class="pill">Esforço <b>médio-alto</b></span><span class="pill">Defensável / "uau"</span></div>
+      <ul><li>Impossível no conector externo — exige nosso frontend</li><li>Casa com o motor de prescrição (devolve o programa, não a descrição)</li><li>Otimista: editou no card → reflete na GUI</li></ul>
+      <div class="refs">Ref.: <a href="https://vercel.com/blog/ai-sdk-3-generative-ui">AI SDK Generative UI</a>, Claude Artifacts, <a href="https://ai-sdk.dev/docs/reference/ai-sdk-rsc/create-streamable-ui">createStreamableUI</a></div>
+      <div class="fit"><b>Fecha com o código:</b> <code>streamUI</code> renderiza componentes Kinevo existentes (reuso de <code>ProgramTable</code>, <code>ContractCard</code>…). Mock: <code>ai-trainer-mock-canvas.html</code>.</div>
+    </div>
+
+    <div class="card path">
+      <div class="pid">D</div>
+      <div class="hd"><div class="ico">🌅</div><div><h3>Agente proativo / fila de aprovação</h3><span class="tag t-new">Reaproveita infra</span></div></div>
+      <p style="color:var(--tx2);margin:6px 0 0;font-size:14.5px">A IA <b>chega trabalhando</b>: briefing matinal + uma <b>fila de ações já rascunhadas</b> esperando seu OK (recuperar aluno sumido, cobrar vencidos, ajustar carga estagnada).</p>
+      <div class="meta2"><span class="pill">Esforço <b>médio</b></span><span class="pill">Retenção / hábito</span></div>
+      <ul><li>O cron de insights já gera 6 tipos com <code>action_type</code> + <code>action_metadata</code></li><li><code>draft-message</code> e <code>winback-draft</code> já escrevem as mensagens</li><li>Treinador revisa em lote e aprova com 1 toque</li></ul>
+      <div class="refs">Ref.: Agentic <a href="https://www.augmentcode.com/guides/agentic-design-patterns">approval pattern</a>, Copilot HITL, Superhuman/Intercom Fin</div>
+      <div class="fit"><b>Fecha com o código:</b> 80% pronto — insights + drafts existem. Falta a <b>fila/UI</b> e ligar o "aprovar" às tools. Mock: <code>ai-trainer-mock-proactive.html</code>.</div>
+    </div>
+
+    <div class="card path">
+      <div class="pid">E</div>
+      <div class="hd"><div class="ico">🎙️</div><div><h3>Mobile: voz + nativo (Siri)</h3><span class="tag t-new">Onde o treinador está</span></div></div>
+      <p style="color:var(--tx2);margin:6px 0 0;font-size:14.5px">Na academia, sem teclado: ditar a intenção e confirmar com Face ID. E mais fundo: expor ações como <b>App Intents/Siri Shortcuts</b> — "Ei Siri, registra presença da Marina".</p>
+      <div class="meta2"><span class="pill">Esforço <b>médio</b> (voz) · <b>alto</b> (Siri)</span><span class="pill">Diferencial mobile</span></div>
+      <ul><li>App é <b>bare Expo</b> (já tem módulos nativos: Watch, Live Activities) → App Intents é viável via config plugin</li><li>Push→chat já é suportado (deep-link por <code>data.type</code>)</li><li>Falta lib de voz (<code>expo-speech</code>/Whisper) — não existe hoje</li></ul>
+      <div class="refs">Ref.: <a href="https://dev.to/cross19xx/ios-app-intents-in-an-expo-app-38od">App Intents no Expo</a> (config plugin) · ganho citado +8–12pt retenção D7</div>
+      <div class="fit"><b>Fecha com o código:</b> mobile chama <code>www.kinevoapp.com/api/assistant/*</code> com o JWT (padrão já usado). Siri = módulo nativo novo.</div>
+    </div>
+
+    <div class="card" style="display:flex;flex-direction:column;justify-content:center;background:none;border-style:dashed">
+      <h3 style="font-size:16px">Como escolher</h3>
+      <p style="color:var(--tx2);margin:8px 0 0;font-size:14px">B, C e D dão o <b>maior salto sobre o que o Claude faz</b> porque dependem de termos o código. A recomendação (§06): <b>construir a engine uma vez</b> e acender as superfícies em ordem — começando pela <b>barra de comando (B)</b> + <b>UI generativa (C)</b>, com o <b>proativo (D)</b> logo atrás reusando insights/drafts.</p>
+    </div>
+
+  </div>
+
+  <!-- MATRIX -->
+  <h2 id="matrix"><span class="nº">04</span> Oportunidades concretas — valor × esforço</h2>
+  <p class="lead">Funcionalidades específicas (não caminhos). O canto superior-esquerdo = fazer primeiro.</p>
+  <div class="matrix">
+    <div class="grid-l" style="left:50%;top:0;width:1px;height:100%"></div>
+    <div class="grid-l" style="top:50%;left:0;height:1px;width:100%"></div>
+    <span class="axis ay">Valor →</span><span class="axis ax">Esforço →</span>
+    <span class="quad" style="left:16%;top:8%">★ fazer já</span>
+    <span class="quad" style="right:10%;top:8%">apostas grandes</span>
+    <span class="quad" style="left:13%;bottom:34px">quick wins</span>
+    <span class="quad" style="right:10%;bottom:34px">depois</span>
+    <!-- plotted: left=esforço, top=valor(invertido) -->
+    <div class="dotp hot" style="left:20%;top:18%">Barra de comando ⌘K<small>opera a tela atual</small></div>
+    <div class="dotp hot" style="left:30%;top:30%">Fila de aprovação<small>insights + drafts já existem</small></div>
+    <div class="dotp" style="left:23%;top:44%">Briefing matinal<small>"3 coisas hoje"</small></div>
+    <div class="dotp" style="left:18%;top:62%">Insights = starters<small>1 toque → prompt</small></div>
+    <div class="dotp hot" style="left:58%;top:24%">Copiloto UI generativa<small>treino editável inline</small></div>
+    <div class="dotp" style="left:50%;top:46%">Chat-first workspace<small>destino conversacional</small></div>
+    <div class="dotp" style="left:46%;top:66%">Voz no mobile<small>ditar + Face ID</small></div>
+    <div class="dotp" style="left:80%;top:34%">Siri / App Intents<small>módulo nativo</small></div>
+    <div class="dotp" style="left:72%;top:70%">Feed "IA fez X" + undo<small>auditoria</small></div>
+    <div class="dotp" style="left:38%;top:80%">Roteamento → generateProgram<small>barato e validado</small></div>
+  </div>
+
+  <!-- ARCH -->
+  <h2 id="arch"><span class="nº">05</span> Como tudo fecha com o código</h2>
+  <p class="lead">O ponto crítico que você pediu: as ideias só valem se fizerem sentido com o código. A boa notícia — <b>todas compartilham uma engine</b>, e o grosso dela já está especificado (F0 da spec). As superfícies são <b>fachadas finas</b> sobre ela.</p>
+
+  <div class="arch" style="margin-top:18px">
+    <div class="layer">
+      <div class="lt">Superfícies <span class="lb">fachadas finas · 1 por caminho</span></div>
+      <div class="row">
+        <span class="chip2 new">/assistente (chat)</span><span class="chip2 new">⌘K command bar</span><span class="chip2 new">canvas generativo</span><span class="chip2 new">fila de aprovação</span><span class="chip2 new">mobile voz/Siri</span>
+      </div>
+    </div>
+    <div class="archarrow">↓ todas chamam ↓</div>
+    <div class="layer">
+      <div class="lt">Camada de orquestração <span class="lb">parte nova, parte pronta</span></div>
+      <div class="row">
+        <span class="chip2 have">api/assistant/chat (streamText)</span>
+        <span class="chip2 new">mcp-bridge.ts (in-memory)</span>
+        <span class="chip2 new">tool-policy.ts (read/write/créditos)</span>
+        <span class="chip2 new">execute-tool (HITL)</span>
+        <span class="chip2 new">streamUI (UI generativa)</span>
+        <span class="chip2 new">metering / quota</span>
+      </div>
+    </div>
+    <div class="archarrow">↓ um catálogo só ↓</div>
+    <div class="layer core-band">
+      <div class="lt" style="color:var(--violet2)">Engine única — 55 tools MCP <span class="lb" style="border-color:var(--violet);color:var(--violet2)">já em produção · escopo por trainerId</span></div>
+      <div class="row">
+        <span class="chip2 have">createMcpServer(trainerId)</span><span class="chip2 have">readOnly/destructive hints</span><span class="chip2 have">núcleos compartilhados (action↔MCP)</span><span class="chip2 have">generateProgram (1 call)</span>
+      </div>
+    </div>
+    <div class="archarrow">↓ fontes proativas ↓</div>
+    <div class="layer">
+      <div class="lt">Sinais & rascunhos <span class="lb">já existem</span></div>
+      <div class="row">
+        <span class="chip2 have">cron insights (6 tipos + action_type)</span><span class="chip2 have">draft-message</span><span class="chip2 have">winback-draft</span><span class="chip2 have">assistant_insights (action_metadata)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>Princípio de design: 1 engine, N fachadas</h4>
+    <p>Não construir 5 produtos. Construir a <b>engine uma vez</b> (ponte + tool-policy + HITL + metering = o F0 já especificado) e then cada caminho é uma UI fina por cima. Isso mantém <b>um catálogo só</b> (o mesmo que serve o Claude externo continua intocado) e garante que tudo "fecha": cada superfície fala a mesma língua de tools, confirmação e créditos.</p>
+  </div>
+  <div class="callout amber">
+    <h4>2 travas técnicas já investigadas (não são surpresa)</h4>
+    <p>(1) O AI SDK 4.3.19 <b>descarta as annotations</b> das tools na ponte → a classificação read/write tem que ser <b>estática</b> em <code>tool-policy.ts</code>. (2) Toda tool vem com <code>execute</code> automático → o HITL exige <b>substituir</b> as tools de confirmação por versões client-side + endpoint <code>execute-tool</code>. Ambas já têm solução na spec.</p>
+  </div>
+
+  <!-- SEQ -->
+  <h2 id="seq"><span class="nº">06</span> Sequência recomendada</h2>
+  <div class="card">
+    <div class="phase"><div class="pn">F0<br><span style="font-weight:500;color:var(--tx3)">engine</span></div><div class="pc"><h3>Construir a engine uma vez</h3><p>Ponte in-memory + <code>tool-policy.ts</code> + <code>execute-tool</code> (HITL) + metering/cota + <code>trainers.ai_tier</code>. Nada visível — mas habilita TODAS as superfícies. (É o F0 da spec.)</p></div></div>
+    <div class="phase"><div class="pn">1</div><div class="pc"><h3>Barra de comando ⌘K (caminho B)</h3><p>Maior retorno/menor esforço: a IA opera a tela atual de qualquer lugar. Reaproveita o palette. Prova o valor sem nova tela.</p></div></div>
+    <div class="phase"><div class="pn">2</div><div class="pc"><h3>UI generativa (caminho C)</h3><p>O diferencial: respostas viram componentes vivos (treino editável, card de cobrança). É o que o Claude não faz. Pode nascer dentro do ⌘K e do chat.</p></div></div>
+    <div class="phase"><div class="pn">3</div><div class="pc"><h3>Agente proativo (caminho D)</h3><p>Briefing + fila de aprovação reusando insights/drafts. Vira hábito diário e retenção. Baixo custo incremental.</p></div></div>
+    <div class="phase"><div class="pn">4</div><div class="pc"><h3>Mobile: chat contextual + voz (caminho E)</h3><p>Mesma API via JWT. Voz (expo-speech/Whisper) + push→chat. Siri/App Intents como aposta seguinte (módulo nativo).</p></div></div>
+  </div>
+  <div class="callout teal"><h4>Onde o chat-first (A) entra</h4><p>Não desaparece — vira a <b>casa</b> dessas superfícies na fase 2/3 ("chat como tela inicial", Premium). Mas começar por ⌘K + UI generativa prova valor mais rápido e com menos risco de "página em branco".</p></div>
+
+  <!-- RISKS -->
+  <h2 id="risks"><span class="nº">07</span> Riscos & decisões em aberto</h2>
+  <div class="card">
+    <div class="q"><span class="n">1</span><div><b>Custo escala com uso.</b> Power-user via chat ≈ R$180/mês de API. Metering por créditos + cap por plano precisa existir <b>antes</b> de abrir. (Já há tabela/RPC na spec.)</div></div>
+    <div class="q"><span class="n">2</span><div><b>Confiança em escrita.</b> Toda ação sensível passa pelo gate <code>confirm</code> (HITL) — nunca auto-executa cobrança/cancelamento. Considerar um <b>feed "IA fez X" com desfazer</b> para as não-sensíveis.</div></div>
+    <div class="q"><span class="n">3</span><div><b>Quantas superfícies de uma vez?</b> Recomendo 1 ponta-de-lança (⌘K) + UI generativa, não as 5. Evita dispersão antes de provar valor.</div></div>
+    <div class="q"><span class="n">4</span><div><b>Tier não existe hoje</b> (acesso é binário). Precisa <code>trainers.ai_tier</code> + <code>stripe_price_id</code> via webhook. Decisão de pricing (Essencial/Pro IA/Premium IA) antes da fase 1.</div></div>
+    <div class="q"><span class="n">5</span><div><b>Siri/App Intents</b> dá retenção mas custa módulo nativo. Vale como v2 do mobile, não no v1.</div></div>
+    <div class="q"><span class="n">6</span><div><b>Modelo.</b> <code>gpt-4.1-mini</code> hoje; UI generativa e seleção entre 55 tools podem pedir medir acurácia antes de baratear. Prompt caching é a alavanca #1.</div></div>
+  </div>
+
+  <!-- REF -->
+  <h2 id="ref"><span class="nº">08</span> Referências</h2>
+  <div class="reflist">
+    <div><b>UI generativa:</b> <a href="https://vercel.com/blog/ai-sdk-3-generative-ui">AI SDK 3 — Generative UI</a> · <a href="https://ai-sdk.dev/docs/reference/ai-sdk-rsc/create-streamable-ui">createStreamableUI</a> · <a href="https://ai-sdk.dev/docs/advanced/multiple-streamables">Multiple Streamables</a></div>
+    <div><b>Command bar / agentes:</b> <a href="https://www.raycast.com/github/github-copilot">Raycast + Copilot</a> · <a href="https://www.augmentcode.com/guides/agentic-design-patterns">Agentic design patterns (2026)</a> · <a href="https://learnagenticpatterns.com/">Agentic patterns catalog</a></div>
+    <div><b>Mobile nativo:</b> <a href="https://dev.to/cross19xx/ios-app-intents-in-an-expo-app-38od">App Intents num app Expo</a> · <a href="https://rorklab.net/en/articles/rork-dev/rork-app-intents-siri-shortcuts-implementation-guide">App Intents + Siri (guia)</a> · <a href="https://github.com/EvanBacon/expo-quick-actions">expo-quick-actions</a></div>
+    <div><b>Padrões de aprovação/HITL:</b> Microsoft Copilot (intermediate steps) · Intercom Fin · Superhuman AI · <a href="https://machinelearningmastery.com/7-must-know-agentic-ai-design-patterns/">7 agentic patterns</a></div>
+    <div><b>Interno (fonte da verdade):</b> <code>web/specs/active/chat-first-workspace/SPEC.md</code> · <code>lib/mcp/*</code> · <code>api/assistant/chat</code> · <code>cron/generate-insights</code> · <code>actions/prescription/generate-program.ts</code></div>
+  </div>
+
+  <div class="foot">
+    Documento de planejamento — nenhum código alterado. Mocks visuais que acompanham este caminho:
+    <div class="files">
+      <span>ai-trainer-master.html (este)</span><span>ai-trainer-mock-canvas.html — UI generativa</span><span>ai-trainer-mock-commandbar.html — ⌘K</span><span>ai-trainer-mock-proactive.html — briefing + voz</span>
+      <span>mcp-chat-mockup.html</span><span>mcp-mobile-storyboard.html</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

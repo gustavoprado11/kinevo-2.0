@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinevo · Assistente — Home (Cowork) v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F5F7; --card:#FFFFFF; --nested:#F9F9FB; --inset:#F5F5F7;
+    --tx:#1D1D1F; --tx2:#6E6E73; --tx3:#86868B; --tx4:#AEAEB2;
+    --line:#D2D2D7; --line2:#E8E8ED;
+    --purple:#7C3AED; --purple2:#8b5cf6; --purple3:#a78bfa; --purple-bg:rgba(124,58,237,.10);
+    --blue:#007AFF; --green:#34C759; --amber:#FF9F0A; --red:#FF3B30; --teal:#06B6D4;
+    --sh-card:0 1px 3px rgba(0,0,0,.06); --sh-hover:0 2px 10px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--tx);font:14px/1.55 "Plus Jakarta Sans",-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.006em;overflow:hidden}
+  svg{display:block}
+  ::-webkit-scrollbar{width:9px}::-webkit-scrollbar-thumb{background:#D2D2D7;border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+
+  .app{display:grid;grid-template-columns:248px 1fr;height:100vh}
+
+  /* ───────────── Sidebar (modo Assistente) ───────────── */
+  .side{background:var(--card);box-shadow:1px 0 0 rgba(0,0,0,.06);display:flex;flex-direction:column;min-height:0}
+  .brand{display:flex;align-items:center;gap:11px;padding:22px 18px 14px}
+  .brand .mk{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--purple),var(--purple3));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px}
+  .brand b{font-size:17px;font-weight:700;letter-spacing:-.02em}
+  .newbtn{display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 16px 8px;padding:9px;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;color:#fff;background:linear-gradient(135deg,var(--purple),var(--purple2));box-shadow:0 4px 12px -4px rgba(124,58,237,.5)}
+  .newbtn svg{width:15px;height:15px;stroke-width:2.3}
+
+  nav{padding:2px 12px 6px}
+  .nav{position:relative;display:flex;align-items:center;gap:11px;padding:8px 12px;border-radius:9px;font-size:13px;font-weight:500;color:var(--tx2);cursor:pointer}
+  .nav svg{width:17px;height:17px;stroke-width:1.6;color:var(--tx4)}
+  .nav:hover{background:var(--inset);color:var(--tx)}
+  .nav .chev{margin-left:auto;width:14px;height:14px}
+
+  .divider{height:1px;background:var(--line2);margin:6px 16px}
+
+  /* segmento Alunos / Conversas */
+  .seg-wrap{padding:6px 16px 8px}
+  .seg{display:flex;background:var(--inset);border:1px solid var(--line2);border-radius:10px;padding:3px}
+  .seg button{flex:1;border:none;background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--tx3);padding:6px;border-radius:8px;cursor:pointer}
+  .seg button.on{background:var(--card);color:var(--purple);box-shadow:var(--sh-card)}
+  .seg button .cnt{color:var(--tx4);font-weight:500}
+  .search{margin:0 16px 6px;display:flex;align-items:center;gap:8px;background:var(--inset);border:1px solid var(--line2);border-radius:9px;padding:7px 10px;color:var(--tx4);font-size:12.5px}
+  .search svg{width:14px;height:14px;stroke-width:1.8}
+
+  .list{flex:1;overflow-y:auto;padding:0 10px 12px;min-height:0}
+  .li{display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:10px;cursor:pointer}
+  .li:hover{background:var(--inset)}
+  .li.on{background:var(--purple-bg)}
+  .li-av{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+  .li-tx{min-width:0;flex:1}
+  .li-tx b{font-size:13px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .li-tx b.muted{color:var(--tx2)}
+  .li-tx span{font-size:11px;color:var(--tx3);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .li-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .dot-green{background:var(--green)} .dot-amber{background:var(--amber)} .dot-red{background:var(--red)}
+
+  .me{display:flex;align-items:center;gap:10px;padding:11px 18px;border-top:1px solid var(--line2)}
+  .me .av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px}
+  .me b{font-size:13px;display:block}.me span{font-size:11px;color:var(--tx3)}
+
+  /* ───────────── Home canvas ───────────── */
+  .home{overflow-y:auto;position:relative}
+  /* Toggle Início (na sidebar, acima de Nova conversa) */
+  .home-toggle{display:flex;gap:3px;margin:4px 16px 10px;background:var(--inset);border:1px solid var(--line2);border-radius:11px;padding:3px}
+  .home-toggle button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--tx2);padding:7px;border-radius:8px;cursor:pointer}
+  .home-toggle button svg{width:14px;height:14px;stroke-width:2}
+  .home-toggle button.on{background:var(--card);color:var(--purple);box-shadow:var(--sh-card)}
+
+  .wrap{max-width:720px;margin:0 auto;padding:78px 28px 60px}
+  .hero{text-align:center;margin-bottom:28px}
+  .hero .spark{width:34px;height:34px;margin:0 auto 14px;color:var(--purple)}
+  .hero .spark svg{width:34px;height:34px;stroke-width:1.4}
+  .hero .greet{font-size:14px;color:var(--tx3);font-weight:600;margin-bottom:6px}
+  .hero h1{font-family:"Fraunces",Georgia,serif;font-size:38px;line-height:1.1;font-weight:500;letter-spacing:-.015em}
+
+  .composer{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 6px 24px -12px rgba(0,0,0,.14);padding:6px 6px 6px 0}
+  .composer:focus-within{border-color:var(--purple);box-shadow:0 0 0 3px var(--purple-bg)}
+  .cmp-field{display:flex;align-items:flex-start;gap:12px;padding:16px 18px 6px}
+  .cmp-field .ph{flex:1;font-size:16px;color:var(--tx4)}
+  .cmp-field .mic{color:var(--tx3);width:20px;height:20px}
+  .cmp-row{display:flex;align-items:center;gap:10px;padding:8px 10px 6px}
+  .plus{width:34px;height:34px;border-radius:10px;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;color:var(--tx3)}
+  .plus svg{width:17px;height:17px;stroke-width:2}
+  .agir{margin-left:auto;display:flex;align-items:center;gap:8px;height:38px;padding:0 18px;border-radius:11px;font-size:13.5px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--purple),var(--purple2));box-shadow:0 6px 16px -6px rgba(124,58,237,.5)}
+  .agir svg{width:16px;height:16px;stroke-width:2}
+
+  .ctxrow{display:flex;align-items:center;gap:9px;margin-top:13px;flex-wrap:wrap}
+  .ctxpill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--tx2);background:var(--card);border:1px solid var(--line2);border-radius:999px;padding:7px 13px;box-shadow:var(--sh-card);cursor:pointer}
+  .ctxpill svg{width:14px;height:14px;color:var(--purple2);stroke-width:2}
+  .ctxpill .chev{color:var(--tx4)}
+  .ctxpill.ghost{color:var(--tx3);background:transparent;border-style:dashed}
+  .credit{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--tx3)}
+  .credit b{color:var(--tx);font-weight:700}.credit svg{width:15px;height:15px;color:var(--amber)}
+
+  .section{margin-top:36px}
+  .sec-head{display:flex;align-items:center;margin-bottom:13px}
+  .sec-head .t{font-size:11.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--tx3)}
+  .sec-head .link{margin-left:auto;font-size:12px;color:var(--purple);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+  .sec-head .link svg{width:13px;height:13px}
+
+  .att{display:flex;flex-direction:column;gap:9px}
+  .att-row{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line2);border-radius:14px;padding:14px 16px;box-shadow:var(--sh-card);cursor:pointer;transition:.15s}
+  .att-row:hover{box-shadow:var(--sh-hover);transform:translateY(-1px)}
+  .att-ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .att-ic svg{width:19px;height:19px;stroke-width:1.9}
+  .ic-red{background:rgba(255,59,48,.1);color:var(--red)} .ic-amber{background:rgba(255,159,10,.12);color:var(--amber)}
+  .ic-blue{background:rgba(0,122,255,.1);color:var(--blue)} .ic-purple{background:var(--purple-bg);color:var(--purple)}
+  .att-tx b{font-size:14px;display:block;letter-spacing:-.01em}.att-tx span{font-size:12.5px;color:var(--tx3)}
+  .att-go{margin-left:auto;color:var(--tx4);width:18px;height:18px}
+  .att-cta{margin-left:auto;font-size:12px;font-weight:700;color:var(--purple);background:var(--purple-bg);border-radius:8px;padding:6px 11px;white-space:nowrap}
+
+  .agenda{display:flex;flex-direction:column;gap:2px}
+  .ag-row{display:flex;align-items:center;gap:14px;padding:11px 4px;border-bottom:1px solid var(--line2)}
+  .ag-row:last-child{border-bottom:0}
+  .ag-time{font-size:13px;font-weight:700;width:52px;font-variant-numeric:tabular-nums}
+  .ag-av{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+  .ag-tx b{font-size:13.5px;display:block}.ag-tx span{font-size:12px;color:var(--tx3)}
+  .ag-tag{margin-left:auto;font-size:11px;font-weight:600;color:var(--tx2);background:var(--inset);border:1px solid var(--line2);border-radius:7px;padding:4px 9px}
+
+  .starters{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .st-card{background:var(--card);border:1px solid var(--line2);border-radius:14px;padding:15px 16px;box-shadow:var(--sh-card);cursor:pointer;transition:.15s}
+  .st-card:hover{box-shadow:var(--sh-hover);transform:translateY(-1px)}
+  .st-card .sh{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .st-card .sh .si{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+  .st-card .sh .si svg{width:15px;height:15px;stroke-width:2}
+  .st-card .sh b{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3)}
+  .st-card .q{display:block;font-size:13.5px;color:var(--tx);padding:5px 0;border-top:1px solid var(--nested)}
+  .st-card .q:first-of-type{border-top:0}
+  .st-card .q .arrow{color:var(--tx4);float:right}
+
+  .ribbon{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:60;font-size:11px;color:var(--tx2);background:rgba(255,255,255,.85);border:1px solid var(--line2);border-radius:999px;padding:6px 16px;backdrop-filter:blur(8px);box-shadow:var(--sh-card)}
+  .ribbon b{color:var(--purple)}
+</style>
+</head>
+<body>
+<div class="ribbon">mock · <b>/assistente</b> — Home v2 · sidebar nav+Alunos/Conversas · toggle Início</div>
+
+<div class="app">
+  <!-- Sidebar modo Assistente -->
+  <aside class="side">
+    <div class="brand"><span class="mk">K</span><b>Kinevo</b></div>
+    <div class="home-toggle">
+      <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> Clássico</button>
+      <button class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l1.6 4.4a2 2 0 0 0 1.2 1.2L19 10l-4.2 1.4a2 2 0 0 0-1.2 1.2L12 17l-1.6-4.4a2 2 0 0 0-1.2-1.2L5 10l4.2-1.4a2 2 0 0 0 1.2-1.2z"/></svg> Assistente</button>
+    </div>
+    <div class="newbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg> Nova conversa</div>
+    <nav>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg> Dashboard</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg> Alunos</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Agenda</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><path d="M16 12h.01"/></svg> Financeiro</div>
+      <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Bibliotecas <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></div>
+    </nav>
+
+    <div class="divider"></div>
+
+    <div class="seg-wrap">
+      <div class="seg">
+        <button class="on">Alunos <span class="cnt">24</span></button>
+        <button>Conversas <span class="cnt">8</span></button>
+      </div>
+    </div>
+    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg> Buscar aluno…</div>
+
+    <div class="list">
+      <div class="li on"><span class="li-av" style="background:linear-gradient(135deg,#FF6482,#FF2D92)">MS</span><div class="li-tx"><b>Maria Silva</b><span>Hipertrofia · 3x/sem</span></div><span class="li-dot dot-red" title="inadimplente"></span></div>
+      <div class="li"><span class="li-av" style="background:linear-gradient(135deg,#0A84FF,#06B6D4)">JS</span><div class="li-tx"><b>João Souza</b><span>Treino expira quinta</span></div><span class="li-dot dot-amber"></span></div>
+      <div class="li"><span class="li-av" style="background:linear-gradient(135deg,#30D158,#A3E635);color:#0a2e12">PA</span><div class="li-tx"><b>Pedro Alves</b><span>Ativo · em dia</span></div><span class="li-dot dot-green"></span></div>
+      <div class="li"><span class="li-av" style="background:linear-gradient(135deg,#FF9F0A,#FF6482)">LM</span><div class="li-tx"><b>Lúcia Matos</b><span>Check-in pendente</span></div><span class="li-dot dot-amber"></span></div>
+      <div class="li"><span class="li-av" style="background:linear-gradient(135deg,#5E5CE6,#0A84FF)">RC</span><div class="li-tx"><b>Rafa Costa</b><span>Ativo · em dia</span></div><span class="li-dot dot-green"></span></div>
+      <div class="li"><span class="li-av" style="background:linear-gradient(135deg,#7C3AED,#A78BFA)">BN</span><div class="li-tx"><b>Bruno Nunes</b><span>Ativo · em dia</span></div><span class="li-dot dot-green"></span></div>
+      <div class="li"><span class="li-av" style="background:linear-gradient(135deg,#FF2D92,#FF9F0A)">CT</span><div class="li-tx"><b>Carla Teles</b><span>Ativo · em dia</span></div><span class="li-dot dot-green"></span></div>
+      <div class="li"><span class="li-av" style="background:linear-gradient(135deg,#06B6D4,#30D158);color:#06251a">DM</span><div class="li-tx"><b>Diego Mota</b><span>Sem treino ativo</span></div><span class="li-dot dot-amber"></span></div>
+    </div>
+
+    <div class="me"><span class="av">GP</span><div><b>Gustavo Prado</b><span>Plano Premium IA</span></div></div>
+  </aside>
+
+  <!-- Home -->
+  <main class="home">
+    <div class="wrap">
+      <div class="hero">
+        <div class="spark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l1.6 4.4a2 2 0 0 0 1.2 1.2L19 10l-4.2 1.4a2 2 0 0 0-1.2 1.2L12 17l-1.6-4.4a2 2 0 0 0-1.2-1.2L5 10l4.2-1.4a2 2 0 0 0 1.2-1.2z"/><path d="M19 14l.5 1.5L21 16l-1.5.5L19 18l-.5-1.5L17 16l1.5-.5z"/></svg></div>
+        <div class="greet">Boa tarde, Gustavo.</div>
+        <h1>O que vamos resolver hoje?</h1>
+      </div>
+
+      <div class="composer">
+        <div class="cmp-field">
+          <span class="ph">Diga o que fazer no Kinevo — ou escolha um aluno…</span>
+          <svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </div>
+        <div class="cmp-row">
+          <span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="agir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.5 21.7 22 2 2.3 9.5l7.9 3.2z"/><path d="m10.2 12.7 4.3-4.3"/></svg> Agir</span>
+        </div>
+      </div>
+      <div class="ctxrow">
+        <span class="ctxpill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg> Aluno em foco <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+        <span class="ctxpill ghost">Geral · visão geral dos alunos</span>
+        <span class="credit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/></svg> <b>980</b> de 1.000 créditos</span>
+      </div>
+
+      <div class="section">
+        <div class="sec-head"><span class="t">Precisa de atenção</span><span class="link">ver tudo <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span></div>
+        <div class="att">
+          <div class="att-row"><span class="att-ic ic-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span><div class="att-tx"><b>3 alunos inadimplentes</b><span>R$ 240 em aberto · Maria, Pedro, Lúcia</span></div><span class="att-cta">Cobrar com IA</span></div>
+          <div class="att-row"><span class="att-ic ic-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="att-tx"><b>2 treinos expiram esta semana</b><span>João (qui) e Rafa (sex) ficam sem programa ativo</span></div><svg class="att-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></div>
+          <div class="att-row"><span class="att-ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5M9 13h6M9 17h4"/></svg></span><div class="att-tx"><b>1 check-in pendente</b><span>Maria respondeu a anamnese — revisar</span></div><svg class="att-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></div>
+          <div class="att-row"><span class="att-ic ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><div class="att-tx"><b>Estagnação detectada</b><span>Pedro sem progresso no agachamento há 4 semanas</span></div><span class="att-cta">Analisar</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sec-head"><span class="t">Agenda de hoje</span><span class="link">abrir agenda <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span></div>
+        <div class="agenda">
+          <div class="ag-row"><span class="ag-time">09:00</span><span class="ag-av" style="background:linear-gradient(135deg,#0A84FF,#06B6D4)">JS</span><div class="ag-tx"><b>João Souza</b><span>Avaliação física</span></div><span class="ag-tag">presencial</span></div>
+          <div class="ag-row"><span class="ag-time">14:30</span><span class="ag-av" style="background:linear-gradient(135deg,#FF6482,#FF2D92)">MS</span><div class="ag-tx"><b>Maria Silva</b><span>Treino acompanhado</span></div><span class="ag-tag">presencial</span></div>
+          <div class="ag-row"><span class="ag-time">17:30</span><span class="ag-av" style="background:linear-gradient(135deg,#30D158,#A3E635);color:#0a2e12">PA</span><div class="ag-tx"><b>Pedro Alves</b><span>Online · revisão de carga</span></div><span class="ag-tag">online</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sec-head"><span class="t">Comece por aqui</span></div>
+        <div class="starters">
+          <div class="st-card"><div class="sh"><span class="si ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/></svg></span><b>Financeiro</b></div><span class="q">Mostrar inadimplentes do mês <span class="arrow">→</span></span><span class="q">Qual o MRR atual? <span class="arrow">→</span></span><span class="q">Gerar relatório financeiro <span class="arrow">→</span></span></div>
+          <div class="st-card"><div class="sh"><span class="si ic-purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></span><b>Alunos</b></div><span class="q">Quem está sem treino ativo? <span class="arrow">→</span></span><span class="q">Resumo de adesão da semana <span class="arrow">→</span></span><span class="q">Alunos em risco de cancelar <span class="arrow">→</span></span></div>
+          <div class="st-card"><div class="sh"><span class="si ic-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6.5 6.5 11 11M3 3l1 1M18 22l4-4"/></svg></span><b>Treinos</b></div><span class="q">Gerar programa para um aluno <span class="arrow">→</span></span><span class="q">Ajustar carga do supino da Maria <span class="arrow">→</span></span><span class="q">Criar template na biblioteca <span class="arrow">→</span></span></div>
+          <div class="st-card"><div class="sh"><span class="si ic-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16v12H5.2L4 17.5z"/></svg></span><b>Comunicação</b></div><span class="q">Enviar recado motivacional <span class="arrow">→</span></span><span class="q">Mandar formulário de check-in <span class="arrow">→</span></span><span class="q">Lembrete para quem faltou <span class="arrow">→</span></span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

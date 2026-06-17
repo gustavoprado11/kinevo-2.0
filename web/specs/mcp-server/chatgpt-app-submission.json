@@ -6,7 +6,7 @@
     "slug": "kinevo",
     "tagline": "Manage your personal training business with AI",
     "description": "Kinevo is a B2B SaaS platform for personal trainers. This connector lets trainers manage students, create training programs, prescribe exercises, track progress, send messages, and view financial data \u2014 all through natural language in ChatGPT.",
-    "long_description": "Kinevo connects personal trainers to their entire business operations directly from ChatGPT.\n\nWith 21 tools available, trainers can:\n\n- Manage students \u2014 list, search, view profiles, create new students, update info and clinical conditions\n- Create training programs \u2014 build programs from scratch, add workout sessions, prescribe exercises with sets/reps/rest, assign to students\n- Track progress \u2014 view workout history, load progression over time, adherence rates, form/check-in responses\n- Communicate \u2014 list conversations, read messages, send messages to students (with push notifications)\n- Monitor finances \u2014 view subscriptions, MRR, cancellations, payment status\n- Get insights \u2014 dashboard summary with active students, programs, sessions, unread messages\n\nDesigned for the Brazilian personal training market. All tools support Portuguese prompts.",
+    "long_description": "Kinevo connects personal trainers to their entire business operations directly from ChatGPT.\n\nWith 27 tools available, trainers can:\n\n- Manage students \u2014 list, search, view profiles, create new students, update info and clinical conditions\n- Build & edit training programs \u2014 create programs from scratch, add/rename/reschedule workout sessions, prescribe exercises with sets/reps/rest, edit or remove exercises in-place, and assign or expire programs\n- Prescribe advanced methods \u2014 per-set schemes (pyramid, drop-set, cluster, 5x5, top+backoff) with per-set loads (kg or %1RM), and supersets/bi-sets/tri-sets\n- Track progress \u2014 view workout history, load progression over time, adherence rates, form/check-in responses\n- Communicate \u2014 list conversations, read messages, send messages to students (with push notifications)\n- Monitor finances \u2014 view subscriptions, MRR, cancellations, payment status\n- Get insights \u2014 dashboard summary with active students, programs, sessions, unread messages\n\nDesigned for the Brazilian personal training market. All tools support Portuguese prompts.",
     "categories": [
       "productivity",
       "health-fitness"
@@ -582,7 +582,7 @@
       }
     },
     "kinevo_add_exercise_to_session": {
-      "description": "Add an exercise to a workout session with sets, reps, and rest configuration. Can add exercises to both template and assigned workout sessions.",
+      "description": "Add an exercise to a workout session. Supports both simple prescription (sets + reps + rest) and advanced per-set prescription (set_scheme) with different reps/load/rest per set, training methods (pyramid, drop-set, cluster, 5x5, top+backoff) and per-set load targets (kg or %1RM). Call kinevo_list_training_methods to see method presets. To group exercises into a superset, use kinevo_create_superset instead.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -608,18 +608,18 @@
             "type": "number",
             "minimum": 1,
             "maximum": 20,
-            "description": "Number of sets"
+            "description": "Number of sets (simple mode). Ignored when set_scheme is provided."
           },
           "reps": {
             "type": "string",
-            "description": "Reps prescription (e.g., '12', '8-12', '10/10/8/6', 'AMRAP')"
+            "description": "Reps prescription (simple mode, e.g., '12', '8-12', 'AMRAP'). Ignored when set_scheme is provided."
           },
           "rest_seconds": {
             "type": "number",
             "minimum": 0,
             "maximum": 600,
             "default": 90,
-            "description": "Rest between sets in seconds"
+            "description": "Rest between sets in seconds (simple mode)"
           },
           "notes": {
             "type": "string",
@@ -644,14 +644,88 @@
           },
           "method_key": {
             "type": "string",
-            "description": "Training method (e.g., 'drop_set', 'rest_pause', 'cluster')"
+            "enum": [
+              "standard",
+              "custom",
+              "pyramid_down",
+              "pyramid_up",
+              "drop_set",
+              "top_backoff",
+              "5x5",
+              "cluster"
+            ],
+            "description": "Training method label. Use with set_scheme. 'custom' for a hand-built scheme that matches no preset."
+          },
+          "set_scheme": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Advanced per-set prescription. Each entry is one set (or one phase of a round for compound methods). When provided, sets/reps/rest_seconds are derived from it. For drop-set/cluster pass ONE round here and set rounds>1.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "set_type": {
+                  "type": "string",
+                  "enum": [
+                    "warmup",
+                    "normal",
+                    "top",
+                    "backoff",
+                    "drop",
+                    "failure",
+                    "cluster",
+                    "amrap"
+                  ],
+                  "default": "normal",
+                  "description": "Type of set."
+                },
+                "reps": {
+                  "type": "string",
+                  "description": "Reps for this set (e.g., '8', '8-12', 'AMRAP', '8+4+2' for cluster)"
+                },
+                "rest_seconds": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 600,
+                  "default": 60,
+                  "description": "Rest in seconds AFTER this set"
+                },
+                "weight_target_kg": {
+                  "type": "number",
+                  "description": "Suggested absolute load in kg for this set"
+                },
+                "weight_target_pct1rm": {
+                  "type": "number",
+                  "description": "Suggested load as % of 1RM for this set"
+                },
+                "rir": {
+                  "type": "number",
+                  "description": "Reps in reserve target"
+                },
+                "tempo": {
+                  "type": "string",
+                  "description": "Tempo string, e.g. '3-1-1-0'"
+                },
+                "notes": {
+                  "type": "string",
+                  "description": "Per-set note"
+                }
+              },
+              "required": [
+                "reps"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "rounds": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "Number of rounds the set_scheme repeats (compound methods like drop-set/cluster). Defaults to 1 (linear methods)."
           }
         },
         "required": [
           "workout_id",
-          "exercise_id",
-          "sets",
-          "reps"
+          "exercise_id"
         ],
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
@@ -662,9 +736,403 @@
         "openWorldHint": false
       },
       "justifications": {
-        "read_only_justification": "This tool adds an exercise to an existing workout session with sets, reps, and rest configuration.",
+        "read_only_justification": "This tool adds an exercise (simple or advanced per-set scheme) to an existing workout session.",
         "destructive_justification": "Creates a new record within an existing workout. Does not modify or delete existing exercises.",
         "open_world_justification": "Only creates data within the trainer's own Kinevo account."
+      }
+    },
+    "kinevo_update_workout_session": {
+      "description": "Rename, reorder, or reschedule an existing workout session in a program. Use this to edit a session in-place without recreating the program \u2014 including setting which weekdays the session falls on (scheduled_days).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workout_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The workout session ID to update"
+          },
+          "workout_type": {
+            "type": "string",
+            "enum": [
+              "template",
+              "assigned"
+            ],
+            "default": "assigned"
+          },
+          "name": {
+            "type": "string",
+            "description": "New session name (e.g., 'Treino A - Segunda')"
+          },
+          "order_index": {
+            "type": "number",
+            "minimum": 0,
+            "description": "New position in the program"
+          },
+          "scheduled_days": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 6
+            },
+            "description": "Days of the week this session is scheduled on (0=Sunday \u2026 6=Saturday). E.g. [1,3,5] = Mon/Wed/Fri. Pass [] to clear the schedule."
+          }
+        },
+        "required": [
+          "workout_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool updates an existing workout session's name, position, or weekly schedule.",
+        "destructive_justification": "Modifies existing session fields only. No exercises or sessions are deleted. Changes are reversible by updating again.",
+        "open_world_justification": "Only modifies data within the trainer's own Kinevo account."
+      }
+    },
+    "kinevo_delete_workout_session": {
+      "description": "Delete a workout session from a program. This permanently removes the session and all its exercises (cascade). Use to clean up old sessions when editing a program in-place.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workout_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The workout session ID to delete"
+          },
+          "workout_type": {
+            "type": "string",
+            "enum": [
+              "template",
+              "assigned"
+            ],
+            "default": "assigned"
+          }
+        },
+        "required": [
+          "workout_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool deletes a workout session and its exercises from a program.",
+        "destructive_justification": "Permanently removes a workout session and its child exercises (cascade) from the trainer's own program. The trainer initiates this explicitly to clean up a session. Other sessions and student workout history (logged sessions) are not affected.",
+        "open_world_justification": "Only deletes data within the trainer's own Kinevo account. No external systems are contacted."
+      }
+    },
+    "kinevo_update_workout_item": {
+      "description": "Edit an exercise inside a workout session in-place: change sets, reps, rest, notes, function, training method, position, or swap the exercise itself. Also supports advanced per-set prescription via set_scheme (replaces the whole per-set scheme). Only the fields you pass are changed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The workout item (exercise) ID to update"
+          },
+          "workout_type": {
+            "type": "string",
+            "enum": [
+              "template",
+              "assigned"
+            ],
+            "default": "assigned"
+          },
+          "exercise_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Swap to a different exercise from the catalog"
+          },
+          "sets": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "Number of sets (simple mode). Ignored when set_scheme is provided."
+          },
+          "reps": {
+            "type": "string",
+            "description": "Reps prescription (simple mode). Ignored when set_scheme is provided."
+          },
+          "rest_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 600,
+            "description": "Rest between sets in seconds (simple mode)"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Special instructions. Pass null to clear."
+          },
+          "exercise_function": {
+            "type": "string",
+            "enum": [
+              "warmup",
+              "activation",
+              "main",
+              "accessory",
+              "conditioning"
+            ],
+            "description": "The role of this exercise in the session"
+          },
+          "method_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "standard",
+              "custom",
+              "pyramid_down",
+              "pyramid_up",
+              "drop_set",
+              "top_backoff",
+              "5x5",
+              "cluster",
+              null
+            ],
+            "description": "Training method label. Pass null or 'standard' to clear."
+          },
+          "order_index": {
+            "type": "number",
+            "minimum": 0,
+            "description": "New position in the session"
+          },
+          "set_scheme": {
+            "type": "array",
+            "description": "Advanced per-set prescription. Replaces the entire existing scheme. Pass an empty array [] to remove the scheme and revert to simple mode. When non-empty, sets/reps/rest_seconds are derived from it.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "set_type": {
+                  "type": "string",
+                  "enum": [
+                    "warmup",
+                    "normal",
+                    "top",
+                    "backoff",
+                    "drop",
+                    "failure",
+                    "cluster",
+                    "amrap"
+                  ],
+                  "default": "normal"
+                },
+                "reps": {
+                  "type": "string"
+                },
+                "rest_seconds": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 600,
+                  "default": 60
+                },
+                "weight_target_kg": {
+                  "type": "number"
+                },
+                "weight_target_pct1rm": {
+                  "type": "number"
+                },
+                "rir": {
+                  "type": "number"
+                },
+                "tempo": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reps"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "rounds": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "Rounds the set_scheme repeats (compound methods). Defaults to 1."
+          }
+        },
+        "required": [
+          "item_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool edits an existing exercise inside a workout session (sets, reps, rest, method, or swaps the exercise).",
+        "destructive_justification": "Modifies an existing workout item in place. Replacing a set_scheme rewrites that item's per-set rows, but no other records are deleted and changes are reversible by updating again.",
+        "open_world_justification": "Only modifies data within the trainer's own Kinevo account."
+      }
+    },
+    "kinevo_create_superset": {
+      "description": "Create a superset (or bi-set/tri-set) inside a workout session: a group of exercises performed back-to-back with rest taken only after the group. Creates the superset container plus its child exercises in one call. Works for templates and assigned programs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workout_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The workout session ID to add the superset to"
+          },
+          "workout_type": {
+            "type": "string",
+            "enum": [
+              "template",
+              "assigned"
+            ],
+            "default": "assigned"
+          },
+          "rest_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 600,
+            "default": 60,
+            "description": "Rest in seconds after each round of the superset"
+          },
+          "order_index": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Position of the superset in the session. If omitted, appends at the end."
+          },
+          "exercises": {
+            "type": "array",
+            "minItems": 2,
+            "description": "The exercises in the superset, in order. At least 2.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "exercise_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Exercise ID from the catalog"
+                },
+                "sets": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 20,
+                  "description": "Number of rounds/sets for this exercise"
+                },
+                "reps": {
+                  "type": "string",
+                  "description": "Reps prescription (e.g., '10', '8-12')"
+                },
+                "exercise_function": {
+                  "type": "string",
+                  "enum": [
+                    "warmup",
+                    "activation",
+                    "main",
+                    "accessory",
+                    "conditioning"
+                  ],
+                  "default": "main"
+                },
+                "notes": {
+                  "type": "string",
+                  "description": "Special instructions for this exercise"
+                }
+              },
+              "required": [
+                "exercise_id",
+                "sets",
+                "reps"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "workout_id",
+          "exercises"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool creates a superset container and its child exercises inside an existing workout session.",
+        "destructive_justification": "Creates new records within an existing workout. Does not modify or delete existing exercises.",
+        "open_world_justification": "Only creates data within the trainer's own Kinevo account."
+      }
+    },
+    "kinevo_delete_workout_item": {
+      "description": "Remove an exercise from a workout session. This permanently deletes the item (and any superset children attached to it). Use to clean up exercises when editing a session in-place.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The workout item (exercise) ID to delete"
+          },
+          "workout_type": {
+            "type": "string",
+            "enum": [
+              "template",
+              "assigned"
+            ],
+            "default": "assigned"
+          }
+        },
+        "required": [
+          "item_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool deletes a single exercise (and any superset children) from a workout session.",
+        "destructive_justification": "Permanently removes one workout item from the trainer's own program. The trainer initiates this explicitly to clean up an exercise. No other items or student workout history are affected.",
+        "open_world_justification": "Only deletes data within the trainer's own Kinevo account. No external systems are contacted."
+      }
+    },
+    "kinevo_list_training_methods": {
+      "description": "List the advanced prescription capabilities available when building or editing workouts: training-method presets (pyramid, drop-set, cluster, 5x5, top+backoff), the per-set scheme fields, the valid set types, and how supersets work. Call this before prescribing advanced methods so you pass the right method_key, set_scheme, and rounds to kinevo_add_exercise_to_session / kinevo_update_workout_item.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "justifications": {
+        "read_only_justification": "This tool only reads the catalog of training-method presets (system presets plus the trainer's own saved presets). No records are created, modified, or deleted.",
+        "destructive_justification": "This tool does not modify or delete any data.",
+        "open_world_justification": "This tool only accesses the trainer's own Kinevo account data, scoped by their authenticated session. No external systems are contacted."
       }
     },
     "kinevo_get_student_progress": {

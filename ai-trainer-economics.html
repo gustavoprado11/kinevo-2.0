@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinevo IA — Economia & novo plano</title>
+<style>
+  :root{--bg:#0c0c11;--panel:#15151d;--panel2:#1b1b26;--line:#2a2a39;--line2:#37374c;
+    --tx:#ececf2;--tx2:#a7a7bd;--tx3:#72728a;--violet:#8b5cf6;--violet2:#a78bfa;--vbg:rgba(139,92,246,.13);
+    --blue:#3b9bff;--green:#34d27a;--amber:#ffb84d;--red:#ff6a5e;--teal:#2dd4bf}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 650px at 82% -8%,#1b1238 0,var(--bg) 55%),var(--bg);color:var(--tx);font:15px/1.62 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:90px}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+  a{color:var(--violet2);text-decoration:none}
+  header.hero{padding:60px 0 20px}
+  .kick{display:inline-flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--violet2);font-weight:700;background:var(--vbg);border:1px solid var(--line2);padding:6px 13px;border-radius:999px}
+  h1{font-size:40px;line-height:1.1;margin:18px 0 12px;letter-spacing:-.025em;font-weight:800;max-width:860px}
+  h1 .g{background:linear-gradient(92deg,#a78bfa,#2dd4bf 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--tx2);font-size:17.5px;max-width:820px}
+  .meta{margin-top:18px;color:var(--tx3);font-size:13px}.meta b{color:var(--tx2)}
+  h2{font-size:13px;letter-spacing:.17em;text-transform:uppercase;color:var(--tx3);margin:58px 0 18px;font-weight:700;display:flex;align-items:center;gap:13px}
+  h2 .nº{color:var(--violet2)}h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  h3{font-size:18px;margin:0 0 8px;letter-spacing:-.01em}
+  p.lead{font-size:16px;color:var(--tx2);max-width:840px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:16px;padding:22px}
+  code{background:#0c0c14;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font:12.5px ui-monospace,Menlo,monospace;color:#c9b6ff}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--tx3);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  td{color:var(--tx2)}td b,td strong{color:var(--tx)}tr:last-child td{border-bottom:0}
+  td.r,th.r{text-align:right}
+  .g{color:#56e08c;font-weight:700}.y{color:var(--amber);font-weight:700}.r{}.rd{color:var(--red);font-weight:700}
+  .callout{border-left:3px solid var(--violet);background:var(--vbg);border-radius:0 12px 12px 0;padding:16px 20px;margin-top:16px}
+  .callout.amber{border-color:var(--amber);background:rgba(255,184,77,.08)}.callout.red{border-color:var(--red);background:rgba(255,106,94,.08)}.callout.teal{border-color:var(--teal);background:rgba(45,212,191,.08)}
+  .callout h4{margin:0 0 6px;font-size:14.5px}.callout p{margin:0;color:var(--tx2);font-size:14.5px}
+  .grid{display:grid;gap:16px}.g3{grid-template-columns:repeat(3,1fr)}@media(max-width:820px){.g3{grid-template-columns:1fr}}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 18px}
+  .kpi .v{font-size:30px;font-weight:800;letter-spacing:-.02em}.kpi .v.r{color:var(--red)}.kpi .v.y{color:var(--amber)}.kpi .v.g{color:#56e08c}
+  .kpi .l{color:var(--tx3);font-size:12.5px;margin-top:4px}
+  /* tier cards */
+  .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+  @media(max-width:860px){.tiers{grid-template-columns:1fr}}
+  .tier{border:1px solid var(--line);border-radius:16px;padding:20px;background:linear-gradient(180deg,var(--panel),var(--panel2));position:relative}
+  .tier.feat{border-color:var(--violet);box-shadow:0 0 0 1px rgba(139,92,246,.25),0 24px 60px -30px var(--violet)}
+  .tier .badge{position:absolute;top:-11px;left:20px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,#7C3AED,#a78bfa);padding:3px 10px;border-radius:7px}
+  .tier .nm{font-size:13px;font-weight:700;color:var(--violet2);letter-spacing:.02em}
+  .tier .pr{font-size:32px;font-weight:800;letter-spacing:-.02em;margin:6px 0 2px}.tier .pr small{font-size:13px;color:var(--tx3);font-weight:500}
+  .tier .cr{font-size:13px;color:var(--tx2);margin-bottom:12px}.tier .cr b{color:var(--tx)}
+  .tier ul{margin:0;padding:0;list-style:none}.tier ul li{position:relative;padding:5px 0 5px 22px;font-size:13px;color:var(--tx2)}
+  .tier ul li::before{content:"✓";position:absolute;left:0;top:5px;color:#56e08c;font-weight:800}
+  .tier ul li.off::before{content:"–";color:var(--tx3)}
+  .tier .mg{margin-top:13px;border-top:1px dashed var(--line);padding-top:10px;font-size:12px;color:var(--tx3)}.tier .mg b{color:var(--teal)}
+  .phase{display:flex;gap:15px;padding:14px 0;border-bottom:1px solid var(--line)}.phase:last-child{border-bottom:0}
+  .pn{flex:0 0 30px;height:30px;border-radius:8px;background:var(--vbg);border:1px solid var(--line2);color:var(--violet2);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .phase .pc p{margin:3px 0 0;color:var(--tx2);font-size:14px}
+  .foot{margin-top:50px;color:var(--tx3);font-size:13px;text-align:center;border-top:1px solid var(--line);padding-top:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="kick">● Kinevo · Economia da IA & novo plano</span>
+    <h1>Quanto custa, e como <span class="g">cobrar por isso</span></h1>
+    <p class="sub">Análise ancorada no documento de custos verificado (<code>docs/analise-mcp-assistente-custos.md</code>, 15/jun/2026, com telemetria real de produção) e no estado real do código. Conclusão central: o chat in-app via MCP só fecha a conta como um <b>plano pago à parte</b>, com <b>créditos e teto</b>. Aqui está o número, o porquê e o desenho do plano.</p>
+    <div class="meta"><b>Fonte:</b> analise-mcp-assistente-custos.md · get-trainer.ts · landing-pricing.tsx · memória de tiers</div>
+  </header>
+
+  <!-- 1. O DRIVER DE CUSTO -->
+  <h2><span class="nº">01</span> De onde vem o custo</h2>
+  <p class="lead">A tela in-app (chamada <b>F9</b> no doc) é <b>input-pesada</b>: a cada rodada do loop agêntico ela re-injeta o bloco fixo <b>system + as 55 definições de tools ≈ 9.500 tokens</b>. Uma tarefa média tem ~6 rodadas → o input acumulado domina tudo. Output é fração mínima.</p>
+  <div class="grid g3" style="margin-top:18px">
+    <div class="kpi"><div class="v">~9.500</div><div class="l">tokens fixos re-injetados <b style="color:var(--tx2)">por rodada</b> (system + 55 tools)</div></div>
+    <div class="kpi"><div class="v">~$0,0165</div><div class="l">custo de 1 tarefa F9 média (gpt-4.1-mini, cache real) ≈ <b style="color:var(--tx2)">R$0,08</b></div></div>
+    <div class="kpi"><div class="v">~$0,008</div><div class="l">tarefa simples (2–3 rodadas) ≈ <b style="color:var(--tx2)">R$0,04</b></div></div>
+  </div>
+  <div class="callout teal"><h4>A boa notícia: a arquitetura corta isso, não o modelo</h4><p><b>Subsetting de tools</b> (mandar só as tools da intenção — financeiro, prescrição…) tira o bloco fixo de ~7.500 → ~1.500 tok = <b>−60 a −70% do input</b>. + <b>prompt caching</b> deliberado (o cache automático da OpenAI já dá 75% off / $0,10, confirmado na telemetria: 12.288 tok cacheados num call real). Trocar de modelo, no melhor caso, <b>não reduz custo</b> — o 4.1-mini já é o mais barato corrente com tool-calling aceitável.</p></div>
+
+  <!-- 2. CUSTO POR TREINADOR -->
+  <h2><span class="nº">02</span> Custo por treinador/mês — e por que o preço atual não cabe</h2>
+  <p class="lead">Três cenários de uso (do doc, cache real $0,10). A coluna que importa: <b>% do ARPU</b>. Hoje o ARPU é R$39,90 (≈ $8); a meta de reposicionamento é R$79,90 (≈ $16).</p>
+  <table>
+    <thead><tr><th>Cenário</th><th class="r">Custo IA total/mês</th><th class="r">% do ARPU R$39,90</th><th class="r">% do ARPU R$79,90</th><th>Veredito</th></tr></thead>
+    <tbody>
+      <tr><td><b>Leve</b> <span style="color:var(--tx3)">(10 tarefas F9, 20 msgs)</span></td><td class="r">~$0,35 · R$1,75</td><td class="r g">~4%</td><td class="r g">~2%</td><td class="g">folgado</td></tr>
+      <tr><td><b>Médio</b> <span style="color:var(--tx3)">(50 tarefas, 100 msgs, 20 prescrições)</span></td><td class="r">~$1,84 · R$9,20</td><td class="r y">~23%</td><td class="r g">~12%</td><td class="y">aperta a R$39,90</td></tr>
+      <tr><td><b>Pesado</b> <span style="color:var(--tx3)">(200 tarefas, 400 msgs, 80 alunos)</span></td><td class="r">~$7,37 · R$36,85</td><td class="r rd">~92%</td><td class="r rd">~46%</td><td class="rd">inviável sem teto</td></tr>
+    </tbody>
+  </table>
+  <p style="color:var(--tx3);font-size:13px;margin-top:8px">Limiares do doc: inferência &gt;15% do ARPU = <span class="y">amarelo</span>, &gt;30% = <span class="rd">vermelho</span>. Telemetria real hoje: uso <b style="color:var(--tx2)">no piso</b> (1–4 contas, prescrição dormente) → risco é <b style="color:var(--tx2)">futuro</b>, vira real quando a base crescer + a tela in-app entrar.</p>
+  <div class="callout red"><h4>A conclusão acoplada do doc (não negociável)</h4><p>"Lançar o chat in-app" e "subir para R$79,90" são <b>a mesma decisão</b>. E mais: nem a R$79,90 o cenário pesado fecha <b>sem um teto de uso</b>. O doc é explícito — <b>subsetting + cache + gate de créditos são as três pernas obrigatórias</b>; o gate não é opcional. Sem teto, um único power-user consome ~92% do ARPU.</p></div>
+
+  <!-- 3. MODELO -->
+  <h2><span class="nº">03</span> Qual modelo (preços verificados 15/jun)</h2>
+  <table>
+    <thead><tr><th>Modelo</th><th class="r">in / cache / out ($/Mtok)</th><th class="r">$/tarefa F9</th><th>Tool-calling</th><th>Veredito p/ a tela in-app</th></tr></thead>
+    <tbody>
+      <tr><td><b>gpt-4.1-mini</b> <span style="color:var(--tx3)">(atual)</span></td><td class="r">0,40 / 0,10 / 1,60</td><td class="r"><b>~$0,0165</b></td><td>ok</td><td class="g">manter — equilíbrio; é o budget corrente</td></tr>
+      <tr><td>gpt-4o-mini <span style="color:var(--tx3)">(legacy)</span></td><td class="r">0,15 / 0,075 / 0,60</td><td class="r">~$0,008</td><td>fraco</td><td>só p/ tarefas estruturadas simples (parse, forms, insights)</td></tr>
+      <tr><td>gpt-5.4-mini</td><td class="r">0,75 / 0,075 / 4,50</td><td class="r">~$0,0275</td><td>bom</td><td>~+70% no chat; só se 4.1-mini falhar qualidade</td></tr>
+      <tr><td>Gemini 3.5 Flash</td><td class="r">1,50 / 0,15 / 9,00</td><td class="r">~$0,055</td><td class="g"><b>líder</b> (MCP Atlas 83,6%)</td><td>premium ~3×; head-to-head se 4.1-mini instável c/ 55 tools</td></tr>
+      <tr><td>Claude Sonnet 4.6</td><td class="r">3,00 / 0,30 / 15,0</td><td class="r">~$0,106</td><td>forte</td><td>inviável no ARPU; só tarefa de alto valor</td></tr>
+      <tr><td>DeepSeek V4 Flash</td><td class="r">0,14 / 0,003 / 0,28</td><td class="r">~$0,004</td><td>—</td><td class="rd">❌ proibido p/ dado de saúde (LGPD/jurisdição)</td></tr>
+    </tbody>
+  </table>
+  <div class="callout amber"><h4>🚧 Portão LGPD — precede tudo (ordem 0)</h4><p>14 das 55 tools tocam <b>dado de saúde</b> (avaliação física, check-ins, restrições médicas) e a tela in-app aciona quase todas. A varredura do repo <b>não achou nenhuma config de zero-retention/DPA</b>. Antes de escalar: confirmar <b>DPA + zero data retention + no-training</b> com a OpenAI (no console da conta, fora do código) e versionar a evidência. Ordem inviolável: <b>DPA → arquitetura (subsetting/cache/gate) → modelo</b>.</p></div>
+
+  <!-- 4. O NOVO PLANO -->
+  <h2><span class="nº">04</span> O novo plano — "pagar mais para ter a IA"</h2>
+  <p class="lead">A resposta direta à sua pergunta. O modelo que fecha a conta: <b>uma base sem IA pesada + planos de IA por cima, medidos em créditos com teto</b>. O teto é o que garante a margem — o custo nunca passa do que o crédito comprou.</p>
+
+  <!-- Free strip -->
+  <div class="card" style="display:flex;align-items:center;gap:16px;margin-bottom:16px;border-style:dashed">
+    <div style="flex:0 0 auto"><div style="width:42px;height:42px;border-radius:12px;background:#0e0e16;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-size:20px">🎁</div></div>
+    <div style="flex:1">
+      <h3 style="margin:0;font-size:16px">Gratuito <span style="font-size:12px;color:var(--tx3);font-weight:500">· o treinador testa com ele mesmo</span></h3>
+      <p style="margin:4px 0 0;color:var(--tx2);font-size:13.5px"><b style="color:var(--tx)">1× cada ação de IA</b> para experimentar · <b style="color:var(--tx)">sem adicionar alunos</b> (usa um aluno-demo / ele mesmo). Vitrine do valor, custo ≈ centavos uma única vez.</p>
+    </div>
+    <div style="flex:0 0 auto;color:var(--tx3);font-size:12px;text-align:right">funil de conversão<br>p/ os pagos →</div>
+  </div>
+
+  <div class="tiers">
+    <div class="tier">
+      <div class="nm">ESSENCIAL · R$ 39,90</div>
+      <div class="pr">R$ 39,90<small>/mês</small></div>
+      <div class="cr"><b>20 créditos</b> de IA/mês · <b>alunos ilimitados</b></div>
+      <ul>
+        <li>Tudo do Kinevo (alunos ilimitados, treinos, financeiro, agenda)</li>
+        <li>IA para <b>um gostinho</b> (~20 ações/mês)</li>
+        <li class="off">Barra de comando ⌘K ilimitada</li>
+        <li class="off">UI generativa / briefing / voz</li>
+      </ul>
+      <div class="mg">Custo IA se 100% usado ≈ <b>R$0,80</b> · margem ~98% · <b style="color:var(--violet2)">parceiros comped aqui</b></div>
+    </div>
+    <div class="tier feat">
+      <div class="badge">Recomendado</div>
+      <div class="nm">PRO IA · R$ 79,90</div>
+      <div class="pr">R$ 79,90<small>/mês</small></div>
+      <div class="cr"><b>300 créditos</b>/mês · <b>alunos ilimitados</b></div>
+      <ul>
+        <li>Tudo do Essencial</li>
+        <li><b>Barra de comando ⌘K</b> + chat-first workspace</li>
+        <li><b>UI generativa</b> (treino/cobrança editáveis)</li>
+        <li><b>Briefing matinal</b> + fila de aprovação</li>
+        <li class="off">Voz no mobile / Siri</li>
+      </ul>
+      <div class="mg">Custo se 100% usado ≈ <b>R$12</b> · uso típico ≈ R$5 · receita +R$40 sobre base</div>
+    </div>
+    <div class="tier">
+      <div class="nm">PREMIUM IA · R$ 129,90</div>
+      <div class="pr">R$ 129,90<small>/mês</small></div>
+      <div class="cr"><b>1.000 créditos</b>/mês · <b>alunos ilimitados</b></div>
+      <ul>
+        <li>Tudo do Pro IA</li>
+        <li><b>Suporte exclusivo</b></li>
+        <li><b>Acesso prioritário</b> às novas funcionalidades</li>
+        <li>Voz no mobile + relatórios de IA</li>
+      </ul>
+      <div class="mg">Custo se 100% usado ≈ <b>R$40</b> · uso pesado real ≈ R$37 · receita +R$90 sobre base</div>
+    </div>
+  </div>
+  <p style="color:var(--tx3);font-size:13px;margin-top:12px">+ <b style="color:var(--tx2)">Top-up</b>: pacote avulso de <b style="color:var(--tx2)">+500 créditos por R$ 29,90</b> para estouro pontual (não vira assinatura). Créditos renovam por ciclo e não acumulam.</p>
+  <div class="callout"><h4>Treinadores parceiros (comped)</h4><p><b>Lucas Damiani</b> e <b>Lucas Martins</b> entram no tier <b>R$39,90 cortesia</b> (acesso liberado, sem cobrança) — via <code>trainers.ai_tier='essencial'</code> + contrato cortesia, sem precisar de Price ID no Stripe. 20 créditos/mês cobrem o uso de parceiro; se precisarem mais, dá pra subir o tier deles manualmente.</p></div>
+
+  <div class="callout"><h4>Como o crédito é definido (cost-anchored)</h4><p>1 crédito ≈ <b>R$0,02 de custo interno real</b> (ancorado no doc: tarefa simples $0,008 ≈ R$0,04; ação composta pesa mais). Para folga, modelamos o teto a <b>R$0,04/crédito</b>. Pesos por ação: <b>pergunta/consulta = 1</b> · ação simples (1 tool) = 1 · ação composta (várias tools) = 2–3 · <b>gerar programa = 8–10</b> · envio em massa = 1/aluno (máx 10). Prescrição pesa ~10× uma pergunta — por isso medir em <b>créditos</b>, não em mensagens.</p></div>
+
+  <!-- 5. MARGEM -->
+  <h2><span class="nº">05</span> Margem (o teto garante o piso)</h2>
+  <table>
+    <thead><tr><th>Plano</th><th class="r">Preço</th><th class="r">Créditos</th><th class="r">Custo IA real (uso típico)</th><th class="r">Custo IA máx (teto)</th><th class="r">Margem bruta IA</th></tr></thead>
+    <tbody>
+      <tr><td>Gratuito</td><td class="r">R$0</td><td class="r">~15 (1× cada)</td><td class="r">~R$0,30</td><td class="r">~R$0,60 (uma vez)</td><td class="r" style="color:var(--tx3)">CAC / vitrine</td></tr>
+      <tr><td>Essencial</td><td class="r">R$39,90</td><td class="r">20</td><td class="r">~R$0,40</td><td class="r">~R$0,80</td><td class="r g">~98%</td></tr>
+      <tr><td><b>Pro IA</b></td><td class="r">R$79,90</td><td class="r">300</td><td class="r">~R$5</td><td class="r">~R$12</td><td class="r g">94% real · <span class="g">85% no teto</span></td></tr>
+      <tr><td>Premium IA</td><td class="r">R$129,90</td><td class="r">1.000</td><td class="r">~R$15</td><td class="r">~R$40</td><td class="r g">88% real · <span class="y">69% no teto</span></td></tr>
+    </tbody>
+  </table>
+  <p style="color:var(--tx3);font-size:13px;margin-top:8px">Margem "real" usa o custo de uso típico (telemetria mostra uso no piso). Margem "no teto" é o pior caso se o treinador <b>esgotar todos os créditos</b> — e ainda assim fica positiva. <b>Esse é o ponto do gate:</b> ele transforma um custo aberto (92% do ARPU) num custo <b>limitado e previsível</b>.</p>
+  <div class="callout teal"><h4>Por que isso responde à sua pergunta</h4><p>O <b>Gratuito</b> deixa qualquer treinador provar a mágica (1× cada ação, sem alunos) — funil. Quem entra de verdade fica no <b>Essencial R$39,90</b> (base atual, alunos ilimitados + 20 créditos de gostinho). Quem <b>quer a IA no dia a dia paga mais</b>: <b>Pro IA R$79,90</b> (300) e <b>Premium IA R$129,90</b> (1.000 + suporte exclusivo + acesso prioritário). A IA vira <b>linha de receita com margem &gt;85%</b>, e o teto de créditos protege o pior caso — exatamente o que a sua pergunta pedia.</p></div>
+
+  <!-- 6. COMO FECHA COM O CÓDIGO -->
+  <h2><span class="nº">06</span> Como o plano fecha com o código</h2>
+  <table>
+    <thead><tr><th style="width:30%">Peça</th><th>Estado hoje</th><th>O que falta</th></tr></thead>
+    <tbody>
+      <tr><td><b>Flag de tier</b></td><td>Acesso é <b>binário</b> (active/trialing→ok, senão <code>/subscription/blocked</code>) — <code>get-trainer.ts:87-90</code>. Já existe <code>trainers.ai_prescriptions_enabled</code> (precedente de flag de IA).</td><td>Add <code>trainers.ai_tier</code> (none/essencial/pro/premium) seguindo o mesmo padrão.</td></tr>
+      <tr><td><b>Tier via Stripe</b></td><td><code>subscriptions</code> tem status/period mas <b>sem coluna de produto/preço</b>.</td><td>Popular <code>subscriptions.stripe_price_id</code> via webhook + <b>2 Price IDs novos</b> (R$79,90, R$129,90 — o R$39,90 atual já existe); Free e parceiros = sem Price ID, só <code>ai_tier</code>. Derivar o tier do price.</td></tr>
+      <tr><td><b>Créditos / metering</b></td><td>Rate-limit é <b>em memória</b> (anti-abuso, não billing).</td><td>Tabelas <code>ai_usage_periods</code> / <code>ai_usage_events</code> + RPC <code>increment_ai_usage</code> (atômico). Capturar <code>usage</code> no <code>onFinish</code> do streamText. <i>(já desenhado na SPEC.)</i></td></tr>
+      <tr><td><b>Gate por turno</b></td><td>—</td><td>Checar saldo de créditos <b>antes</b> do turno; estourou → banner "cota do mês atingida" + GUI continua (degradação suave, nunca trava o app).</td></tr>
+      <tr><td><b>Subsetting de tools</b></td><td>As 55 defs iriam sempre (~7.500 tok).</td><td><code>tool-policy.ts</code> + carregar tools por intenção → −60/70% do custo. <b>1ª perna do gate.</b></td></tr>
+    </tbody>
+  </table>
+
+  <!-- 7. SEQUÊNCIA -->
+  <h2><span class="nº">07</span> Sequência para o lançamento pago</h2>
+  <div class="card">
+    <div class="phase"><div class="pn">0</div><div class="pc"><h3>Portão LGPD</h3><p>DPA + zero-retention + no-training com a OpenAI. Bloqueante — nada [S] escala antes.</p></div></div>
+    <div class="phase"><div class="pn">1</div><div class="pc"><h3>Arquitetura de custo</h3><p>Subsetting + cache deliberado + metering (créditos) + <code>ai_tier</code>. É o que torna o plano viável em qualquer modelo.</p></div></div>
+    <div class="phase"><div class="pn">2</div><div class="pc"><h3>4 tiers no Stripe: Free · R$39,90 · R$79,90 · R$129,90</h3><p>3 Price IDs pagos (o Free e os parceiros comped não precisam de Price ID — só <code>ai_tier</code> + contrato cortesia). Gate por tier, UI de planos/cota, medidor de créditos.</p></div></div>
+    <div class="phase"><div class="pn">3</div><div class="pc"><h3>Abrir a IA por tier</h3><p>⌘K + UI generativa no Pro; voz/mobile no Premium. Medir uso real (telemetria), calibrar créditos e, só então, decidir modelo (head-to-head se preciso).</p></div></div>
+  </div>
+
+  <div class="foot">
+    Ancorado em <code>docs/analise-mcp-assistente-custos.md</code> (telemetria real prod, 15/jun/2026), <code>lib/auth/get-trainer.ts</code>, <code>landing-pricing.tsx</code> e o modelo de tiers da memória. Números de crédito são <b>ponto de partida para calibrar</b> com uso real — não definitivos. Acompanha: <b>ai-trainer-pricing-mock.html</b> (a tela de planos que o treinador vê) e <b>ai-trainer-master.html</b> (os caminhos de produto).
+  </div>
+
+</div>
+</body>
+</html>
