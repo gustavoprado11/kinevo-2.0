@@ -229,6 +229,55 @@ export async function bumpConversation(
     await sb.from('ai_conversations').update(update).eq('id', args.conversationId)
 }
 
+/**
+ * Marca o desfecho de uma confirmação HITL na mensagem ORIGINAL: encontra a part
+ * `confirmation` ainda `pending` desse toolName (a mais recente) e a regrava com
+ * status `confirmed`/`cancelled`. Sem isso, ao reabrir a conversa o card volta a
+ * `pending` e fica clicável → permite re-executar uma ação sensível (B1).
+ */
+export async function markConfirmationResolved(
+    sb: SupabaseClient,
+    args: {
+        conversationId: string
+        trainerId: string
+        toolName: string
+        status: 'confirmed' | 'cancelled'
+        result?: unknown
+    },
+): Promise<boolean> {
+    const { data: rows, error } = await sb
+        .from('ai_messages')
+        .select('id, parts')
+        .eq('conversation_id', args.conversationId)
+        .eq('trainer_id', args.trainerId)
+        .eq('role', 'assistant')
+        .order('created_at', { ascending: false })
+        .limit(20)
+    if (error) throw error
+
+    for (const row of (rows ?? []) as Array<{ id: string; parts: unknown }>) {
+        const parts = Array.isArray(row.parts) ? (row.parts as AssistantMessagePart[]) : []
+        const idx = parts.findIndex(
+            (p) => p.type === 'confirmation' && p.status === 'pending' && p.request?.toolName === args.toolName,
+        )
+        if (idx < 0) continue
+
+        const nextParts = parts.map((p, i) =>
+            i === idx && p.type === 'confirmation'
+                ? { ...p, status: args.status, result: args.result ?? p.result }
+                : p,
+        )
+        const { error: upErr } = await sb
+            .from('ai_messages')
+            .update({ parts: nextParts })
+            .eq('id', row.id)
+            .eq('trainer_id', args.trainerId)
+        if (upErr) throw upErr
+        return true
+    }
+    return false
+}
+
 export async function renameConversation(
     sb: SupabaseClient,
     trainerId: string,

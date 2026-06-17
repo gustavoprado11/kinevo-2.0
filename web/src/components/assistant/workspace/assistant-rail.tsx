@@ -1,14 +1,13 @@
 'use client'
 
 /**
- * AssistantRail — coluna de Conversas/Alunos da tela de chat (modo Assistente).
- *
- * Extraída da antiga AssistantSidebar: a navegação do app, toggle de modo e perfil
- * agora vêm da Sidebar global (components/layout/sidebar.tsx). Este rail é exclusivo
- * do conteúdo do Dashboard-Assistente: segmento Alunos/Conversas + busca + lista.
- * Apresentacional: dados e callbacks vêm do AssistantWorkspace.
+ * AssistantRail — bloco de Conversas/Alunos embutido na sidebar única do Assistente
+ * (segmento Alunos/Conversas + busca + lista). Content-only: NÃO tem casca/largura
+ * própria — quem dá largura/borda é o AssistantSidebar. Apresentacional: dados e
+ * callbacks vêm do AssistantWorkspace.
  */
 
+import Image from 'next/image'
 import { Search, Sparkles } from 'lucide-react'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
 import { avatarFor, groupLabel, GROUP_ORDER, timeShort } from './ui-util'
@@ -16,12 +15,31 @@ import { avatarFor, groupLabel, GROUP_ORDER, timeShort } from './ui-util'
 export interface SidebarStudent {
     id: string
     name: string
+    avatarUrl: string | null
     dot: 'green' | 'amber' | 'red'
     subtitle: string
 }
 
 const DOT: Record<SidebarStudent['dot'], string> = {
     green: 'bg-[#16A34A]', amber: 'bg-[#F59E0B]', red: 'bg-[#EF4444]',
+}
+
+/** Avatar 32px: foto real (avatar_url) quando houver, senão iniciais coloridas.
+ *  Wrapper de tamanho fixo (como o perfil do Clássico) + imagem h-full/w-full —
+ *  garante que a foto preencha o box exatamente. */
+function Avatar({ name, url }: { name: string | null; url: string | null }) {
+    const av = avatarFor(name)
+    if (url) {
+        return (
+            <span className="flex h-[32px] w-[32px] shrink-0 overflow-hidden rounded-[10px]">
+                <Image src={url} alt={name ?? ''} width={32} height={32} unoptimized className="h-full w-full object-cover" />
+            </span>
+        )
+    }
+    return (
+        <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[10px] text-[11px] font-bold"
+            style={{ background: av.bg, color: av.fg }}>{av.initials}</span>
+    )
 }
 
 interface Props {
@@ -52,11 +70,14 @@ export function AssistantRail({
         items: filteredConvs.filter((c) => groupLabel(c.last_message_at) === label),
     })).filter((g) => g.items.length > 0)
 
+    // student_id → foto, p/ as conversas mostrarem a foto real do aluno.
+    const studentAvatar = new Map(students.map((s) => [s.id, s.avatarUrl]))
+
     return (
-        <aside className="flex w-[264px] min-w-[264px] flex-col border-r border-[#E8E8ED] bg-white">
+        <div className="flex min-h-0 flex-1 flex-col">
             {/* Segmento Alunos / Conversas */}
-            <div className="px-4 pb-2 pt-3.5">
-                <div className="flex rounded-[10px] border border-[#E8E8ED] bg-[#F5F5F7] p-[3px]">
+            <div className="px-4 pb-2 pt-1.5">
+                <div className="flex rounded-[10px] bg-[#F5F5F7] p-[3px]">
                     <button onClick={() => onSegment('alunos')}
                         className={`flex-1 rounded-[8px] py-1.5 text-[12px] font-semibold transition ${segment === 'alunos' ? 'bg-white text-[#7C3AED] shadow-[0_1px_3px_rgba(0,0,0,0.06)]' : 'text-[#86868B]'}`}>
                         Alunos <span className="font-medium text-[#AEAEB2]">{students.length}</span>
@@ -69,7 +90,7 @@ export function AssistantRail({
             </div>
 
             {/* Busca */}
-            <div className="mx-4 mb-1.5 flex items-center gap-2 rounded-[9px] border border-[#E8E8ED] bg-[#F5F5F7] px-2.5 py-2">
+            <div className="mx-4 mb-1.5 flex items-center gap-2 rounded-[9px] bg-[#F5F5F7] px-2.5 py-2">
                 <Search className="h-3.5 w-3.5 text-[#AEAEB2]" strokeWidth={1.8} />
                 <input value={search} onChange={(e) => onSearch(e.target.value)}
                     placeholder={segment === 'alunos' ? 'Buscar aluno…' : 'Buscar conversa…'}
@@ -81,12 +102,11 @@ export function AssistantRail({
                 {segment === 'alunos' ? (
                     <>
                         {filteredStudents.map((s) => {
-                            const av = avatarFor(s.name)
                             const on = s.id === focusedStudentId
                             return (
                                 <button key={s.id} onClick={() => onSelectStudent(s.id)}
                                     className={`flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)]' : 'hover:bg-[#F5F5F7]'}`}>
-                                    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[10px] text-[11px] font-bold" style={{ background: av.bg, color: av.fg }}>{av.initials}</span>
+                                    <Avatar name={s.name} url={s.avatarUrl} />
                                     <span className="min-w-0 flex-1">
                                         <b className="block truncate text-[13px] font-semibold text-[#1D1D1F]">{s.name}</b>
                                         {s.subtitle && <span className="block truncate text-[11px] text-[#86868B]">{s.subtitle}</span>}
@@ -103,15 +123,18 @@ export function AssistantRail({
                             <div key={g.label}>
                                 <div className="px-2 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#AEAEB2]">{g.label}</div>
                                 {g.items.map((c) => {
-                                    const av = avatarFor(c.studentName)
                                     const isGeneral = !c.student_id
                                     const on = c.id === activeConversationId
                                     return (
                                         <button key={c.id} onClick={() => onSelectConversation(c.id)}
                                             className={`mb-0.5 flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)]' : 'hover:bg-[#F5F5F7]'}`}>
-                                            <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[10px] text-[11px] font-bold" style={isGeneral ? { background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', color: '#fff' } : { background: av.bg, color: av.fg }}>
-                                                {isGeneral ? <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2} /> : av.initials}
-                                            </span>
+                                            {isGeneral ? (
+                                                <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
+                                                    <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                                                </span>
+                                            ) : (
+                                                <Avatar name={c.studentName} url={c.student_id ? studentAvatar.get(c.student_id) ?? null : null} />
+                                            )}
                                             <span className="min-w-0 flex-1">
                                                 <span className="flex items-center gap-1.5">
                                                     <b className="truncate text-[13px] font-semibold text-[#1D1D1F]">{c.studentName ?? (isGeneral ? 'Geral' : c.title)}</b>
@@ -128,6 +151,6 @@ export function AssistantRail({
                     </>
                 )}
             </div>
-        </aside>
+        </div>
     )
 }

@@ -98,9 +98,6 @@ export function ToolConfirmationCard({
                 <div className="min-w-0 flex-1">
                     <b className="block text-[13.5px] font-bold text-[#1D1D1F]">{request.title}</b>
                     <span className="block text-[11.5px] text-[#86868B]">{request.summary}</span>
-                    <code className="mt-1 inline-block rounded bg-[#F4F1FE] px-1.5 py-0.5 font-mono text-[11px] text-[#7C3AED]">
-                        {request.toolName}
-                    </code>
                 </div>
             </div>
 

@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
         let input = ''
         let route: string | undefined
         let studentId: string | undefined
+        let transcribeOnly = false
         const contentType = req.headers.get('content-type') ?? ''
 
         if (contentType.includes('multipart/form-data')) {
@@ -77,6 +78,9 @@ export async function POST(req: NextRequest) {
             const s = form.get('studentId')
             route = typeof r === 'string' ? r : undefined
             studentId = typeof s === 'string' && UUID_RE.test(s) ? s : undefined
+            // transcribeOnly=1 → o composer só quer o texto ditado para revisão; NÃO
+            // roda o turno aqui (o turno roda no fluxo normal da conversa/⌘K).
+            transcribeOnly = form.get('transcribeOnly') === '1'
             try {
                 input = (await transcribeAudio(audio, { filename: (audio as File).name })).slice(0, MAX_INPUT_CHARS)
             } catch (e) {
@@ -97,6 +101,12 @@ export async function POST(req: NextRequest) {
 
         if (input.length === 0) {
             return NextResponse.json({ error: 'empty_input', message: 'Não captei nenhuma fala.' }, { status: 400 })
+        }
+
+        // Só transcrição: devolve o texto ditado sem rodar o turno (o composer
+        // preenche o input e o usuário revisa/envia pelo fluxo normal).
+        if (transcribeOnly) {
+            return NextResponse.json({ transcript: input })
         }
 
         // 5. Turno por voz (resposta curta/falável vem do system-prompt v2).

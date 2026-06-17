@@ -9,16 +9,20 @@
  * turno, HITL). O toggle de modo agora vive na Sidebar global, não aqui.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { setHomeStyle } from '@/actions/assistant/set-home-style'
 import { setCachedAiAllowed, setCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
-import { AssistantRail, type SidebarStudent } from './assistant-rail'
+import type { SidebarStudent } from './assistant-rail'
+import { AssistantSidebar } from './assistant-sidebar'
 import { AssistantHome } from './assistant-home'
 import { ConversationView } from './conversation-view'
+import { bannerFromError, type AssistantBannerData } from './assistant-banner'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AttentionItem } from '@/lib/assistant/home-data'
 import type { ConversationListItem, AssistantMessage } from '@/lib/assistant/conversations'
 
-interface StudentLite { id: string; name: string; status: string }
+interface StudentLite { id: string; name: string; status: string; avatarUrl: string | null }
 
 interface Props {
     initialSummary: AiUsageSummary
@@ -27,9 +31,11 @@ interface Props {
     attention: AttentionItem[]
     trainerName: string | null
     trainerEmail: string | null
+    trainerAvatarUrl: string | null
 }
 
-export function AssistantWorkspace({ initialSummary, initialConversations, students, attention, trainerName }: Props) {
+export function AssistantWorkspace({ initialSummary, initialConversations, students, attention, trainerName, trainerEmail, trainerAvatarUrl }: Props) {
+    const router = useRouter()
     const [summary, setSummary] = useState(initialSummary)
     const [conversations, setConversations] = useState(initialConversations)
     const [activeId, setActiveId] = useState<string | null>(null)
@@ -40,6 +46,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     const [segment, setSegment] = useState<'alunos' | 'conversas'>('alunos')
     const [search, setSearch] = useState('')
     const [focusedStudentId, setFocusedStudentId] = useState<string | null>(null)
+    const [error, setError] = useState<AssistantBannerData | null>(null)
 
     const active = useMemo(() => conversations.find((c) => c.id === activeId) ?? null, [conversations, activeId])
     const focusedStudentName = useMemo(
@@ -60,6 +67,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
             return {
                 id: s.id,
                 name: s.name,
+                avatarUrl: s.avatarUrl,
                 dot: att ? 'amber' : s.status && s.status !== 'active' ? 'amber' : 'green',
                 subtitle: att ?? '',
             }
@@ -91,11 +99,23 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     }, [])
 
     const goHome = useCallback(() => { setActiveId(null); setMessages([]) }, [])
+    // Nova conversa: home limpa (sem conversa, sem aluno em foco, input vazio).
+    const newConversation = useCallback(() => { setActiveId(null); setFocusedStudentId(null); setMessages([]); setInput('') }, [])
+
+    // Toggle → Clássico: navegação ótimista (?h=classic evita bounce ao Assistente
+    // enquanto a preferência sincroniza em background). O pill mostra spinner.
+    const [isSwitching, startSwitch] = useTransition()
+    const toggleClassic = useCallback(() => {
+        setCachedHomeStyle('classic')
+        void setHomeStyle('classic')
+        startSwitch(() => { router.push('/dashboard?h=classic') })
+    }, [router])
 
     const send = useCallback(async (override?: string) => {
         const text = (override ?? input).trim()
         if (!text || sending) return
         if (!override) setInput('')
+        setError(null)
         setSending(true)
 
         let convId = activeId
@@ -105,7 +125,13 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(focusedStudentId ? { studentId: focusedStudentId } : {}),
                 })
-                if (!res.ok) { setSending(false); return }
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}))
+                    setError(bannerFromError(res.status, data))
+                    if (!override) setInput(text) // devolve o texto p/ o usuário reenviar
+                    setSending(false)
+                    return
+                }
                 const { conversation } = await res.json()
                 const sname = focusedStudentId ? students.find((s) => s.id === focusedStudentId)?.name ?? null : null
                 const item: ConversationListItem = { ...conversation, studentName: sname }
@@ -128,6 +154,8 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
                 setMessages((prev) => prev.filter((m) => m.id !== optimistic.id))
+                setError(bannerFromError(res.status, data))
+                if (!override) setInput(text) // devolve o texto p/ o usuário reenviar
                 return
             }
             setMessages((prev) => {
@@ -169,9 +197,16 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
         setCachedHomeStyle('assistant')
     }, [])
 
+    // Banner ativo: erro de turno tem prioridade; senão cota esgotada (persistente).
+    const banner: AssistantBannerData | null =
+        error ?? (summary?.exhausted ? bannerFromError(402, {}) : null)
+
     return (
-        <div className="kv-mode-in flex h-full min-h-0 overflow-hidden bg-[#F5F5F7] text-[#1D1D1F]">
-            <AssistantRail
+        <div className="kv-mode-in flex h-[100dvh] overflow-hidden bg-[#F5F5F7] text-[#1D1D1F]">
+            <AssistantSidebar
+                trainerName={trainerName}
+                trainerEmail={trainerEmail}
+                trainerAvatarUrl={trainerAvatarUrl}
                 students={railStudents}
                 conversations={conversations}
                 activeConversationId={activeId}
@@ -180,8 +215,12 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 search={search}
                 onSegment={setSegment}
                 onSearch={setSearch}
+                onHome={goHome}
+                onNewConversation={newConversation}
                 onSelectStudent={selectStudent}
                 onSelectConversation={selectConversation}
+                onToggleClassic={toggleClassic}
+                switchingClassic={isSwitching}
             />
 
             {active ? (
@@ -193,6 +232,8 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     sending={sending}
                     input={input}
                     trainerName={trainerName}
+                    banner={banner}
+                    onDismissBanner={() => setError(null)}
                     onInput={setInput}
                     onSend={() => send()}
                     onBackHome={goHome}
@@ -205,8 +246,11 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     attention={attention}
                     recents={recents}
                     focusedStudentName={focusedStudentName}
+                    hasStudents={students.length > 0}
                     input={input}
                     sending={sending}
+                    banner={banner}
+                    onDismissBanner={() => setError(null)}
                     onInput={setInput}
                     onSend={() => send()}
                     onStarter={starter}

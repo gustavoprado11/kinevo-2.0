@@ -233,7 +233,9 @@ export interface AssistantTurnResult {
     confirmation: ToolConfirmationRequest | null
     executed: ExecutedToolSummary[]
     credits: number
-    summary: AiUsageSummary
+    /** Medidor atualizado. `null` se o metering/resumo (best-effort) falhou — o
+     *  texto do turno já foi gerado e NÃO deve ser derrubado por erro de DB. */
+    summary: AiUsageSummary | null
 }
 
 const MAX_HISTORY = 20
@@ -411,41 +413,49 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             })
         }
 
-        await recordAiUsage(admin, {
-            trainerId,
-            periodType,
-            credits,
-            costMicros,
-            events,
-        })
+        // 5b/6. Metering + resumo + trace são BEST-EFFORT: o LLM já rodou (e o
+        //       turno será cobrado pelo execute-tool nas ações sensíveis). Uma
+        //       falha de DB aqui NÃO pode derrubar a resposta já gerada (A2).
+        let summary: AiUsageSummary | null = null
+        try {
+            await recordAiUsage(admin, {
+                trainerId,
+                periodType,
+                credits,
+                costMicros,
+                events,
+            })
 
-        const summary = await getAiUsageSummary(admin, trainerId)
+            summary = await getAiUsageSummary(admin, trainerId)
 
-        // 6. Trace do turno (best-effort — observabilidade + dataset de evals).
-        await recordTurnTrace(admin, {
-            trainerId,
-            studentId: opts.studentId,
-            kind: 'turn',
-            surface,
-            route: opts.route,
-            promptVersion: PROMPT_VERSION,
-            model: ASSISTANT_MODEL,
-            input,
-            output: finalText,
-            tools: executed.map((e) => ({
-                toolName: e.toolName,
-                args: e.args,
-                ok: toolResultOk(e.result),
-            })),
-            confirmation: confirmation
-                ? { toolName: confirmation.toolName, destructive: confirmation.destructive }
-                : null,
-            intents,
-            credits,
-            inputTokens: result.usage.promptTokens,
-            outputTokens: result.usage.completionTokens,
-            costMicros,
-        })
+            // Trace do turno (observabilidade + dataset de evals).
+            await recordTurnTrace(admin, {
+                trainerId,
+                studentId: opts.studentId,
+                kind: 'turn',
+                surface,
+                route: opts.route,
+                promptVersion: PROMPT_VERSION,
+                model: ASSISTANT_MODEL,
+                input,
+                output: finalText,
+                tools: executed.map((e) => ({
+                    toolName: e.toolName,
+                    args: e.args,
+                    ok: toolResultOk(e.result),
+                })),
+                confirmation: confirmation
+                    ? { toolName: confirmation.toolName, destructive: confirmation.destructive }
+                    : null,
+                intents,
+                credits,
+                inputTokens: result.usage.promptTokens,
+                outputTokens: result.usage.completionTokens,
+                costMicros,
+            })
+        } catch (e) {
+            console.error('[runAssistantTurn] metering/summary/trace best-effort falhou', e)
+        }
 
         return {
             text: finalText,

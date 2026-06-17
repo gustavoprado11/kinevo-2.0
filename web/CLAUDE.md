@@ -291,10 +291,19 @@ STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET
 STRIPE_CONNECT_WEBHOOK_SECRET
 
-# OpenAI (Forms)
+# OpenAI (Forms + Assistente de IA)
 OPENAI_API_KEY
 OPENAI_FORMS_MODEL=gpt-4o-mini
 FORMS_AI_LLM_ENABLED=true
+
+# Assistente de IA (⌘K / aba /assistente / voz / proativo) — LOAD-BEARING
+# Sem os price IDs, get-ai-tier não mapeia assinantes Stripe → gateAssistant 403
+# para todo pagante. Sem CRON_SECRET o cron de briefing fica aberto/quebrado.
+STRIPE_PRICE_PRO
+STRIPE_PRICE_PREMIUM
+STRIPE_PRICE_ESSENCIAL
+STRIPE_PRICE_ID          # legado (R$39,90) → 'essencial' se ESSENCIAL vazio
+CRON_SECRET
 
 # Prescrição Feature Flags
 ENABLE_COMPACT_EXERCISE_POOL=true

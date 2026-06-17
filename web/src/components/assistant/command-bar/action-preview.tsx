@@ -13,6 +13,7 @@
 
 import { CheckCircle2, Sparkles } from 'lucide-react'
 import { ToolConfirmationCard } from '@/components/assistant/tool-confirmation-card'
+import { executedText } from '@/lib/assistant/tool-labels'
 import type { ToolConfirmationRequest, ToolConfirmationResult } from '@/lib/assistant/hitl-types'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 
@@ -66,7 +67,7 @@ export function ActionPreview({ result, onConfirmationResolved }: ActionPreviewP
                             className="inline-flex items-center gap-1.5 rounded-md bg-[#DCFCE7] px-2 py-0.5 text-[11px] font-medium text-[#15803D]"
                         >
                             <CheckCircle2 className="h-3 w-3" strokeWidth={2.5} />
-                            {e.toolName}
+                            {executedText(e.toolName, e.result)}
                         </span>
                     ))}
                 </div>

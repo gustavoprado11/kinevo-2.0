@@ -1,0 +1,85 @@
+'use client'
+
+/**
+ * AssistantBanner — feedback de erro/cota na aba /assistente (B2).
+ *
+ * Espelha o banner do ⌘K (degrada, não trava): a aba carro-chefe não pode mais
+ * engolir 402/403/429/422/500 em silêncio. Cota/tier mostram CTA de upgrade;
+ * rate-limit/validação só informam. `role="alert"` + `aria-live` p/ leitor de tela.
+ */
+
+import Link from 'next/link'
+import { AlertTriangle, X, ArrowUpRight } from 'lucide-react'
+
+export interface AssistantBannerData {
+    tone: 'warning' | 'error'
+    message: string
+    cta?: { label: string; href: string }
+}
+
+/** Deriva o banner do envelope de erro das rotas do assistente. */
+export function bannerFromError(status: number, data: unknown): AssistantBannerData {
+    const d = (data ?? {}) as { error?: string; message?: string }
+    const code = d.error
+    const message = d.message || d.error
+
+    if (status === 402 || code === 'quota_exceeded') {
+        return {
+            tone: 'warning',
+            message: message || 'Sua cota de IA deste ciclo acabou. Continue pela interface normal; os créditos renovam em breve.',
+            cta: { label: 'Ver planos', href: '/settings' },
+        }
+    }
+    if (status === 403 || code === 'tier_locked') {
+        return {
+            tone: 'warning',
+            message: message || 'O Assistente com IA está nos planos Pro e Premium.',
+            cta: { label: 'Fazer upgrade', href: '/settings' },
+        }
+    }
+    if (status === 429 || code === 'rate_limited') {
+        return { tone: 'warning', message: message || 'Muitas ações em sequência. Tente de novo em alguns instantes.' }
+    }
+    if (status === 422 || code === 'validation_failed') {
+        return { tone: 'error', message: message || 'Não entendi os dados dessa ação. Revise e tente de novo.' }
+    }
+    return { tone: 'error', message: message || 'Algo deu errado ao falar com o Assistente. Tente novamente.' }
+}
+
+export function AssistantBanner({ data, onDismiss }: { data: AssistantBannerData; onDismiss?: () => void }) {
+    const warning = data.tone === 'warning'
+    const wrap = warning
+        ? 'border-[#F0E0BA] bg-[#FEF9ED]'
+        : 'border-[#F5C2C0] bg-[#FEF2F2]'
+    const icon = warning ? 'text-[#B45309]' : 'text-[#BE123C]'
+    const text = warning ? 'text-[#92580C]' : 'text-[#9F1239]'
+
+    return (
+        <div
+            role="alert"
+            aria-live="assertive"
+            className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 ${wrap}`}
+        >
+            <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${icon}`} strokeWidth={2} />
+            <p className={`flex-1 text-[12.5px] leading-snug ${text}`}>{data.message}</p>
+            {data.cta && (
+                <Link
+                    href={data.cta.href}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-2.5 py-1 text-[11.5px] font-bold text-white shadow-[0_4px_12px_-4px_rgba(124,58,237,0.5)] transition hover:brightness-[1.07]"
+                >
+                    {data.cta.label} <ArrowUpRight className="h-3 w-3" strokeWidth={2.5} />
+                </Link>
+            )}
+            {onDismiss && (
+                <button
+                    type="button"
+                    onClick={onDismiss}
+                    aria-label="Dispensar aviso"
+                    className={`shrink-0 rounded p-0.5 transition hover:opacity-70 ${icon}`}
+                >
+                    <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                </button>
+            )}
+        </div>
+    )
+}

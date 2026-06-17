@@ -5,8 +5,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-    MessageSquarePlus, Headphones, Loader2,
-    LogOut, BookOpen, ChevronRight, ChevronLeft, Settings, Sparkles, LayoutGrid,
+    MessageSquarePlus, Headphones,
+    LogOut, BookOpen, ChevronRight, ChevronLeft, Settings, Sparkles,
 } from 'lucide-react'
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { fetchAiAccess, getCachedAiAllowed, getCachedHomeStyle, setCachedHomeStyle, type HomeStyle } from '@/components/assistant/command-bar/command-bar'
 import { setHomeStyle } from '@/actions/assistant/set-home-style'
 import { MAIN_NAV as navigation, BIBLIOTECA_NAV as bibliotecaItems, type NavItem } from '@/components/layout/nav-items'
+import { ModeToggle } from '@/components/layout/mode-toggle'
 
 interface SidebarProps {
     financialBadge?: React.ReactNode
@@ -162,22 +163,14 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                 {isCollapsed ? <ChevronRight size={14} strokeWidth={2} /> : <ChevronLeft size={14} strokeWidth={2} />}
             </button>
 
-            {/* Toggle de modo (Pro+): Clássico ⇄ Assistente. O pill move na hora. */}
+            {/* Toggle de modo (Pro+): Clássico ⇄ Assistente — componente compartilhado. */}
             {aiAllowed && !isCollapsed && (
-                <div className="mx-4 mb-3 flex gap-[3px] rounded-[11px] border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-glass-bg p-[3px]">
-                    <button
-                        onClick={goClassic}
-                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-[8px] py-[7px] text-[12px] font-semibold transition-all duration-200 ${assistantMode ? 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground' : 'bg-white dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]'}`}
-                    >
-                        <LayoutGrid size={14} strokeWidth={2} /> Clássico
-                    </button>
-                    <button
-                        onClick={goAssistant}
-                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-[8px] py-[7px] text-[12px] font-semibold transition-all duration-200 ${assistantMode ? 'bg-white dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]' : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground'}`}
-                    >
-                        {switchingAssistant ? <Loader2 size={14} strokeWidth={2} className="animate-spin" /> : <Sparkles size={14} strokeWidth={2} />} Assistente
-                    </button>
-                </div>
+                <ModeToggle
+                    active={assistantMode ? 'assistant' : 'classic'}
+                    switchingTo={switchingAssistant ? 'assistant' : undefined}
+                    onClassic={goClassic}
+                    onAssistant={goAssistant}
+                />
             )}
 
             {/* Navigation */}

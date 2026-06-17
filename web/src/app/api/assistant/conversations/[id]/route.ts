@@ -22,6 +22,7 @@ import {
     bumpConversation,
     renameConversation,
     archiveConversation,
+    markConfirmationResolved,
     type AssistantMessagePart,
 } from '@/lib/assistant/conversations'
 
@@ -92,6 +93,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             if (!conv) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
             const confirmed = confirmation.status === 'confirmed'
+
+            // B1: fecha a part `confirmation` original (pending → confirmed/cancelled)
+            // para que ao reabrir a conversa o card NÃO volte clicável (re-execução).
+            await markConfirmationResolved(supabaseAdmin, {
+                conversationId: id,
+                trainerId: trainer.id,
+                toolName: confirmation.toolName,
+                status: confirmed ? 'confirmed' : 'cancelled',
+                result: confirmation.result ?? null,
+            })
+
             const parts: AssistantMessagePart[] = confirmed
                 ? [{ type: 'executed', toolName: confirmation.toolName, result: confirmation.result ?? null }]
                 : []

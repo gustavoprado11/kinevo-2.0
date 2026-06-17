@@ -17,22 +17,9 @@ import type {
     AssistantMessagePart,
 } from '@/lib/assistant/conversations'
 import { avatarFor } from './ui-util'
-
-const EXECUTED_LABEL: Record<string, string> = {
-    generateProgram: 'Programa gerado (rascunho)',
-    kinevo_assign_program: 'Programa atribuído',
-    kinevo_send_message: 'Mensagem enviada',
-    kinevo_create_appointment: 'Sessão agendada',
-    kinevo_update_student: 'Aluno atualizado',
-}
-function executedText(part: Extract<AssistantMessagePart, { type: 'executed' }>): string {
-    const r = part.result as { message?: string; error?: string; success?: boolean } | null
-    if (r && typeof r === 'object') {
-        if (r.success === false && r.error) return r.error
-        if (r.message) return r.message
-    }
-    return EXECUTED_LABEL[part.toolName] ?? 'Ação executada'
-}
+import { executedText } from '@/lib/assistant/tool-labels'
+import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
+import { MicButton } from './mic-button'
 
 interface Props {
     active: ConversationListItem
@@ -42,6 +29,8 @@ interface Props {
     sending: boolean
     input: string
     trainerName: string | null
+    banner: AssistantBannerData | null
+    onDismissBanner: () => void
     onInput: (v: string) => void
     onSend: () => void
     onBackHome: () => void
@@ -49,8 +38,8 @@ interface Props {
 }
 
 export function ConversationView({
-    active, summary, messages, loadingMessages, sending, input, trainerName,
-    onInput, onSend, onBackHome, onConfirmResolved,
+    active, summary, messages, loadingMessages, sending, input, trainerName, banner,
+    onDismissBanner, onInput, onSend, onBackHome, onConfirmResolved,
 }: Props) {
     const streamRef = useRef<HTMLDivElement>(null)
     const trainerAv = avatarFor(trainerName)
@@ -80,7 +69,7 @@ export function ConversationView({
                 <div className="hidden w-[260px] sm:block"><CreditMeter summary={summary} compact /></div>
             </header>
 
-            <div ref={streamRef} className="flex-1 overflow-y-auto py-7">
+            <div ref={streamRef} className="flex-1 overflow-y-auto py-7" aria-live="polite" aria-busy={sending}>
                 <div className="mx-auto max-w-[768px] px-7">
                     {loadingMessages && (
                         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#AEAEB2]" /></div>
@@ -94,12 +83,19 @@ export function ConversationView({
 
             <div className="border-t border-[#E8E8ED] bg-white/80 py-3.5 backdrop-blur">
                 <div className="mx-auto max-w-[768px] px-7">
+                    {banner && (
+                        <div className="mb-2.5">
+                            <AssistantBanner data={banner} onDismiss={onDismissBanner} />
+                        </div>
+                    )}
                     <div className="flex items-center gap-2.5 rounded-[15px] border border-[#D2D2D7] bg-white px-2 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition focus-within:border-[#7C3AED] focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.1)]">
+                        <MicButton disabled={sending} onTranscript={(t) => onInput(input ? `${input} ${t}` : t)} />
                         <input
                             value={input}
                             onChange={(e) => onInput(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
                             disabled={sending}
+                            aria-label={active.studentName ? `Mensagem para o assistente sobre ${active.studentName}` : 'Mensagem para o assistente'}
                             placeholder={active.studentName ? `Diga o que fazer com ${active.studentName.split(' ')[0]}…` : 'Diga o que fazer no Kinevo…'}
                             className="flex-1 bg-transparent px-2 py-2 text-[14.5px] outline-none placeholder:text-[#AEAEB2]"
                         />
@@ -161,7 +157,7 @@ function PartView({ part, onConfirmResolved }: {
                 {!failed && (
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#16A34A]"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>
                 )}
-                <span className="font-semibold">{executedText(part)}</span>
+                <span className="font-semibold">{executedText(part.toolName, part.result)}</span>
             </div>
         )
     }
@@ -182,7 +178,7 @@ function PartView({ part, onConfirmResolved }: {
 
 function TypingRow() {
     return (
-        <div className="mb-6 flex gap-3.5">
+        <div className="mb-6 flex gap-3.5" role="status" aria-label="Assistente está pensando">
             <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] text-white" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
                 <Sparkles className="h-[17px] w-[17px]" strokeWidth={1.8} />
             </span>

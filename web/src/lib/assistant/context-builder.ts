@@ -219,12 +219,15 @@ export async function buildChatContext(trainerId: string, trainerName: string, s
 
         const patternsStr = `Padrões de treino: ${snapshot.enriched.session_patterns.completed_sessions_4w} sessões em 4 semanas${snapshot.enriched.session_patterns.avg_session_duration_minutes ? `, duração média ${snapshot.enriched.session_patterns.avg_session_duration_minutes}min` : ''}`
 
+        // A6: check-ins/insights contêm texto livre do ALUNO. Envolvemos em
+        // delimitadores explícitos — é DADO, nunca instrução (defesa contra
+        // injeção de prompt via conteúdo do aluno em tools de escrita).
         const checkinsStr = snapshot.recentCheckins.length > 0
-            ? `Últimos check-ins pós-treino:\n${snapshot.recentCheckins.map(c => `  - ${new Date(c.created_at).toLocaleDateString('pt-BR')}: ${c.answers_preview}`).join('\n')}`
+            ? `Últimos check-ins pós-treino:\n<<DADOS_DO_ALUNO>>\n${snapshot.recentCheckins.map(c => `  - ${new Date(c.created_at).toLocaleDateString('pt-BR')}: ${c.answers_preview}`).join('\n')}\n<<FIM_DADOS_DO_ALUNO>>`
             : ''
 
         const insightsStr = snapshot.activeInsights.length > 0
-            ? `Insights ativos:\n${snapshot.activeInsights.map(i => `  - [${i.category}] ${i.title}: ${i.body}`).join('\n')}`
+            ? `Insights ativos:\n<<DADOS_DO_ALUNO>>\n${snapshot.activeInsights.map(i => `  - [${i.category}] ${i.title}: ${i.body}`).join('\n')}\n<<FIM_DADOS_DO_ALUNO>>`
             : ''
 
         return `# Contexto
@@ -255,7 +258,7 @@ ${insightsStr}`.trim()
     }).join('\n')
 
     const insightsStr = snapshot.insights.length > 0
-        ? `\nInsights ativos:\n${snapshot.insights.map(i => `  - [${i.category}] ${i.student_name ? `${i.student_name}: ` : ''}${i.title}`).join('\n')}`
+        ? `\nInsights ativos:\n<<DADOS_DO_ALUNO>>\n${snapshot.insights.map(i => `  - [${i.category}] ${i.student_name ? `${i.student_name}: ` : ''}${i.title}`).join('\n')}\n<<FIM_DADOS_DO_ALUNO>>`
         : ''
 
     return `# Contexto

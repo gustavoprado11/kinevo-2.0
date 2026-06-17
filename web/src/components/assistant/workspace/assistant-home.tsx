@@ -6,14 +6,17 @@
  * Apresentacional; envia ações via callbacks do AssistantWorkspace.
  */
 
+import Link from 'next/link'
 import {
-    Sparkles, Plus, Send, Loader2, User, ChevronDown, ChevronRight, Globe,
-    Wallet, Users, Dumbbell, MessageCircle, TrendingDown, TrendingUp, FileText, Coins,
+    Sparkles, Send, Loader2, User, ChevronDown, ChevronRight, Globe,
+    Wallet, Users, Dumbbell, MessageCircle, TrendingDown, TrendingUp, FileText, Coins, UserPlus,
 } from 'lucide-react'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AttentionItem } from '@/lib/assistant/home-data'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
 import { avatarFor, greeting, timeShort } from './ui-util'
+import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
+import { MicButton } from './mic-button'
 
 const STARTERS: { label: string; icon: typeof Wallet; color: string; bg: string; prompts: string[] }[] = [
     { label: 'Financeiro', icon: Wallet, color: '#3B82F6', bg: '#EFF6FF', prompts: ['Mostrar os alunos inadimplentes do mês', 'Qual o MRR atual?', 'Gerar um resumo financeiro do mês'] },
@@ -50,8 +53,11 @@ interface Props {
     attention: AttentionItem[]
     recents: ConversationListItem[]
     focusedStudentName: string | null
+    hasStudents: boolean
     input: string
     sending: boolean
+    banner: AssistantBannerData | null
+    onDismissBanner: () => void
     onInput: (v: string) => void
     onSend: () => void
     onStarter: (prompt: string) => void
@@ -61,8 +67,8 @@ interface Props {
 }
 
 export function AssistantHome({
-    trainerName, summary, attention, recents, focusedStudentName, input, sending,
-    onInput, onSend, onStarter, onPickFocus, onClearFocus, onOpenConversation,
+    trainerName, summary, attention, recents, focusedStudentName, hasStudents, input, sending, banner,
+    onDismissBanner, onInput, onSend, onStarter, onPickFocus, onClearFocus, onOpenConversation,
 }: Props) {
     const firstName = (trainerName ?? '').split(' ')[0] || 'treinador'
     return (
@@ -92,13 +98,12 @@ export function AssistantHome({
                         onChange={(e) => onInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
                         rows={2}
+                        aria-label="Diga o que fazer no Kinevo"
                         placeholder="Diga o que fazer no Kinevo — ou escolha um aluno…"
                         className="w-full resize-none bg-transparent px-4 py-3 text-[16px] leading-relaxed outline-none placeholder:text-[#AEAEB2]"
                     />
                     <div className="flex items-center gap-2.5 px-2 pb-1 pt-1">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-[11px] border border-[#E8E8ED] text-[#6E6E73] transition hover:bg-[#F5F5F7]">
-                            <Plus className="h-[17px] w-[17px]" strokeWidth={2} />
-                        </span>
+                        <MicButton disabled={sending} onTranscript={(t) => onInput(input ? `${input} ${t}` : t)} />
                         <span className="flex-1" />
                         <button onClick={onSend} disabled={sending || !input.trim()}
                             className="flex h-10 items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-[18px] text-[14px] font-bold text-white shadow-[0_6px_16px_-6px_rgba(124,58,237,0.6)] transition hover:brightness-[1.07] disabled:opacity-50">
@@ -107,9 +112,20 @@ export function AssistantHome({
                     </div>
                 </div>
 
+                {/* Erro/cota — a aba não engole mais falhas em silêncio (B2). */}
+                {banner && (
+                    <div className="mt-3.5">
+                        <AssistantBanner data={banner} onDismiss={onDismissBanner} />
+                    </div>
+                )}
+
                 {/* Contexto */}
                 <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
-                    {focusedStudentName ? (
+                    {!hasStudents ? (
+                        <Link href="/students" className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-3.5 py-[7px] text-[12.5px] font-semibold text-[#7C3AED] transition hover:bg-[rgba(124,58,237,0.14)]">
+                            <UserPlus className="h-3.5 w-3.5" strokeWidth={2} /> Crie seu primeiro aluno
+                        </Link>
+                    ) : focusedStudentName ? (
                         <button onClick={onClearFocus} className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.08)] px-3.5 py-[7px] text-[12.5px] font-semibold text-[#7C3AED]">
                             <User className="h-3.5 w-3.5" strokeWidth={2} /> {focusedStudentName}
                             <span className="text-[#a78bfa]">×</span>
@@ -119,7 +135,7 @@ export function AssistantHome({
                             <User className="h-3.5 w-3.5 text-[#8b5cf6]" strokeWidth={2} /> Aluno em foco <ChevronDown className="h-3.5 w-3.5 text-[#AEAEB2]" strokeWidth={2} />
                         </button>
                     )}
-                    {!focusedStudentName && (
+                    {hasStudents && !focusedStudentName && (
                         <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-[#D2D2D7] px-3.5 py-[7px] text-[12.5px] font-semibold text-[#86868B]">
                             <Globe className="h-3.5 w-3.5 text-[#AEAEB2]" strokeWidth={2} /> Geral · visão geral dos alunos
                         </span>

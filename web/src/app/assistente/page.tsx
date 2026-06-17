@@ -14,7 +14,6 @@ import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { listConversations } from '@/lib/assistant/conversations'
 import { getAttentionInsights } from '@/lib/assistant/home-data'
 import { PRO_TIERS } from '@/lib/assistant/command-engine'
-import { AppLayout } from '@/components/layout/app-layout'
 import { AssistantWorkspace } from '@/components/assistant/workspace/assistant-workspace'
 
 export const dynamic = 'force-dynamic'
@@ -26,7 +25,7 @@ export default async function AssistentePage() {
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, name')
+        .select('id, name, avatar_url')
         .eq('auth_user_id', user.id)
         .single()
     if (!trainer) redirect('/login')
@@ -37,7 +36,7 @@ export default async function AssistentePage() {
     const [summary, conversations, studentsRes, attention] = await Promise.all([
         getAiUsageSummary(supabaseAdmin, trainer.id),
         listConversations(supabaseAdmin, trainer.id),
-        supabase.from('students').select('id, name, status').eq('coach_id', trainer.id).order('name', { ascending: true }),
+        supabase.from('students').select('id, name, status, avatar_url').eq('coach_id', trainer.id).order('name', { ascending: true }),
         getAttentionInsights(supabaseAdmin, trainer.id),
     ])
 
@@ -45,18 +44,18 @@ export default async function AssistentePage() {
         id: s.id,
         name: s.name,
         status: (s as { status?: string }).status ?? 'active',
+        avatarUrl: (s as { avatar_url?: string | null }).avatar_url ?? null,
     }))
 
     return (
-        <AppLayout trainerName={trainer.name} trainerEmail={user.email ?? undefined} students={students} fullBleed>
-            <AssistantWorkspace
-                initialSummary={summary}
-                initialConversations={conversations}
-                students={students}
-                attention={attention}
-                trainerName={trainer.name}
-                trainerEmail={user.email ?? null}
-            />
-        </AppLayout>
+        <AssistantWorkspace
+            initialSummary={summary}
+            initialConversations={conversations}
+            students={students}
+            attention={attention}
+            trainerName={trainer.name}
+            trainerEmail={user.email ?? null}
+            trainerAvatarUrl={(trainer as { avatar_url?: string | null }).avatar_url ?? null}
+        />
     )
 }

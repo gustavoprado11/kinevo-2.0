@@ -62,8 +62,8 @@ export function CreditMeter({ summary, compact = false }: CreditMeterProps) {
 
     const subLine = (
         <p className="text-[12.5px] text-[#6E6E73]">
-            <b className="font-semibold text-[#1D1D1F]">
-                {creditsUsed} de {creditsTotal} {unitLabel}
+            <b className="font-semibold text-[#1D1D1F] [font-variant-numeric:tabular-nums]">
+                {creditsUsed.toLocaleString('pt-BR')} de {creditsTotal.toLocaleString('pt-BR')} {unitLabel}
             </b>{' '}
             usados neste ciclo · {renewalLabel}
         </p>
@@ -105,8 +105,8 @@ export function CreditMeter({ summary, compact = false }: CreditMeterProps) {
                     {subLine}
                 </div>
                 <div className="text-right">
-                    <div className="text-[28px] font-extrabold leading-none tracking-tight text-[#1D1D1F]">
-                        {creditsRemaining}
+                    <div className="text-[28px] font-extrabold leading-none tracking-tight text-[#1D1D1F] [font-variant-numeric:tabular-nums]">
+                        {creditsRemaining.toLocaleString('pt-BR')}
                         <span className="ml-1 text-[13px] font-medium text-[#8A8A8E]">
                             {isFree ? 'restantes' : 'créditos'}
                         </span>

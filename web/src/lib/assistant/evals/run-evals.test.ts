@@ -67,11 +67,11 @@ describe('eval cases — integridade', () => {
         const covered = new Set(
             EVAL_CASES.map((c) => c.expect.confirmation).filter(Boolean) as string[],
         )
-        for (const t of CONFIRM_TOOLS) {
-            // Aviso (não falha) — útil para acompanhar cobertura ao crescer a suíte.
-            if (!covered.has(t)) console.warn(`[eval] CONFIRM_TOOL sem caso de HITL: ${t}`)
-        }
-        expect(covered.size).toBeGreaterThan(0)
+        // Isenções explícitas (deve ficar vazio). Se uma CONFIRM_TOOL não puder
+        // ter caso por ora, liste-a AQUI conscientemente — não silencie com warn.
+        const WAIVER = new Set<string>([])
+        const missing = [...CONFIRM_TOOLS].filter((t) => !covered.has(t) && !WAIVER.has(t))
+        expect(missing, `CONFIRM_TOOLs sem caso de HITL: ${missing.join(', ') || '∅'}`).toEqual([])
     })
 })
 

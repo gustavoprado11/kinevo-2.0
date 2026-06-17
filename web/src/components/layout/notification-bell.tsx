@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell, Dumbbell, FileText, CreditCard, AlertTriangle, MessageCircle, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Bell, Dumbbell, FileText, CreditCard, AlertTriangle, MessageCircle, Sparkles, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/time-ago'
 import { useCommunicationStore } from '@/stores/communication-store'
@@ -26,6 +27,7 @@ const TYPE_ICONS: Record<string, typeof Bell> = {
     cancellation_alert: AlertTriangle,
     subscription_canceled: AlertTriangle,
     student_message: MessageCircle,
+    assistant_briefing: Sparkles,
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -37,6 +39,7 @@ const TYPE_COLORS: Record<string, string> = {
     cancellation_alert: 'text-red-500 bg-red-500/10',
     subscription_canceled: 'text-red-500 bg-red-500/10',
     student_message: 'text-blue-500 bg-blue-500/10',
+    assistant_briefing: 'text-[#7C3AED] bg-[#7C3AED]/10',
 }
 
 interface NotificationBellProps {
@@ -44,6 +47,7 @@ interface NotificationBellProps {
 }
 
 export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
+    const router = useRouter()
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [isOpen, setIsOpen] = useState(false)
@@ -243,6 +247,10 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                                                 openPanel('messages')
                                                 if (studentId) openMessagesConversation(studentId)
                                                 setIsOpen(false)
+                                            } else if (notif.type === 'assistant_briefing') {
+                                                // Briefing proativo → abre a aba do Assistente p/ ler o resumo do dia.
+                                                setIsOpen(false)
+                                                router.push('/assistente')
                                             }
                                         }}
                                         className={`
@@ -265,7 +273,7 @@ export function NotificationBell({ sidebarMode }: NotificationBellProps = {}) {
                                                     <span className="w-2 h-2 rounded-full bg-[#7C3AED] dark:bg-violet-500 flex-shrink-0 mt-1.5" />
                                                 )}
                                             </div>
-                                            <p className="text-xs text-[#86868B] dark:text-muted-foreground mt-0.5 truncate">
+                                            <p className={`text-xs text-[#86868B] dark:text-muted-foreground mt-0.5 ${notif.type === 'assistant_briefing' ? 'whitespace-pre-wrap line-clamp-5' : 'truncate'}`}>
                                                 {notif.body}
                                             </p>
                                             <p className="text-[10px] text-[#AEAEB2] dark:text-muted-foreground/50 mt-1" suppressHydrationWarning>

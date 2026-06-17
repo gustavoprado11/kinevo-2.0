@@ -46,9 +46,27 @@ export async function createFormSchedulesCore(
         return { success: false, error: 'Dados incompletos' }
     }
 
+    // A4: isolamento de tenant — só agenda para alunos DESTE treinador. Espelha o
+    // check coach_id do RPC assign_form_to_students; sem isso, conhecendo o UUID de
+    // um aluno de outro tenant, daria pra criar agendamento recorrente cross-tenant.
+    const { data: owned, error: ownErr } = await supabase
+        .from('students')
+        .select('id')
+        .eq('coach_id', trainerId)
+        .in('id', input.studentIds)
+    if (ownErr) {
+        console.error('[createFormSchedulesCore] ownership check error:', ownErr)
+        return { success: false, error: 'Não foi possível agendar o formulário.' }
+    }
+    const ownedIds = new Set((owned ?? []).map(s => s.id))
+    const validIds = input.studentIds.filter(id => ownedIds.has(id))
+    if (validIds.length === 0) {
+        return { success: false, error: 'Nenhum aluno válido' }
+    }
+
     const nextDue = computeNextDue(input.frequency, new Date())
 
-    const rows = input.studentIds.map(studentId => ({
+    const rows = validIds.map(studentId => ({
         trainer_id: trainerId,
         student_id: studentId,
         form_template_id: input.formTemplateId,
@@ -65,8 +83,9 @@ export async function createFormSchedulesCore(
         .select('id')
 
     if (error) {
+        // M3: não vaza error.message cru (este core também serve o MCP externo).
         console.error('[createFormSchedulesCore] error:', error)
-        return { success: false, error: error.message }
+        return { success: false, error: 'Não foi possível agendar o formulário.' }
     }
 
     return { success: true, count: data?.length ?? 0 }
