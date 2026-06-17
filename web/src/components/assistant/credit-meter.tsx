@@ -13,7 +13,7 @@
  */
 
 import type { CSSProperties } from 'react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Coins } from 'lucide-react'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AiTier } from '@/lib/auth/get-ai-tier'
 
@@ -36,9 +36,14 @@ interface CreditMeterProps {
     summary: AiUsageSummary
     /** Versão enxuta (sem cabeçalho), p/ headers/barras estreitas. */
     compact?: boolean
+    /**
+     * Variante "pill" coesa (ícone Coins + texto ACIMA da barra) p/ o header da
+     * conversa — uma moldura própria que não "vaza" colada ao topo como o compact.
+     */
+    pill?: boolean
 }
 
-export function CreditMeter({ summary, compact = false }: CreditMeterProps) {
+export function CreditMeter({ summary, compact = false, pill = false }: CreditMeterProps) {
     const { tier, creditsUsed, creditsTotal, creditsRemaining, periodEnd, exhausted } = summary
 
     const pct = creditsTotal > 0 ? Math.min(100, Math.round((creditsUsed / creditsTotal) * 100)) : 0
@@ -74,6 +79,28 @@ export function CreditMeter({ summary, compact = false }: CreditMeterProps) {
             <div className="h-full rounded-full transition-[width] duration-300" style={fillStyle} />
         </div>
     )
+
+    if (pill) {
+        return (
+            <div
+                className="flex items-center gap-[11px] rounded-[12px] border border-[#E8E8ED] bg-white px-[14px] py-2 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+                aria-label={`${creditsUsed} de ${creditsTotal} ${unitLabel} usados`}
+            >
+                <Coins className="h-4 w-4 shrink-0 text-[#F59E0B]" strokeWidth={1.8} />
+                <div className="flex min-w-[172px] flex-col gap-[5px]">
+                    <span className="text-[11.5px] text-[#86868B]">
+                        <b className="font-semibold text-[#1D1D1F] [font-variant-numeric:tabular-nums]">
+                            {creditsUsed.toLocaleString('pt-BR')}
+                        </b>{' '}
+                        de {creditsTotal.toLocaleString('pt-BR')} {unitLabel} · {renewalLabel}
+                    </span>
+                    <div className="h-[5px] overflow-hidden rounded-full bg-[#F1F0F5]">
+                        <div className="h-full rounded-full transition-[width] duration-300" style={fillStyle} />
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     if (compact) {
         return (
