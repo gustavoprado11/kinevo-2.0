@@ -489,6 +489,18 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .kv-mode-in { animation: none; }
 }
+/* Entrada de cada mensagem na conversa do Assistente — sobe e revela. Como as
+   linhas usam key estável, só as recém-montadas animam (as antigas não remontam). */
+@keyframes kvMsgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.kv-msg-in {
+  animation: kvMsgIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kv-msg-in { animation: none; }
+}
 /* ================================================================== */
 /*  Landing Hero / AI — phase 1 utilities                              */
 /* ================================================================== */

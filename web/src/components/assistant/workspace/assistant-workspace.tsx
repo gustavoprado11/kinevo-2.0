@@ -177,6 +177,25 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     }, [input, sending, activeId, focusedStudentId, students])
 
     const starter = useCallback((prompt: string) => { void send(prompt) }, [send])
+    // Cards da home: preenchem o composer p/ o treinador revisar/ajustar antes de
+    // enviar (não disparam automaticamente).
+    const fillInput = useCallback((prompt: string) => { setInput(prompt) }, [])
+
+    // Renomear a conversa ativa (botão Pencil no header). Otimista + PATCH.
+    const renameActive = useCallback(async () => {
+        if (!activeId || typeof window === 'undefined') return
+        const current = conversations.find((c) => c.id === activeId)
+        const next = window.prompt('Renomear conversa', current?.title ?? '')?.trim()
+        if (!next) return
+        const title = next.slice(0, 70)
+        setConversations((prev) => prev.map((c) => (c.id === activeId ? { ...c, title } : c)))
+        try {
+            await fetch(`/api/assistant/conversations/${activeId}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title }),
+            })
+        } catch { /* otimista; nome local já atualizado */ }
+    }, [activeId, conversations])
 
     const recordConfirmation = useCallback(async (toolName: string, confirmed: boolean, result?: unknown) => {
         if (!activeId) return
@@ -232,11 +251,14 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     sending={sending}
                     input={input}
                     trainerName={trainerName}
+                    students={students}
                     banner={banner}
                     onDismissBanner={() => setError(null)}
                     onInput={setInput}
                     onSend={() => send()}
+                    onSendText={starter}
                     onBackHome={goHome}
+                    onRename={renameActive}
                     onConfirmResolved={recordConfirmation}
                 />
             ) : (
@@ -253,7 +275,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     onDismissBanner={() => setError(null)}
                     onInput={setInput}
                     onSend={() => send()}
-                    onStarter={starter}
+                    onStarter={fillInput}
                     onPickFocus={() => setSegment('alunos')}
                     onClearFocus={() => setFocusedStudentId(null)}
                     onOpenConversation={selectConversation}

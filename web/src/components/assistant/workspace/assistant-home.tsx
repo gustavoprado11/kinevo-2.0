@@ -6,6 +6,7 @@
  * Apresentacional; envia ações via callbacks do AssistantWorkspace.
  */
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
     Sparkles, Send, Loader2, User, ChevronDown, ChevronRight, Globe,
@@ -18,11 +19,40 @@ import { avatarFor, greeting, timeShort } from './ui-util'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
 import { MicButton } from './mic-button'
 
-const STARTERS: { label: string; icon: typeof Wallet; color: string; bg: string; prompts: string[] }[] = [
-    { label: 'Financeiro', icon: Wallet, color: '#3B82F6', bg: '#EFF6FF', prompts: ['Mostrar os alunos inadimplentes do mês', 'Qual o MRR atual?', 'Gerar um resumo financeiro do mês'] },
-    { label: 'Alunos', icon: Users, color: '#7C3AED', bg: '#EDE9FE', prompts: ['Quais alunos estão sem treino ativo?', 'Resumo de adesão da semana', 'Quais alunos estão em risco de cancelar?'] },
-    { label: 'Treinos', icon: Dumbbell, color: '#F59E0B', bg: '#FFFBEB', prompts: ['Gerar um programa para um aluno', 'Quais alunos estão estagnados?', 'Criar um template na biblioteca'] },
-    { label: 'Comunicação', icon: MessageCircle, color: '#16A34A', bg: '#ECFDF5', prompts: ['Enviar uma mensagem motivacional para um aluno', 'Enviar formulário de check-in', 'Lembrar quem faltou ao treino'] },
+/**
+ * Cada atalho tem `label` (texto curto exibido no card) e `prompt` (instrução
+ * expandida e bem-especificada que é inserida no composer). O prompt otimizado
+ * pede formato/critérios/ordenação → respostas melhores do motor de IA por trás.
+ */
+const STARTERS: { label: string; icon: typeof Wallet; color: string; bg: string; prompts: { label: string; prompt: string }[] }[] = [
+    {
+        label: 'Financeiro', icon: Wallet, color: '#3B82F6', bg: '#EFF6FF', prompts: [
+            { label: 'Mostrar os alunos inadimplentes do mês', prompt: 'Liste os alunos com pagamentos em atraso ou vencidos neste mês. Para cada um, traga nome, valor pendente, dias de atraso e data de vencimento. Ordene do mais crítico para o menos crítico e sugira uma ação de cobrança para os casos mais urgentes.' },
+            { label: 'Qual o MRR atual?', prompt: 'Calcule o MRR (receita recorrente mensal) atual com base nas assinaturas ativas. Mostre o valor total, o número de alunos pagantes e o ticket médio, e comente a variação em relação ao mês anterior se houver dados.' },
+            { label: 'Gerar um resumo financeiro do mês', prompt: 'Gere um resumo financeiro do mês atual: receita recebida, valores pendentes/inadimplência, MRR, novos contratos e cancelamentos. Destaque os pontos de atenção e finalize com 2 a 3 recomendações práticas.' },
+        ],
+    },
+    {
+        label: 'Alunos', icon: Users, color: '#7C3AED', bg: '#EDE9FE', prompts: [
+            { label: 'Quais alunos estão sem treino ativo?', prompt: 'Liste os alunos que não têm nenhum programa de treino ativo no momento. Para cada um, informe nome, há quanto tempo está sem treino e o status da assinatura. Priorize quem está pagando mas sem treino e sugira o próximo passo.' },
+            { label: 'Resumo de adesão da semana', prompt: 'Faça um resumo da adesão aos treinos nesta semana: treinos concluídos vs. planejados, quem está em dia e quem está faltando. Destaque os alunos com baixa adesão e sugira ações de reengajamento.' },
+            { label: 'Quais alunos estão em risco de cancelar?', prompt: 'Identifique os alunos com maior risco de cancelamento a partir de sinais como queda de frequência, faltas recentes, estagnação e inadimplência. Para cada um, explique o motivo do risco e sugira uma ação de retenção.' },
+        ],
+    },
+    {
+        label: 'Treinos', icon: Dumbbell, color: '#F59E0B', bg: '#FFFBEB', prompts: [
+            { label: 'Gerar um programa para um aluno', prompt: 'Quero gerar um novo programa de treino. Pergunte para qual aluno e, com base no histórico, objetivo e nível dele, proponha a estrutura (divisão, frequência semanal, foco e duração) para eu aprovar antes de criar.' },
+            { label: 'Quais alunos estão estagnados?', prompt: 'Identifique os alunos estagnados (sem progressão de carga ou repetições) nas últimas semanas. Para cada um, mostre em quais exercícios está o platô e sugira um ajuste de estímulo para destravar a evolução.' },
+            { label: 'Criar um template na biblioteca', prompt: 'Quero criar um template de programa reutilizável na biblioteca. Me ajude a definir objetivo, divisão (ex.: ABC), frequência semanal e os exercícios principais de cada sessão, e então monte o template.' },
+        ],
+    },
+    {
+        label: 'Comunicação', icon: MessageCircle, color: '#16A34A', bg: '#ECFDF5', prompts: [
+            { label: 'Enviar uma mensagem motivacional para um aluno', prompt: 'Quero enviar uma mensagem motivacional. Pergunte para qual aluno e, com base no progresso recente dele, escreva uma mensagem curta e personalizada no meu tom para eu revisar antes de enviar.' },
+            { label: 'Enviar formulário de check-in', prompt: 'Quero enviar um formulário de check-in. Pergunte para qual aluno e qual modelo de formulário usar, e prepare o envio para eu confirmar.' },
+            { label: 'Lembrar quem faltou ao treino', prompt: 'Liste os alunos que faltaram aos treinos planejados nos últimos dias e escreva, para cada um, uma mensagem de lembrete gentil e personalizada para eu revisar antes de enviar.' },
+        ],
+    },
 ]
 
 /** Tipo visual do card de atenção, derivado de category/priority do insight. */
@@ -45,6 +75,20 @@ const KIND_STRIPE: Record<AttentionKind, string> = {
     estagnado: '#F59E0B',
     pronto_para_evoluir: '#16A34A',
     nota: '#3B82F6',
+}
+
+/** Prompt otimizado p/ o card de atenção: contexto do insight + o que produzir. */
+function attentionPrompt(item: AttentionItem): string {
+    const ctx = item.studentName ? `${item.studentName}: ${item.title}` : item.title
+    const ofWho = item.studentName ? ` de ${item.studentName}` : ''
+    switch (attentionKind(item)) {
+        case 'pronto_para_evoluir':
+            return `Sobre ${ctx}. Analise o histórico recente${ofWho} e proponha uma progressão concreta — quais exercícios, novo alvo de carga/reps/volume e o porquê — para o próximo ciclo.`
+        case 'estagnado':
+            return `Sobre ${ctx}. Identifique em quais exercícios está o platô e proponha uma estratégia para destravar a evolução (variação de estímulo, deload ou ajuste de volume), com os próximos passos.`
+        default:
+            return `Sobre ${ctx}. Resuma a situação e recomende o próximo passo.`
+    }
 }
 
 interface Props {
@@ -71,6 +115,31 @@ export function AssistantHome({
     onDismissBanner, onInput, onSend, onStarter, onPickFocus, onClearFocus, onOpenConversation,
 }: Props) {
     const firstName = (trainerName ?? '').split(' ')[0] || 'treinador'
+    const composerRef = useRef<HTMLTextAreaElement>(null)
+
+    // O composer cresce com o conteúdo (até ~280px; depois rola internamente).
+    // Recalcula a cada mudança de texto — inclusive ao ser preenchido por um card.
+    useEffect(() => {
+        const el = composerRef.current
+        if (!el) return
+        el.style.height = 'auto'
+        el.style.height = `${Math.min(el.scrollHeight, 280)}px`
+    }, [input])
+
+    // Clicar num card preenche o composer (não envia): o treinador revisa/ajusta e
+    // dispara. Foca + traz o composer à vista, já que ele fica no topo da home.
+    const fillFromCard = (prompt: string) => {
+        onStarter(prompt)
+        requestAnimationFrame(() => {
+            const el = composerRef.current
+            if (!el) return
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el.focus()
+            const end = prompt.length
+            try { el.setSelectionRange(end, end) } catch { /* noop */ }
+        })
+    }
+
     return (
         <main className="min-h-0 flex-1 overflow-y-auto bg-[#F5F5F7]">
             <div className="mx-auto max-w-[720px] px-7 pb-16 pt-[72px]">
@@ -92,15 +161,20 @@ export function AssistantHome({
                 </div>
 
                 {/* Composer */}
-                <div className="rounded-[20px] border border-[#D2D2D7] bg-white p-2 shadow-[0_8px_28px_-16px_rgba(0,0,0,0.18)] transition focus-within:border-[#7C3AED] focus-within:shadow-[0_0_0_4px_rgba(124,58,237,0.1)]">
+                <div className="rounded-[20px] border border-[#D2D2D7] bg-white p-2 shadow-[0_8px_28px_-16px_rgba(0,0,0,0.18)] transition focus-within:border-[#C7C7CC] focus-within:shadow-[0_0_0_4px_rgba(60,60,67,0.07)]">
                     <textarea
+                        ref={composerRef}
                         value={input}
                         onChange={(e) => onInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
                         rows={2}
                         aria-label="Diga o que fazer no Kinevo"
                         placeholder="Diga o que fazer no Kinevo — ou escolha um aluno…"
-                        className="w-full resize-none bg-transparent px-4 py-3 text-[16px] leading-relaxed outline-none placeholder:text-[#AEAEB2]"
+                        // outline inline: vence a regra global unlayered `:focus-visible` do
+                        // globals.css (Tailwind v4 layered perde p/ unlayered). O foco fica só
+                        // na borda do card (focus-within), não no textarea interno.
+                        style={{ outline: 'none' }}
+                        className="max-h-[280px] w-full resize-none overflow-y-auto bg-transparent px-4 py-3 text-[16px] leading-relaxed placeholder:text-[#AEAEB2]"
                     />
                     <div className="flex items-center gap-2.5 px-2 pb-1 pt-1">
                         <MicButton disabled={sending} onTranscript={(t) => onInput(input ? `${input} ${t}` : t)} />
@@ -159,11 +233,11 @@ export function AssistantHome({
                                 const tag = KIND_TAG[kind]
                                 const stripe = a.priority === 'high' ? '#EF4444' : KIND_STRIPE[kind]
                                 const av = avatarFor(a.studentName)
-                                const prompt = a.studentName ? `Sobre ${a.studentName}: ${a.title}` : a.title
+                                const prompt = attentionPrompt(a)
                                 const heading = a.studentName ?? a.title
                                 const TagIcon = tag.icon
                                 return (
-                                    <button key={a.id} onClick={() => onStarter(prompt)}
+                                    <button key={a.id} onClick={() => fillFromCard(prompt)}
                                         className="group relative flex items-center gap-3.5 overflow-hidden rounded-[16px] border border-[#E8E8ED] bg-white py-[15px] pl-[18px] pr-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-[transform,box-shadow] duration-[180ms] ease-[cubic-bezier(.16,1,.3,1)] hover:-translate-y-px hover:shadow-[0_6px_18px_-8px_rgba(0,0,0,0.14)]">
                                         <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: stripe }} />
                                         {a.studentName ? (
@@ -203,9 +277,9 @@ export function AssistantHome({
                                     <b className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#86868B]">{s.label}</b>
                                 </div>
                                 {s.prompts.map((p, i) => (
-                                    <button key={p} onClick={() => onStarter(p)}
+                                    <button key={p.label} onClick={() => fillFromCard(p.prompt)}
                                         className={`flex w-full items-center justify-between gap-2 py-[5px] text-left text-[13px] text-[#1D1D1F] transition hover:text-[#7C3AED] ${i > 0 ? 'border-t border-[#F5F5F7]' : ''}`}>
-                                        {p} <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#AEAEB2]" strokeWidth={2} />
+                                        {p.label} <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#AEAEB2]" strokeWidth={2} />
                                     </button>
                                 ))}
                             </div>

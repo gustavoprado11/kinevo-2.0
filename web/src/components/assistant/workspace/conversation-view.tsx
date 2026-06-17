@@ -1,13 +1,23 @@
 'use client'
 
 /**
- * ConversationView — o chat de uma conversa (Assistente). Header de contexto +
- * stream de mensagens (com ações executadas e cards HITL) + composer.
+ * ConversationView — o chat de uma conversa (Assistente).
+ *
+ * Estética estilo Claude: superfície branca full-bleed, sem avatares nem molduras.
+ * Mensagem do usuário = balão cinza à direita; resposta da IA = texto corrido à
+ * esquerda. Header e composer minimalistas. A marca Kinevo aparece só em pontos
+ * (ícone de contexto + botão "Agir").
+ *
+ * Duas adições de UX (handoff design_handoff_conversa):
+ *  C. Seleção rápida de aluno — quando o assistente pede um aluno p/ prosseguir,
+ *     renderiza chips clicáveis em vez de exigir digitação livre.
+ *  D. Chips de sugestão acima do composer — atalhos contextuais ao escopo.
+ *
  * Apresentacional: estado e handlers vêm do AssistantWorkspace.
  */
 
 import { useEffect, useRef } from 'react'
-import { Sparkles, Check, Send, Loader2, ArrowLeft } from 'lucide-react'
+import { Sparkles, Check, Send, Loader2, ArrowLeft, Pencil, Search } from 'lucide-react'
 import { CreditMeter } from '@/components/assistant/credit-meter'
 import { ToolConfirmationCard } from '@/components/assistant/tool-confirmation-card'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
@@ -21,6 +31,8 @@ import { executedText } from '@/lib/assistant/tool-labels'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
 import { MicButton } from './mic-button'
 
+interface PickStudent { id: string; name: string }
+
 interface Props {
     active: ConversationListItem
     summary: AiUsageSummary
@@ -29,82 +41,140 @@ interface Props {
     sending: boolean
     input: string
     trainerName: string | null
+    students: PickStudent[]
     banner: AssistantBannerData | null
     onDismissBanner: () => void
     onInput: (v: string) => void
     onSend: () => void
+    onSendText: (text: string) => void
     onBackHome: () => void
+    onRename: () => void
     onConfirmResolved: (toolName: string, confirmed: boolean, result?: unknown) => void
 }
 
+// Quantos chips de aluno mostrar antes do "Buscar outro…".
+const PICKER_LIMIT = 5
+// Acima desse nº de mensagens a conversa já "tem corpo" → some com as sugestões.
+const SUGGESTIONS_MAX_MESSAGES = 6
+
+/** A última msg do assistente está pedindo um aluno p/ prosseguir? */
+const STUDENT_REQUEST = /\b(qual|que)\s+aluno|para qual aluno|escolh\w+\s+(o |um |abaixo|aluno)|selecion\w+\s+(o |um )?aluno|informe\s+o\s+(nome\s+do\s+)?aluno|quem\s+é\s+o\s+aluno|digite\s+o\s+nome/i
+
+function suggestionsFor(active: ConversationListItem): string[] {
+    if (active.student_id && active.studentName) {
+        const first = active.studentName.split(' ')[0]
+        return [`Como está a evolução de ${first}?`, `Gerar um treino para ${first}`, `Enviar uma mensagem para ${first}`]
+    }
+    return ['Alunos sem treino ativo', 'Quem está estagnado?', 'Resumo de adesão da semana']
+}
+
 export function ConversationView({
-    active, summary, messages, loadingMessages, sending, input, trainerName, banner,
-    onDismissBanner, onInput, onSend, onBackHome, onConfirmResolved,
+    active, summary, messages, loadingMessages, sending, input, students, banner,
+    onDismissBanner, onInput, onSend, onSendText, onBackHome, onRename, onConfirmResolved,
 }: Props) {
     const streamRef = useRef<HTMLDivElement>(null)
-    const trainerAv = avatarFor(trainerName)
+    const inputRef = useRef<HTMLTextAreaElement>(null)
     const av = avatarFor(active.studentName)
 
     useEffect(() => {
         if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight
     }, [messages, sending])
 
+    // Composer cresce com o conteúdo (até ~200px; depois rola internamente).
+    useEffect(() => {
+        const el = inputRef.current
+        if (!el) return
+        el.style.height = 'auto'
+        el.style.height = `${Math.min(el.scrollHeight, 200)}px`
+    }, [input])
+
+    // ── Seleção rápida de aluno (C) ──
+    const last = messages[messages.length - 1]
+    const lastHasPending = last?.parts.some((p) => p.type === 'confirmation' && p.status === 'pending') ?? false
+    const needsStudent =
+        !sending && !active.student_id && students.length > 0 &&
+        last?.role === 'assistant' && !lastHasPending && STUDENT_REQUEST.test(last.content)
+
+    const showSuggestions = !loadingMessages && messages.length <= SUGGESTIONS_MAX_MESSAGES
+    const suggestions = suggestionsFor(active)
+
     return (
-        <div className="flex min-h-0 flex-1 flex-col bg-[#F5F5F7]">
-            <header className="flex items-center gap-3.5 border-b border-[#E8E8ED] bg-white/70 px-6 py-3.5 backdrop-blur">
-                <button onClick={onBackHome} className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#E8E8ED] bg-white text-[#6E6E73] transition hover:text-[#1D1D1F]" title="Voltar ao início">
-                    <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.8} />
+        // Superfície branca full-bleed (ponta a ponta) — flat, sem moldura, estilo Claude.
+        <div className="flex min-h-0 flex-1 flex-col bg-white">
+            <header className="flex shrink-0 items-center gap-1.5 border-b border-[#EDEDF0] px-4 py-2.5">
+                <button onClick={onBackHome} className="flex h-9 w-9 items-center justify-center rounded-[10px] text-[#86868B] transition hover:bg-[#F5F5F7] hover:text-[#1D1D1F]" title="Voltar ao início">
+                    <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.9} />
                 </button>
-                <div className="flex items-center gap-2.5 rounded-[12px] border border-[#D2D2D7] bg-white px-3 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-[9px] text-[12px] font-bold"
+                <div className="flex min-w-0 items-center gap-2.5 pl-1">
+                    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] text-[11.5px] font-bold"
                         style={active.student_id ? { background: av.bg, color: av.fg } : { background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', color: '#fff' }}>
-                        {active.student_id ? av.initials : <Sparkles className="h-4 w-4 text-white" strokeWidth={2} />}
+                        {active.student_id ? av.initials : <Sparkles className="h-4 w-4 text-white" strokeWidth={1.7} />}
                     </span>
-                    <div>
-                        <b className="block text-[13.5px] tracking-tight">{active.studentName ?? 'Geral · visão geral dos alunos'}</b>
-                        <span className="text-[10.5px] text-[#86868B]">{active.student_id ? 'Conversa sobre o aluno' : 'Todos os alunos'}</span>
+                    <div className="min-w-0 leading-tight">
+                        <b className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-[#1D1D1F]">{active.studentName ?? 'Geral · visão geral dos alunos'}</b>
+                        <span className="block truncate text-[11px] text-[#86868B]">{active.student_id ? 'Conversa sobre o aluno' : 'Todos os alunos'}</span>
                     </div>
                 </div>
                 <div className="flex-1" />
-                <div className="hidden w-[260px] sm:block"><CreditMeter summary={summary} compact /></div>
+                <button onClick={onRename} className="hidden h-9 w-9 items-center justify-center rounded-[10px] text-[#86868B] transition hover:bg-[#F5F5F7] hover:text-[#1D1D1F] sm:flex" title="Renomear conversa">
+                    <Pencil className="h-[16px] w-[16px]" strokeWidth={1.8} />
+                </button>
+                <div className="hidden lg:block"><CreditMeter summary={summary} pill /></div>
             </header>
 
-            <div ref={streamRef} className="flex-1 overflow-y-auto py-7" aria-live="polite" aria-busy={sending}>
-                <div className="mx-auto max-w-[768px] px-7">
+            <div ref={streamRef} className="min-h-0 flex-1 overflow-y-auto py-9" aria-live="polite" aria-busy={sending}>
+                <div className="mx-auto max-w-[760px] px-6">
                     {loadingMessages && (
                         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#AEAEB2]" /></div>
                     )}
                     {messages.map((m) => (
-                        <MessageRow key={m.id} message={m} trainerAv={trainerAv} onConfirmResolved={onConfirmResolved} />
+                        <MessageRow key={m.id} message={m} onConfirmResolved={onConfirmResolved} />
                     ))}
+                    {needsStudent && (
+                        <StudentPicker students={students} onPick={(name) => onSendText(name)} onSearchOther={() => inputRef.current?.focus()} />
+                    )}
                     {sending && <TypingRow />}
                 </div>
             </div>
 
-            <div className="border-t border-[#E8E8ED] bg-white/80 py-3.5 backdrop-blur">
-                <div className="mx-auto max-w-[768px] px-7">
+            <div className="shrink-0 pb-4 pt-1">
+                <div className="mx-auto max-w-[760px] px-6">
                     {banner && (
                         <div className="mb-2.5">
                             <AssistantBanner data={banner} onDismiss={onDismissBanner} />
                         </div>
                     )}
-                    <div className="flex items-center gap-2.5 rounded-[15px] border border-[#D2D2D7] bg-white px-2 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition focus-within:border-[#7C3AED] focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.1)]">
+                    {showSuggestions && !banner && (
+                        <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                            {suggestions.map((s) => (
+                                <button key={s} onClick={() => onSendText(s)} disabled={sending}
+                                    className="inline-flex items-center rounded-full border border-[#E8E8ED] bg-white px-3 py-1.5 text-[12.5px] font-medium text-[#6E6E73] transition hover:border-[#D2D2D7] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] disabled:opacity-50">
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <div className="flex items-end gap-2 rounded-[22px] border border-[#E2E2E7] bg-white px-2.5 py-2 transition focus-within:border-[#C7C7CC] focus-within:shadow-[0_0_0_3px_rgba(60,60,67,0.07)]">
                         <MicButton disabled={sending} onTranscript={(t) => onInput(input ? `${input} ${t}` : t)} />
-                        <input
+                        <textarea
+                            ref={inputRef}
                             value={input}
                             onChange={(e) => onInput(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
                             disabled={sending}
+                            rows={1}
                             aria-label={active.studentName ? `Mensagem para o assistente sobre ${active.studentName}` : 'Mensagem para o assistente'}
                             placeholder={active.studentName ? `Diga o que fazer com ${active.studentName.split(' ')[0]}…` : 'Diga o que fazer no Kinevo…'}
-                            className="flex-1 bg-transparent px-2 py-2 text-[14.5px] outline-none placeholder:text-[#AEAEB2]"
+                            // outline inline: vence a regra global unlayered `:focus-visible`; foco fica na borda do card.
+                            style={{ outline: 'none' }}
+                            className="max-h-[200px] flex-1 resize-none overflow-y-auto bg-transparent px-1.5 py-2 text-[15px] leading-[1.5] placeholder:text-[#AEAEB2]"
                         />
                         <button onClick={onSend} disabled={sending || !input.trim()}
-                            className="flex h-[38px] items-center gap-2 rounded-[11px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-[18px] text-[13.5px] font-bold text-white shadow-[0_6px_16px_-6px_rgba(124,58,237,0.5)] transition hover:brightness-105 disabled:opacity-50">
-                            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" strokeWidth={2} />} Agir
+                            className="flex h-[36px] items-center gap-1.5 rounded-[14px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 text-[13px] font-bold text-white transition hover:brightness-105 disabled:opacity-40">
+                            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-[15px] w-[15px]" strokeWidth={2} />} Agir
                         </button>
                     </div>
-                    <div className="mt-2.5 flex justify-center gap-5 text-[10.5px] text-[#AEAEB2]">
+                    <div className="mt-2 flex justify-center gap-4 text-[10.5px] text-[#AEAEB2]">
                         <span><kbd className="rounded border border-[#E8E8ED] bg-white px-1.5 font-mono text-[#86868B]">Enter</kbd> enviar</span>
                         <span>ações sensíveis sempre pedem confirmação</span>
                     </div>
@@ -114,33 +184,56 @@ export function ConversationView({
     )
 }
 
-function MessageRow({ message, trainerAv, onConfirmResolved }: {
+/** Chips de aluno (C): escolha rápida em vez de digitar o nome. */
+function StudentPicker({ students, onPick, onSearchOther }: {
+    students: PickStudent[]
+    onPick: (name: string) => void
+    onSearchOther: () => void
+}) {
+    return (
+        <div className="kv-msg-in mb-7 flex flex-wrap gap-2">
+            {students.slice(0, PICKER_LIMIT).map((s) => {
+                const a = avatarFor(s.name)
+                return (
+                    <button key={s.id} onClick={() => onPick(s.name)}
+                        className="inline-flex items-center gap-2 rounded-full border border-[#E8E8ED] bg-white py-[5px] pl-[5px] pr-[13px] text-[12.5px] font-medium text-[#1D1D1F] transition hover:border-[#D2D2D7] hover:bg-[#F5F5F7]">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-[7px] text-[10px] font-bold" style={{ background: a.bg, color: a.fg }}>{a.initials}</span>
+                        {s.name}
+                    </button>
+                )
+            })}
+            <button onClick={onSearchOther}
+                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#D2D2D7] px-[13px] py-1.5 text-[12.5px] font-medium text-[#86868B] transition hover:border-[#AEAEB2] hover:text-[#6E6E73]">
+                <Search className="h-[13px] w-[13px]" strokeWidth={2} /> Buscar outro…
+            </button>
+        </div>
+    )
+}
+
+function MessageRow({ message, onConfirmResolved }: {
     message: AssistantMessage
-    trainerAv: { initials: string; bg: string; fg: string }
     onConfirmResolved: (toolName: string, confirmed: boolean, result?: unknown) => void
 }) {
     const isUser = message.role === 'user'
-    return (
-        <div className="mb-6 flex gap-3.5">
-            <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] text-[12px] font-bold"
-                style={isUser ? { background: trainerAv.bg, color: trainerAv.fg } : { background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', color: '#fff' }}>
-                {isUser ? trainerAv.initials : <Sparkles className="h-[17px] w-[17px] text-white" strokeWidth={1.8} />}
-            </span>
-            <div className="min-w-0 flex-1 pt-0.5">
-                <div className="mb-1.5 text-[11.5px] font-bold tracking-wide" style={{ color: isUser ? '#6E6E73' : '#7C3AED' }}>
-                    {isUser ? 'Você' : 'Assistente Kinevo'}
+
+    if (isUser) {
+        return (
+            <div className="kv-msg-in mb-7 flex justify-end">
+                <div className="max-w-[78%] whitespace-pre-wrap rounded-[18px] rounded-tr-[6px] bg-[#F4F4F7] px-4 py-2.5 text-[15px] leading-[1.55] text-[#1D1D1F]">
+                    {message.content}
                 </div>
-                {message.content && (
-                    isUser ? (
-                        <div className="inline-block rounded-[14px] rounded-tl-[5px] border border-[#E8E8ED] bg-white px-4 py-3 text-[14.5px] leading-relaxed shadow-[0_1px_3px_rgba(0,0,0,0.06)]">{message.content}</div>
-                    ) : (
-                        <div className="whitespace-pre-wrap text-[14.5px] leading-relaxed text-[#1D1D1F]">{message.content}</div>
-                    )
-                )}
-                {message.parts.map((part, i) => (
-                    <PartView key={i} part={part} onConfirmResolved={onConfirmResolved} />
-                ))}
             </div>
+        )
+    }
+
+    return (
+        <div className="kv-msg-in mb-7">
+            {message.content && (
+                <div className="whitespace-pre-wrap text-[15.5px] leading-[1.7] text-[#1D1D1F]">{message.content}</div>
+            )}
+            {message.parts.map((part, i) => (
+                <PartView key={i} part={part} onConfirmResolved={onConfirmResolved} />
+            ))}
         </div>
     )
 }
@@ -153,11 +246,11 @@ function PartView({ part, onConfirmResolved }: {
         const r = part.result as { success?: boolean } | null
         const failed = r && typeof r === 'object' && r.success === false
         return (
-            <div className={`mt-3 inline-flex items-center gap-2.5 rounded-[12px] border px-3.5 py-2.5 text-[12.5px] ${failed ? 'border-[rgba(239,68,68,0.28)] bg-[#FEF2F2] text-[#BE123C]' : 'border-[rgba(22,163,74,0.28)] bg-[#F0FDF4] text-[#15803D]'}`}>
-                {!failed && (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#16A34A]"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>
-                )}
-                <span className="font-semibold">{executedText(part.toolName, part.result)}</span>
+            <div className={`mt-3 inline-flex items-center gap-2 rounded-[10px] px-3 py-1.5 text-[12.5px] font-medium ${failed ? 'bg-[#FEF2F2] text-[#BE123C]' : 'bg-[#F5F5F7] text-[#6E6E73]'}`}>
+                {failed
+                    ? <span className="text-[#BE123C]">✕</span>
+                    : <Check className="h-[13px] w-[13px] text-[#16A34A]" strokeWidth={2.6} />}
+                <span>{executedText(part.toolName, part.result)}</span>
             </div>
         )
     }
@@ -170,7 +263,7 @@ function PartView({ part, onConfirmResolved }: {
         )
     }
     return (
-        <div className="mt-3 inline-flex items-center gap-2 rounded-[12px] border border-[#E8E8ED] bg-[#F9F9FB] px-3.5 py-2 text-[12px] text-[#86868B]">
+        <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-[#F5F5F7] px-3 py-1.5 text-[12px] text-[#86868B]">
             {part.status === 'confirmed' ? 'Ação confirmada' : 'Ação cancelada'}
         </div>
     )
@@ -178,15 +271,10 @@ function PartView({ part, onConfirmResolved }: {
 
 function TypingRow() {
     return (
-        <div className="mb-6 flex gap-3.5" role="status" aria-label="Assistente está pensando">
-            <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] text-white" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
-                <Sparkles className="h-[17px] w-[17px]" strokeWidth={1.8} />
-            </span>
-            <div className="flex items-center gap-1.5 pt-2">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#A78BFA] [animation-delay:0ms]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#A78BFA] [animation-delay:150ms]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#A78BFA] [animation-delay:300ms]" />
-            </div>
+        <div className="kv-msg-in mb-7 flex items-center gap-1.5" role="status" aria-label="Assistente está pensando">
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#C4B5FD] [animation-delay:0ms]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#C4B5FD] [animation-delay:150ms]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#C4B5FD] [animation-delay:300ms]" />
         </div>
     )
 }
