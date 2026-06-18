@@ -161,6 +161,8 @@ interface StudentDetailClientProps {
         name: string
         assigned_workouts?: Array<{ id: string; name: string; scheduled_days: number[] }>
     }>
+    /** Rascunhos gerados pela IA (geração pendente de revisão) — abrir/editar no builder. */
+    aiDrafts?: Array<{ id: string; createdAt: string }>
     historySummary: HistorySummary
     completedPrograms: CompletedProgram[]
     recentSessions: any[]
@@ -207,6 +209,7 @@ export function StudentDetailClient({
     activeProgram,
     scheduledPrograms,
     draftPrograms = [],
+    aiDrafts = [],
     historySummary,
     recentSessions,
     calendarInitialSessions = [],
@@ -744,6 +747,32 @@ export function StudentDetailClient({
                                             </div>
                                         )
                                     })}
+                                </div>
+                            )}
+
+                            {/* Rascunhos gerados pela IA (geração pendente de revisão) — abrir no builder. */}
+                            {aiDrafts.length > 0 && (
+                                <div className="space-y-3 mb-3">
+                                    {aiDrafts.map(draft => (
+                                        <div key={draft.id} className="rounded-xl border border-violet-300/60 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/5 p-4">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Sparkles className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                                                <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm truncate flex-1">Rascunho gerado pela IA</h4>
+                                                <span className="px-2 py-0.5 rounded bg-violet-500/15 text-[10px] text-violet-600 dark:text-violet-400 font-bold flex-shrink-0">
+                                                    Rascunho
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] font-medium text-violet-700/70 dark:text-violet-300/70">
+                                                Gerado pelo assistente · pendente de revisão
+                                            </p>
+                                            <button
+                                                onClick={() => router.push(`/students/${student.id}/program/new?generationId=${draft.id}`)}
+                                                className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-lg transition-colors"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" /> Revisar no builder
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 

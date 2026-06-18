@@ -195,6 +195,15 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         redirect('/students')
     }
 
+    // Rascunhos gerados pela IA (geração pendente de revisão) — surfacing no dashboard
+    // para o treinador abrir/editar no builder. Artefato distinto do assigned_programs draft.
+    const { data: aiDraftsRaw } = await supabase
+        .from('prescription_generations')
+        .select('id, created_at')
+        .eq('student_id', id)
+        .eq('status', 'pending_review')
+        .order('created_at', { ascending: false })
+
     const activeProgram = programCandidates?.[0] ?? null
     const calendarInitialSessions = (monthSessions || []) as { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string; rpe: number | null; assigned_program_id: string | null }[]
 
@@ -482,6 +491,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                     name: w.name,
                     scheduled_days: w.scheduled_days ?? [],
                 })),
+            }))}
+            aiDrafts={((aiDraftsRaw as Array<{ id: string; created_at: string }> | null) || []).map(g => ({
+                id: g.id,
+                createdAt: g.created_at,
             }))}
             historySummary={historySummary}
             recentSessions={recentSessions}
