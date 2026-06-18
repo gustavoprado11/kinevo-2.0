@@ -11,7 +11,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ToolConfirmationRequest } from '@/lib/assistant/hitl-types'
+import type { ToolConfirmationRequest, QuestionRequest, ProposalRequest } from '@/lib/assistant/hitl-types'
 
 export type AssistantMessageRole = 'user' | 'assistant'
 
@@ -23,6 +23,19 @@ export type AssistantMessagePart =
           request: ToolConfirmationRequest
           status: 'pending' | 'confirmed' | 'cancelled'
           result?: unknown
+      }
+    | {
+          // Pergunta estruturada ao treinador (opções clicáveis). `answered` apenas
+          // marca visualmente que já foi respondida (a resposta vira um turno normal).
+          type: 'question'
+          request: QuestionRequest
+          status: 'pending' | 'answered'
+      }
+    | {
+          // Proposta editável (Aprovar/Ajustar/Cancelar) — ex.: estrutura de programa.
+          type: 'proposal'
+          request: ProposalRequest
+          status: 'pending' | 'answered'
       }
 
 export interface ConversationRow {

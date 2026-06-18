@@ -52,6 +52,17 @@ export function AssistantNavSidebar({ trainerName, trainerEmail, trainerAvatarUr
         router.push('/dashboard?h=classic')
     }
 
+    // Excluir conversa: soft-delete (arquiva). Remove da lista local; o backend
+    // marca archived_at e ela some de listConversations.
+    const deleteConversation = (id: string) => {
+        if (typeof window !== 'undefined' && !window.confirm('Excluir esta conversa? Ela sairá da sua lista.')) return
+        setConversations((prev) => prev.filter((c) => c.id !== id))
+        fetch(`/api/assistant/conversations/${id}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ archived: true }),
+        }).catch(() => { /* otimista; já removida localmente */ })
+    }
+
     return (
         <AssistantSidebar
             fixed
@@ -70,6 +81,7 @@ export function AssistantNavSidebar({ trainerName, trainerEmail, trainerAvatarUr
             onNewConversation={() => router.push('/assistente?new=1')}
             onSelectStudent={(id) => router.push(`/assistente?s=${id}`)}
             onSelectConversation={(id) => router.push(`/assistente?c=${id}`)}
+            onDeleteConversation={deleteConversation}
             onToggleClassic={toggleClassic}
             switchingClassic={switchingClassic}
         />

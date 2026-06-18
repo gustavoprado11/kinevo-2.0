@@ -6,10 +6,10 @@
  * Apresentacional; envia ações via callbacks do AssistantWorkspace.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
-    Sparkles, Send, Loader2, User, ChevronDown, ChevronRight, Globe,
+    Sparkles, Send, Loader2, ChevronDown, ChevronRight, Globe, Check,
     Wallet, Users, Dumbbell, MessageCircle, TrendingDown, TrendingUp, FileText, Coins, UserPlus,
 } from 'lucide-react'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
@@ -89,7 +89,8 @@ interface Props {
     summary: AiUsageSummary
     attention: AttentionItem[]
     recents: ConversationListItem[]
-    focusedStudentName: string | null
+    focusedStudentId: string | null
+    students: { id: string; name: string; avatarUrl: string | null }[]
     hasStudents: boolean
     input: string
     sending: boolean
@@ -98,17 +99,32 @@ interface Props {
     onInput: (v: string) => void
     onSend: () => void
     onStarter: (prompt: string) => void
-    onPickFocus: () => void
-    onClearFocus: () => void
+    onFocusStudent: (id: string | null) => void
     onOpenConversation: (id: string) => void
 }
 
 export function AssistantHome({
-    trainerName, summary, attention, recents, focusedStudentName, hasStudents, input, sending, banner,
-    onDismissBanner, onInput, onSend, onStarter, onPickFocus, onClearFocus, onOpenConversation,
+    trainerName, summary, attention, recents, focusedStudentId, students, hasStudents, input, sending, banner,
+    onDismissBanner, onInput, onSend, onStarter, onFocusStudent, onOpenConversation,
 }: Props) {
     const firstName = (trainerName ?? '').split(' ')[0] || 'treinador'
     const composerRef = useRef<HTMLTextAreaElement>(null)
+
+    // Seletor de escopo (Geral ⇄ aluno em foco): dropdown clicável.
+    const [scopeOpen, setScopeOpen] = useState(false)
+    const [scopeSearch, setScopeSearch] = useState('')
+    const scopeRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        if (!scopeOpen) return
+        const onClick = (e: MouseEvent) => {
+            if (scopeRef.current && !scopeRef.current.contains(e.target as Node)) setScopeOpen(false)
+        }
+        document.addEventListener('mousedown', onClick)
+        return () => document.removeEventListener('mousedown', onClick)
+    }, [scopeOpen])
+    const focusedStudent = focusedStudentId ? students.find((s) => s.id === focusedStudentId) ?? null : null
+    const initialsOf = (name: string) => name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
+    const filteredStudents = students.filter((s) => s.name.toLowerCase().includes(scopeSearch.trim().toLowerCase()))
 
     // O composer cresce com o conteúdo (até ~280px; depois rola internamente).
     // Recalcula a cada mudança de texto — inclusive ao ser preenchido por um card.
@@ -186,20 +202,57 @@ export function AssistantHome({
                         <Link href="/students" className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] dark:border-violet-400/30 bg-[rgba(124,58,237,0.08)] dark:bg-violet-500/10 px-3.5 py-[7px] text-[12.5px] font-semibold text-[#7C3AED] dark:text-violet-300 transition hover:bg-[rgba(124,58,237,0.14)] dark:hover:bg-violet-500/20">
                             <UserPlus className="h-3.5 w-3.5" strokeWidth={2} /> Crie seu primeiro aluno
                         </Link>
-                    ) : focusedStudentName ? (
-                        <button onClick={onClearFocus} className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] dark:border-violet-400/30 bg-[rgba(124,58,237,0.08)] dark:bg-violet-500/10 px-3.5 py-[7px] text-[12.5px] font-semibold text-[#7C3AED] dark:text-violet-300">
-                            <User className="h-3.5 w-3.5" strokeWidth={2} /> {focusedStudentName}
-                            <span className="text-[#a78bfa] dark:text-violet-400">×</span>
-                        </button>
                     ) : (
-                        <button onClick={onPickFocus} className="inline-flex items-center gap-2 rounded-full border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card px-3.5 py-[7px] text-[12.5px] font-semibold text-[#6E6E73] dark:text-muted-foreground/80 transition hover:bg-[#FAFAFA] dark:hover:bg-glass-bg">
-                            <User className="h-3.5 w-3.5 text-[#8b5cf6] dark:text-violet-400" strokeWidth={2} /> Aluno em foco <ChevronDown className="h-3.5 w-3.5 text-[#AEAEB2] dark:text-muted-foreground/60" strokeWidth={2} />
-                        </button>
-                    )}
-                    {hasStudents && !focusedStudentName && (
-                        <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-[#E2E2E7] dark:border-k-border-subtle px-3.5 py-[7px] text-[12.5px] font-semibold text-[#86868B] dark:text-muted-foreground">
-                            <Globe className="h-3.5 w-3.5 text-[#AEAEB2] dark:text-muted-foreground/60" strokeWidth={2} /> Geral · visão geral dos alunos
-                        </span>
+                        <div className="relative" ref={scopeRef}>
+                            {/* Seletor de escopo único: Geral (todos) ⇄ aluno em foco. */}
+                            <button onClick={() => setScopeOpen((o) => !o)}
+                                className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-[7px] text-[12.5px] font-semibold transition ${focusedStudent
+                                    ? 'border-[rgba(124,58,237,0.25)] dark:border-violet-400/30 bg-[rgba(124,58,237,0.08)] dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-300'
+                                    : 'border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#6E6E73] dark:text-muted-foreground/80 hover:bg-[#FAFAFA] dark:hover:bg-glass-bg'}`}>
+                                {focusedStudent ? (
+                                    <>
+                                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-blue-500 text-[9px] font-bold text-white">{initialsOf(focusedStudent.name)}</span>
+                                        <span className="max-w-[160px] truncate">{focusedStudent.name}</span>
+                                        <span role="button" tabIndex={0} aria-label="Voltar para Geral"
+                                            onClick={(e) => { e.stopPropagation(); onFocusStudent(null) }}
+                                            className="ml-0.5 text-[14px] leading-none text-[#a78bfa] dark:text-violet-400 hover:text-[#7C3AED]">×</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Globe className="h-3.5 w-3.5 text-[#8b5cf6] dark:text-violet-400" strokeWidth={2} /> Geral · todos os alunos
+                                    </>
+                                )}
+                                <ChevronDown className="h-3.5 w-3.5 text-[#AEAEB2] dark:text-muted-foreground/60" strokeWidth={2} />
+                            </button>
+
+                            {scopeOpen && (
+                                <div className="absolute left-0 top-full z-modal mt-1.5 w-[264px] overflow-hidden rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card shadow-xl">
+                                    <button onClick={() => { onFocusStudent(null); setScopeOpen(false) }}
+                                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-[13px] font-medium text-[#1D1D1F] dark:text-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg">
+                                        <Globe className="h-4 w-4 shrink-0 text-[#8b5cf6] dark:text-violet-400" strokeWidth={2} />
+                                        <span className="flex-1 text-left">Geral · todos os alunos</span>
+                                        {!focusedStudent && <Check className="h-4 w-4 shrink-0 text-[#7C3AED]" strokeWidth={2.4} />}
+                                    </button>
+                                    <div className="border-t border-[#EDEDF0] dark:border-k-border-subtle" />
+                                    <div className="p-2">
+                                        <input value={scopeSearch} onChange={(e) => setScopeSearch(e.target.value)} placeholder="Buscar aluno…"
+                                            className="w-full rounded-lg border border-[#EDEDF0] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-glass-bg px-3 py-1.5 text-[13px] text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60 focus:outline-none" />
+                                    </div>
+                                    <div className="max-h-[220px] overflow-y-auto pb-1">
+                                        {filteredStudents.length === 0 ? (
+                                            <p className="px-3 py-3 text-[12.5px] text-[#86868B] dark:text-muted-foreground">Nenhum aluno encontrado.</p>
+                                        ) : filteredStudents.map((s) => (
+                                            <button key={s.id} onClick={() => { onFocusStudent(s.id); setScopeOpen(false); setScopeSearch('') }}
+                                                className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg">
+                                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-blue-500 text-[10px] font-bold text-white">{initialsOf(s.name)}</span>
+                                                <span className="flex-1 truncate text-left text-[#1D1D1F] dark:text-foreground">{s.name}</span>
+                                                {focusedStudentId === s.id && <Check className="h-4 w-4 shrink-0 text-[#7C3AED]" strokeWidth={2.4} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
                     <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-[#86868B] dark:text-muted-foreground">
                         <Coins className="h-[15px] w-[15px] text-[#F59E0B]" strokeWidth={1.8} />
@@ -282,15 +335,16 @@ export function AssistantHome({
                                 const isGeneral = !c.student_id
                                 return (
                                     <button key={c.id} onClick={() => onOpenConversation(c.id)}
-                                        className="flex items-center gap-3 border-b border-[#EDEDF0] dark:border-k-border-subtle py-2.5 text-left last:border-0">
-                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[11px] font-bold" style={isGeneral ? { background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', color: '#fff' } : { background: av.bg, color: av.fg }}>
+                                        className="group flex items-center gap-3 -mx-2.5 rounded-xl border-b border-[#EDEDF0] px-2.5 py-2.5 text-left transition-colors last:border-0 hover:border-transparent hover:bg-[#F5F5F7] dark:border-k-border-subtle dark:hover:bg-glass-bg">
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[11px] font-bold transition-transform group-hover:scale-[1.04]" style={isGeneral ? { background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', color: '#fff' } : { background: av.bg, color: av.fg }}>
                                             {isGeneral ? <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2} /> : av.initials}
                                         </span>
                                         <span className="min-w-0 flex-1">
-                                            <b className="block text-[13.5px] text-[#1D1D1F] dark:text-foreground">{c.studentName ?? 'Geral · estúdio'}</b>
+                                            <b className="block text-[13.5px] text-[#1D1D1F] transition-colors group-hover:text-[#7C3AED] dark:text-foreground dark:group-hover:text-violet-300">{c.studentName ?? 'Geral · estúdio'}</b>
                                             <span className="block truncate text-[12px] text-[#86868B] dark:text-muted-foreground">{c.title}</span>
                                         </span>
-                                        <span className="shrink-0 text-[11px] text-[#AEAEB2] dark:text-muted-foreground/60">{timeShort(c.last_message_at)}</span>
+                                        <span className="shrink-0 text-[11px] text-[#AEAEB2] transition-opacity group-hover:opacity-0 dark:text-muted-foreground/60">{timeShort(c.last_message_at)}</span>
+                                        <ChevronRight className="-ml-4 h-4 w-4 shrink-0 text-[#C4B5FD] opacity-0 transition-opacity group-hover:opacity-100 dark:text-violet-400" strokeWidth={2} />
                                     </button>
                                 )
                             })}

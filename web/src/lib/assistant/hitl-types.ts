@@ -27,3 +27,34 @@ export interface ToolConfirmationRequest {
 export interface ToolConfirmationResult {
     confirmed: boolean
 }
+
+/**
+ * Pergunta estruturada ao treinador ("Ask the user"): quando falta informação
+ * para agir, o motor emite isto e a UI mostra as opções como botões clicáveis.
+ *
+ * - options: 2 a 6 rótulos curtos.
+ * - multiple: true → o treinador pode marcar várias antes de enviar.
+ * - allowOther: true → oferecer um caminho de texto livre ("Outro…").
+ */
+export interface QuestionRequest {
+    question: string
+    options: string[]
+    multiple: boolean
+    allowOther: boolean
+}
+
+/** Item de uma proposta: um par rótulo + valor (o valor é editável na UI). */
+export interface ProposalItem {
+    label: string
+    value: string
+}
+
+/**
+ * Proposta estruturada para o treinador APROVAR/AJUSTAR/CANCELAR (ex.: a estrutura
+ * de um programa antes de criar). A UI mostra cada item com o valor editável inline;
+ * "Aprovar" devolve os valores finais (já com os ajustes do treinador).
+ */
+export interface ProposalRequest {
+    items: ProposalItem[]
+    approveLabel: string
+}

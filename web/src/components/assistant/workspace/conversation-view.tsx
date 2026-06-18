@@ -16,8 +16,9 @@
  * Apresentacional: estado e handlers vêm do AssistantWorkspace.
  */
 
-import { useEffect, useRef } from 'react'
-import { Sparkles, Check, Send, Loader2, ArrowLeft, Pencil, Search } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { Sparkles, Check, Send, Loader2, ArrowLeft, Pencil, Search, PenLine, ArrowUpRight } from 'lucide-react'
 import { CreditMeter } from '@/components/assistant/credit-meter'
 import { ToolConfirmationCard } from '@/components/assistant/tool-confirmation-card'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
@@ -26,6 +27,7 @@ import type {
     AssistantMessage,
     AssistantMessagePart,
 } from '@/lib/assistant/conversations'
+import type { QuestionRequest, ProposalRequest } from '@/lib/assistant/hitl-types'
 import { avatarFor } from './ui-util'
 import { executedText } from '@/lib/assistant/tool-labels'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
@@ -39,6 +41,7 @@ interface Props {
     messages: AssistantMessage[]
     loadingMessages: boolean
     sending: boolean
+    liveSteps: string[]
     input: string
     trainerName: string | null
     students: PickStudent[]
@@ -69,7 +72,7 @@ function suggestionsFor(active: ConversationListItem): string[] {
 }
 
 export function ConversationView({
-    active, summary, messages, loadingMessages, sending, input, students, banner,
+    active, summary, messages, loadingMessages, sending, liveSteps, input, students, banner,
     onDismissBanner, onInput, onSend, onSendText, onBackHome, onRename, onConfirmResolved,
 }: Props) {
     const streamRef = useRef<HTMLDivElement>(null)
@@ -89,11 +92,16 @@ export function ConversationView({
     }, [input])
 
     // ── Seleção rápida de aluno (C) ──
+    // Heurística por texto (legado): NÃO mostrar quando a mensagem já traz um card
+    // interativo (pergunta estruturada via tool, ou confirmação pendente) — senão
+    // apareceriam duas listas pedindo a mesma coisa.
     const last = messages[messages.length - 1]
-    const lastHasPending = last?.parts.some((p) => p.type === 'confirmation' && p.status === 'pending') ?? false
+    const lastHasInteractive = last?.parts.some(
+        (p) => (p.type === 'confirmation' && p.status === 'pending') || p.type === 'question',
+    ) ?? false
     const needsStudent =
         !sending && !active.student_id && students.length > 0 &&
-        last?.role === 'assistant' && !lastHasPending && STUDENT_REQUEST.test(last.content)
+        last?.role === 'assistant' && !lastHasInteractive && STUDENT_REQUEST.test(last.content)
 
     const showSuggestions = !loadingMessages && messages.length <= SUGGESTIONS_MAX_MESSAGES
     const suggestions = suggestionsFor(active)
@@ -127,13 +135,30 @@ export function ConversationView({
                     {loadingMessages && (
                         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#AEAEB2] dark:text-muted-foreground/60" /></div>
                     )}
-                    {messages.map((m) => (
-                        <MessageRow key={m.id} message={m} onConfirmResolved={onConfirmResolved} />
+                    {messages.map((m, idx) => (
+                        <MessageRow key={m.id} message={m} interactive={idx === messages.length - 1 && !sending}
+                            onConfirmResolved={onConfirmResolved} onSendText={onSendText} />
                     ))}
                     {needsStudent && (
                         <StudentPicker students={students} onPick={(name) => onSendText(name)} onSearchOther={() => inputRef.current?.focus()} />
                     )}
-                    {sending && <TypingRow />}
+                    {sending && (
+                        liveSteps.length > 0 ? (
+                            <div className="kv-msg-in mb-7 space-y-1">
+                                {liveSteps.map((step, i) => {
+                                    const last = i === liveSteps.length - 1
+                                    return (
+                                        <div key={i} className="flex items-center gap-2 text-[13px] text-[#86868B] dark:text-muted-foreground">
+                                            {last
+                                                ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C3AED] dark:text-violet-400" strokeWidth={2.2} />
+                                                : <Check className="h-3.5 w-3.5 text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} />}
+                                            <span>{step}</span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        ) : <TypingRow />
+                    )}
                 </div>
             </div>
 
@@ -210,9 +235,11 @@ function StudentPicker({ students, onPick, onSearchOther }: {
     )
 }
 
-function MessageRow({ message, onConfirmResolved }: {
+function MessageRow({ message, interactive, onConfirmResolved, onSendText }: {
     message: AssistantMessage
+    interactive: boolean
     onConfirmResolved: (toolName: string, confirmed: boolean, result?: unknown) => void
+    onSendText: (text: string) => void
 }) {
     const isUser = message.role === 'user'
 
@@ -232,19 +259,45 @@ function MessageRow({ message, onConfirmResolved }: {
                 <div className="whitespace-pre-wrap text-[15.5px] leading-[1.7] text-[#1D1D1F] dark:text-foreground">{message.content}</div>
             )}
             {message.parts.map((part, i) => (
-                <PartView key={i} part={part} onConfirmResolved={onConfirmResolved} />
+                <PartView key={i} part={part} interactive={interactive}
+                    onConfirmResolved={onConfirmResolved} onSendText={onSendText} />
             ))}
         </div>
     )
 }
 
-function PartView({ part, onConfirmResolved }: {
+function PartView({ part, interactive, onConfirmResolved, onSendText }: {
     part: AssistantMessagePart
+    interactive: boolean
     onConfirmResolved: (toolName: string, confirmed: boolean, result?: unknown) => void
+    onSendText: (text: string) => void
 }) {
     if (part.type === 'executed') {
-        const r = part.result as { success?: boolean } | null
+        const r = part.result as { success?: boolean; reviewUrl?: string } | null
         const failed = r && typeof r === 'object' && r.success === false
+        // Programa gerado: card acionável com prévia + botão para o builder/revisão.
+        if (!failed && part.toolName === 'generateProgram' && r?.reviewUrl) {
+            return (
+                <div className="mt-3 max-w-[440px] rounded-2xl border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
+                            <Sparkles className="h-4 w-4 text-white" strokeWidth={1.8} />
+                        </span>
+                        <div className="min-w-0">
+                            <b className="block text-[13.5px] font-semibold text-[#1D1D1F] dark:text-foreground">Programa gerado (rascunho)</b>
+                            <span className="block text-[12px] text-[#86868B] dark:text-muted-foreground">Salvo para revisão — ainda não ativado para o aluno.</span>
+                        </div>
+                    </div>
+                    <p className="mt-2.5 text-[12.5px] leading-relaxed text-[#6E6E73] dark:text-muted-foreground/80">
+                        Abra o builder para conferir os treinos e exercícios, ajustar o que quiser e <b className="font-semibold text-[#1D1D1F] dark:text-foreground">ativar</b> — só então ele aparece no painel do aluno.
+                    </p>
+                    <Link href={r.reviewUrl}
+                        className="mt-3 inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07]">
+                        Revisar no builder <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
+                    </Link>
+                </div>
+            )
+        }
         return (
             <div className={`mt-3 inline-flex items-center gap-2 rounded-[10px] px-3 py-1.5 text-[12.5px] font-medium ${failed ? 'bg-[#FEF2F2] dark:bg-rose-500/10 text-[#BE123C] dark:text-rose-300' : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-muted-foreground/80'}`}>
                 {failed
@@ -253,6 +306,14 @@ function PartView({ part, onConfirmResolved }: {
                 <span>{executedText(part.toolName, part.result)}</span>
             </div>
         )
+    }
+    // "Ask the user": pergunta com opções clicáveis (tratado ANTES da confirmação,
+    // pois ambos têm status 'pending').
+    if (part.type === 'question') {
+        return <QuestionCard request={part.request} onAnswer={onSendText} interactive={interactive} />
+    }
+    if (part.type === 'proposal') {
+        return <ProposalCard request={part.request} onAnswer={onSendText} interactive={interactive} />
     }
     if (part.status === 'pending') {
         return (
@@ -265,6 +326,205 @@ function PartView({ part, onConfirmResolved }: {
     return (
         <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-1.5 text-[12px] text-[#86868B] dark:text-muted-foreground">
             {part.status === 'confirmed' ? 'Ação confirmada' : 'Ação cancelada'}
+        </div>
+    )
+}
+
+/**
+ * QuestionCard — "Ask the user": opções clicáveis. Escolha única envia na hora;
+ * múltipla marca várias + botão Enviar; "Outro…" abre um campo inline para texto
+ * livre. A pergunta em si aparece no texto da mensagem (acima); aqui só as opções.
+ */
+function QuestionCard({ request, onAnswer, interactive }: {
+    request: QuestionRequest
+    onAnswer: (text: string) => void
+    interactive: boolean
+}) {
+    const [selected, setSelected] = useState<string[]>([])
+    const [done, setDone] = useState(false)
+    const [otherMode, setOtherMode] = useState(false)
+    const [otherText, setOtherText] = useState('')
+    const otherRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => { if (otherMode) otherRef.current?.focus() }, [otherMode])
+
+    const chipBase = 'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-[12.5px] font-semibold transition disabled:cursor-default'
+    const chipIdle = 'border-[#E2E2E7] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#1D1D1F] dark:text-foreground hover:border-[#7C3AED] hover:bg-[#7C3AED]/[0.06] hover:text-[#7C3AED] dark:hover:text-violet-300'
+    const chipOn = 'border-[#7C3AED] bg-[#7C3AED]/10 text-[#7C3AED] dark:text-violet-300'
+
+    if (done) {
+        return (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-1.5 text-[12px] text-[#86868B] dark:text-muted-foreground">
+                <Check className="h-[13px] w-[13px] text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} /> Respondido
+            </div>
+        )
+    }
+
+    // Conversa avançou: card antigo vira read-only (não re-dispara).
+    if (!interactive) {
+        return (
+            <div className="mt-3 flex flex-wrap gap-2 opacity-60">
+                {request.options.map((opt) => (
+                    <span key={opt} className="inline-flex items-center rounded-full border border-[#E2E2E7] dark:border-k-border-subtle px-3.5 py-[7px] text-[12.5px] font-semibold text-[#AEAEB2] dark:text-muted-foreground/60">{opt}</span>
+                ))}
+            </div>
+        )
+    }
+
+    const submitOther = () => {
+        const t = otherText.trim()
+        if (!t) return
+        const answer = request.multiple && selected.length > 0 ? [...selected, t].join(', ') : t
+        setDone(true)
+        onAnswer(answer)
+    }
+
+    const otherChip = request.allowOther && !otherMode && (
+        <button onClick={() => setOtherMode(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#E2E2E7] dark:border-k-border-subtle px-3.5 py-[7px] text-[12.5px] font-medium text-[#86868B] dark:text-muted-foreground transition hover:border-[#AEAEB2] dark:hover:border-k-border-primary hover:text-[#6E6E73] dark:hover:text-foreground">
+            <PenLine className="h-[13px] w-[13px]" strokeWidth={2} /> Outro…
+        </button>
+    )
+
+    const otherInput = otherMode && (
+        <div className="mt-2.5 flex items-center gap-2">
+            <input ref={otherRef} value={otherText} onChange={(e) => setOtherText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitOther() } }}
+                placeholder="Escreva sua resposta…"
+                className="min-w-0 flex-1 rounded-[12px] border border-[#E2E2E7] dark:border-k-border-subtle bg-white dark:bg-surface-card px-3.5 py-2 text-[13.5px] text-[#1D1D1F] dark:text-foreground outline-none transition focus:border-[#7C3AED] placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60" />
+            <button onClick={submitOther} disabled={!otherText.trim()}
+                className="inline-flex shrink-0 items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07] disabled:opacity-40">
+                <Send className="h-3.5 w-3.5" strokeWidth={2} /> Enviar
+            </button>
+        </div>
+    )
+
+    if (!request.multiple) {
+        return (
+            <div className="mt-3">
+                <div className="flex flex-wrap gap-2">
+                    {request.options.map((opt) => (
+                        <button key={opt} onClick={() => { setDone(true); onAnswer(opt) }}
+                            className={`${chipBase} ${chipIdle}`}>{opt}</button>
+                    ))}
+                    {otherChip}
+                </div>
+                {otherInput}
+            </div>
+        )
+    }
+
+    const toggle = (opt: string) =>
+        setSelected((s) => (s.includes(opt) ? s.filter((x) => x !== opt) : [...s, opt]))
+
+    return (
+        <div className="mt-3">
+            <div className="flex flex-wrap gap-2">
+                {request.options.map((opt) => {
+                    const on = selected.includes(opt)
+                    return (
+                        <button key={opt} onClick={() => toggle(opt)}
+                            className={`${chipBase} ${on ? chipOn : chipIdle}`}>
+                            {on && <Check className="h-[13px] w-[13px]" strokeWidth={2.6} />}{opt}
+                        </button>
+                    )
+                })}
+                {otherChip}
+            </div>
+            {otherInput}
+            {!otherMode && (
+                <button disabled={selected.length === 0}
+                    onClick={() => { setDone(true); onAnswer(selected.join(', ')) }}
+                    className="mt-2.5 inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07] disabled:opacity-40">
+                    <Send className="h-3.5 w-3.5" strokeWidth={2} /> Enviar
+                </button>
+            )}
+        </div>
+    )
+}
+
+/**
+ * ProposalCard — proposta editável: a IA propõe itens (rótulo+valor); o treinador
+ * ajusta os valores inline e clica Aprovar (envia os valores finais) ou Cancelar.
+ * O texto da pergunta de aprovação vem no conteúdo da mensagem (acima).
+ */
+function ProposalCard({ request, onAnswer, interactive }: {
+    request: ProposalRequest
+    onAnswer: (text: string) => void
+    interactive: boolean
+}) {
+    const [values, setValues] = useState<string[]>(() => request.items.map((it) => it.value))
+    const [done, setDone] = useState<null | 'approved' | 'cancelled'>(null)
+
+    if (done) {
+        return (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-1.5 text-[12px] text-[#86868B] dark:text-muted-foreground">
+                {done === 'approved'
+                    ? <><Check className="h-[13px] w-[13px] text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} /> Proposta aprovada</>
+                    : <>Proposta cancelada</>}
+            </div>
+        )
+    }
+
+    // Conversa avançou: card antigo vira read-only (itens estáticos, sem botões).
+    if (!interactive) {
+        return (
+            <div className="mt-3 max-w-[540px] rounded-2xl border border-[#EDEDF0] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-glass-bg p-4 opacity-70">
+                <div className="flex flex-col gap-2">
+                    {request.items.map((it, i) => (
+                        <div key={i} className="flex items-baseline gap-3 text-[12.5px]">
+                            <span className="w-[110px] shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#86868B] dark:text-muted-foreground">{it.label}</span>
+                            <span className="text-[#6E6E73] dark:text-muted-foreground/80">{values[i]}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
+    const approve = () => {
+        const lines = request.items.map((it, i) => `${it.label}: ${values[i]}`).join('; ')
+        setDone('approved')
+        onAnswer(`Aprovado. Valores finais — ${lines}.`)
+    }
+    const cancel = () => { setDone('cancelled'); onAnswer('Cancelar a proposta.') }
+
+    return (
+        <div className="mt-3 max-w-[540px] rounded-2xl border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <div className="flex flex-col gap-2.5">
+                {request.items.map((it, i) => {
+                    // Itens de "direção"/estilo (ou valores longos) ganham textarea — o
+                    // treinador escreve um brief de verdade que o motor honra (modo criativo).
+                    const multiline = /direç|estilo|brief|observ|nota/i.test(it.label) || (values[i]?.length ?? 0) > 44
+                    return (
+                        <label key={i} className={`flex gap-3 ${multiline ? 'items-start' : 'items-center'}`}>
+                            <span className={`w-[110px] shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#86868B] dark:text-muted-foreground ${multiline ? 'pt-2.5' : ''}`}>{it.label}</span>
+                            {multiline ? (
+                                <textarea value={values[i]} rows={3}
+                                    onChange={(e) => setValues((v) => v.map((x, j) => (j === i ? e.target.value : x)))}
+                                    className="flex-1 resize-y rounded-[10px] border border-transparent bg-[#F5F5F7] dark:bg-glass-bg px-3 py-2 text-[13.5px] font-medium leading-relaxed text-[#1D1D1F] dark:text-foreground outline-none transition hover:border-[#E2E2E7] dark:hover:border-k-border-subtle focus:border-[#7C3AED] focus:bg-white dark:focus:bg-surface-card" />
+                            ) : (
+                                <span className="relative flex-1">
+                                    <input value={values[i]}
+                                        onChange={(e) => setValues((v) => v.map((x, j) => (j === i ? e.target.value : x)))}
+                                        className="w-full rounded-[10px] border border-transparent bg-[#F5F5F7] dark:bg-glass-bg px-3 py-2 pr-8 text-[13.5px] font-medium text-[#1D1D1F] dark:text-foreground outline-none transition hover:border-[#E2E2E7] dark:hover:border-k-border-subtle focus:border-[#7C3AED] focus:bg-white dark:focus:bg-surface-card" />
+                                    <PenLine className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#C4C4C9] dark:text-muted-foreground/50" strokeWidth={2} />
+                                </span>
+                            )}
+                        </label>
+                    )
+                })}
+            </div>
+            <div className="mt-4 flex items-center gap-2">
+                <button onClick={approve}
+                    className="inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07]">
+                    <Check className="h-4 w-4" strokeWidth={2.4} /> {request.approveLabel}
+                </button>
+                <button onClick={cancel}
+                    className="rounded-[12px] border border-[#E2E2E7] dark:border-k-border-subtle px-4 py-2 text-[13px] font-semibold text-[#6E6E73] dark:text-muted-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg">
+                    Cancelar
+                </button>
+            </div>
         </div>
     )
 }

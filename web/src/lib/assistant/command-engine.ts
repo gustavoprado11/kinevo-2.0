@@ -35,15 +35,26 @@ import {
 import { getAiUsageSummary, type AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { checkQuota } from '@/lib/ai-usage/quota'
 import { getAiTierForTrainer, type AiTier } from '@/lib/auth/get-ai-tier'
-import type { ToolConfirmationRequest } from '@/lib/assistant/hitl-types'
+import type { ToolConfirmationRequest, QuestionRequest, ProposalRequest } from '@/lib/assistant/hitl-types'
 import { buildChatContext } from '@/lib/assistant/context-builder'
 import { buildInstructions, PROMPT_VERSION } from '@/lib/assistant/system-prompt'
 import { recordTurnTrace, toolResultOk } from '@/lib/assistant/turn-trace'
 import { validateConfirmArgs } from '@/lib/assistant/arg-validation'
-import { generateProgram } from '@/actions/prescription/generate-program'
 import type { LLMModel } from '@/lib/prescription/llm-client'
 
 export const ASSISTANT_MODEL: LLMModel = 'gpt-4.1-mini'
+
+// Detecta conversa de CRIAÇÃO de programa (input + histórico recente). Num turno de
+// build, o LLM emite UMA chamada grande (kinevo_create_program_template com o programa
+// inteiro), então damos mais tokens de saída e um teto de passos um pouco maior — sem
+// trocar de modelo: o mini é bom numa única saída estruturada (como no smart-v2).
+const PROGRAM_BUILD_RE = /\b(cri|mont|gera|elabor|prescrev|monta|faz|fa[çc]a|nov[oa])\w*\b[\s\S]{0,40}\b(programa|treino|prescri|ficha|periodiz|split|divis[ãa]o)\b/i
+function isBuildTurn(input: string, history: AssistantTurnHistory[]): boolean {
+    if (PROGRAM_BUILD_RE.test(input)) return true
+    const recent = history.slice(-5).map((m) => m.content).join('  ')
+    return PROGRAM_BUILD_RE.test(recent)
+}
+
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Tiers que liberam o Assistente com IA (⌘K e aba dedicada). */
@@ -184,10 +195,36 @@ function buildConfirmation(
     }
 }
 
-const studentIdSchema = jsonSchema<{ studentId: string }>({
+// "Ask the user": pergunta estruturada ao treinador com opções clicáveis.
+const perguntarSchema = jsonSchema<{ pergunta: string; opcoes: string[]; multipla?: boolean }>({
     type: 'object',
-    properties: { studentId: { type: 'string', description: 'UUID do aluno' } },
-    required: ['studentId'],
+    properties: {
+        pergunta: { type: 'string', description: 'A pergunta ao treinador, curta e direta.' },
+        opcoes: { type: 'array', items: { type: 'string' }, description: '2 a 5 opções curtas de resposta.' },
+        multipla: { type: 'boolean', description: 'true se o treinador pode escolher várias opções.' },
+    },
+    required: ['pergunta', 'opcoes'],
+})
+
+// "Propor": apresenta um plano pronto para o treinador aprovar/ajustar (itens editáveis).
+const proporSchema = jsonSchema<{ itens: { rotulo: string; valor: string }[]; rotulo_acao?: string }>({
+    type: 'object',
+    properties: {
+        itens: {
+            type: 'array',
+            description: 'Itens da proposta como pares rótulo+valor, ex.: {rotulo:"Frequência", valor:"5x por semana"}.',
+            items: {
+                type: 'object',
+                properties: {
+                    rotulo: { type: 'string', description: 'Nome curto do campo (ex.: Divisão, Frequência, Foco, Duração).' },
+                    valor: { type: 'string', description: 'Valor proposto, editável pelo treinador.' },
+                },
+                required: ['rotulo', 'valor'],
+            },
+        },
+        rotulo_acao: { type: 'string', description: 'Rótulo do botão de aprovar (ex.: "Aprovar e criar"). Opcional.' },
+    },
+    required: ['itens'],
 })
 
 function studentCountFromArgs(args: unknown): number {
@@ -226,11 +263,43 @@ export interface AssistantTurnInput {
     route?: string
     /** Aluno em foco (UUID) — enriquece o contexto e direciona as tools. */
     studentId?: string
+    /** Progresso ao vivo: chamado a cada passo (tool executada) p/ streaming na UI. */
+    onProgress?: (label: string) => void
+}
+
+// Rótulo presente-contínuo p/ o progresso ao vivo (streaming). Fallback genérico.
+const PROGRESS_LABELS: Record<string, string> = {
+    generateProgram: 'Gerando o programa…',
+    perguntar_treinador: 'Preparando a pergunta…',
+    propor_ao_treinador: 'Montando a proposta…',
+    kinevo_get_student: 'Buscando dados do aluno…',
+    kinevo_get_student_progress: 'Analisando o progresso do aluno…',
+    kinevo_list_students: 'Consultando seus alunos…',
+    kinevo_get_dashboard_summary: 'Lendo o resumo do painel…',
+    kinevo_get_revenue_summary: 'Calculando o financeiro…',
+    kinevo_list_programs: 'Consultando os programas…',
+    kinevo_get_program: 'Abrindo o programa…',
+    kinevo_list_exercises: 'Buscando exercícios…',
+    kinevo_list_training_methods: 'Consultando os métodos de treino…',
+    kinevo_send_message: 'Preparando a mensagem…',
+    kinevo_create_program: 'Criando o programa…',
+    kinevo_create_program_template: 'Montando o programa…',
+    kinevo_add_workout_session: 'Adicionando um treino…',
+    kinevo_add_exercise_to_session: 'Adicionando exercícios…',
+    kinevo_create_superset: 'Criando o superset…',
+    kinevo_assign_program: 'Atribuindo o programa ao aluno…',
+}
+function progressLabel(toolName: string): string {
+    return PROGRESS_LABELS[toolName] ?? 'Trabalhando nisso…'
 }
 
 export interface AssistantTurnResult {
     text: string
     confirmation: ToolConfirmationRequest | null
+    /** Pergunta estruturada ao treinador (opções clicáveis), se o turno pediu uma. */
+    question: QuestionRequest | null
+    /** Proposta editável (Aprovar/Ajustar), se o turno propôs um plano. */
+    proposal: ProposalRequest | null
     executed: ExecutedToolSummary[]
     credits: number
     /** Medidor atualizado. `null` se o metering/resumo (best-effort) falhou — o
@@ -278,29 +347,26 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
 
         const tools: ToolSet = {
             ...bridge.tools,
-            generateProgram: tool({
+            // "Ask the user": client tool (SEM execute) — o app renderiza as opções
+            // como botões clicáveis e a escolha vira o próximo turno.
+            perguntar_treinador: tool({
                 description:
-                    'Gera um novo programa de treino completo para o aluno (rascunho para revisão). Usar quando o treinador pedir para criar/gerar um programa.',
-                parameters: studentIdSchema,
-                execute: async ({ studentId: rawId }) => {
-                    const sid = await resolveStudentId(rawId)
-                    if (!sid) return { success: false, error: `Aluno "${rawId}" não encontrado` }
-                    try {
-                        const gen = await generateProgram(sid)
-                        if (gen.success) {
-                            return {
-                                success: true,
-                                generationId: gen.generationId,
-                                message: 'Programa gerado como rascunho.',
-                                reviewUrl: `/students/${sid}/prescribe?review=${gen.generationId}`,
-                            }
-                        }
-                        return { success: false, error: gen.error || 'Erro ao gerar programa' }
-                    } catch {
-                        return { success: false, error: 'Erro interno ao gerar programa' }
-                    }
-                },
+                    'Faz uma pergunta de esclarecimento ao treinador com OPÇÕES clicáveis. Use quando faltar informação para agir (ex.: para qual aluno, qual objetivo, frequência semanal). Prefira esta tool a perguntar em texto livre. Não descreva os botões; apenas chame a tool.',
+                parameters: perguntarSchema,
             }),
+            // "Propor": client tool (SEM execute) — apresenta um plano para aprovar/ajustar.
+            propor_ao_treinador: tool({
+                description:
+                    'Apresenta ao treinador uma PROPOSTA pronta para ele APROVAR, AJUSTAR (editando os valores) ou CANCELAR — ex.: a estrutura de um programa ANTES de criar. Use quando você já montou o plano e precisa do "ok". NÃO use a tool de escolha (perguntar_treinador) para isto: aqui os itens são linhas rótulo+valor editáveis. Escreva a pergunta de aprovação na sua resposta em texto.',
+                parameters: proporSchema,
+            }),
+            // NOTA: o gerador determinístico (generateProgram/motor de prescrição) foi
+            // REMOVIDO do assistente. Ele ignorava a ênfase pedida (volume_budget cego ao
+            // pedido → ombro recebia menos que peito). Agora o assistente PRESCREVE como o
+            // MCP externo: autora o programa com as próprias tools do Kinevo (create_program
+            // + add_workout_session + add_exercise_to_session + create_superset / set_scheme),
+            // decidindo o volume por grupo e honrando o que o treinador pediu. O motor segue
+            // disponível só no botão "Gerar com IA" do builder.
         }
 
         // 2. Prompt + histórico. Instruções estáveis (system-prompt v2) primeiro;
@@ -322,15 +388,29 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         const history = (opts.history ?? []).slice(-MAX_HISTORY)
         const messages = [...history, { role: 'user' as const, content: input }]
 
+        // Turnos de CONSTRUÇÃO de programa: mais tokens de saída (a chamada
+        // create_program_template carrega o programa inteiro e truncaria em 1500) e um
+        // teto de passos maior (ler contexto + listar exercícios + criar). Mesmo modelo.
+        const buildTurn = isBuildTurn(input, history)
+
         // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para.
         const result = await generateText({
             model: openai(ASSISTANT_MODEL),
             system,
             messages,
-            maxTokens: 900,
+            maxTokens: buildTurn ? 8000 : 1500,
             temperature: 0.3,
-            maxSteps: 5,
+            // maxSteps é um TETO. O build é UMA chamada grande precedida de leituras
+            // (get_student, list_exercises): ~10 passos cobrem com folga e barram loop.
+            maxSteps: buildTurn ? 12 : 5,
             tools,
+            // Progresso ao vivo: emite um rótulo por tool executada (streaming na UI).
+            onStepFinish: ({ toolCalls }) => {
+                if (!opts.onProgress) return
+                for (const tc of (toolCalls ?? []) as Array<{ toolName: string }>) {
+                    opts.onProgress(progressLabel(tc.toolName))
+                }
+            },
         })
 
         // 4. Coleta o executado (crédito) e a confirmação pendente (HITL).
@@ -372,10 +452,48 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             }
         }
 
+        // "Ask the user": se o modelo chamou perguntar_treinador (client tool, sem
+        // execute), monta a pergunta estruturada p/ a UI mostrar opções clicáveis.
+        let question: QuestionRequest | null = null
+        for (const tc of toolCalls) {
+            if (!executedIds.has(tc.toolCallId) && tc.toolName === 'perguntar_treinador') {
+                const a = (tc.args ?? {}) as { pergunta?: unknown; opcoes?: unknown; multipla?: unknown }
+                const options = Array.isArray(a.opcoes)
+                    ? a.opcoes.map((o) => String(o).trim()).filter(Boolean).slice(0, 6)
+                    : []
+                if (typeof a.pergunta === 'string' && a.pergunta.trim() && options.length > 0) {
+                    question = { question: a.pergunta.trim(), options, multiple: a.multipla === true, allowOther: true }
+                }
+                break
+            }
+        }
+
+        // "Propor": se o modelo chamou propor_ao_treinador, monta a proposta editável.
+        let proposal: ProposalRequest | null = null
+        for (const tc of toolCalls) {
+            if (!executedIds.has(tc.toolCallId) && tc.toolName === 'propor_ao_treinador') {
+                const a = (tc.args ?? {}) as { itens?: unknown; rotulo_acao?: unknown }
+                const items = Array.isArray(a.itens)
+                    ? a.itens
+                          .map((it) => {
+                              const o = (it ?? {}) as { rotulo?: unknown; valor?: unknown }
+                              return { label: String(o.rotulo ?? '').trim(), value: String(o.valor ?? '').trim() }
+                          })
+                          .filter((it) => it.label || it.value)
+                          .slice(0, 10)
+                    : []
+                if (items.length > 0) {
+                    const label = typeof a.rotulo_acao === 'string' && a.rotulo_acao.trim() ? a.rotulo_acao.trim() : 'Aprovar'
+                    proposal = { items, approveLabel: label }
+                }
+                break
+            }
+        }
+
         // Se a validação barrou a ação, devolve uma clarificação em vez do card.
         const finalText = blockedReason
             ? `${result.text ? result.text + '\n\n' : ''}⚠️ ${blockedReason}`
-            : result.text
+            : (result.text || (question?.question ?? '') || (proposal ? 'Aprova a proposta abaixo?' : ''))
 
         // 5. Metering do turno (CONFIRM_TOOLS NÃO entram — cobradas no execute-tool).
         const turnCalls: TurnToolCall[] = executed.map((e) => ({
@@ -460,6 +578,8 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         return {
             text: finalText,
             confirmation,
+            question,
+            proposal,
             executed: executed.map((e) => ({ toolName: e.toolName, result: e.result })),
             credits,
             summary,
@@ -482,6 +602,47 @@ const MCP_HITL_INSTRUCTIONS = `
   excluir treino/exercício, cancelar sessão ou série da agenda) PRECISAM de confirmação humana:
   apenas CHAME a tool com os argumentos corretos — o app mostra o card de confirmação.
   NÃO peça confirmação por texto, NÃO descreva o card.
+- Quando faltar uma informação para agir (ex.: para qual aluno, qual objetivo, frequência semanal,
+  quais grupos priorizar), NÃO pergunte em texto livre: CHAME a tool perguntar_treinador com a
+  pergunta e 2 a 5 opções curtas (use multipla=true quando fizer sentido marcar várias). O app
+  mostra as opções como botões clicáveis. Faça UMA pergunta por vez e só quando for realmente
+  necessário para prosseguir.
+- Quando você JÁ montou um plano e precisa do "ok" do treinador, use propor_ao_treinador com os
+  itens em pares rótulo+valor. NÃO use perguntar_treinador para isso — uma proposta não é uma escolha
+  entre opções. O app mostra os itens com VALORES EDITÁVEIS e os botões Aprovar/Cancelar; ao aprovar,
+  o treinador devolve os valores finais (possivelmente ajustados) e só então você executa a ação.
+  IMPORTANTE: só inclua na proposta itens cujo valor você REALMENTE vai honrar ao executar — nunca
+  itens decorativos que serão ignorados.
+- CRIAR / MONTAR um programa de treino: NÃO existe um gerador automático (ignore qualquer menção a uma
+  tool "generateProgram" — ela não existe aqui). VOCÊ monta o programa do zero, usando as ferramentas
+  do Kinevo, como um treinador experiente faria. Fluxo:
+  1) Entenda o aluno: kinevo_get_student e kinevo_get_student_progress (nível, objetivo, histórico,
+     estagnações e RESTRIÇÕES MÉDICAS — nunca prescreva exercício contraindicado por lesão/restrição).
+  2) Se faltar informação essencial (frequência semanal, objetivo, ênfase em grupos, equipamento), use
+     perguntar_treinador. UMA pergunta por vez e só o necessário para prosseguir.
+  3) Busque exercícios REAIS com kinevo_list_exercises (priorize os grupos que vai usar). Use SOMENTE
+     exercise_id vindos do catálogo — nunca invente IDs. Veja kinevo_list_training_methods se for usar
+     métodos avançados (drop-set, cluster, pirâmide…).
+  4) HONRE o pedido acima de tudo: o programa é DESENHADO em torno do que foi pedido, não um treino
+     genérico. Você decide livremente divisão, exercícios, séries, reps, descanso, métodos e supersets.
+     ÊNFASE = VOLUME claramente MAIOR. Use estes ALVOS de séries por SEMANA por grupo:
+       • grupo ENFATIZADO: 14–20 séries (3–4 exercícios distintos ao longo da semana);
+       • grupo principal não enfatizado: 9–12 séries (2 exercícios);
+       • grupo de manutenção/pequeno: 6–9 séries (1–2 exercícios).
+     Se o treinador enfatizou DOIS grupos (ex.: ombro E posterior de coxa), AMBOS entram na faixa
+     enfatizada e AMBOS devem LIDERAR — nunca deixe um dos enfatizados no mesmo nível dos de manutenção.
+     Antes de finalizar, some as séries/semana de CADA grupo enfatizado e confirme que superam os demais
+     com folga; se não, adicione exercícios/séries ao(s) grupo(s) enfatizado(s). Não há orçamento fixo.
+  5) Crie o programa INTEIRO em UMA ÚNICA chamada: kinevo_create_program_template com todas as sessões,
+     exercícios, supersets e set_scheme de uma vez (programa + estrutura completa). NÃO use
+     kinevo_create_program nem adicione sessões/exercícios um a um (isso falha e não é transacional).
+     Faça um programa COMPLETO: para 4x/semana use 4 SESSÕES DISTINTAS (não 2 repetidas); 3x → 3 sessões;
+     5x → 5; etc. Cada sessão com 5 a 7 exercícios — NUNCA enxuto. Distribua os grupos enfatizados ao
+     longo das sessões até atingir os alvos de volume. Defina scheduled_days de cada sessão (0=dom … 6=sáb).
+  6) NÃO atribua automaticamente ao aluno (kinevo_assign_program coloca o treino ATIVO na hora, sem
+     revisão). Em vez disso, ao terminar, diga ao treinador em 1–2 frases que você montou o programa na
+     Biblioteca de Programas, com um resumo curto (divisão + ênfase aplicada), e que ele pode revisá-lo
+     e atribuir ao aluno quando aprovar — ou pedir para você atribuir. NÃO despeje o JSON nem os IDs.
 - Nunca dispare uma ação sensível em lote sem o treinador ter pedido explicitamente o alvo.
 - Para o progresso de um aluno, use kinevo_get_student_progress antes de responder.
 - Ao prescrever ou editar sessões, defina os dias da semana (scheduled_days) — é parte de uma boa

@@ -44,6 +44,7 @@ interface Props {
     onNewConversation: () => void
     onSelectStudent: (id: string) => void
     onSelectConversation: (id: string) => void
+    onDeleteConversation?: (id: string) => void
     onToggleClassic: () => void
     switchingClassic?: boolean
     /** Posiciona a sidebar como `fixed` (uso na casca AppLayout, fora da home do chat). */
@@ -53,7 +54,7 @@ interface Props {
 export function AssistantSidebar({
     trainerName, trainerEmail, trainerAvatarUrl, students, conversations, activeConversationId, focusedStudentId,
     segment, search, onSegment, onSearch, onHome, onNewConversation, onSelectStudent,
-    onSelectConversation, onToggleClassic, switchingClassic = false, fixed = false,
+    onSelectConversation, onDeleteConversation, onToggleClassic, switchingClassic = false, fixed = false,
 }: Props) {
     const router = useRouter()
     const pathname = usePathname()
@@ -329,6 +330,7 @@ export function AssistantSidebar({
                 onSearch={onSearch}
                 onSelectStudent={onSelectStudent}
                 onSelectConversation={onSelectConversation}
+                onDeleteConversation={onDeleteConversation}
             />
 
             {/* Perfil (idêntico ao Clássico) */}

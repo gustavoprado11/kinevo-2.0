@@ -44,16 +44,13 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     const [loadingMessages, setLoadingMessages] = useState(false)
     const [input, setInput] = useState('')
     const [sending, setSending] = useState(false)
+    const [liveSteps, setLiveSteps] = useState<string[]>([])
     const [segment, setSegment] = useState<'alunos' | 'conversas'>('alunos')
     const [search, setSearch] = useState('')
     const [focusedStudentId, setFocusedStudentId] = useState<string | null>(null)
     const [error, setError] = useState<AssistantBannerData | null>(null)
 
     const active = useMemo(() => conversations.find((c) => c.id === activeId) ?? null, [conversations, activeId])
-    const focusedStudentName = useMemo(
-        () => (focusedStudentId ? students.find((s) => s.id === focusedStudentId)?.name ?? null : null),
-        [focusedStudentId, students],
-    )
 
     // Alunos do rail: pinta de âmbar quem tem insight ativo (precisa de atenção).
     const attentionByStudent = useMemo(() => {
@@ -102,6 +99,20 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     const goHome = useCallback(() => { setActiveId(null); setMessages([]) }, [])
     // Nova conversa: home limpa (sem conversa, sem aluno em foco, input vazio).
     const newConversation = useCallback(() => { setActiveId(null); setFocusedStudentId(null); setMessages([]); setInput('') }, [])
+
+    // Excluir conversa: soft-delete (arquiva) — sai da lista, reversível no banco.
+    // Otimista: remove localmente já; se estava aberta, volta pra home.
+    const deleteConversation = useCallback(async (id: string) => {
+        if (typeof window !== 'undefined' && !window.confirm('Excluir esta conversa? Ela sairá da sua lista.')) return
+        setConversations((prev) => prev.filter((c) => c.id !== id))
+        if (activeId === id) { setActiveId(null); setMessages([]) }
+        try {
+            await fetch(`/api/assistant/conversations/${id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ archived: true }),
+            })
+        } catch { /* otimista; já removida localmente */ }
+    }, [activeId])
 
     // Toggle → Clássico: navegação ótimista (?h=classic evita bounce ao Assistente
     // enquanto a preferência sincroniza em background). O pill mostra spinner.
@@ -152,21 +163,51 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ input: text }),
             })
-            const data = await res.json().catch(() => ({}))
-            if (!res.ok) {
+            // Erros de setup (gate/cota/rate/validação) vêm como JSON não-2xx.
+            if (!res.ok || !res.body) {
+                const data = await res.json().catch(() => ({}))
                 setMessages((prev) => prev.filter((m) => m.id !== optimistic.id))
                 setError(bannerFromError(res.status, data))
                 if (!override) setInput(text) // devolve o texto p/ o usuário reenviar
                 return
             }
+            // Stream NDJSON: {type:'progress'} ao vivo + {type:'done'} no fim.
+            const reader = res.body.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ''
+            let final: { userMessage?: AssistantMessage; message?: AssistantMessage; summary?: AiUsageSummary } | null = null
+            let streamError = false
+            for (;;) {
+                const { value, done: rdDone } = await reader.read()
+                if (rdDone) break
+                buffer += decoder.decode(value, { stream: true })
+                let nl: number
+                while ((nl = buffer.indexOf('\n')) >= 0) {
+                    const line = buffer.slice(0, nl).trim()
+                    buffer = buffer.slice(nl + 1)
+                    if (!line) continue
+                    let ev: { type?: string; label?: string; userMessage?: AssistantMessage; message?: AssistantMessage; summary?: AiUsageSummary }
+                    try { ev = JSON.parse(line) } catch { continue }
+                    if (ev.type === 'progress' && ev.label) setLiveSteps((s) => [...s, ev.label as string])
+                    else if (ev.type === 'done') final = ev
+                    else if (ev.type === 'error') streamError = true
+                }
+            }
+            setLiveSteps([])
+            if (streamError || !final) {
+                setMessages((prev) => prev.filter((m) => m.id !== optimistic.id))
+                setError(bannerFromError(500, {}))
+                if (!override) setInput(text)
+                return
+            }
             setMessages((prev) => {
                 const without = prev.filter((m) => m.id !== optimistic.id)
                 const next = [...without]
-                if (data.userMessage) next.push(data.userMessage)
-                if (data.message) next.push(data.message)
+                if (final!.userMessage) next.push(final!.userMessage)
+                if (final!.message) next.push(final!.message)
                 return next
             })
-            if (data.summary) setSummary(data.summary)
+            if (final.summary) setSummary(final.summary)
             setConversations((prev) => {
                 const idx = prev.findIndex((c) => c.id === convId)
                 if (idx < 0) return prev
@@ -174,7 +215,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 if (updated.title === 'Nova conversa') updated.title = text.slice(0, 70)
                 return [updated, ...prev.filter((c) => c.id !== convId)]
             })
-        } catch { /* noop */ } finally { setSending(false) }
+        } catch { /* noop */ } finally { setSending(false); setLiveSteps([]) }
     }, [input, sending, activeId, focusedStudentId, students])
 
     const starter = useCallback((prompt: string) => { void send(prompt) }, [send])
@@ -249,6 +290,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 onNewConversation={newConversation}
                 onSelectStudent={selectStudent}
                 onSelectConversation={selectConversation}
+                onDeleteConversation={deleteConversation}
                 onToggleClassic={toggleClassic}
                 switchingClassic={isSwitching}
             />
@@ -260,6 +302,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     messages={messages}
                     loadingMessages={loadingMessages}
                     sending={sending}
+                    liveSteps={liveSteps}
                     input={input}
                     trainerName={trainerName}
                     students={students}
@@ -278,7 +321,8 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     summary={summary}
                     attention={attention}
                     recents={recents}
-                    focusedStudentName={focusedStudentName}
+                    focusedStudentId={focusedStudentId}
+                    students={students.map((s) => ({ id: s.id, name: s.name, avatarUrl: s.avatarUrl }))}
                     hasStudents={students.length > 0}
                     input={input}
                     sending={sending}
@@ -287,8 +331,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     onInput={setInput}
                     onSend={() => send()}
                     onStarter={fillInput}
-                    onPickFocus={() => setSegment('alunos')}
-                    onClearFocus={() => setFocusedStudentId(null)}
+                    onFocusStudent={setFocusedStudentId}
                     onOpenConversation={selectConversation}
                 />
             )}

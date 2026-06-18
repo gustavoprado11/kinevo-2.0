@@ -149,46 +149,58 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             content: input,
         })
 
-        const turn = await runAssistantTurn({
-            admin: supabaseAdmin,
-            trainerId: trainer.id,
-            trainerName: trainer.name,
-            input,
-            surface: 'workspace',
-            periodType: gate.period,
-            history,
-            studentId: existing.conversation.student_id ?? undefined,
+        // ── Streaming NDJSON ──
+        // O setup (rate-limit, gate, mensagem do usuário) já rodou acima e devolve
+        // erros HTTP normais. Aqui transmitimos: {type:'progress'} a cada passo
+        // (onProgress) e, no fim, {type:'done'} com a mensagem persistida.
+        const encoder = new TextEncoder()
+        const stream = new ReadableStream<Uint8Array>({
+            async start(controller) {
+                const emit = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'))
+                try {
+                    const turn = await runAssistantTurn({
+                        admin: supabaseAdmin,
+                        trainerId: trainer.id,
+                        trainerName: trainer.name,
+                        input,
+                        surface: 'workspace',
+                        periodType: gate.period,
+                        history,
+                        studentId: existing.conversation.student_id ?? undefined,
+                        onProgress: (label) => emit({ type: 'progress', label }),
+                    })
+
+                    const parts: AssistantMessagePart[] = turn.executed.map((e) => ({
+                        type: 'executed' as const, toolName: e.toolName, result: e.result,
+                    }))
+                    if (turn.confirmation) parts.push({ type: 'confirmation', request: turn.confirmation, status: 'pending' })
+                    if (turn.question) parts.push({ type: 'question', request: turn.question, status: 'pending' })
+                    if (turn.proposal) parts.push({ type: 'proposal', request: turn.proposal, status: 'pending' })
+
+                    const assistantMessage = await appendMessage(supabaseAdmin, {
+                        conversationId: id, trainerId: trainer.id, role: 'assistant',
+                        content: turn.text, parts, creditsCost: turn.credits,
+                    })
+                    await bumpConversation(supabaseAdmin, {
+                        conversationId: id,
+                        firstUserMessage: isFirstUserMessage ? input : undefined,
+                    })
+
+                    emit({ type: 'done', userMessage, message: assistantMessage, summary: turn.summary })
+                } catch (err) {
+                    console.error('[conversation POST stream] error:', err)
+                    emit({ type: 'error', message: 'Erro ao gerar a resposta.' })
+                } finally {
+                    controller.close()
+                }
+            },
         })
 
-        // Monta os parts da resposta (ações executadas + confirmação pendente).
-        const parts: AssistantMessagePart[] = turn.executed.map((e) => ({
-            type: 'executed' as const,
-            toolName: e.toolName,
-            result: e.result,
-        }))
-        if (turn.confirmation) {
-            parts.push({ type: 'confirmation', request: turn.confirmation, status: 'pending' })
-        }
-
-        const assistantMessage = await appendMessage(supabaseAdmin, {
-            conversationId: id,
-            trainerId: trainer.id,
-            role: 'assistant',
-            content: turn.text,
-            parts,
-            creditsCost: turn.credits,
-        })
-
-        await bumpConversation(supabaseAdmin, {
-            conversationId: id,
-            firstUserMessage: isFirstUserMessage ? input : undefined,
-        })
-
-        return NextResponse.json({
-            userMessage,
-            message: assistantMessage,
-            confirmation: turn.confirmation,
-            summary: turn.summary,
+        return new Response(stream, {
+            headers: {
+                'Content-Type': 'application/x-ndjson; charset=utf-8',
+                'Cache-Control': 'no-cache, no-transform',
+            },
         })
     } catch (error) {
         return assistantErrorResponse('conversation POST', error)

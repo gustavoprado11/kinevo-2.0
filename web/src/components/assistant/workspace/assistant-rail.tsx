@@ -8,7 +8,7 @@
  */
 
 import Image from 'next/image'
-import { Search, Sparkles } from 'lucide-react'
+import { Search, Sparkles, Trash2 } from 'lucide-react'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
 import { avatarFor, groupLabel, GROUP_ORDER, timeShort } from './ui-util'
 
@@ -53,11 +53,12 @@ interface Props {
     onSearch: (v: string) => void
     onSelectStudent: (id: string) => void
     onSelectConversation: (id: string) => void
+    onDeleteConversation?: (id: string) => void
 }
 
 export function AssistantRail({
     students, conversations, activeConversationId, focusedStudentId,
-    segment, search, onSegment, onSearch, onSelectStudent, onSelectConversation,
+    segment, search, onSegment, onSearch, onSelectStudent, onSelectConversation, onDeleteConversation,
 }: Props) {
     const q = search.trim().toLowerCase()
     const filteredStudents = q ? students.filter((s) => s.name.toLowerCase().includes(q)) : students
@@ -126,23 +127,32 @@ export function AssistantRail({
                                     const isGeneral = !c.student_id
                                     const on = c.id === activeConversationId
                                     return (
-                                        <button key={c.id} onClick={() => onSelectConversation(c.id)}
-                                            className={`mb-0.5 flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)] dark:bg-glass-bg-active' : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'}`}>
-                                            {isGeneral ? (
-                                                <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
-                                                    <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                                        <div key={c.id} className="group relative">
+                                            <button onClick={() => onSelectConversation(c.id)}
+                                                className={`mb-0.5 flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)] dark:bg-glass-bg-active' : 'hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'}`}>
+                                                {isGeneral ? (
+                                                    <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
+                                                        <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                                                    </span>
+                                                ) : (
+                                                    <Avatar name={c.studentName} url={c.student_id ? studentAvatar.get(c.student_id) ?? null : null} />
+                                                )}
+                                                <span className="min-w-0 flex-1 group-hover:pr-9">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <b className="truncate text-[13px] font-semibold text-[#1D1D1F] dark:text-foreground">{c.studentName ?? (isGeneral ? 'Geral' : c.title)}</b>
+                                                        <span className="ml-auto shrink-0 text-[10px] text-[#AEAEB2] dark:text-muted-foreground/60 transition-opacity group-hover:opacity-0">{timeShort(c.last_message_at)}</span>
+                                                    </span>
+                                                    <span className="block truncate text-[11px] text-[#86868B] dark:text-muted-foreground">{c.title}</span>
                                                 </span>
-                                            ) : (
-                                                <Avatar name={c.studentName} url={c.student_id ? studentAvatar.get(c.student_id) ?? null : null} />
+                                            </button>
+                                            {onDeleteConversation && (
+                                                <button onClick={(e) => { e.stopPropagation(); onDeleteConversation(c.id) }}
+                                                    title="Excluir conversa" aria-label="Excluir conversa"
+                                                    className="absolute right-2 top-1/2 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-[#AEAEB2] transition hover:bg-[#FEE2E2] hover:text-[#DC2626] group-hover:flex dark:text-muted-foreground/60 dark:hover:bg-rose-500/15 dark:hover:text-rose-300">
+                                                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+                                                </button>
                                             )}
-                                            <span className="min-w-0 flex-1">
-                                                <span className="flex items-center gap-1.5">
-                                                    <b className="truncate text-[13px] font-semibold text-[#1D1D1F] dark:text-foreground">{c.studentName ?? (isGeneral ? 'Geral' : c.title)}</b>
-                                                    <span className="ml-auto shrink-0 text-[10px] text-[#AEAEB2] dark:text-muted-foreground/60">{timeShort(c.last_message_at)}</span>
-                                                </span>
-                                                <span className="block truncate text-[11px] text-[#86868B] dark:text-muted-foreground">{c.title}</span>
-                                            </span>
-                                        </button>
+                                        </div>
                                     )
                                 })}
                             </div>

@@ -18,7 +18,7 @@
 
 import type { AiSurface } from '@/lib/ai-usage/metering'
 
-export const PROMPT_VERSION = '2.1.0'
+export const PROMPT_VERSION = '2.2.0'
 
 /** Diretriz de formato específica da superfície (voz é falada; proativo é briefing). */
 export function formatForSurface(surface: AiSurface): string {
