@@ -299,16 +299,19 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const aiPanelAutoOpenedRef = useRef(false)
 
     // ── AI Panel lifecycle ──
-    // Auto-open once on mount if ?mode=ai or a deeplink generation id is present.
+    // Auto-open once on mount APENAS com ?mode=ai (intenção explícita de usar o
+    // painel). NÃO auto-abre por deeplink de geração (?generationId=) — ao "Revisar
+    // no builder" o treinador quer ver o construtor, não o painel cobrindo a direita
+    // (o card do Assistente já avisou que o programa foi gerado). O painel segue
+    // acessível pelo botão de toggle.
     useEffect(() => {
         if (!aiPanelAvailable || aiPanelAutoOpenedRef.current) return
         const modeAi = searchParams?.get('mode') === 'ai'
-        const hasGen = !!prescriptionGenerationId
-        if (modeAi || hasGen) {
+        if (modeAi) {
             setAiPanelOpen(true)
             aiPanelAutoOpenedRef.current = true
         }
-    }, [aiPanelAvailable, searchParams, prescriptionGenerationId])
+    }, [aiPanelAvailable, searchParams])
 
     const toggleAiPanel = useCallback(() => {
         setAiPanelOpen(prev => !prev)
@@ -1902,8 +1905,12 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 </div>
             )}
 
-            {/* Tour: Program Builder (auto-start on first visit) */}
-            <TourRunner tourId="program_builder" steps={TOUR_STEPS.program_builder} autoStart />
+            {/* Tour: Program Builder (auto-start só na criação do zero). Ao revisar um
+                rascunho gerado pela IA (?generationId=) NÃO inicia o tour — não é um
+                momento de "primeira vez aprendendo o builder", e a hidratação do store
+                de onboarding nessa rota não é confiável (skipHydration), fazendo o tour
+                reaparecer mesmo já concluído. */}
+            <TourRunner tourId="program_builder" steps={TOUR_STEPS.program_builder} autoStart={!prescriptionGenerationId} />
 
             {/* AI Prescription Panel (Fase 1) */}
             {aiPanelAvailable && studentContext && prescriptionData && (
