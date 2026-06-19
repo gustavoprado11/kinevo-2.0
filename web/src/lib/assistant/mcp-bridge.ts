@@ -10,7 +10,7 @@
  *     executando depois via /api/assistant/execute-tool.
  *
  * Subsetting (custo): com `intents`, carrega só as tools daquelas intenções
- * (+ CORE_TOOLS), cortando 60–70% do input. Sem `intents`, expõe as 55.
+ * (+ CORE_TOOLS), cortando 60–70% do input. Sem `intents`, expõe as 56.
  */
 
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
@@ -26,7 +26,7 @@ export interface McpBridge {
 }
 
 export interface BuildMcpToolsOptions {
-    /** Intenções para subsetting; vazio/omitido = todas as 55. */
+    /** Intenções para subsetting; vazio/omitido = todas as 56. */
     intents?: ToolIntent[]
     /**
      * Se true, REMOVE as CONFIRM_TOOLS do conjunto (em vez de torná-las HITL).

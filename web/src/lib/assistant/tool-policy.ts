@@ -5,13 +5,13 @@
  * do AI SDK DESCARTA as annotations do MCP (readOnlyHint/destructiveHint) — então
  * este arquivo, não as hints, decide o que pausa para HITL. Ver chat-first SPEC §1.
  *
- * Cobre as 55 tools do servidor MCP (`lib/mcp/tools/*`) + a action `generateProgram`
+ * Cobre as 56 tools do servidor MCP (`lib/mcp/tools/*`) + a action `generateProgram`
  * (roteamento de prescrição). Define também os pesos de crédito (§3.2 da SPEC) e os
  * subconjuntos de subsetting por intenção (corta 60–70% do input — §7.2).
  */
 
 // ----------------------------------------------------------------------------
-// Catálogo das 55 tools MCP
+// Catálogo das 56 tools MCP
 // ----------------------------------------------------------------------------
 export const ALL_MCP_TOOLS = [
     'kinevo_ping',
@@ -23,6 +23,7 @@ export const ALL_MCP_TOOLS = [
     'kinevo_get_program',
     'kinevo_create_program',
     'kinevo_create_program_template',
+    'kinevo_create_student_draft_program',
     'kinevo_assign_program',
     'kinevo_expire_program',
     'kinevo_list_training_methods',
@@ -163,6 +164,7 @@ export const CREDIT_WEIGHTS: Record<string, number> = {
     [GENERATE_PROGRAM]: 5,
     // Writes compostos.
     kinevo_create_program_template: 3, // programa + sessões + exercícios + supersets
+    kinevo_create_student_draft_program: 3, // idem, mas como rascunho-do-aluno
     kinevo_create_superset: 2,
     kinevo_assign_program: 2,
     kinevo_create_contract: 2,
@@ -236,6 +238,7 @@ export const TOOL_SUBSETS: Record<ToolIntent, readonly McpToolName[]> = {
         'kinevo_get_program',
         'kinevo_create_program',
         'kinevo_create_program_template',
+        'kinevo_create_student_draft_program',
         'kinevo_assign_program',
         'kinevo_expire_program',
         'kinevo_list_training_methods',

@@ -14,6 +14,7 @@ export const EXECUTED_LABEL: Record<string, string> = {
     kinevo_update_student: 'Aluno atualizado',
     kinevo_create_student: 'Aluno criado',
     kinevo_create_program_template: 'Template criado na biblioteca',
+    kinevo_create_student_draft_program: 'Rascunho criado no perfil do aluno',
 }
 
 /** Rótulo curto p/ chips de ação já executada (sem detalhes do resultado). */

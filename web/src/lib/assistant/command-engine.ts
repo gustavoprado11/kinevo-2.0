@@ -284,6 +284,7 @@ const PROGRESS_LABELS: Record<string, string> = {
     kinevo_send_message: 'Preparando a mensagem…',
     kinevo_create_program: 'Criando o programa…',
     kinevo_create_program_template: 'Montando o programa…',
+    kinevo_create_student_draft_program: 'Montando o rascunho no perfil do aluno…',
     kinevo_add_workout_session: 'Adicionando um treino…',
     kinevo_add_exercise_to_session: 'Adicionando exercícios…',
     kinevo_create_superset: 'Criando o superset…',
@@ -633,16 +634,21 @@ const MCP_HITL_INSTRUCTIONS = `
      enfatizada e AMBOS devem LIDERAR — nunca deixe um dos enfatizados no mesmo nível dos de manutenção.
      Antes de finalizar, some as séries/semana de CADA grupo enfatizado e confirme que superam os demais
      com folga; se não, adicione exercícios/séries ao(s) grupo(s) enfatizado(s). Não há orçamento fixo.
-  5) Crie o programa INTEIRO em UMA ÚNICA chamada: kinevo_create_program_template com todas as sessões,
-     exercícios, supersets e set_scheme de uma vez (programa + estrutura completa). NÃO use
-     kinevo_create_program nem adicione sessões/exercícios um a um (isso falha e não é transacional).
+  5) Crie o programa INTEIRO em UMA ÚNICA chamada transacional (todas as sessões, exercícios, supersets e
+     set_scheme de uma vez). NÃO use kinevo_create_program nem adicione sessões/exercícios um a um (isso
+     falha e não é transacional). Escolha o destino pelo contexto:
+       • COM aluno em foco (o pedido é "monta um treino pro Fulano") → kinevo_create_student_draft_program
+         (passando o student_id do aluno): o programa nasce como RASCUNHO no PERFIL DO ALUNO, invisível pra
+         ele, pronto pra revisão. Este é o caminho PADRÃO sempre que há um aluno.
+       • SEM aluno específico (pedido de "template reutilizável" pra Biblioteca) → kinevo_create_program_template.
      Faça um programa COMPLETO: para 4x/semana use 4 SESSÕES DISTINTAS (não 2 repetidas); 3x → 3 sessões;
      5x → 5; etc. Cada sessão com 5 a 7 exercícios — NUNCA enxuto. Distribua os grupos enfatizados ao
      longo das sessões até atingir os alvos de volume. Defina scheduled_days de cada sessão (0=dom … 6=sáb).
-  6) NÃO atribua automaticamente ao aluno (kinevo_assign_program coloca o treino ATIVO na hora, sem
-     revisão). Em vez disso, ao terminar, diga ao treinador em 1–2 frases que você montou o programa na
-     Biblioteca de Programas, com um resumo curto (divisão + ênfase aplicada), e que ele pode revisá-lo
-     e atribuir ao aluno quando aprovar — ou pedir para você atribuir. NÃO despeje o JSON nem os IDs.
+  6) NÃO ative nem atribua automaticamente (kinevo_assign_program coloca o treino ATIVO na hora, sem revisão;
+     o rascunho NÃO é ativo). Ao terminar, diga ao treinador em 1–2 frases que você montou o programa — como
+     RASCUNHO no perfil do aluno (caminho com aluno) ou na Biblioteca de Programas (template) — com um resumo
+     curto (divisão + ênfase aplicada), e que ele revisa e ATIVA/atribui quando aprovar (ou pede pra você
+     ativar). NÃO despeje o JSON nem os IDs.
 - Nunca dispare uma ação sensível em lote sem o treinador ter pedido explicitamente o alvo.
 - Para o progresso de um aluno, use kinevo_get_student_progress antes de responder.
 - Ao prescrever ou editar sessões, defina os dias da semana (scheduled_days) — é parte de uma boa
