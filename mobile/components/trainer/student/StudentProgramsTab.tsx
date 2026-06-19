@@ -151,6 +151,19 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
         );
     }, [deleteProgram, data.student.id]);
 
+    // Revisar/editar o rascunho no builder (paridade com o web). Reusa a rota de
+    // edição de programa atribuído: o builder carrega a árvore e, ao salvar, o
+    // status 'draft' é PRESERVADO (o save só vira active/scheduled quando há data
+    // de início — ver useProgramBuilder.saveAssignedProgramFull). Ativar continua
+    // sendo a ação explícita; revisar não publica nada pro aluno.
+    const reviewDraft = useCallback((programId: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
+        router.push({
+            pathname: "/program-builder/edit/[assignedProgramId]",
+            params: { assignedProgramId: programId },
+        } as any);
+    }, [router]);
+
     const openActiveProgramMenu = useCallback(() => {
         if (!data.activeProgram) return;
         const program = data.activeProgram;
@@ -288,8 +301,9 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
             )}
 
             {/* Rascunhos salvos no banco (criados fora do builder, ex.: assistente via MCP).
-                Diferente da prateleira MMKV acima: já são programas persistidos, só
-                precisam ser revisados/ativados. Revisar/editar fica pro painel web. */}
+                Diferente da prateleira MMKV acima: já são programas persistidos. Revisar
+                abre o builder (preserva o status 'draft' no save); Ativar/Descartar agem
+                direto. Paridade com o web. */}
             {(data.draftPrograms ?? []).map((d) => {
                 const workoutCount = d.workouts.length;
                 return (
@@ -323,6 +337,16 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
                             >
                                 <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
                                 <Text style={{ fontSize: 13, fontWeight: "700", color: "#FFFFFF" }}>Ativar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => reviewDraft(d.id)}
+                                disabled={isMutating}
+                                activeOpacity={0.7}
+                                accessibilityRole="button"
+                                accessibilityLabel="Revisar rascunho"
+                                style={{ padding: 10, borderRadius: 12, opacity: isMutating ? 0.6 : 1 }}
+                            >
+                                <Pencil size={18} color={colors.text.secondary} />
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={() => confirmDiscardDraft(d.id, d.name)}
