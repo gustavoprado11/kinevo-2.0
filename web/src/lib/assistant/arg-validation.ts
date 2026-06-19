@@ -144,6 +144,31 @@ export async function validateConfirmArgs(
                 return { ok: true, target: { label: lead.name } }
             }
 
+            case 'kinevo_delete_program': {
+                const programId = str(args.program_id)
+                if (!programId) return { ok: false, reason: 'Faltou indicar o programa.' }
+                const { data: p } = await admin
+                    .from('assigned_programs')
+                    .select('name, status, trainer_id, student_id')
+                    .eq('id', programId)
+                    .maybeSingle()
+                const prog = p as
+                    | { name: string; status: string; trainer_id: string; student_id: string }
+                    | null
+                if (!prog || prog.trainer_id !== trainerId) {
+                    return { ok: false, reason: 'Programa não encontrado ou não é seu.' }
+                }
+                // Só rascunhos: programa ativo se encerra com expirar (preserva histórico).
+                if (prog.status !== 'draft') {
+                    return {
+                        ok: false,
+                        reason: 'Só rascunhos podem ser excluídos. Para encerrar um programa ativo preservando o histórico, peça para expirar.',
+                    }
+                }
+                const name = (await studentName(admin, trainerId, prog.student_id)) ?? 'aluno'
+                return { ok: true, target: { label: `${prog.name} · rascunho de ${name}` } }
+            }
+
             // Sem validador estrito (a tool já checa posse na execução): libera com
             // alvo genérico — o card mostra o resumo dos args como hoje.
             default:

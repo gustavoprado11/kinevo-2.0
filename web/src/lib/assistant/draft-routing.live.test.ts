@@ -88,7 +88,6 @@ describe.skipIf(!RUN)('LIVE — roteamento do LLM p/ rascunho-do-aluno', () => {
                 })
                 const tools = result.executed.map((e) => e.toolName)
                 allExecuted.push(...tools)
-                // eslint-disable-next-line no-console
                 console.log(`[draft-routing] turno ${turn}:`, tools, '| pergunta?', !!result.question)
 
                 if (tools.includes(DRAFT_TOOL)) {
@@ -100,7 +99,6 @@ describe.skipIf(!RUN)('LIVE — roteamento do LLM p/ rascunho-do-aluno', () => {
                 input = 'Pode decidir você mesmo os dias (seg/qua/sex) e os exercícios. Cria o rascunho agora.'
             }
 
-            // eslint-disable-next-line no-console
             console.log('[draft-routing] tools no total:', allExecuted)
 
             // O elo sob teste: escolheu a tool de rascunho-do-aluno…
@@ -118,6 +116,92 @@ describe.skipIf(!RUN)('LIVE — roteamento do LLM p/ rascunho-do-aluno', () => {
                 .eq('ai_generated', true)
             expect((rows ?? []).length).toBeGreaterThan(0)
             expect((rows ?? []).every((r) => r.status === 'draft' && r.ai_generated === true)).toBe(true)
+        } finally {
+            await cleanup()
+        }
+    }, 240_000)
+
+    it('ao pedir para apagar um rascunho, pausa em kinevo_delete_program (não cancel_contract)', async () => {
+        const { url, key } = loadEnv()
+        const admin: SupabaseClient<Database> = createClient<Database>(url, key, {
+            auth: { autoRefreshToken: false, persistSession: false },
+        })
+
+        const { data: self } = await admin
+            .from('students')
+            .select('id, name')
+            .eq('coach_id', TEST_TRAINER_ID)
+            .limit(1)
+            .single()
+        expect(self?.id).toBeTruthy()
+
+        const cleanup = async () => {
+            await admin
+                .from('assigned_programs')
+                .delete()
+                .eq('student_id', self!.id)
+                .eq('status', 'draft')
+                .eq('ai_generated', true)
+            await admin.from('ai_usage_events').delete().eq('trainer_id', TEST_TRAINER_ID)
+            await admin.from('ai_usage_periods').delete().eq('trainer_id', TEST_TRAINER_ID)
+        }
+
+        try {
+            // Setup: um rascunho real pra apagar (exercício de sistema).
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: seedErr } = await (admin as any).rpc('create_assigned_program_tree', {
+                p_trainer_id: TEST_TRAINER_ID,
+                p_student_id: self!.id,
+                p_payload: {
+                    program: { name: '[teste] rascunho para apagar', description: null, duration_weeks: 4 },
+                    workouts: [{
+                        name: 'Treino A', order_index: 0, scheduled_days: [1, 4], items: [{
+                            item_type: 'exercise', order_index: 0,
+                            exercise_id: '078a1e57-8faf-4c02-8112-9347ce56e5e0',
+                            sets: 3, reps: '10', rest_seconds: 90, set_rows: [],
+                            exercise_name: 'Crucifixo Inclinado na Polia', exercise_muscle_group: 'Peito', exercise_equipment: 'Polia',
+                        }],
+                    }],
+                },
+            })
+            expect(seedErr).toBeFalsy()
+
+            const { runAssistantTurn } = await import('./command-engine')
+
+            const history: Array<{ role: 'user' | 'assistant'; content: string }> = []
+            let input = `Apaga o rascunho de programa do ${self!.name}.`
+            const seenConfirmations: string[] = []
+            const seenExecuted: string[] = []
+            let confirmed = false
+
+            for (let turn = 1; turn <= 3 && !confirmed; turn++) {
+                const result = await runAssistantTurn({
+                    admin,
+                    trainerId: TEST_TRAINER_ID,
+                    trainerName: 'Trainer Teste',
+                    input,
+                    surface: 'workspace',
+                    periodType: 'month',
+                    studentId: self!.id,
+                    history,
+                })
+                seenExecuted.push(...result.executed.map((e) => e.toolName))
+                if (result.confirmation) seenConfirmations.push(result.confirmation.toolName)
+                console.log(`[delete-routing] turno ${turn}: confirm=${result.confirmation?.toolName ?? '—'} | exec=`, result.executed.map((e) => e.toolName), '| pergunta?', !!result.question)
+
+                if (result.confirmation?.toolName === 'kinevo_delete_program') {
+                    confirmed = true
+                    break
+                }
+                history.push({ role: 'user', content: input })
+                history.push({ role: 'assistant', content: result.text || result.question?.question || '...' })
+                input = 'Sim, é o rascunho de TREINO mesmo. Pode apagar esse rascunho de programa.'
+            }
+
+            // O fix: roteia pro delete de rascunho (HITL) e NUNCA pro cancelamento de contrato.
+            expect(seenConfirmations).toContain('kinevo_delete_program')
+            expect(seenConfirmations).not.toContain('kinevo_cancel_contract')
+            expect(seenExecuted).not.toContain('kinevo_cancel_contract')
         } finally {
             await cleanup()
         }

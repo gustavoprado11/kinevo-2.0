@@ -129,6 +129,19 @@ export const EVAL_CASES: EvalCase[] = [
             judge: 'NÃO pede confirmação por texto nem descreve o card; apenas dispara a ação (que vira card no app).',
         },
     },
+    {
+        id: 'prescricao-excluir-rascunho-06b',
+        domain: 'prescricao',
+        surface: 'workspace',
+        input: 'Apaga o rascunho de programa do {name}.',
+        studentRef: 'joao',
+        expect: {
+            // descartar rascunho é destrutivo → pausa no card; e é TREINO, não cobrança
+            confirmation: 'kinevo_delete_program',
+            mustNotCall: ['kinevo_cancel_contract'], // não rotear "apagar treino" pro financeiro
+            judge: 'Trata como exclusão de RASCUNHO de treino (não contrato/cobrança); não pede confirmação por texto.',
+        },
+    },
 
     // ──────────────────────── FINANCEIRO ──────────────────────
     {

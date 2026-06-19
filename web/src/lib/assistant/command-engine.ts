@@ -155,6 +155,7 @@ const DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
     'kinevo_cancel_contract',
     'kinevo_delete_workout_session',
     'kinevo_delete_workout_item',
+    'kinevo_delete_program',
     'kinevo_cancel_appointment_occurrence',
     'kinevo_cancel_appointment_series',
 ])
@@ -167,6 +168,7 @@ const CONFIRM_TITLES: Record<string, string> = {
     kinevo_finalize_assessment: 'Finalizar avaliação',
     kinevo_delete_workout_session: 'Excluir sessão de treino',
     kinevo_delete_workout_item: 'Excluir exercício do treino',
+    kinevo_delete_program: 'Excluir rascunho de programa',
     kinevo_cancel_appointment_occurrence: 'Cancelar esta sessão da agenda',
     kinevo_cancel_appointment_series: 'Cancelar a série de sessões',
 }
@@ -289,6 +291,7 @@ const PROGRESS_LABELS: Record<string, string> = {
     kinevo_add_exercise_to_session: 'Adicionando exercícios…',
     kinevo_create_superset: 'Criando o superset…',
     kinevo_assign_program: 'Atribuindo o programa ao aluno…',
+    kinevo_delete_program: 'Excluindo o rascunho…',
 }
 function progressLabel(toolName: string): string {
     return PROGRESS_LABELS[toolName] ?? 'Trabalhando nisso…'
@@ -649,6 +652,9 @@ const MCP_HITL_INSTRUCTIONS = `
      RASCUNHO no perfil do aluno (caminho com aluno) ou na Biblioteca de Programas (template) — com um resumo
      curto (divisão + ênfase aplicada), e que ele revisa e ATIVA/atribui quando aprovar (ou pede pra você
      ativar). NÃO despeje o JSON nem os IDs.
+- DESCARTAR / EXCLUIR / APAGAR um RASCUNHO de programa: use kinevo_delete_program (HITL — pede confirmação).
+  Funciona só em rascunhos. Isso é sobre TREINO, não cobrança: NUNCA use kinevo_cancel_contract para apagar um
+  programa. Para ENCERRAR um programa ATIVO preservando o histórico do aluno, use kinevo_expire_program (não exclua).
 - Nunca dispare uma ação sensível em lote sem o treinador ter pedido explicitamente o alvo.
 - Para o progresso de um aluno, use kinevo_get_student_progress antes de responder.
 - Ao prescrever ou editar sessões, defina os dias da semana (scheduled_days) — é parte de uma boa

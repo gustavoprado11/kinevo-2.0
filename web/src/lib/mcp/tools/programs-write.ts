@@ -586,4 +586,48 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
       })
     }
   )
+
+  server.tool(
+    'kinevo_delete_program',
+    "Permanently DELETE (discard) a DRAFT assigned program of a student — e.g. an AI-authored draft the trainer decided not to use. Works ONLY on drafts (status='draft'); the program and its workouts are removed. This is for WORKOUT PROGRAMS, not billing: to cancel a contract/subscription use kinevo_cancel_contract instead. To END an ACTIVE program while preserving the student's training history, use kinevo_expire_program — NOT this tool (deleting an active program is not allowed here).",
+    {
+      program_id: z.string().uuid().describe('The DRAFT assigned program ID to discard.'),
+    },
+    { title: 'Excluir rascunho de programa', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    async ({ program_id }) => {
+      const supabaseAdmin = createAdminClient()
+
+      const { data: prog } = await supabaseAdmin
+        .from('assigned_programs')
+        .select('id, name, status')
+        .eq('id', program_id)
+        .eq('trainer_id', trainerId)
+        .maybeSingle()
+
+      if (!prog) {
+        return mcpError('Programa não encontrado ou não pertence a este treinador.')
+      }
+      if (prog.status !== 'draft') {
+        return mcpError(
+          'Só rascunhos (status draft) podem ser excluídos por aqui. Para encerrar um programa ativo preservando o histórico do aluno, use kinevo_expire_program.'
+        )
+      }
+
+      const { error } = await supabaseAdmin
+        .from('assigned_programs')
+        .delete()
+        .eq('id', program_id)
+        .eq('trainer_id', trainerId)
+        .eq('status', 'draft')
+
+      if (error) {
+        return mcpError(`Erro ao excluir rascunho: ${error.message}`)
+      }
+
+      return mcpSuccess({
+        program: { id: prog.id, name: prog.name },
+        message: `Rascunho "${prog.name}" excluído.`,
+      })
+    }
+  )
 }

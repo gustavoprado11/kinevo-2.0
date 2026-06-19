@@ -14,9 +14,9 @@ import {
 } from '../tool-policy'
 
 describe('tool-policy — classificação', () => {
-    it('cobre as 56 tools', () => {
-        expect(ALL_MCP_TOOLS.length).toBe(56)
-        expect(new Set(ALL_MCP_TOOLS).size).toBe(56) // sem duplicatas
+    it('cobre as 57 tools', () => {
+        expect(ALL_MCP_TOOLS.length).toBe(57)
+        expect(new Set(ALL_MCP_TOOLS).size).toBe(57) // sem duplicatas
     })
 
     it('READ ∪ WRITE = todas; READ ∩ WRITE = ∅', () => {
@@ -97,8 +97,8 @@ describe('tool-policy — pesos de crédito', () => {
 })
 
 describe('tool-policy — subsetting', () => {
-    it('sem intenção → todas as 56', () => {
-        expect(resolveToolSubset([]).length).toBe(56)
+    it('sem intenção → todas as 57', () => {
+        expect(resolveToolSubset([]).length).toBe(57)
     })
 
     it('intenção financeiro inclui core + tools financeiras, exclui agenda', () => {
@@ -107,7 +107,7 @@ describe('tool-policy — subsetting', () => {
         expect(subset).toContain('kinevo_create_contract')
         expect(subset).toContain('kinevo_get_revenue_summary')
         expect(subset).not.toContain('kinevo_create_appointment')
-        expect(subset.length).toBeLessThan(56) // cortou o input
+        expect(subset.length).toBeLessThan(57) // cortou o input
     })
 
     it('múltiplas intenções unem os conjuntos (sem duplicar)', () => {
