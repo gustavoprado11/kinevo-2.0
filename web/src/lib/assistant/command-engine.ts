@@ -20,6 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildMcpTools } from '@/lib/assistant/mcp-bridge'
 import {
     CONFIRM_TOOLS,
+    READ_TOOLS,
     actionClassForTool,
     creditWeightForCall,
     computeTurnCredits,
@@ -237,6 +238,59 @@ function studentCountFromArgs(args: unknown): number {
     return 1
 }
 
+/** Serialização estável dos args (chaves ordenadas) p/ deduplicar chamadas. */
+function stableArgs(args: unknown): string {
+    if (!args || typeof args !== 'object') return JSON.stringify(args ?? null)
+    const o = args as Record<string, unknown>
+    const sorted = Object.keys(o)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, k) => {
+            acc[k] = o[k]
+            return acc
+        }, {})
+    return JSON.stringify(sorted)
+}
+
+/**
+ * Guard anti-loop (determinístico). O modelo às vezes entra em loop chamando a
+ * MESMA tool de LEITURA repetidamente (visto em prod: kinevo_list_students 12x
+ * → estoura maxSteps sem concluir a tarefa, "travado"). O prompt sozinho não
+ * segura isso. Aqui deduplicamos por (tool + args) DENTRO do turno: a 1ª chamada
+ * idêntica roda normal; uma repetição IDÊNTICA não re-executa — devolve um
+ * corretivo que manda o modelo AGIR com o que já tem. Leituras com args
+ * DIFERENTES (ex.: list_exercises por grupos distintos) seguem livres. Só afeta
+ * READ_TOOLS; writes/confirm passam intactos.
+ */
+function withReadGuard(tools: ToolSet): ToolSet {
+    const seen = new Set<string>()
+    const guarded: ToolSet = {}
+    for (const [name, t] of Object.entries(tools)) {
+        const orig = t.execute
+        if (!READ_TOOLS.has(name) || typeof orig !== 'function') {
+            guarded[name] = t
+            continue
+        }
+        guarded[name] = {
+            ...t,
+            execute: (async (args, options) => {
+                const key = `${name}:${stableArgs(args)}`
+                if (seen.has(key)) {
+                    return {
+                        repeated: true,
+                        message:
+                            `Você JÁ consultou ${name} com esses mesmos parâmetros neste turno e tem o resultado. ` +
+                            `NÃO repita a leitura — use os dados que já tem e AJA agora (crie/edite/responda ao treinador). ` +
+                            `Se precisa de outra informação, chame uma tool DIFERENTE ou pergunte ao treinador.`,
+                    }
+                }
+                seen.add(key)
+                return orig(args, options)
+            }) as typeof t.execute,
+        }
+    }
+    return guarded
+}
+
 // ----------------------------------------------------------------------------
 // Turno do assistente.
 // ----------------------------------------------------------------------------
@@ -322,8 +376,19 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
     const { admin, trainerId, trainerName, input, surface, periodType } = opts
     let bridgeClose: (() => Promise<void>) | null = null
     try {
-        // 1. Subsetting por intenção (corta o input).
+        // 1. Subsetting por intenção (corta o input). Num turno de CONSTRUÇÃO de
+        //    programa (detectado pelo input OU pelo histórico), garantimos as
+        //    intenções de prescrição/alunos. Sem isso, um turno de RESPOSTA a uma
+        //    pergunta do build ("5x por semana", "ênfase em costas e glúteo") não
+        //    tem palavra-chave de prescrição → o subset cai no fallback (financeiro/
+        //    agenda) e o modelo fica SEM as tools de prescrição (create_student_draft
+        //    _program, list_exercises) → flaila/loopa nas tools erradas e trava.
+        const buildTurn = isBuildTurn(input, opts.history ?? [])
         const intents = resolveIntents(input, opts.route)
+        if (buildTurn) {
+            if (!intents.includes('prescricao')) intents.push('prescricao')
+            if (!intents.includes('alunos')) intents.push('alunos')
+        }
         const bridge = await buildMcpTools(trainerId, { intents })
         bridgeClose = bridge.close
 
@@ -349,8 +414,16 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             return data?.id ?? null
         }
 
+        // Guard anti-loop nas leituras (dedup por tool+args no turno).
+        const guardedBridgeTools = withReadGuard(bridge.tools)
+        // Aluno em foco: o modelo já TEM o aluno (UUID + perfil no contexto) e não
+        // precisa "listar alunos". Em prod ele entrava em loop justamente aqui
+        // (kinevo_list_students 12x → estourava maxSteps sem concluir). Removemos a
+        // tool nesse caso — determinístico, mata o loop na raiz.
+        if (opts.studentId) delete guardedBridgeTools['kinevo_list_students']
+
         const tools: ToolSet = {
-            ...bridge.tools,
+            ...guardedBridgeTools,
             // "Ask the user": client tool (SEM execute) — o app renderiza as opções
             // como botões clicáveis e a escolha vira o próximo turno.
             perguntar_treinador: tool({
@@ -379,7 +452,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         const dynamicContext = await buildChatContext(trainerId, trainerName ?? '', opts.studentId)
         const routeHint = opts.route ? `\nTela atual do treinador: ${opts.route}.` : ''
         const studentHint = opts.studentId
-            ? `\nAluno em foco (UUID): ${opts.studentId}. Use esse UUID nas tools quando a intenção for sobre este aluno.`
+            ? `\nAluno em foco (UUID): ${opts.studentId}. Os dados dele JÁ ESTÃO no contexto acima — NÃO chame kinevo_list_students nem kinevo_get_student para "encontrar" o aluno (você já o tem); use este UUID direto nas ações. Só faça uma leitura do aluno se precisar de um dado específico que realmente não esteja no contexto, e NUNCA repita a mesma leitura.`
             : ''
         const system =
             buildInstructions(surface) +
@@ -394,8 +467,8 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
 
         // Turnos de CONSTRUÇÃO de programa: mais tokens de saída (a chamada
         // create_program_template carrega o programa inteiro e truncaria em 1500) e um
-        // teto de passos maior (ler contexto + listar exercícios + criar). Mesmo modelo.
-        const buildTurn = isBuildTurn(input, history)
+        // teto de passos maior (ler contexto + listar exercícios + criar). `buildTurn`
+        // já foi calculado no passo 1 (afeta o subset de tools).
 
         // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para.
         const result = await generateText({
@@ -495,9 +568,16 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         }
 
         // Se a validação barrou a ação, devolve uma clarificação em vez do card.
-        const finalText = blockedReason
+        let finalText = blockedReason
             ? `${result.text ? result.text + '\n\n' : ''}⚠️ ${blockedReason}`
             : (result.text || (question?.question ?? '') || (proposal ? 'Aprova a proposta abaixo?' : ''))
+
+        // Defesa em profundidade: um turno que terminou SEM texto, pergunta, proposta
+        // e confirmação (ex.: estourou maxSteps sem concluir) jamais pode aparecer em
+        // branco pro treinador ("travado"). Devolve um fallback amigável e acionável.
+        if (!finalText && !confirmation && !question && !proposal) {
+            finalText = 'Não consegui concluir essa ação agora. Pode reformular ou me dar um pouco mais de detalhe (ex.: frequência, ênfase, equipamento)?'
+        }
 
         // 5. Metering do turno (CONFIRM_TOOLS NÃO entram — cobradas no execute-tool).
         const turnCalls: TurnToolCall[] = executed.map((e) => ({
@@ -600,6 +680,9 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
 const MCP_HITL_INSTRUCTIONS = `
 
 # Ações no Kinevo (HITL)
+- EFICIÊNCIA (importante): NUNCA chame a MESMA tool de leitura mais de uma vez no mesmo turno. Se já tem o
+  dado — ou ele já veio no contexto — AJA. Repetir leituras (ex.: kinevo_list_students/kinevo_get_student
+  várias vezes) desperdiça os passos do turno e faz a tarefa travar antes de concluir.
 - Leituras e escritas reversíveis (atualizar aluno, criar rascunho de programa, agendar formulário):
   execute direto e relate objetivamente o que foi feito.
 - Ações SENSÍVEIS (registrar/cancelar pagamento, cancelar contrato, converter lead, finalizar avaliação,
@@ -620,8 +703,10 @@ const MCP_HITL_INSTRUCTIONS = `
 - CRIAR / MONTAR um programa de treino: NÃO existe um gerador automático (ignore qualquer menção a uma
   tool "generateProgram" — ela não existe aqui). VOCÊ monta o programa do zero, usando as ferramentas
   do Kinevo, como um treinador experiente faria. Fluxo:
-  1) Entenda o aluno: kinevo_get_student e kinevo_get_student_progress (nível, objetivo, histórico,
-     estagnações e RESTRIÇÕES MÉDICAS — nunca prescreva exercício contraindicado por lesão/restrição).
+  1) Entenda o aluno pelo CONTEXTO que já veio (perfil, objetivo, restrições). Se um aluno já está em
+     foco, NÃO chame kinevo_list_students (não precisa "achar" o aluno) e NÃO repita kinevo_get_student.
+     Só chame kinevo_get_student_progress se precisar de histórico/estagnação que não está no contexto —
+     e RESPEITE as RESTRIÇÕES MÉDICAS (nunca prescreva exercício contraindicado por lesão/restrição).
   2) Se faltar informação essencial (frequência semanal, objetivo, ênfase em grupos, equipamento), use
      perguntar_treinador. UMA pergunta por vez e só o necessário para prosseguir.
   3) Busque exercícios REAIS com kinevo_list_exercises (priorize os grupos que vai usar). Use SOMENTE

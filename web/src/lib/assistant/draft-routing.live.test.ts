@@ -206,4 +206,66 @@ describe.skipIf(!RUN)('LIVE — roteamento do LLM p/ rascunho-do-aluno', () => {
             await cleanup()
         }
     }, 240_000)
+
+    it('build sobrevive a turno de RESPOSTA sem palavra-chave (não loopa em list_students/list_plans)', async () => {
+        // Regressão do caso de prod: numa conversa de build, o turno que RESPONDE
+        // uma pergunta ("ênfase em costas e glúteo") não tem palavra-chave de
+        // prescrição. Antes do fix, o subset caía no fallback (financeiro/agenda),
+        // o modelo ficava SEM as tools de prescrição e LOOPAVA em list_students/
+        // list_plans até estourar maxSteps (12 "Ação executada", travado, 0 criado).
+        const { url, key } = loadEnv()
+        const admin: SupabaseClient<Database> = createClient<Database>(url, key, {
+            auth: { autoRefreshToken: false, persistSession: false },
+        })
+        const { data: self } = await admin
+            .from('students')
+            .select('id, name, objective')
+            .eq('coach_id', TEST_TRAINER_ID)
+            .limit(1)
+            .single()
+        expect(self?.id).toBeTruthy()
+        const originalObjective = (self as { objective?: string | null }).objective ?? ''
+
+        const cleanup = async () => {
+            await admin.from('students').update({ objective: originalObjective }).eq('id', self!.id)
+            await admin
+                .from('assigned_programs')
+                .delete()
+                .eq('student_id', self!.id)
+                .eq('status', 'draft')
+                .eq('ai_generated', true)
+            await admin.from('ai_usage_events').delete().eq('trainer_id', TEST_TRAINER_ID)
+            await admin.from('ai_usage_periods').delete().eq('trainer_id', TEST_TRAINER_ID)
+        }
+
+        try {
+            // Perfil completo → o build não para pra perguntar o objetivo (isola o bug do subset).
+            await admin.from('students').update({ objective: 'Hipertrofia' }).eq('id', self!.id)
+
+            const { runAssistantTurn } = await import('./command-engine')
+            const history = [
+                { role: 'user' as const, content: 'Vamos criar um novo treino para ela' },
+                { role: 'assistant' as const, content: `Qual a frequência semanal desejada para o treino da ${self!.name}?` },
+                { role: 'user' as const, content: '5x por semana' },
+                { role: 'assistant' as const, content: 'Quais grupos musculares você quer enfatizar? Pode escolher até 2.' },
+            ]
+            const result = await runAssistantTurn({
+                admin, trainerId: TEST_TRAINER_ID, trainerName: 'Trainer Teste',
+                // input SEM palavra-chave de prescrição (nada de treino/programa/exercício).
+                input: 'Ela gostaria de ênfase em costas e glúteo. Academia completa. Pode montar o rascunho agora.',
+                surface: 'workspace', periodType: 'month', studentId: self!.id, history,
+            })
+            const executed = result.executed.map((e) => e.toolName)
+
+            // Construiu (tinha as tools de prescrição mesmo num turno de resposta)…
+            expect(executed).toContain('kinevo_create_student_draft_program')
+            // …NÃO degenerou num loop (o bug travava em ~12 ações)…
+            expect(result.executed.length).toBeLessThan(8)
+            // …e não vazou pra tools erradas.
+            expect(executed).not.toContain('kinevo_list_plans')
+            expect(executed).not.toContain('kinevo_list_students')
+        } finally {
+            await cleanup()
+        }
+    }, 240_000)
 })
