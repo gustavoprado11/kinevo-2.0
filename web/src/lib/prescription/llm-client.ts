@@ -22,6 +22,7 @@ export type LLMProvider = 'anthropic' | 'openai'
 export type LLMModel =
     | 'claude-haiku-4-5-20251001'
     | 'claude-sonnet-4-6'
+    | 'gpt-4.1'
     | 'gpt-4.1-mini'
     | 'gpt-4o-mini'
 
@@ -97,6 +98,7 @@ export interface LLMPricing {
 export const PRICING: Record<LLMModel, LLMPricing> = {
     'claude-haiku-4-5-20251001': { input: 1.00, cached_input: 1.00, output: 5.00 },
     'claude-sonnet-4-6':         { input: 3.00, cached_input: 3.00, output: 15.00 },
+    'gpt-4.1':                   { input: 2.00, cached_input: 0.50, output: 8.00 },
     'gpt-4.1-mini':              { input: 0.40, cached_input: 0.20, output: 1.60 },
     'gpt-4o-mini':               { input: 0.15, cached_input: 0.075, output: 0.60 },
 }

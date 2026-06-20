@@ -16,6 +16,7 @@
 
 import { generateText, tool, jsonSchema, type ToolSet } from 'ai'
 import { openai } from '@ai-sdk/openai'
+import { anthropic } from '@ai-sdk/anthropic'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildMcpTools } from '@/lib/assistant/mcp-bridge'
 import {
@@ -44,6 +45,36 @@ import { validateConfirmArgs } from '@/lib/assistant/arg-validation'
 import type { LLMModel } from '@/lib/prescription/llm-client'
 
 export const ASSISTANT_MODEL: LLMModel = 'gpt-4.1-mini'
+
+/**
+ * Modelo dos turnos de CRIAÇÃO de programa (qualidade-crítico). Configurável por
+ * env ASSISTANT_BUILD_MODEL (default = ASSISTANT_MODEL). Permite usar um modelo
+ * mais forte SÓ no build — onde a qualidade da prescrição importa — sem encarecer
+ * os turnos normais (consulta/edição). Whitelist p/ não aceitar lixo de env.
+ */
+const BUILD_MODELS: ReadonlySet<string> = new Set<LLMModel>([
+    'gpt-4.1', 'gpt-4.1-mini', 'gpt-4o-mini', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001',
+])
+/**
+ * Default do build = Claude Sonnet. Medição (5x glúteo+costas) mostrou diferença
+ * gritante: o mini põe volume ZERO no grupo enfatizado, repete exercícios e não
+ * casa exercício↔sessão; o Sonnet entrega um split profissional (compostos
+ * certos, volume distribuído, ênfase honrada). Custo ~10x (COGS, não crédito do
+ * treinador), justificado pela qualidade — que é o produto.
+ */
+const DEFAULT_BUILD_MODEL: LLMModel = 'claude-sonnet-4-6'
+function resolveBuildModel(): LLMModel {
+    const env = process.env.ASSISTANT_BUILD_MODEL
+    const wanted: LLMModel = env && BUILD_MODELS.has(env) ? (env as LLMModel) : DEFAULT_BUILD_MODEL
+    // Claude exige a key; sem ela, cai pro modelo padrão do assistente (mini).
+    if (wanted.startsWith('claude') && !process.env.ANTHROPIC_API_KEY) return ASSISTANT_MODEL
+    return wanted
+}
+
+/** Provider correto pelo prefixo do modelo: claude → Anthropic; resto → OpenAI. */
+function providerFor(model: LLMModel) {
+    return model.startsWith('claude') ? anthropic(model) : openai(model)
+}
 
 // Detecta conversa de CRIAÇÃO de programa (input + histórico recente). Num turno de
 // build, o LLM emite UMA chamada grande (kinevo_create_program_template com o programa
@@ -468,11 +499,13 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         // Turnos de CONSTRUÇÃO de programa: mais tokens de saída (a chamada
         // create_program_template carrega o programa inteiro e truncaria em 1500) e um
         // teto de passos maior (ler contexto + listar exercícios + criar). `buildTurn`
-        // já foi calculado no passo 1 (afeta o subset de tools).
+        // já foi calculado no passo 1 (afeta o subset de tools). O modelo do build é
+        // configurável (qualidade-crítico) — ver resolveBuildModel.
+        const turnModel: LLMModel = buildTurn ? resolveBuildModel() : ASSISTANT_MODEL
 
         // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para.
         const result = await generateText({
-            model: openai(ASSISTANT_MODEL),
+            model: providerFor(turnModel),
             system,
             messages,
             maxTokens: buildTurn ? 8000 : 1500,
@@ -585,7 +618,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             studentCount: studentCountFromArgs(e.args),
         }))
         const credits = computeTurnCredits(turnCalls)
-        const costMicros = turnCostMicros(ASSISTANT_MODEL, {
+        const costMicros = turnCostMicros(turnModel, {
             inputTokens: result.usage.promptTokens,
             outputTokens: result.usage.completionTokens,
         })
@@ -596,7 +629,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             surface,
             ...(idx === 0
                 ? {
-                      model: ASSISTANT_MODEL,
+                      model: turnModel,
                       inputTokens: result.usage.promptTokens,
                       outputTokens: result.usage.completionTokens,
                       costMicros,
@@ -608,7 +641,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 actionClass: 'query',
                 credits: 1,
                 surface,
-                model: ASSISTANT_MODEL,
+                model: turnModel,
                 inputTokens: result.usage.promptTokens,
                 outputTokens: result.usage.completionTokens,
                 costMicros,
@@ -638,7 +671,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 surface,
                 route: opts.route,
                 promptVersion: PROMPT_VERSION,
-                model: ASSISTANT_MODEL,
+                model: turnModel,
                 input,
                 output: finalText,
                 tools: executed.map((e) => ({
@@ -712,16 +745,38 @@ const MCP_HITL_INSTRUCTIONS = `
   3) Busque exercícios REAIS com kinevo_list_exercises (priorize os grupos que vai usar). Use SOMENTE
      exercise_id vindos do catálogo — nunca invente IDs. Veja kinevo_list_training_methods se for usar
      métodos avançados (drop-set, cluster, pirâmide…).
-  4) HONRE o pedido acima de tudo: o programa é DESENHADO em torno do que foi pedido, não um treino
-     genérico. Você decide livremente divisão, exercícios, séries, reps, descanso, métodos e supersets.
-     ÊNFASE = VOLUME claramente MAIOR. Use estes ALVOS de séries por SEMANA por grupo:
-       • grupo ENFATIZADO: 14–20 séries (3–4 exercícios distintos ao longo da semana);
-       • grupo principal não enfatizado: 9–12 séries (2 exercícios);
-       • grupo de manutenção/pequeno: 6–9 séries (1–2 exercícios).
-     Se o treinador enfatizou DOIS grupos (ex.: ombro E posterior de coxa), AMBOS entram na faixa
-     enfatizada e AMBOS devem LIDERAR — nunca deixe um dos enfatizados no mesmo nível dos de manutenção.
-     Antes de finalizar, some as séries/semana de CADA grupo enfatizado e confirme que superam os demais
-     com folga; se não, adicione exercícios/séries ao(s) grupo(s) enfatizado(s). Não há orçamento fixo.
+  4) PROJETE COMO UM PROFISSIONAL — o programa precisa parecer feito por um treinador experiente, NÃO
+     "N dias do grupo enfatizado". As regras abaixo são RESTRIÇÕES, não sugestões:
+     a) SPLIT DE VERDADE pela frequência. A frequência define um split que treina o CORPO TODO ao longo da
+        semana; a ÊNFASE entra como MAIS FREQUÊNCIA e um pouco mais de volume nos grupos pedidos — NUNCA
+        como "todo dia é o grupo enfatizado". Cada sessão tem FOCO DISTINTO e nome que reflete o foco real;
+        JAMAIS repita o mesmo nome/estrutura em todas as sessões. Modelos por frequência:
+          • 3x → Full-body A/B/C, ou Push/Pull/Legs.
+          • 4x → Upper/Lower/Upper/Lower.
+          • 5x → Push/Pull/Legs + Upper/Lower (ou um split que dê 2–3 estímulos aos grupos enfatizados e
+            1–2 aos demais). Ex.: ênfase glúteo+costas, 5x → "Inferior — Glúteo" / "Superior — Costas/Bíceps" /
+            "Inferior — Quadríceps" / "Empurrar — Peito/Ombro/Tríceps" / "Posterior — Glúteo+Costas".
+     b) COMPOSTOS PRIMEIRO. Cada sessão começa por 1–2 exercícios COMPOSTOS multiarticulares. Use os
+        exercícios marcados is_primary_movement=true (vêm PRIMEIRO na lista do kinevo_list_exercises —
+        agachamento, leg press, hip thrust, levantamento terra/stiff, remada, puxada/barra fixa, supino,
+        desenvolvimento) como o PRINCIPAL no início da sessão, e os acessórios/isoladores DEPOIS, pra
+        complementar o volume. NUNCA use um isolador (abdução de quadril, crucifixo invertido, elevação
+        lateral, rosca, panturrilha, "avião", drills de mobilidade) como exercício PRINCIPAL de uma sessão,
+        e NÃO repita o mesmo exercício/variação em várias sessões.
+     c) COBERTURA. Mesmo com ênfase, cubra os padrões de movimento na semana: agachar (joelho), dobrar de
+        quadril (hinge), empurrar (horizontal e vertical) e puxar (horizontal e vertical). NÃO zere peito,
+        quadríceps, ombro nem posterior de coxa.
+     d) VOLUME COM TETO — séries por SEMANA por grupo (NÃO ULTRAPASSE):
+          • grupo ENFATIZADO: 14–18 séries (excepcionalmente 20). JAMAIS acima de 20.
+          • grupo principal: 10–14 séries.
+          • manutenção/pequeno: 6–10 séries.
+        Antes de criar, SOME mentalmente o volume semanal de cada grupo e confira: nenhum acima de ~20,
+        nenhum principal zerado. 30–40 séries num grupo é ERRO GRAVE — corte. Ênfase é treinar o grupo MAIS
+        vezes, não empilhar séries sem limite.
+     e) FUNÇÃO. Defina exercise_function em TODO item: 'main' nos compostos principais, 'accessory' nos
+        isoladores/acessórios. Não deixe os exercícios sem função.
+     f) Coerência: 5–7 exercícios por sessão; reps de hipertrofia (6–10 nos compostos, 10–15 nos acessórios);
+        descanso 90–180s nos compostos pesados, 45–90s nos acessórios.
   5) Crie o programa INTEIRO em UMA ÚNICA chamada transacional (todas as sessões, exercícios, supersets e
      set_scheme de uma vez). NÃO use kinevo_create_program nem adicione sessões/exercícios um a um (isso
      falha e não é transacional). Escolha o destino pelo contexto:
@@ -729,9 +784,9 @@ const MCP_HITL_INSTRUCTIONS = `
          (passando o student_id do aluno): o programa nasce como RASCUNHO no PERFIL DO ALUNO, invisível pra
          ele, pronto pra revisão. Este é o caminho PADRÃO sempre que há um aluno.
        • SEM aluno específico (pedido de "template reutilizável" pra Biblioteca) → kinevo_create_program_template.
-     Faça um programa COMPLETO: para 4x/semana use 4 SESSÕES DISTINTAS (não 2 repetidas); 3x → 3 sessões;
-     5x → 5; etc. Cada sessão com 5 a 7 exercícios — NUNCA enxuto. Distribua os grupos enfatizados ao
-     longo das sessões até atingir os alvos de volume. Defina scheduled_days de cada sessão (0=dom … 6=sáb).
+     Monte o SPLIT definido no passo 4 (uma sessão por dia de treino, focos DISTINTOS, compostos primeiro,
+     5–7 exercícios cada), com a frequência pedida. Defina scheduled_days de cada sessão (0=dom … 6=sáb),
+     distribuindo os dias de forma coerente (evite treinar o mesmo grupo em dias consecutivos sem motivo).
   6) NÃO ative nem atribua automaticamente (kinevo_assign_program coloca o treino ATIVO na hora, sem revisão;
      o rascunho NÃO é ativo). Ao terminar, diga ao treinador em 1–2 frases que você montou o programa — como
      RASCUNHO no perfil do aluno (caminho com aluno) ou na Biblioteca de Programas (template) — com um resumo

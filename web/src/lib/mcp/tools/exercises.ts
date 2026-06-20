@@ -58,7 +58,7 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
 
   server.tool(
     'kinevo_list_exercises',
-    "Search the exercise catalog. Returns exercises available to this trainer (system exercises + trainer's custom exercises). Filter by muscle group, equipment, or name.",
+    "Search the exercise catalog. Returns exercises available to this trainer (system exercises + trainer's custom exercises). Filter by muscle group, equipment, or name. Results are ordered with PRIMARY/COMPOUND movements FIRST (is_primary_movement=true, session_position='first' — e.g. squat, deadlift, row, pulldown, bench, press): use those as the MAIN lift at the start of each session, and the accessories/isolation that follow to add volume. Prefer compound staples over obscure isolation/mobility variants.",
     {
       search: z.string().optional().describe('Search by exercise name (partial match)'),
       muscle_group: z.string().optional().describe("Filter by muscle group name (e.g., 'Peitoral', 'Quadriceps', 'Biceps')"),
@@ -97,7 +97,7 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
       let query = supabaseAdmin
         .from('exercises')
         .select(
-          'id, name, equipment, difficulty_level, movement_pattern, owner_id, exercise_muscle_groups(muscle_groups(name))',
+          'id, name, equipment, difficulty_level, movement_pattern, is_primary_movement, session_position, owner_id, exercise_muscle_groups(muscle_groups(name))',
           { count: 'exact' }
         )
         .eq('is_archived', false)
@@ -113,7 +113,11 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
         query = query.in('id', muscleFilterIds)
       }
 
+      // Ordena COMPOSTOS/PRIMÁRIOS primeiro (is_primary_movement). Antes era
+      // alfabético, o que jogava acessórios/mobilidade (Abdução, Avião, Andar
+      // Calcanhar…) pro topo e o LLM os escolhia como principais — prescrição ruim.
       query = query
+        .order('is_primary_movement', { ascending: false })
         .order('name')
         .range(offset, offset + limit - 1)
 
@@ -134,6 +138,10 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
           muscle_groups: muscleGroups,
           difficulty_level: e.difficulty_level,
           movement_pattern: e.movement_pattern,
+          // Sinal-chave p/ prescrição: compostos/principais (use como MAIN, no início
+          // da sessão) vs acessórios. Os primários vêm primeiro na lista.
+          is_primary_movement: e.is_primary_movement,
+          session_position: e.session_position,
           is_custom: e.owner_id === trainerId,
         }
       })
