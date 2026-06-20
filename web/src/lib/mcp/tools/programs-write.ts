@@ -445,6 +445,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
       const result = data as { assigned_program_id: string; workout_count: number; item_count: number }
       return mcpSuccess({
         program: { id: result.assigned_program_id, name, type: 'assigned_draft', status: 'draft' },
+        student_id, // a UI do chat usa p/ montar o link de revisão do rascunho
         workout_count: result.workout_count,
         item_count: result.item_count,
         message: `Rascunho "${name}" criado no perfil do aluno com ${result.workout_count} sessões e ${result.item_count} itens. Ele NÃO está ativo — o treinador revisa no perfil do aluno e ativa quando aprovar (ou use kinevo_assign_program com action 'activate_draft').`,

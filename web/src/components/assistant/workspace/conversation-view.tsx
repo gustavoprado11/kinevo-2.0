@@ -71,6 +71,25 @@ function suggestionsFor(active: ConversationListItem): string[] {
     return ['Alunos sem treino ativo', 'Quem está estagnado?', 'Resumo de adesão da semana']
 }
 
+/**
+ * Extrai o payload de um resultado de tool MCP. As tools do servidor MCP
+ * devolvem `{ content: [{ type:'text', text: '<json>' }] }` (mcpSuccess), então
+ * o objeto útil (program, student_id, message) está no JSON do primeiro content.
+ * Defensivo: se já vier desempacotado (ex.: action injetada), usa direto.
+ */
+function parseMcpPayload(result: unknown): Record<string, unknown> | null {
+    if (!result || typeof result !== 'object') return null
+    const content = (result as { content?: Array<{ text?: string }> }).content
+    if (Array.isArray(content) && typeof content[0]?.text === 'string') {
+        try {
+            return JSON.parse(content[0].text) as Record<string, unknown>
+        } catch {
+            return null
+        }
+    }
+    return result as Record<string, unknown>
+}
+
 export function ConversationView({
     active, summary, messages, loadingMessages, sending, liveSteps, input, students, banner,
     onDismissBanner, onInput, onSend, onSendText, onBackHome, onRename, onConfirmResolved,
@@ -297,6 +316,37 @@ function PartView({ part, interactive, onConfirmResolved, onSendText }: {
                     </Link>
                 </div>
             )
+        }
+        // Rascunho-do-aluno criado pelo assistente (via MCP): card acionável →
+        // builder/revisão do rascunho. O id do programa + aluno vêm no payload
+        // (resultado MCP empacotado em content[].text — ver parseMcpPayload).
+        if (part.toolName === 'kinevo_create_student_draft_program') {
+            const payload = parseMcpPayload(part.result)
+            const prog = payload?.program as { id?: string; name?: string } | undefined
+            const studentId = typeof payload?.student_id === 'string' ? payload.student_id : undefined
+            if (!payload?.error && prog?.id && studentId) {
+                const editUrl = `/students/${studentId}/program/${prog.id}/edit`
+                return (
+                    <div className="mt-3 max-w-[440px] rounded-2xl border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
+                                <Sparkles className="h-4 w-4 text-white" strokeWidth={1.8} />
+                            </span>
+                            <div className="min-w-0">
+                                <b className="block truncate text-[13.5px] font-semibold text-[#1D1D1F] dark:text-foreground">{prog.name || 'Rascunho de programa'}</b>
+                                <span className="block text-[12px] text-[#86868B] dark:text-muted-foreground">Rascunho no perfil do aluno — ainda não ativado.</span>
+                            </div>
+                        </div>
+                        <p className="mt-2.5 text-[12.5px] leading-relaxed text-[#6E6E73] dark:text-muted-foreground/80">
+                            Abra o builder para revisar os treinos e exercícios, ajustar o que quiser e <b className="font-semibold text-[#1D1D1F] dark:text-foreground">ativar</b> — só então ele aparece no app do aluno.
+                        </p>
+                        <Link href={editUrl}
+                            className="mt-3 inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07]">
+                            Revisar rascunho <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
+                        </Link>
+                    </div>
+                )
+            }
         }
         return (
             <div className={`mt-3 inline-flex items-center gap-2 rounded-[10px] px-3 py-1.5 text-[12.5px] font-medium ${failed ? 'bg-[#FEF2F2] dark:bg-rose-500/10 text-[#BE123C] dark:text-rose-300' : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-muted-foreground/80'}`}>
