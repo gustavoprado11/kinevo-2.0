@@ -6,6 +6,7 @@ import { FloatingExercisePlayer } from '@/components/exercises/floating-exercise
 import { ExerciseFormModal } from '@/components/exercises/exercise-form-modal'
 
 import type { Exercise } from '@/types/exercise'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 // "Barra Fixa Gráviton (Pegada Pronada)" → ["Barra Fixa Gráviton", "Pegada Pronada"]
 // "Remada Unilateral Halteres - Pegada Neutra" → ["Remada Unilateral Halteres", "Pegada Neutra"]
@@ -240,7 +241,10 @@ export function ExerciseLibraryPanel({
 
             const matchesOwner = !showOnlyMine || exercise.owner_id === trainerId
 
-            const matchesSearch = exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
+            // Busca insensível a acento/caixa e robusta a normalização Unicode
+            // (ç precomposto U+00E7 vs decomposto c+◌̧). Antes era
+            // `.toLowerCase().includes()`, que falhava ao buscar "rotaç" → "rotação".
+            const matchesName = matchesSearch(exercise.name, searchQuery)
 
             const exerciseMuscles = exercise.muscle_groups && exercise.muscle_groups.length > 0
                 ? exercise.muscle_groups.map(g => g.name)
@@ -249,7 +253,7 @@ export function ExerciseLibraryPanel({
             const matchesMuscle = !selectedGroup ||
                 exerciseMuscles.includes(selectedGroup)
 
-            return matchesOwner && matchesSearch && matchesMuscle
+            return matchesOwner && matchesName && matchesMuscle
         })
     }, [exercises, showOnlyMine, trainerId, searchQuery, selectedGroup, overrideSystemIds])
 

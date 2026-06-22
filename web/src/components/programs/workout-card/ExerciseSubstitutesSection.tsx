@@ -5,6 +5,7 @@ import { Check, Repeat, Search } from 'lucide-react'
 
 import type { WorkoutItem } from '../program-builder-client'
 import type { Exercise } from '@/types/exercise'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 interface ExerciseSubstitutesSectionProps {
     item: WorkoutItem
@@ -38,11 +39,11 @@ export const ExerciseSubstitutesSection = memo(function ExerciseSubstitutesSecti
             .filter((exercise) => exercise.id !== currentExerciseId)
             .filter((exercise) => {
                 if (!normalizedQuery) return true
-                const muscleNames = (exercise.muscle_groups || []).map((group) => group.name.toLowerCase()).join(' ')
+                // insensível a acento/caixa e a normalização Unicode (ç) — ver search-text.ts
                 return (
-                    exercise.name.toLowerCase().includes(normalizedQuery) ||
-                    (exercise.equipment || '').toLowerCase().includes(normalizedQuery) ||
-                    muscleNames.includes(normalizedQuery)
+                    matchesSearch(exercise.name, query) ||
+                    matchesSearch(exercise.equipment, query) ||
+                    (exercise.muscle_groups || []).some((group) => matchesSearch(group.name, query))
                 )
             })
             .sort((a, b) => {
@@ -58,7 +59,7 @@ export const ExerciseSubstitutesSection = memo(function ExerciseSubstitutesSecti
             })
 
         return sortedCandidates.slice(0, normalizedQuery ? 25 : 12)
-    }, [currentExerciseId, currentGroups, exercises, normalizedQuery, selectedSet])
+    }, [currentExerciseId, currentGroups, exercises, query, normalizedQuery, selectedSet])
 
     const toggleSubstitute = (exerciseId: string) => {
         const next = selectedSet.has(exerciseId)

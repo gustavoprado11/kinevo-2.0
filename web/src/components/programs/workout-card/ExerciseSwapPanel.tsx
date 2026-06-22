@@ -5,6 +5,7 @@ import { PlayCircle, Search, X } from 'lucide-react'
 
 import type { WorkoutItem } from '../program-builder-client'
 import type { Exercise } from '@/types/exercise'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 interface ExerciseSwapPanelProps {
     item: WorkoutItem
@@ -34,14 +35,14 @@ export const ExerciseSwapPanel = memo(function ExerciseSwapPanel({
 
     const swapCandidates = useMemo(() => {
         const currentGroups = new Set((item.exercise?.muscle_groups || []).map(g => g.name.toLowerCase()))
-        const normalizedQuery = query.toLowerCase()
 
         return exercises
             .filter(ex => ex.id !== item.exercise_id)
             .filter(ex => {
                 if (!query.trim()) return true
-                return ex.name.toLowerCase().includes(normalizedQuery) ||
-                    (ex.muscle_groups || []).some(g => g.name.toLowerCase().includes(normalizedQuery))
+                // insensível a acento/caixa e a normalização Unicode (ç) — ver search-text.ts
+                return matchesSearch(ex.name, query) ||
+                    (ex.muscle_groups || []).some(g => matchesSearch(g.name, query))
             })
             .sort((a, b) => {
                 const aOverlap = (a.muscle_groups || []).some(g => currentGroups.has(g.name.toLowerCase())) ? 1 : 0
