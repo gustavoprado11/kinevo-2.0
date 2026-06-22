@@ -115,10 +115,10 @@ export function TrainerVideoModal({
                     fileToUpload = converted
                     setTranscodeStatus(null)
                 } else {
-                    // Conversion failed — upload original with warning
-                    console.warn('[TrainerVideoModal] Client-side conversion failed, uploading original')
+                    // Conversão falhou: NÃO sobe o original — ele ficaria "som sem
+                    // imagem" pro aluno (ex.: H.264 10-bit). Bloqueia com aviso.
                     setTranscodeStatus(null)
-                    needsConversion = false
+                    throw new Error('Não foi possível processar esse vídeo no navegador. Tente outro arquivo ou exporte como MP4 (H.264, 8-bit).')
                 }
             } else {
                 setTranscodeStatus(null)

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { checkVideoCompat } from '@/lib/video-codec-server'
 
 export type TrainerVideoResult = {
     success: boolean
@@ -35,6 +36,21 @@ export async function saveTrainerVideoMetadata(params: {
 
         if (!trainer) {
             return { success: false, message: 'Treinador não encontrado.' }
+        }
+
+        // Backstop server-side: rejeita upload com codec que toca "som sem
+        // imagem" no aluno (H.264 10-bit / HEVC), mesmo se a conversão no
+        // navegador falhou ou foi contornada. Roda ANTES de tocar no registro
+        // existente, pra não apagar um vídeo bom ao rejeitar o novo.
+        if (params.videoType === 'upload' && params.storagePath) {
+            const compat = await checkVideoCompat(params.videoUrl)
+            if (!compat.compatible) {
+                await supabase.storage.from('trainer-videos').remove([params.storagePath])
+                return {
+                    success: false,
+                    message: `Esse vídeo (${compat.reason}) não toca em todos os dispositivos dos alunos. Envie um MP4 H.264 (8-bit) — ou regrave/exporte o vídeo e tente de novo.`,
+                }
+            }
         }
 
         // If replacing an upload, delete old file from storage

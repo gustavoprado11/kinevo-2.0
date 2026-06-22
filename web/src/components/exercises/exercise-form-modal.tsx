@@ -256,7 +256,8 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                 if (await needsCompatTranscode(trainerVideoFile)) {
                     const converted = await convertVideoToWebM(trainerVideoFile, (p) => setVideoProgress(10 + Math.round(p * 0.4)))
                     if (converted) fileToUpload = converted
-                    else console.warn('[ExerciseFormModal] Conversão falhou, subindo original')
+                    // Conversão falhou: NÃO sobe o original (ficaria "som sem imagem").
+                    else throw new Error('Não foi possível processar esse vídeo no navegador. Tente outro arquivo ou exporte como MP4 (H.264, 8-bit).')
                 }
 
                 const ext = fileToUpload.name.split('.').pop()?.toLowerCase() || 'mp4'
