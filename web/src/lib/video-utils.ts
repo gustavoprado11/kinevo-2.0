@@ -21,6 +21,51 @@ export function isLikelyHEVC(file: File): boolean {
 }
 
 /**
+ * Lê o AVCProfileIndication (profile_idc) do box `avcC` de um MP4 H.264.
+ *
+ * Por que ler os bytes em vez de confiar no <video>? Um H.264 **10-bit**
+ * (High 10) carrega metadata normalmente — `canBrowserPlayVideo` retorna
+ * `true` —, mas o browser/celular não decodifica os frames: toca só o áudio
+ * ("som sem imagem"). O único sinal client-side confiável é o profile no
+ * próprio arquivo.
+ *
+ * Mapa: 66=Baseline, 77=Main, 100=High (8-bit), **110=High 10**,
+ * **122=High 4:2:2**, **244=High 4:4:4** (estes três = 10/12-bit, quebrados).
+ *
+ * @returns o profile_idc, ou null se não achar um box avcC (não-MP4/H.264).
+ */
+export async function getH264ProfileIdc(file: File): Promise<number | null> {
+    try {
+        const buf = new Uint8Array(await file.arrayBuffer())
+        // FourCC 'avcC' = 0x61 0x76 0x63 0x43. O payload começa logo após o
+        // tipo: [configurationVersion:1][AVCProfileIndication:1]...
+        for (let i = 4; i + 6 < buf.length; i++) {
+            if (buf[i] === 0x61 && buf[i + 1] === 0x76 && buf[i + 2] === 0x63 && buf[i + 3] === 0x43) {
+                return buf[i + 5]
+            }
+        }
+        return null
+    } catch {
+        return null
+    }
+}
+
+/**
+ * Decide se um vídeo precisa ser convertido antes do upload por
+ * incompatibilidade de decodificação no browser/app dos alunos.
+ *
+ * Cobre as duas causas de "som sem imagem":
+ *  1) H.264 10/12-bit (High 10/4:2:2/4:4:4) — detecção determinística pelo avcC;
+ *  2) HEVC `.mov` e quaisquer formatos que o browser nem carrega — via
+ *     `canBrowserPlayVideo`.
+ */
+export async function needsCompatTranscode(file: File): Promise<boolean> {
+    const profile = await getH264ProfileIdc(file)
+    if (profile === 110 || profile === 122 || profile === 244) return true
+    return !(await canBrowserPlayVideo(file))
+}
+
+/**
  * Tests if the current browser can play a video file by loading it
  * in a hidden <video> element and checking if metadata loads.
  *

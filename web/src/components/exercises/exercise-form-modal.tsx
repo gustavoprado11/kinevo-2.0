@@ -10,6 +10,7 @@ import { X, Loader2, Plus, Check, Upload, Link as LinkIcon, Trash2 } from 'lucid
 import type { TrainerVideoData } from './trainer-video-modal'
 import { saveTrainerVideoMetadata, deleteTrainerVideo } from '@/actions/exercises/manage-trainer-video'
 import { revalidateMyExerciseLibrary } from '@/actions/exercises/revalidate-library'
+import { needsCompatTranscode, convertVideoToWebM } from '@/lib/video-utils'
 
 const ACCEPTED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
 const ACCEPTED_VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm']
@@ -249,15 +250,24 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                 const { data: { user } } = await supabase.auth.getUser()
                 if (!user) throw new Error('Sessão inválida')
 
-                const ext = trainerVideoFile.name.split('.').pop()?.toLowerCase() || 'mp4'
+                // Converte antes do upload se o browser/app não decodifica o vídeo
+                // (HEVC .mov ou H.264 10-bit .mp4) — senão sobe "som sem imagem".
+                let fileToUpload: File = trainerVideoFile
+                if (await needsCompatTranscode(trainerVideoFile)) {
+                    const converted = await convertVideoToWebM(trainerVideoFile, (p) => setVideoProgress(10 + Math.round(p * 0.4)))
+                    if (converted) fileToUpload = converted
+                    else console.warn('[ExerciseFormModal] Conversão falhou, subindo original')
+                }
+
+                const ext = fileToUpload.name.split('.').pop()?.toLowerCase() || 'mp4'
                 const storagePath = `${user.id}/${exerciseId}/${Date.now()}_video.${ext}`
                 // Force video/mp4 for .mov files so browsers can play them (iPhone H.264 .mov is MP4-compatible)
-                const uploadContentType = trainerVideoFile.type === 'video/quicktime' ? 'video/mp4' : trainerVideoFile.type
+                const uploadContentType = fileToUpload.type === 'video/quicktime' ? 'video/mp4' : fileToUpload.type
 
-                setVideoProgress(30)
+                setVideoProgress(60)
                 const { error: uploadError } = await supabase.storage
                     .from('trainer-videos')
-                    .upload(storagePath, trainerVideoFile, { upsert: true, contentType: uploadContentType })
+                    .upload(storagePath, fileToUpload, { upsert: true, contentType: uploadContentType })
                 if (uploadError) throw uploadError
 
                 setVideoProgress(70)
@@ -269,7 +279,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                     videoUrl: publicData.publicUrl,
                     storagePath,
                     originalFilename: trainerVideoFile.name,
-                    fileSizeBytes: trainerVideoFile.size,
+                    fileSizeBytes: fileToUpload.size,
                 })
                 setVideoProgress(100)
                 if (!result.success) throw new Error(result.message)

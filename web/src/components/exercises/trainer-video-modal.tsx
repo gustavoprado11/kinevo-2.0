@@ -5,7 +5,7 @@ import { X, Upload, Link, Trash2, Loader2, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { saveTrainerVideoMetadata, deleteTrainerVideo } from '@/actions/exercises/manage-trainer-video'
 import { VideoPlayer } from './video-player'
-import { isLikelyHEVC, canBrowserPlayVideo, convertVideoToWebM } from '@/lib/video-utils'
+import { needsCompatTranscode, convertVideoToWebM } from '@/lib/video-utils'
 
 const ACCEPTED_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
 const ACCEPTED_EXTENSIONS = ['.mp4', '.mov', '.webm']
@@ -92,34 +92,36 @@ export function TrainerVideoModal({
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Sessão inválida')
 
-            // Determine which file to upload — convert HEVC if needed
+            // Determine which file to upload — convert if the browser/app can't
+            // decode it. Cobre HEVC .mov E H.264 10-bit (.mp4), que antes passava
+            // direto (não é HEVC) e subia quebrado: "som sem imagem".
             let fileToUpload = selectedFile
             let needsConversion = false
 
-            if (isLikelyHEVC(selectedFile)) {
-                setTranscodeStatus('Verificando compatibilidade...')
-                const canPlay = await canBrowserPlayVideo(selectedFile)
+            setTranscodeStatus('Verificando compatibilidade...')
+            const needsTranscode = await needsCompatTranscode(selectedFile)
 
-                if (!canPlay) {
-                    needsConversion = true
-                    setTranscodeStatus('Convertendo vídeo para formato compatível...')
-                    setUploadProgress(10)
+            if (needsTranscode) {
+                needsConversion = true
+                setTranscodeStatus('Convertendo vídeo para formato compatível...')
+                setUploadProgress(10)
 
-                    const converted = await convertVideoToWebM(selectedFile, (percent) => {
-                        // Map conversion progress to 10-60% of total progress
-                        setUploadProgress(10 + Math.round(percent * 0.5))
-                    })
+                const converted = await convertVideoToWebM(selectedFile, (percent) => {
+                    // Map conversion progress to 10-60% of total progress
+                    setUploadProgress(10 + Math.round(percent * 0.5))
+                })
 
-                    if (converted) {
-                        fileToUpload = converted
-                        setTranscodeStatus(null)
-                    } else {
-                        // Conversion failed — upload original with warning
-                        console.warn('[TrainerVideoModal] Client-side conversion failed, uploading original')
-                        setTranscodeStatus(null)
-                        needsConversion = false
-                    }
+                if (converted) {
+                    fileToUpload = converted
+                    setTranscodeStatus(null)
+                } else {
+                    // Conversion failed — upload original with warning
+                    console.warn('[TrainerVideoModal] Client-side conversion failed, uploading original')
+                    setTranscodeStatus(null)
+                    needsConversion = false
                 }
+            } else {
+                setTranscodeStatus(null)
             }
 
             setUploadProgress(needsConversion ? 65 : 30)
