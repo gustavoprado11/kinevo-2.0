@@ -14,6 +14,13 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
 import { executeMcpToolByName } from '@/lib/assistant/mcp-bridge'
 import {
+    claimActionIdempotency,
+    finishActionIdempotency,
+    releaseActionIdempotency,
+    type IdempotencyClaim,
+} from '@/lib/assistant/idempotency'
+import { redactSensitive } from '@/lib/assistant/redact'
+import {
     CONFIRM_TOOLS,
     actionClassForTool,
     creditWeightForCall,
@@ -39,6 +46,22 @@ const VALID_SURFACES: ReadonlySet<string> = new Set<AiSurface>([
     'mobile',
     'voice',
 ])
+
+/**
+ * CONFIRM_TOOLS que expõem um param `confirm` próprio (gate de preview no schema da
+ * tool). Quando o humano confirma pelo card, ESTE endpoint já é a aprovação humana →
+ * forçamos `confirm:true`; sem isso a tool só devolve o preview e NÃO executa
+ * (auditoria 2026-06-22, S10).
+ */
+const TOOLS_WITH_CONFIRM_PARAM: ReadonlySet<string> = new Set<string>([
+    'kinevo_create_contract',
+    'kinevo_mark_payment_as_paid',
+    'kinevo_cancel_contract',
+    'kinevo_convert_lead',
+])
+
+/** UUID v4-ish — valida a idempotency_key recebida do card (C6). */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function studentCountFromArgs(args: unknown): number {
     if (args && typeof args === 'object' && 'student_ids' in args) {
@@ -71,6 +94,10 @@ export async function POST(req: NextRequest) {
             typeof body?.surface === 'string' && VALID_SURFACES.has(body.surface)
                 ? (body.surface as AiSurface)
                 : undefined
+        const idemKey: string | null =
+            typeof body?.idempotencyKey === 'string' && UUID_RE.test(body.idempotencyKey)
+                ? body.idempotencyKey
+                : null
 
         if (typeof toolName !== 'string' || !CONFIRM_TOOLS.has(toolName)) {
             // Este endpoint só executa as tools de HITL (confirmáveis).
@@ -118,6 +145,29 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // 4a. Idempotência (C6): reserva a key do card ANTES de validar/executar. Um 2º
+        //     clique/retry com a mesma key NÃO re-executa: replay devolve o resultado
+        //     salvo (sem re-cobrar); 'processing' = outra requisição executando agora.
+        if (idemKey) {
+            // Best-effort: se a idempotência estiver indisponível (ex.: migração ainda
+            // não aplicada), NÃO trava a ação — só segue sem dedup desta vez.
+            let claim: IdempotencyClaim | null = null
+            try {
+                claim = await claimActionIdempotency(supabaseAdmin, idemKey, trainer.id, toolName)
+            } catch (e) {
+                console.error('[execute-tool] idempotency claim falhou (segue sem dedup):', e)
+            }
+            if (claim?.outcome === 'replay') {
+                return NextResponse.json({ success: true, result: claim.result, idempotent: true })
+            }
+            if (claim?.outcome === 'processing') {
+                return NextResponse.json(
+                    { error: 'processing', message: 'Esta ação já está sendo processada. Aguarde um instante.' },
+                    { status: 409 },
+                )
+            }
+        }
+
         // 4b. Validação semântica (G5) — defense-in-depth. Mesmo após o card, revalida
         //     posse/estado do alvo; bloqueia se inválido (alvo errado, já cancelado...).
         const validation = await validateConfirmArgs(
@@ -127,14 +177,31 @@ export async function POST(req: NextRequest) {
             (args ?? {}) as Record<string, unknown>,
         )
         if (!validation.ok) {
+            // Libera a reserva — a ação não foi executada, um retry legítimo pode rodar.
+            if (idemKey) await releaseActionIdempotency(supabaseAdmin, idemKey, trainer.id)
             return NextResponse.json(
                 { error: 'validation_failed', message: validation.reason },
                 { status: 422 },
             )
         }
 
-        // 5. Executar a tool real por nome (ponte in-memory, tenant-escopada por trainerId)
-        const result = await executeMcpToolByName(trainer.id, toolName, args)
+        // 5. Executar a tool real por nome (ponte in-memory, tenant-escopada por trainerId).
+        //    Tools com gate `confirm` próprio: o card JÁ é a aprovação humana → forçar
+        //    confirm:true (senão a tool devolve só o preview e não executa — S10).
+        const execArgs =
+            TOOLS_WITH_CONFIRM_PARAM.has(toolName) && args && typeof args === 'object'
+                ? { ...(args as Record<string, unknown>), confirm: true }
+                : args
+        let result: unknown
+        try {
+            result = await executeMcpToolByName(trainer.id, toolName, execArgs)
+        } catch (execErr) {
+            // Falha na execução: libera a reserva p/ permitir retry com a mesma key.
+            if (idemKey) await releaseActionIdempotency(supabaseAdmin, idemKey, trainer.id)
+            throw execErr
+        }
+        // Conclui a idempotência com o resultado REDIGIDO (C6 + S6: nunca grava senha).
+        if (idemKey) await finishActionIdempotency(supabaseAdmin, idemKey, trainer.id, redactSensitive(result))
 
         // 5b. Trace de auditoria da ação sensível confirmada (best-effort).
         const argStudentId =
@@ -165,6 +232,7 @@ export async function POST(req: NextRequest) {
             await recordAiUsage(supabaseAdmin, {
                 trainerId: trainer.id,
                 periodType: quota.period ?? 'month',
+                creditLimit: quota.limit, // clamp atômico no teto do plano (C1)
                 credits,
                 costMicros: 0,
                 events: [{ actionClass, credits, surface }],

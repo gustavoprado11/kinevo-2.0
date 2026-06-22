@@ -55,12 +55,37 @@ function clampText(s: string | undefined): string {
     return s.length > MAX_TEXT ? s.slice(0, MAX_TEXT) : s
 }
 
-/** Deriva `ok` de um resultado de tool ({error} ou {success:false} = falha). */
+/**
+ * Deriva `ok` de um resultado de tool. Cobre os dois envelopes que circulam:
+ *   - MCP (CallToolResult): `mcpError()` seta `isError:true` e empacota
+ *     `{"error":"…"}` no content textual — esta é a fonte da verdade do caminho MCP;
+ *   - tools próprias do chat streaming: objeto com `{error}` / `{success:false}`.
+ * Defensivo: se o transporte não preservar `isError`, ainda detecta o payload de
+ * erro do `mcpError` varrendo o content. Errar p/ "falhou" é o lado seguro do
+ * billing (auditoria 2026-06-22, C2: tool que falha NÃO pode ser cobrada).
+ */
 export function toolResultOk(result: unknown): boolean {
-    if (result && typeof result === 'object') {
-        const r = result as { error?: unknown; success?: unknown }
-        if (r.error !== undefined && r.error !== null) return false
-        if (r.success === false) return false
+    if (!result || typeof result !== 'object') return true
+    const r = result as {
+        error?: unknown
+        success?: unknown
+        isError?: unknown
+        content?: unknown
+    }
+    if (r.isError === true) return false
+    if (r.error !== undefined && r.error !== null) return false
+    if (r.success === false) return false
+    if (Array.isArray(r.content)) {
+        for (const part of r.content) {
+            const text = (part as { text?: unknown })?.text
+            if (typeof text !== 'string') continue
+            try {
+                const parsed = JSON.parse(text) as { error?: unknown }
+                if (typeof parsed?.error === 'string' && parsed.error.length > 0) return false
+            } catch {
+                // content não-JSON: ignora
+            }
+        }
     }
     return true
 }

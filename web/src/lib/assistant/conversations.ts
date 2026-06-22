@@ -186,21 +186,54 @@ export async function appendMessage(
         content: string
         parts?: AssistantMessagePart[]
         creditsCost?: number
+        /** Idempotência do turno (C4) — só na mensagem do usuário. */
+        clientMessageId?: string
     },
 ): Promise<AssistantMessage> {
+    const row: Record<string, unknown> = {
+        conversation_id: args.conversationId,
+        trainer_id: args.trainerId,
+        role: args.role,
+        content: args.content,
+        parts: args.parts ?? [],
+        credits_cost: args.creditsCost ?? 0,
+    }
+    if (args.clientMessageId) row.client_message_id = args.clientMessageId
+
     const { data, error } = await sb
         .from('ai_messages')
-        .insert({
-            conversation_id: args.conversationId,
-            trainer_id: args.trainerId,
-            role: args.role,
-            content: args.content,
-            parts: args.parts ?? [],
-            credits_cost: args.creditsCost ?? 0,
-        })
+        .insert(row)
         .select(MESSAGE_COLS)
         .single()
     if (error) throw error
+    const m = data as Record<string, unknown>
+    return {
+        id: m.id as string,
+        role: m.role as AssistantMessageRole,
+        content: (m.content as string) ?? '',
+        parts: Array.isArray(m.parts) ? (m.parts as AssistantMessagePart[]) : [],
+        credits_cost: (m.credits_cost as number) ?? 0,
+        created_at: m.created_at as string,
+    }
+}
+
+/**
+ * Busca a mensagem do usuário por client_message_id (idempotência do turno, C4).
+ * Retorna null se não houver — o turno segue normal. Se houver, é um RE-ENVIO.
+ */
+export async function findMessageByClientId(
+    sb: SupabaseClient,
+    conversationId: string,
+    clientMessageId: string,
+): Promise<AssistantMessage | null> {
+    const { data, error } = await sb
+        .from('ai_messages')
+        .select(MESSAGE_COLS)
+        .eq('conversation_id', conversationId)
+        .eq('client_message_id', clientMessageId)
+        .maybeSingle()
+    if (error) throw error
+    if (!data) return null
     const m = data as Record<string, unknown>
     return {
         id: m.id as string,

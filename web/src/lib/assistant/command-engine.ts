@@ -14,6 +14,7 @@
  *   - Aba (workspace): conversa multi-turno e persistida — passa `history`.
  */
 
+import { randomUUID } from 'node:crypto'
 import { generateText, tool, jsonSchema, type ToolSet } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
@@ -35,7 +36,7 @@ import {
     type AiUsageEventInput,
 } from '@/lib/ai-usage/metering'
 import { getAiUsageSummary, type AiUsageSummary } from '@/lib/ai-usage/usage-summary'
-import { checkQuota } from '@/lib/ai-usage/quota'
+import { checkQuota, getQuotaForTier } from '@/lib/ai-usage/quota'
 import { getAiTierForTrainer, type AiTier } from '@/lib/auth/get-ai-tier'
 import type { ToolConfirmationRequest, QuestionRequest, ProposalRequest } from '@/lib/assistant/hitl-types'
 import { buildChatContext } from '@/lib/assistant/context-builder'
@@ -203,6 +204,10 @@ const CONFIRM_TITLES: Record<string, string> = {
     kinevo_delete_program: 'Excluir rascunho de programa',
     kinevo_cancel_appointment_occurrence: 'Cancelar esta sessão da agenda',
     kinevo_cancel_appointment_series: 'Cancelar a série de sessões',
+    kinevo_send_message: 'Enviar mensagem ao aluno',
+    kinevo_send_form: 'Enviar formulário ao(s) aluno(s)',
+    kinevo_schedule_form: 'Agendar formulário recorrente',
+    kinevo_generate_checkout_link: 'Gerar link de pagamento',
 }
 
 function summarizeArgs(args: Record<string, unknown>): string {
@@ -226,6 +231,8 @@ function buildConfirmation(
         summary: summarizeArgs(args),
         args,
         destructive: DESTRUCTIVE_TOOLS.has(toolName),
+        // C6: chave única por card p/ o execute-tool dedup re-cliques/retries.
+        idempotencyKey: randomUUID(),
     }
 }
 
@@ -344,6 +351,8 @@ export interface AssistantTurnInput {
     surface: AiSurface
     /** Período de cota do tier (vem do gate). */
     periodType: 'week' | 'month'
+    /** Tier do treinador (vem do gate) — define o teto de cota no metering (C1). */
+    tier?: AiTier
     /** Histórico anterior (aba conversacional); vazio no ⌘K. */
     history?: AssistantTurnHistory[]
     /** Rota atual (⌘K) — afeta o subsetting de tools. */
@@ -613,7 +622,11 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         }
 
         // 5. Metering do turno (CONFIRM_TOOLS NÃO entram — cobradas no execute-tool).
-        const turnCalls: TurnToolCall[] = executed.map((e) => ({
+        //    Só cobra tools que REALMENTE deram certo: uma tool que falhou (mcpError →
+        //    isError:true) não pode ser cobrada (auditoria 2026-06-22, C2). O piso de 1
+        //    crédito do turno LLM segue (computeTurnCredits) mesmo se todas falharam.
+        const successfulCalls = executed.filter((e) => toolResultOk(e.result))
+        const turnCalls: TurnToolCall[] = successfulCalls.map((e) => ({
             tool: e.toolName,
             studentCount: studentCountFromArgs(e.args),
         }))
@@ -659,6 +672,9 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 credits,
                 costMicros,
                 events,
+                // Teto de cota do plano (C1): clamp atômico no DB — o medidor nunca
+                // estoura. Sem tier (ex.: proativo) → sem teto.
+                creditLimit: opts.tier ? getQuotaForTier(opts.tier)?.credits ?? null : null,
             })
 
             summary = await getAiUsageSummary(admin, trainerId)
@@ -719,9 +735,11 @@ const MCP_HITL_INSTRUCTIONS = `
 - Leituras e escritas reversíveis (atualizar aluno, criar rascunho de programa, agendar formulário):
   execute direto e relate objetivamente o que foi feito.
 - Ações SENSÍVEIS (registrar/cancelar pagamento, cancelar contrato, converter lead, finalizar avaliação,
-  excluir treino/exercício, cancelar sessão ou série da agenda) PRECISAM de confirmação humana:
+  excluir treino/exercício, cancelar sessão ou série da agenda, ENVIAR MENSAGEM ao aluno, ENVIAR ou
+  AGENDAR formulário, GERAR LINK DE PAGAMENTO) PRECISAM de confirmação humana:
   apenas CHAME a tool com os argumentos corretos — o app mostra o card de confirmação.
-  NÃO peça confirmação por texto, NÃO descreva o card.
+  NÃO peça confirmação por texto, NÃO descreva o card. Para mensagem ao aluno, escreva na sua resposta
+  o texto exato que vai enviar (o treinador revê e confirma); nunca invente um destinatário.
 - Quando faltar uma informação para agir (ex.: para qual aluno, qual objetivo, frequência semanal,
   quais grupos priorizar), NÃO pergunte em texto livre: CHAME a tool perguntar_treinador com a
   pergunta e 2 a 5 opções curtas (use multipla=true quando fizer sentido marcar várias). O app

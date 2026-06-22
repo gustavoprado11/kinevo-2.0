@@ -7,6 +7,7 @@ import {
     classifyTool,
     creditWeightForCall,
     computeTurnCredits,
+    MAX_TURN_CREDITS,
     actionClassForTool,
     resolveToolSubset,
     CORE_TOOLS,
@@ -86,6 +87,16 @@ describe('tool-policy — pesos de crédito', () => {
                 { tool: 'kinevo_send_message' },
             ]),
         ).toBe(6)
+    })
+
+    it('computeTurnCredits respeita o teto MAX_TURN_CREDITS (C1)', () => {
+        // loop patológico: 12× create_student_draft_program (peso 3) = 36 → capado
+        const loop = Array.from({ length: 12 }, () => ({
+            tool: 'kinevo_create_student_draft_program',
+        }))
+        expect(computeTurnCredits(loop)).toBe(MAX_TURN_CREDITS)
+        // turno legítimo (abaixo do teto) não é afetado
+        expect(computeTurnCredits([{ tool: 'kinevo_create_student_draft_program' }])).toBe(3)
     })
 
     it('actionClassForTool', () => {

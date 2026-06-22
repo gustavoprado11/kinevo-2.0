@@ -221,6 +221,7 @@ export async function POST(req: Request) {
                     await recordAiUsage(supabaseAdmin, {
                         trainerId: trainer.id,
                         periodType,
+                        creditLimit: getQuotaForTier(tier)?.credits ?? null, // clamp no teto (C1)
                         credits,
                         costMicros,
                         events: [
@@ -317,14 +318,16 @@ export async function POST(req: Request) {
                     execute: async ({ studentId: rawId }) => {
                         const sid = await resolveStudentId(rawId)
                         if (!sid) return { error: `Aluno "${rawId}" não encontrado` }
-                        console.log('[TOOL analyzeStudentProgress] resolved:', rawId, '→', sid)
                         const context = await enrichStudentContext(supabaseAdmin as any, sid)
-                        console.log('[TOOL analyzeStudentProgress] enricher result:', {
-                            name: context.student_name,
-                            programs: context.previous_programs?.length,
-                            loadEntries: context.load_progression?.length,
-                            sessions4w: context.session_patterns?.completed_sessions_4w,
-                        })
+                        // S9: dados do aluno (PII) só vão pro log atrás da flag de debug.
+                        if (process.env.KINEVO_LLM_DEBUG_PAYLOAD === 'true') {
+                            console.log('[TOOL analyzeStudentProgress]', rawId, '→', sid, {
+                                name: context.student_name,
+                                programs: context.previous_programs?.length,
+                                loadEntries: context.load_progression?.length,
+                                sessions4w: context.session_patterns?.completed_sessions_4w,
+                            })
+                        }
 
                         const { data: recentSets, error: setsError } = await supabaseAdmin
                             .from('set_logs')

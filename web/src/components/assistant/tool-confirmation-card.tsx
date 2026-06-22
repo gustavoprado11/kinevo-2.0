@@ -48,7 +48,12 @@ export function ToolConfirmationCard({
             const res = await fetch('/api/assistant/execute-tool', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ toolName: request.toolName, args: request.args, surface }),
+                body: JSON.stringify({
+                    toolName: request.toolName,
+                    args: request.args,
+                    surface,
+                    idempotencyKey: request.idempotencyKey, // C6: dedup re-cliques
+                }),
             })
             const data: unknown = await res.json().catch(() => ({}))
             if (!res.ok) {

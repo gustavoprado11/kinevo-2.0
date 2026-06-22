@@ -111,6 +111,12 @@ export interface RecordAiUsageParams {
     credits: number
     costMicros: number
     events: AiUsageEventInput[]
+    /**
+     * Teto de créditos do plano no período (clamp atômico — C1). null/omitido =
+     * sem teto (ex.: briefing proativo). Garante que credits_used nunca passe do
+     * limite do plano, nem sob concorrência.
+     */
+    creditLimit?: number | null
     now?: Date
 }
 
@@ -125,16 +131,32 @@ export async function recordAiUsage(
 ): Promise<{ ok: boolean; error?: string }> {
     const periodStart = currentPeriodStart(params.periodType, params.now)
 
-    const { error: rpcError } = await admin.rpc('increment_ai_usage', {
+    // consume_ai_usage (migr 216): upsert ATÔMICO com CLAMP em p_limit + retorno do
+    // novo total — o credits_used nunca passa do teto do plano, nem sob concorrência
+    // (C1). Função nova ainda fora dos tipos gerados → cast localizado no boundary.
+    const consume = admin.rpc as unknown as (
+        fn: 'consume_ai_usage',
+        args: {
+            p_trainer_id: string
+            p_period_type: PeriodType
+            p_period_start: string
+            p_credits: number
+            p_cost_micros: number
+            p_limit: number | null
+        },
+    ) => Promise<{ error: { message: string } | null }>
+
+    const { error: rpcError } = await consume('consume_ai_usage', {
         p_trainer_id: params.trainerId,
         p_period_type: params.periodType,
         p_period_start: periodStart,
         p_credits: params.credits,
         p_cost_micros: params.costMicros,
+        p_limit: params.creditLimit ?? null,
     })
 
     if (rpcError) {
-        console.error('[recordAiUsage] increment_ai_usage error:', rpcError)
+        console.error('[recordAiUsage] consume_ai_usage error:', rpcError)
         return { ok: false, error: rpcError.message }
     }
 

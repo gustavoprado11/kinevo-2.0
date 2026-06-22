@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
             input,
             surface: SURFACE,
             periodType: gate.period,
+            tier: gate.tier,
             route,
             studentId,
         })

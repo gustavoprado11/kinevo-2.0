@@ -107,8 +107,13 @@ export const READ_TOOLS: ReadonlySet<string> = new Set<McpToolName>([
 ])
 
 /**
- * Tools que SEMPRE exigem confirmação humana (HITL). Conforme SPEC §7.1:
- * os 5 W-GATE (já têm `confirm` no schema) + todos os W-DESTR (destrutivos).
+ * Tools que SEMPRE exigem confirmação humana (HITL). Conforme SPEC §7.1 +
+ * auditoria 2026-06-22:
+ *   - 5 W-GATE (já têm `confirm` no schema): dinheiro / criação de conta;
+ *   - W-DESTR (destrutivos): delete/cancel;
+ *   - W-EXTERNO: ações que SAEM para o aluno (mensagem/formulário, irreversíveis)
+ *     ou INICIAM cobrança (link de pagamento). Antes auto-executavam — e eram o
+ *     sink de injeção indireta (texto do aluno → write externo). Agora pausam.
  */
 export const CONFIRM_TOOLS: ReadonlySet<string> = new Set<McpToolName>([
     // 5 W-GATE (dinheiro / criação de conta / compartilhamento com aluno)
@@ -123,6 +128,12 @@ export const CONFIRM_TOOLS: ReadonlySet<string> = new Set<McpToolName>([
     'kinevo_delete_program',
     'kinevo_cancel_appointment_occurrence',
     'kinevo_cancel_appointment_series',
+    // W-EXTERNO / início de cobrança (auditoria 2026-06-22 — S1/S2/S3): saem para
+    // o ALUNO (irreversíveis) ou iniciam uma cobrança.
+    'kinevo_send_message',
+    'kinevo_send_form',
+    'kinevo_schedule_form',
+    'kinevo_generate_checkout_link',
 ])
 
 /** Escrita = tudo que não é leitura. (CONFIRM ⊆ WRITE.) */
@@ -193,15 +204,25 @@ export interface TurnToolCall {
 }
 
 /**
+ * Teto de créditos por turno (auditoria 2026-06-22, C1). Um turno legítimo gasta
+ * poucos créditos (consulta=1, ação=1–3, build≈5); este teto barra o caso
+ * patológico — um loop de writes (visto: create_draft 12× = 36) drenar a cota num
+ * turno só. O clamp atômico no DB (consume_ai_usage) já impede o medidor de
+ * estourar; este teto é a 2ª camada e mantém o log de eventos são.
+ */
+export const MAX_TURN_CREDITS = 12
+
+/**
  * Créditos de um turno: soma dos pesos das tools chamadas, com piso de 1
- * (todo turno custa ≥1 crédito — __turn_base). Um turno só com leitura = 1.
+ * (todo turno custa ≥1 crédito — __turn_base) e TETO de MAX_TURN_CREDITS.
+ * Um turno só com leitura = 1.
  */
 export function computeTurnCredits(calls: TurnToolCall[]): number {
     const sum = calls.reduce(
         (acc, c) => acc + creditWeightForCall(c.tool, c.studentCount),
         0,
     )
-    return Math.max(1, sum)
+    return Math.min(MAX_TURN_CREDITS, Math.max(1, sum))
 }
 
 // ----------------------------------------------------------------------------

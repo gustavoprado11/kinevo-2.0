@@ -129,6 +129,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
         if (!override) setInput('')
         setError(null)
         setSending(true)
+        const clientMessageId = crypto.randomUUID() // C4: idempotência do turno (anti re-envio)
 
         let convId = activeId
         try {
@@ -161,7 +162,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
 
             const res = await fetch(`/api/assistant/conversations/${convId}`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ input: text }),
+                body: JSON.stringify({ input: text, clientMessageId }),
             })
             // Erros de setup (gate/cota/rate/validação) vêm como JSON não-2xx.
             if (!res.ok || !res.body) {

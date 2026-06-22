@@ -169,6 +169,57 @@ export async function validateConfirmArgs(
                 return { ok: true, target: { label: `${prog.name} · rascunho de ${name}` } }
             }
 
+            // Ações externas / início de cobrança (HITL desde a auditoria 2026-06-22):
+            // best-effort — NUNCA bloqueiam (a própria tool checa posse na execução);
+            // só montam um ALVO LEGÍVEL p/ o card (destinatário + prévia / contagem).
+            case 'kinevo_send_message': {
+                const name = await studentName(admin, trainerId, str(args.student_id))
+                const content = str(args.content)
+                const preview = content
+                    ? `"${content.length > 140 ? content.slice(0, 140) + '…' : content}"`
+                    : ''
+                const label = [name, preview].filter(Boolean).join(' — ')
+                return { ok: true, target: { label: label || 'Mensagem ao aluno' } }
+            }
+
+            case 'kinevo_send_form':
+            case 'kinevo_schedule_form': {
+                const count = Array.isArray(args.student_ids) ? args.student_ids.length : 0
+                const templateId = str(args.template_id)
+                let templateTitle: string | null = null
+                if (templateId) {
+                    const { data: tpl } = await admin
+                        .from('form_templates')
+                        .select('title')
+                        .eq('id', templateId)
+                        .or(`trainer_id.eq.${trainerId},trainer_id.is.null`)
+                        .maybeSingle()
+                    templateTitle = (tpl as { title?: string } | null)?.title ?? null
+                }
+                const who = count === 1 ? '1 aluno' : `${count} alunos`
+                const freq = toolName === 'kinevo_schedule_form' ? str(args.frequency) : null
+                const label = `${templateTitle ?? 'Formulário'} · ${who}${freq ? ` · ${freq}` : ''}`
+                return { ok: true, target: { label } }
+            }
+
+            case 'kinevo_generate_checkout_link': {
+                const name = await studentName(admin, trainerId, str(args.student_id))
+                const planId = str(args.plan_id)
+                let planLabel: string | null = null
+                if (planId) {
+                    const { data: pl } = await admin
+                        .from('trainer_plans')
+                        .select('title, price, interval')
+                        .eq('id', planId)
+                        .eq('trainer_id', trainerId)
+                        .maybeSingle()
+                    const p = pl as { title: string; price: number; interval: string } | null
+                    if (p) planLabel = `${p.title} — ${brl(p.price)}/${INTERVAL_PT[p.interval] ?? p.interval}`
+                }
+                const label = [name ?? 'Aluno', planLabel].filter(Boolean).join(' · ')
+                return { ok: true, target: { label } }
+            }
+
             // Sem validador estrito (a tool já checa posse na execução): libera com
             // alvo genérico — o card mostra o resumo dos args como hoje.
             default:

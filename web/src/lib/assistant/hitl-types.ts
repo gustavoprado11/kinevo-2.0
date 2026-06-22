@@ -21,6 +21,11 @@ export interface ToolConfirmationRequest {
     summary: string
     args: Record<string, unknown>
     destructive: boolean
+    /**
+     * Chave de idempotência (C6): o card a devolve ao execute-tool, que dedup
+     * re-cliques/retries da MESMA confirmação (anti contrato/pagamento duplicado).
+     */
+    idempotencyKey?: string
 }
 
 /** Resultado da decisão humana sobre um ToolConfirmationRequest. */
