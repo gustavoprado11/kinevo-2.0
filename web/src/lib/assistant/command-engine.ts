@@ -221,10 +221,19 @@ function summarizeArgs(args: Record<string, unknown>): string {
     return parts.length > 0 ? parts.join(' · ') : 'Confirme os detalhes antes de executar.'
 }
 
+/**
+ * Tools cujo card mostra um campo EDITÁVEL (textarea) antes de executar — ex.: a
+ * mensagem ao aluno, que o treinador revê/ajusta na hora em vez de aprovar cego.
+ */
+const EDITABLE_FIELD: Record<string, { field: string; label: string }> = {
+    kinevo_send_message: { field: 'content', label: 'Mensagem' },
+}
+
 function buildConfirmation(
     toolName: string,
     args: Record<string, unknown>,
 ): ToolConfirmationRequest {
+    const editable = EDITABLE_FIELD[toolName]
     return {
         toolName,
         title: CONFIRM_TITLES[toolName] ?? toolName,
@@ -233,6 +242,7 @@ function buildConfirmation(
         destructive: DESTRUCTIVE_TOOLS.has(toolName),
         // C6: chave única por card p/ o execute-tool dedup re-cliques/retries.
         idempotencyKey: randomUUID(),
+        ...(editable ? { editableField: editable.field, editableLabel: editable.label } : {}),
     }
 }
 
@@ -713,7 +723,12 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             confirmation,
             question,
             proposal,
-            executed: executed.map((e) => ({ toolName: e.toolName, result: e.result })),
+            // Só AÇÕES (writes) viram cards "executado" na UI. Leituras e a pseudo-resposta
+            // do read-guard NÃO são mostráveis — senão vazam "Ação executada" ×N e tool-speak
+            // técnico ("Você JÁ consultou kinevo_get_student…") pro treinador (feedback 22/jun).
+            executed: executed
+                .filter((e) => !READ_TOOLS.has(e.toolName))
+                .map((e) => ({ toolName: e.toolName, result: e.result })),
             credits,
             summary,
         }
@@ -738,8 +753,16 @@ const MCP_HITL_INSTRUCTIONS = `
   excluir treino/exercício, cancelar sessão ou série da agenda, ENVIAR MENSAGEM ao aluno, ENVIAR ou
   AGENDAR formulário, GERAR LINK DE PAGAMENTO) PRECISAM de confirmação humana:
   apenas CHAME a tool com os argumentos corretos — o app mostra o card de confirmação.
-  NÃO peça confirmação por texto, NÃO descreva o card. Para mensagem ao aluno, escreva na sua resposta
-  o texto exato que vai enviar (o treinador revê e confirma); nunca invente um destinatário.
+  NÃO peça confirmação por texto, NÃO descreva o card, NÃO pergunte "confirmo?".
+- ENVIAR MENSAGEM a um aluno (kinevo_send_message): VOCÊ MESMO redige a mensagem — NUNCA peça o texto
+  ao treinador e NUNCA escreva a mensagem na sua resposta. Pegue o student_id do CONTEXTO (a lista de
+  alunos traz "Nome (id: UUID)"): use o UUID direto e NÃO chame kinevo_list_students/kinevo_get_student
+  para "achar" o aluno. Aí CHAME kinevo_send_message (student_id + content) numa única vez — o app abre
+  um card com a mensagem para o treinador APROVAR ou AJUSTAR antes de enviar (não pergunte "confirmo?").
+  VOZ: você é o PERSONAL TRAINER falando 1:1 com o aluno — primeira pessoa do SINGULAR, calorosa e
+  direta ("Senti sua falta", "Bora retomar", "Tô aqui pra te ajudar"). JAMAIS voz de estúdio/equipe
+  ("Estamos sentindo sua falta", "nossa equipe", "sentimos"). Curta (1–3 frases), com o primeiro nome
+  do aluno, sem firula. Se o aluno pedido não estiver no contexto, use perguntar_treinador; nunca relê.
 - Quando faltar uma informação para agir (ex.: para qual aluno, qual objetivo, frequência semanal,
   quais grupos priorizar), NÃO pergunte em texto livre: CHAME a tool perguntar_treinador com a
   pergunta e 2 a 5 opções curtas (use multipla=true quando fizer sentido marcar várias). O app

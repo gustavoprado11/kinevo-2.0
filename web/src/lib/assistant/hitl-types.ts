@@ -26,6 +26,14 @@ export interface ToolConfirmationRequest {
      * re-cliques/retries da MESMA confirmação (anti contrato/pagamento duplicado).
      */
     idempotencyKey?: string
+    /**
+     * Campo de `args` editável no card (ex.: 'content' da mensagem): o card mostra
+     * o valor numa textarea para o treinador AJUSTAR antes de enviar; o valor final
+     * (possivelmente editado) é o que vai para o execute-tool. `editableLabel` é o
+     * rótulo amigável (ex.: 'Mensagem').
+     */
+    editableField?: string
+    editableLabel?: string
 }
 
 /** Resultado da decisão humana sobre um ToolConfirmationRequest. */

@@ -3,18 +3,20 @@
 /**
  * ToolConfirmationCard — card de HITL (Fase 1 · IA do Treinador, Trilha 1).
  *
- * Consome um ToolConfirmationRequest (contrato compartilhado em hitl-types) e
- * renderiza o card de confirmação fiel ao mock `ai-trainer-mock-commandbar.html`
- * (.pact): ícone, título, resumo dos argumentos, selo "Requer confirmação" e os
- * botões Revisar / Confirmar. Ações destrutivas usam o estilo de alerta.
+ * Duas variantes:
+ *   - COMPACTA (dinheiro/destrutivo): ícone, título, resumo dos args, selo "Requer
+ *     confirmação" e Cancelar/Confirmar (fiel ao mock .pact).
+ *   - MENSAGEM EDITÁVEL (quando `request.editableField` está setado — ex.: enviar
+ *     mensagem ao aluno): a IA já redigiu o texto; o card mostra numa textarea para
+ *     o treinador AJUSTAR a vontade e clicar Enviar (sem digitar "confirmo").
  *
- * Ao confirmar, executa a tool real via POST /api/assistant/execute-tool (já
- * existente — revalida tier+cota e registra o crédito). O componente é só
- * apresentação + a chamada de confirmação; o estado de turno vive no pai.
+ * Ao confirmar, executa a tool real via POST /api/assistant/execute-tool (revalida
+ * tier+cota+posse, idempotência C6, registra crédito). O componente é só
+ * apresentação + a chamada; o estado de turno vive no pai.
  */
 
 import { useState } from 'react'
-import { Check, AlertTriangle, CreditCard, Loader2, X } from 'lucide-react'
+import { Check, AlertTriangle, CreditCard, Loader2, X, Send } from 'lucide-react'
 import type {
     ToolConfirmationRequest,
     ToolConfirmationResult,
@@ -39,18 +41,25 @@ export function ToolConfirmationCard({
     const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
+    const editField = request.editableField
+    const [editValue, setEditValue] = useState<string>(() =>
+        editField ? String(request.args[editField] ?? '') : '',
+    )
+
     const destructive = request.destructive
 
-    const handleConfirm = async () => {
+    // Executa a tool (com o valor editado, se houver campo editável).
+    const execute = async () => {
         setStatus('running')
         setErrorMsg(null)
         try {
+            const args = editField ? { ...request.args, [editField]: editValue } : request.args
             const res = await fetch('/api/assistant/execute-tool', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     toolName: request.toolName,
-                    args: request.args,
+                    args,
                     surface,
                     idempotencyKey: request.idempotencyKey, // C6: dedup re-cliques
                 }),
@@ -78,6 +87,75 @@ export function ToolConfirmationCard({
         onCancel?.()
     }
 
+    // ── Variante MENSAGEM EDITÁVEL ──
+    if (editField) {
+        const sent = status === 'done'
+        return (
+            <div className="mx-2.5 rounded-[16px] border border-[#DDD6FE] dark:border-violet-500/30 bg-white dark:bg-surface-card p-3.5 shadow-[0_6px_20px_-10px_rgba(124,58,237,0.30)]">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px]" style={{ background: '#EDE9FE', color: '#7C3AED' }}>
+                        <Send className="h-[15px] w-[15px]" strokeWidth={2} />
+                    </span>
+                    <div className="min-w-0">
+                        <b className="block text-[13.5px] font-bold text-[#1D1D1F] dark:text-foreground">{request.title}</b>
+                        <span className="block truncate text-[11.5px] text-[#86868B] dark:text-muted-foreground">{request.summary}</span>
+                    </div>
+                </div>
+
+                {sent ? (
+                    <div className="mt-2.5 whitespace-pre-wrap rounded-[12px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1D1D1F] dark:text-foreground">
+                        {editValue}
+                    </div>
+                ) : (
+                    <textarea
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        rows={3}
+                        disabled={status === 'running'}
+                        aria-label={request.editableLabel ?? 'Mensagem'}
+                        style={{ outline: 'none' }}
+                        className="mt-2.5 w-full resize-y rounded-[12px] border border-[#E2E2E7] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1D1D1F] dark:text-foreground transition focus:border-[#7C3AED] disabled:opacity-60"
+                    />
+                )}
+
+                <div className="mt-3 flex items-center gap-2">
+                    {!sent && (
+                        <>
+                            <span className="text-[11px] text-[#AEAEB2] dark:text-muted-foreground/60">Revise antes de enviar</span>
+                            <div className="ml-auto flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleCancel}
+                                    disabled={status === 'running'}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-2.5 py-1.5 text-xs font-bold text-[#1D1D1F] dark:text-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg disabled:opacity-50"
+                                >
+                                    <X className="h-3 w-3" strokeWidth={2.5} /> Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={execute}
+                                    disabled={status === 'running' || !editValue.trim()}
+                                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-[0_6px_16px_-6px_rgba(124,58,237,0.55)] transition hover:brightness-[1.07] disabled:opacity-60"
+                                    style={{ background: 'linear-gradient(135deg,#7C3AED,#8b5cf6)' }}
+                                >
+                                    {status === 'running' ? <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.5} /> : <Send className="h-3 w-3" strokeWidth={2.4} />}
+                                    {status === 'running' ? 'Enviando…' : 'Enviar'}
+                                </button>
+                            </div>
+                        </>
+                    )}
+                    {sent && (
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#F0FDF4] dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-[#15803D] dark:text-emerald-300">
+                            <Check className="h-3 w-3" strokeWidth={3} /> Mensagem enviada
+                        </span>
+                    )}
+                </div>
+                {errorMsg && <p className="mt-2 text-xs font-medium text-[#EF4444]">{errorMsg}</p>}
+            </div>
+        )
+    }
+
+    // ── Variante COMPACTA (dinheiro/destrutivo) ──
     const wrapBorder = destructive ? 'border-[#F5C2C0]' : 'border-[#DDD6FE]'
     const wrapShadow = destructive
         ? 'shadow-[0_6px_20px_-10px_rgba(239,68,68,0.30)]'
@@ -132,7 +210,7 @@ export function ToolConfirmationCard({
                     {status !== 'done' && (
                         <button
                             type="button"
-                            onClick={handleConfirm}
+                            onClick={execute}
                             disabled={status === 'running'}
                             className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-[0_6px_16px_-6px_rgba(124,58,237,0.55)] transition hover:brightness-[1.07] disabled:opacity-60"
                             style={{ background: destructive ? '#EF4444' : 'linear-gradient(135deg,#7C3AED,#8b5cf6)' }}

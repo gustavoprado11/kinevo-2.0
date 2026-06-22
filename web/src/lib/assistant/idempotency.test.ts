@@ -35,7 +35,7 @@ function makeFakeSb() {
             if (op === 'upsert') {
                 const key = upsertRow.idempotency_key as string
                 if (store.has(key)) return { data: [], error: null } // conflito → ignoreDuplicates
-                store.set(key, { result: null, ...(upsertRow as Row) })
+                store.set(key, { ...(upsertRow as Row), result: null })
                 return { data: [{ idempotency_key: key }], error: null }
             }
             if (op === 'update') {

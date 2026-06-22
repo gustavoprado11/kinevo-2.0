@@ -173,13 +173,9 @@ export async function validateConfirmArgs(
             // best-effort — NUNCA bloqueiam (a própria tool checa posse na execução);
             // só montam um ALVO LEGÍVEL p/ o card (destinatário + prévia / contagem).
             case 'kinevo_send_message': {
+                // A mensagem aparece (editável) no card; aqui o alvo é só o destinatário.
                 const name = await studentName(admin, trainerId, str(args.student_id))
-                const content = str(args.content)
-                const preview = content
-                    ? `"${content.length > 140 ? content.slice(0, 140) + '…' : content}"`
-                    : ''
-                const label = [name, preview].filter(Boolean).join(' — ')
-                return { ok: true, target: { label: label || 'Mensagem ao aluno' } }
+                return { ok: true, target: { label: name ? `Para ${name}` : 'Mensagem ao aluno' } }
             }
 
             case 'kinevo_send_form':
