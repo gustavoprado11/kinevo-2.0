@@ -520,27 +520,51 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         // teto de passos maior (ler contexto + listar exercícios + criar). `buildTurn`
         // já foi calculado no passo 1 (afeta o subset de tools). O modelo do build é
         // configurável (qualidade-crítico) — ver resolveBuildModel.
-        const turnModel: LLMModel = buildTurn ? resolveBuildModel() : ASSISTANT_MODEL
+        let turnModel: LLMModel = buildTurn ? resolveBuildModel() : ASSISTANT_MODEL
 
-        // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para.
-        const result = await generateText({
-            model: providerFor(turnModel),
-            system,
-            messages,
-            maxTokens: buildTurn ? 8000 : 1500,
-            temperature: 0.3,
-            // maxSteps é um TETO. O build é UMA chamada grande precedida de leituras
-            // (get_student, list_exercises): ~10 passos cobrem com folga e barram loop.
-            maxSteps: buildTurn ? 12 : 5,
-            tools,
-            // Progresso ao vivo: emite um rótulo por tool executada (streaming na UI).
-            onStepFinish: ({ toolCalls }) => {
-                if (!opts.onProgress) return
-                for (const tc of (toolCalls ?? []) as Array<{ toolName: string }>) {
-                    opts.onProgress(progressLabel(tc.toolName))
-                }
-            },
-        })
+        const runGen = (model: LLMModel) =>
+            generateText({
+                model: providerFor(model),
+                system,
+                messages,
+                maxTokens: buildTurn ? 8000 : 1500,
+                temperature: 0.3,
+                // maxSteps é um TETO. O build é UMA chamada grande precedida de leituras
+                // (get_student, list_exercises): ~10 passos cobrem com folga e barram loop.
+                maxSteps: buildTurn ? 12 : 5,
+                tools,
+                // Progresso ao vivo: emite um rótulo por tool executada (streaming na UI).
+                onStepFinish: ({ toolCalls }) => {
+                    if (!opts.onProgress) return
+                    for (const tc of (toolCalls ?? []) as Array<{ toolName: string }>) {
+                        opts.onProgress(progressLabel(tc.toolName))
+                    }
+                },
+            })
+
+        // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para. Se o
+        //    modelo de BUILD (ex.: Claude Sonnet) falhar, NÃO derruba o turno: degrada
+        //    para o modelo padrão (gpt-4.1-mini). Captura o erro num trace — o
+        //    console.error dentro do ReadableStream NÃO aparece nos logs do Vercel.
+        let result: Awaited<ReturnType<typeof runGen>>
+        try {
+            result = await runGen(turnModel)
+        } catch (genErr) {
+            if (!buildTurn || turnModel === ASSISTANT_MODEL) throw genErr
+            const msg = genErr instanceof Error ? genErr.message : String(genErr)
+            await recordTurnTrace(admin, {
+                trainerId,
+                studentId: opts.studentId,
+                kind: 'turn',
+                surface,
+                input,
+                output: `[build-model-fallback] ${turnModel} falhou: ${msg}`.slice(0, 500),
+                model: turnModel,
+                intents,
+            }).catch(() => {})
+            turnModel = ASSISTANT_MODEL
+            result = await runGen(turnModel)
+        }
 
         // 4. Coleta o executado (crédito) e a confirmação pendente (HITL).
         interface RawToolCall {
