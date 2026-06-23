@@ -223,20 +223,25 @@ export async function POST(req: NextRequest) {
             credits,
         })
 
-        // 6. Registrar uso (Free → free-trial; pago → crédito). costMicros=0:
-        //    a execução de tool não chama LLM (o custo do LLM é medido no turno do chat).
-        if (tier === 'free') {
-            await recordFreeTrial(supabaseAdmin, trainer.id, actionClass)
-        } else {
-            const quota = await checkQuota(supabaseAdmin, trainer.id, tier)
-            await recordAiUsage(supabaseAdmin, {
-                trainerId: trainer.id,
-                periodType: quota.period ?? 'month',
-                creditLimit: quota.limit, // clamp atômico no teto do plano (C1)
-                credits,
-                costMicros: 0,
-                events: [{ actionClass, credits, surface }],
-            })
+        // 6. Registrar uso (Free → free-trial; pago → crédito). costMicros=0: a execução
+        //    de tool não chama LLM. BEST-EFFORT: a ação JÁ executou — uma falha de
+        //    metering NUNCA pode virar 500 (senão o treinador vê erro de algo que deu certo).
+        try {
+            if (tier === 'free') {
+                await recordFreeTrial(supabaseAdmin, trainer.id, actionClass)
+            } else {
+                const quota = await checkQuota(supabaseAdmin, trainer.id, tier)
+                await recordAiUsage(supabaseAdmin, {
+                    trainerId: trainer.id,
+                    periodType: quota.period ?? 'month',
+                    creditLimit: quota.limit, // clamp atômico no teto do plano (C1)
+                    credits,
+                    costMicros: 0,
+                    events: [{ actionClass, credits, surface }],
+                })
+            }
+        } catch (meteringErr) {
+            console.error('[execute-tool] metering best-effort falhou:', meteringErr)
         }
 
         return NextResponse.json({ success: true, result })

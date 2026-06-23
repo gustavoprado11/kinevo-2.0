@@ -134,7 +134,10 @@ export async function recordAiUsage(
     // consume_ai_usage (migr 216): upsert ATÔMICO com CLAMP em p_limit + retorno do
     // novo total — o credits_used nunca passa do teto do plano, nem sob concorrência
     // (C1). Função nova ainda fora dos tipos gerados → cast localizado no boundary.
-    const consume = admin.rpc as unknown as (
+    // CRÍTICO: bind(admin). Extrair `admin.rpc` para uma const PERDE o `this`
+    // (this=undefined → o método lança); o bind preserva o cliente. Sem isso,
+    // recordAiUsage lançava em toda chamada (500 no execute-tool após a ação).
+    const consume = admin.rpc.bind(admin) as unknown as (
         fn: 'consume_ai_usage',
         args: {
             p_trainer_id: string

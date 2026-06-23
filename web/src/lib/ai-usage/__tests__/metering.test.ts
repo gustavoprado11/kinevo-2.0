@@ -5,7 +5,11 @@ import {
     turnCostMicros,
     creditsForTurn,
     currentPeriodStart,
+    recordAiUsage,
+    type RecordAiUsageParams,
 } from '../metering'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@kinevo/shared/types/database'
 import { computeCost } from '@/lib/prescription/llm-client'
 import { GENERATE_PROGRAM } from '@/lib/assistant/tool-policy'
 
@@ -60,5 +64,39 @@ describe('metering — períodos', () => {
         expect(currentPeriodStart('week', new Date('2026-06-21T12:00:00Z'))).toBe('2026-06-15')
         // 2026-06-15 é segunda → ela mesma
         expect(currentPeriodStart('week', new Date('2026-06-15T08:00:00Z'))).toBe('2026-06-15')
+    })
+})
+
+describe('recordAiUsage — preserva o `this` do admin.rpc (regressão do 500 no execute-tool)', () => {
+    it('chama consume_ai_usage com this=admin (não desvincula o método)', async () => {
+        let thisOk = false
+        let calledFn: string | null = null
+        // admin fake cujo rpc DEPENDE do `this`: se recordAiUsage extrair o método
+        // (const x = admin.rpc), o `this` fica undefined e o metering lança — era a
+        // causa-raiz do 500 ao confirmar uma ação. O fix é admin.rpc.bind(admin).
+        const admin = {
+            _marker: 'admin' as const,
+            rpc(fn: string) {
+                thisOk = (this as { _marker?: string } | undefined)?._marker === 'admin'
+                calledFn = fn
+                return Promise.resolve({ data: 3, error: null })
+            },
+            from() {
+                return { insert: () => Promise.resolve({ error: null }) }
+            },
+        }
+        const params: RecordAiUsageParams = {
+            trainerId: 't1',
+            periodType: 'month',
+            credits: 1,
+            costMicros: 0,
+            creditLimit: 1000,
+            events: [{ actionClass: 'write', credits: 1 }],
+            now: new Date('2026-06-01T00:00:00Z'),
+        }
+        const res = await recordAiUsage(admin as unknown as SupabaseClient<Database>, params)
+        expect(thisOk).toBe(true)
+        expect(calledFn).toBe('consume_ai_usage')
+        expect(res.ok).toBe(true)
     })
 })
