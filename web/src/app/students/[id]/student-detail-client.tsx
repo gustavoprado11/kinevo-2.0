@@ -14,6 +14,7 @@ import { extendProgram } from './actions/extend-program'
 import { deleteStudent } from './actions/student-actions'
 import { activateProgram } from './actions/activate-program'
 import { deleteProgram } from './actions/delete-program'
+import { rejectProgram } from '@/actions/prescription/reject-program'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { useOnboardingStore } from '@/stores/onboarding-store'
@@ -464,6 +465,22 @@ export function StudentDetailClient({
         }
     }
 
+    // ── Geração de IA pendente de revisão (prescription_generations) ──
+    // Descartar usa o mesmo rejectProgram do fluxo de prescrição: troca o
+    // status para 'rejected' (reversível, NÃO apaga) e revalida a rota, então
+    // o card sai da fila sozinho. Artefato distinto do draftProgram acima.
+    const handleRejectGeneration = async (generationId: string) => {
+        if (!confirm('Tem certeza que deseja descartar este rascunho gerado pela IA?')) return
+
+        setProcessingId(generationId)
+        try {
+            const result = await rejectProgram(generationId)
+            if (!result.success) toast({ message: result.error ?? '', type: 'error' })
+        } finally {
+            setProcessingId(null)
+        }
+    }
+
     // ── Onda 3 — SmartBanner ────────────────────────────────────────────
     // Calculamos o banner aqui (função pura, custo zero) pra coordenar o
     // estado entre o componente e o HealthMetricsCard (que esconde o
@@ -765,12 +782,22 @@ export function StudentDetailClient({
                                             <p className="text-[11px] font-medium text-violet-700/70 dark:text-violet-300/70">
                                                 Gerado pelo assistente · pendente de revisão
                                             </p>
-                                            <button
-                                                onClick={() => router.push(`/students/${student.id}/program/new?generationId=${draft.id}`)}
-                                                className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-lg transition-colors"
-                                            >
-                                                <Pencil className="w-3.5 h-3.5" /> Revisar no builder
-                                            </button>
+                                            <div className="flex items-center gap-2 mt-3">
+                                                <button
+                                                    onClick={() => router.push(`/students/${student.id}/program/new?generationId=${draft.id}`)}
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-lg transition-colors"
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5" /> Revisar no builder
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRejectGeneration(draft.id)}
+                                                    disabled={!!processingId}
+                                                    aria-label="Descartar rascunho gerado pela IA"
+                                                    className="p-2 text-violet-700/60 dark:text-violet-400/60 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
