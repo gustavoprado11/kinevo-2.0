@@ -41,7 +41,7 @@ export async function judgeText(
             system: JUDGE_SYSTEM,
             prompt: `CRITÉRIO: ${rubric}\n\nPERGUNTA DO TREINADOR: ${input}\n\nRESPOSTA DO ASSISTENTE:\n${text}\n\nA resposta cumpre o critério?`,
             temperature: 0,
-            maxTokens: 200,
+            maxOutputTokens: 200,
         })
         const parsed = JSON.parse(extractJson(out)) as { pass?: unknown; reason?: unknown }
         return {

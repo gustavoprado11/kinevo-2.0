@@ -2,19 +2,23 @@
  * Ponte in-memory: 1 catálogo de tools (o servidor MCP), consumido pelo agente
  * web sem HTTP/OAuth (Fase 0 — IA do Treinador). Ver chat-first SPEC §1/§3.
  *
- * Detalhe crítico (verificado): o `client.tools()` do AI SDK entrega TODAS as
- * tools já com `execute` automático e descarta as annotations. Logo:
- *   - reads e writes simples passam direto (auto-execute);
- *   - tools em CONFIRM_TOOLS são SUBSTITUÍDAS por versões client-side SEM
- *     `execute` → o `streamText` pausa e o cliente renderiza o card de HITL,
- *     executando depois via /api/assistant/execute-tool.
+ * AI SDK 5 REMOVEU o `experimental_createMCPClient` do pacote `ai`. Usamos o
+ * `Client` do @modelcontextprotocol/sdk direto: listamos as tools do servidor
+ * in-memory e as embrulhamos como tools do AI SDK (inputSchema = JSON Schema do
+ * MCP; execute = client.callTool). O resultado do callTool é o CallToolResult
+ * CRU (`{content, isError}`) — que é EXATAMENTE o envelope que o `toolResultOk`
+ * (turn-trace) já sabe ler. Por isso o metering/HITL não muda de comportamento.
+ *
+ * HITL: tools em CONFIRM_TOOLS são embrulhadas SEM `execute` → o streamText
+ * pausa e o cliente renderiza o card, executando depois via execute-tool.
  *
  * Subsetting (custo): com `intents`, carrega só as tools daquelas intenções
- * (+ CORE_TOOLS), cortando 60–70% do input. Sem `intents`, expõe as 57.
+ * (+ CORE_TOOLS), cortando 60–70% do input. Sem `intents`, expõe todas.
  */
 
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { experimental_createMCPClient, tool, type ToolSet } from 'ai'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { tool, jsonSchema, type ToolSet } from 'ai'
 import { createMcpServer } from '@/lib/mcp/server'
 import { CONFIRM_TOOLS, resolveToolSubset, type ToolIntent } from './tool-policy'
 
@@ -26,7 +30,7 @@ export interface McpBridge {
 }
 
 export interface BuildMcpToolsOptions {
-    /** Intenções para subsetting; vazio/omitido = todas as 57. */
+    /** Intenções para subsetting; vazio/omitido = todas. */
     intents?: ToolIntent[]
     /**
      * Se true, REMOVE as CONFIRM_TOOLS do conjunto (em vez de torná-las HITL).
@@ -44,28 +48,33 @@ export async function buildMcpTools(
     const server = createMcpServer(trainerId)
     await server.connect(serverTransport)
 
-    const client = await experimental_createMCPClient({ transport: clientTransport })
-    const rawTools = (await client.tools()) as ToolSet
+    const client = new Client({ name: 'kinevo-bridge', version: '1.0.0' }, { capabilities: {} })
+    await client.connect(clientTransport)
+    const { tools: mcpTools } = await client.listTools()
 
     const allowed = options.intents && options.intents.length > 0
         ? new Set<string>(resolveToolSubset(options.intents))
         : null
 
     const tools: ToolSet = {}
-    for (const [name, mcpTool] of Object.entries(rawTools)) {
-        // CORE/allowed também precisa deixar passar a action generateProgram, que
-        // é injetada fora da ponte pelo handler — aqui só lidamos com tools MCP.
-        if (allowed && !allowed.has(name)) continue
+    for (const mt of mcpTools) {
+        if (allowed && !allowed.has(mt.name)) continue
 
-        if (!options.keepConfirmExecutable && CONFIRM_TOOLS.has(name)) {
-            // HITL: mesma description + parameters, SEM execute → pausa o stream.
-            tools[name] = tool({
-                description: mcpTool.description,
-                parameters: mcpTool.parameters,
-            })
-        } else {
-            tools[name] = mcpTool
-        }
+        const inputSchema = jsonSchema(mt.inputSchema as Parameters<typeof jsonSchema>[0])
+        const isConfirm = !options.keepConfirmExecutable && CONFIRM_TOOLS.has(mt.name)
+
+        tools[mt.name] = isConfirm
+            ? tool({ description: mt.description ?? '', inputSchema })
+            : tool({
+                  description: mt.description ?? '',
+                  inputSchema,
+                  // Resultado CRU do callTool ({content, isError}) — toolResultOk lê direto.
+                  execute: async (args: unknown) =>
+                      client.callTool({
+                          name: mt.name,
+                          arguments: (args ?? {}) as Record<string, unknown>,
+                      }),
+              })
     }
 
     return { tools, close: () => client.close() }

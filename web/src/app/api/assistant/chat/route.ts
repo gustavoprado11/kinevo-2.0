@@ -1,4 +1,4 @@
-import { streamText, tool, jsonSchema } from 'ai'
+import { streamText, tool, jsonSchema, stepCountIs } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
@@ -183,14 +183,14 @@ export async function POST(req: Request) {
             model: openai(CHAT_MODEL),
             system: systemPrompt + studentIdHint + TOOL_INSTRUCTIONS,
             messages,
-            maxTokens: 1500,
+            maxOutputTokens: 1500,
             temperature: 0.7,
-            maxSteps: 3,
+            stopWhen: stepCountIs(3),
             // 6. Metering do turno (best-effort — NUNCA derruba a resposta).
             //    - pago: cobra créditos no período (increment_ai_usage) + loga o
             //      evento com o custo do LLM (tokens→USD) em ai_usage_events.
             //    - free: marca cada classe de ação testada em ai_free_trials (1× cada).
-            onFinish: async ({ usage: turnUsage, steps, text }) => {
+            onFinish: async ({ totalUsage: turnUsage, steps, text }) => {
                 try {
                     const turnCalls: TurnToolCall[] = []
                     const testedClasses = new Set<ActionClass>()
@@ -212,8 +212,8 @@ export async function POST(req: Request) {
 
                     const credits = computeTurnCredits(turnCalls)
                     const tokenUsage: TokenUsage = {
-                        inputTokens: turnUsage.promptTokens ?? 0,
-                        outputTokens: turnUsage.completionTokens ?? 0,
+                        inputTokens: turnUsage.inputTokens ?? 0,
+                        outputTokens: turnUsage.outputTokens ?? 0,
                     }
                     const costMicros = turnCostMicros(CHAT_MODEL, tokenUsage)
                     const periodType = getQuotaForTier(tier)?.period ?? 'month'
@@ -245,21 +245,21 @@ export async function POST(req: Request) {
                 for (const step of steps) {
                     const resultById = new Map<string, unknown>()
                     for (const r of step.toolResults ?? []) {
-                        resultById.set((r as { toolCallId: string }).toolCallId, (r as { result?: unknown }).result)
+                        resultById.set((r as { toolCallId: string }).toolCallId, (r as { output?: unknown }).output)
                     }
                     for (const call of step.toolCalls) {
                         const id = (call as { toolCallId: string }).toolCallId
                         traceTools.push({
                             toolName: call.toolName,
-                            args: (call as { args?: Record<string, unknown> }).args ?? {},
+                            args: (call as { input?: Record<string, unknown> }).input ?? {},
                             ok: toolResultOk(resultById.get(id)),
                         })
                     }
                 }
                 const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
                 const tokenUsageTrace: TokenUsage = {
-                    inputTokens: turnUsage.promptTokens ?? 0,
-                    outputTokens: turnUsage.completionTokens ?? 0,
+                    inputTokens: turnUsage.inputTokens ?? 0,
+                    outputTokens: turnUsage.outputTokens ?? 0,
                 }
                 await recordTurnTrace(supabaseAdmin, {
                     trainerId: trainer.id,
@@ -281,7 +281,7 @@ export async function POST(req: Request) {
             tools: {
                 generateProgram: tool({
                     description: 'Gera um novo programa de treino para o aluno. Usar quando o trainer pedir para criar/gerar um programa, ou quando o programa atual expirou. O programa é salvo como rascunho para revisão.',
-                    parameters: studentIdSchema,
+                    inputSchema: studentIdSchema,
                     execute: async ({ studentId: rawId }) => {
                         // Free: "1× cada ação" — a geração de programa aciona o motor de
                         // prescrição (caro). O gate global (exhausted) só bloqueia quando TODAS
@@ -314,7 +314,7 @@ export async function POST(req: Request) {
 
                 analyzeStudentProgress: tool({
                     description: 'Analisa o progresso detalhado de um aluno: progressão de carga, aderência, volume e tendências. Usar quando pedirem análise, relatório ou panorama do aluno.',
-                    parameters: studentIdSchema,
+                    inputSchema: studentIdSchema,
                     execute: async ({ studentId: rawId }) => {
                         const sid = await resolveStudentId(rawId)
                         if (!sid) return { error: `Aluno "${rawId}" não encontrado` }
@@ -356,7 +356,7 @@ export async function POST(req: Request) {
 
                 getStudentInsights: tool({
                     description: 'Busca os insights/alertas ativos do assistente para um aluno. Usar quando perguntarem sobre alertas, problemas ou status de um aluno.',
-                    parameters: studentIdSchema,
+                    inputSchema: studentIdSchema,
                     execute: async ({ studentId: rawId }) => {
                         const sid = await resolveStudentId(rawId)
                         if (!sid) return { insights: [], count: 0, error: `Aluno "${rawId}" não encontrado` }
@@ -374,7 +374,7 @@ export async function POST(req: Request) {
             },
         })
 
-        return result.toDataStreamResponse()
+        return result.toUIMessageStreamResponse()
     } catch (error) {
         const message = logAssistantError('CHAT API', error)
         return new Response(

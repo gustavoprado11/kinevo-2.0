@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, useId } from 'react'
-import { useChat } from 'ai/react'
+import { useState, useEffect, useRef, useMemo, useId, type FormEvent, type ChangeEvent } from 'react'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport, type UIMessage } from 'ai'
 import { Sparkles, Send, User, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useCommunicationStore } from '@/stores/communication-store'
@@ -79,6 +80,11 @@ function extractReviewLink(content: string): { url: string; label: string } | nu
     return null
 }
 
+// Texto de uma UIMessage (v5): junta os parts de texto (não há mais `content`).
+function messageText(m: { parts?: Array<{ type: string; text?: string }> }): string {
+    return (m.parts ?? []).filter(p => p.type === 'text').map(p => p.text ?? '').join('')
+}
+
 // ── Component ──
 
 export function AssistantPanelContent() {
@@ -87,17 +93,30 @@ export function AssistantPanelContent() {
     const inputRef = useRef<HTMLInputElement>(null)
     const reactId = useId()
 
-    const initialMessages = useMemo(() => {
+    const initialMessages: UIMessage[] = useMemo(() => {
         if (!initialMessage) return []
-        return [{ id: 'initial-0', role: 'assistant' as const, content: initialMessage }]
+        return [{ id: 'initial-0', role: 'assistant', parts: [{ type: 'text', text: initialMessage }] }]
     }, [initialMessage])
 
-    const { messages, input, handleInputChange, handleSubmit, isLoading, setInput } = useChat({
-        api: '/api/assistant/chat',
-        body: { studentId, insightId },
-        initialMessages,
+    const [input, setInput] = useState('')
+    const transport = useMemo(
+        () => new DefaultChatTransport({ api: '/api/assistant/chat', body: { studentId, insightId } }),
+        [studentId, insightId],
+    )
+    const { messages, sendMessage, status } = useChat({
         id: `chat-${studentId || 'general'}-${reactId}`,
+        transport,
+        messages: initialMessages,
     })
+    const isLoading = status === 'submitted' || status === 'streaming'
+    const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => setInput(e.target.value)
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault()
+        const text = input.trim()
+        if (!text || isLoading) return
+        sendMessage({ text })
+        setInput('')
+    }
 
     const chips = getChipsForInsight(insightId)
 
@@ -122,11 +141,8 @@ export function AssistantPanelContent() {
     }, [])
 
     const handleChipClick = (chipText: string) => {
-        setInput(chipText)
-        setTimeout(() => {
-            const form = inputRef.current?.closest('form')
-            form?.requestSubmit()
-        }, 0)
+        if (isLoading) return
+        sendMessage({ text: chipText })
     }
 
     const subtitle = studentName ? `Sobre: ${studentName}` : 'Todos os alunos'
@@ -174,10 +190,10 @@ export function AssistantPanelContent() {
                                 <>
                                     <div
                                         className="text-sm leading-relaxed [&_strong]:font-semibold [&_ul]:mt-1 [&_ul]:mb-1 [&_li]:text-sm [&_br+br]:hidden [&_a]:text-violet-500 [&_a]:underline"
-                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(messageText(message)) }}
                                     />
                                     {(() => {
-                                        const reviewLink = extractReviewLink(message.content)
+                                        const reviewLink = extractReviewLink(messageText(message))
                                         if (!reviewLink) return null
                                         return (
                                             <Link
@@ -192,7 +208,7 @@ export function AssistantPanelContent() {
                                     })()}
                                 </>
                             ) : (
-                                <p className="text-sm leading-relaxed">{message.content}</p>
+                                <p className="text-sm leading-relaxed">{messageText(message)}</p>
                             )}
                         </div>
                         {message.role === 'user' && (

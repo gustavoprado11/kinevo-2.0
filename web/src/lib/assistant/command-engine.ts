@@ -15,7 +15,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { generateText, tool, jsonSchema, type ToolSet } from 'ai'
+import { generateText, tool, jsonSchema, stepCountIs, type ToolSet } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -479,13 +479,13 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             perguntar_treinador: tool({
                 description:
                     'Faz uma pergunta de esclarecimento ao treinador com OPÇÕES clicáveis. Use quando faltar informação para agir (ex.: para qual aluno, qual objetivo, frequência semanal). Prefira esta tool a perguntar em texto livre. Não descreva os botões; apenas chame a tool.',
-                parameters: perguntarSchema,
+                inputSchema: perguntarSchema,
             }),
             // "Propor": client tool (SEM execute) — apresenta um plano para aprovar/ajustar.
             propor_ao_treinador: tool({
                 description:
                     'Apresenta ao treinador uma PROPOSTA pronta para ele APROVAR, AJUSTAR (editando os valores) ou CANCELAR — ex.: a estrutura de um programa ANTES de criar. Use quando você já montou o plano e precisa do "ok". NÃO use a tool de escolha (perguntar_treinador) para isto: aqui os itens são linhas rótulo+valor editáveis. Escreva a pergunta de aprovação na sua resposta em texto.',
-                parameters: proporSchema,
+                inputSchema: proporSchema,
             }),
             // NOTA: o gerador determinístico (generateProgram/motor de prescrição) foi
             // REMOVIDO do assistente. Ele ignorava a ênfase pedida (volume_budget cego ao
@@ -527,11 +527,11 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 model: providerFor(model),
                 system,
                 messages,
-                maxTokens: buildTurn ? 8000 : 1500,
+                maxOutputTokens: buildTurn ? 8000 : 1500,
                 temperature: 0.3,
-                // maxSteps é um TETO. O build é UMA chamada grande precedida de leituras
-                // (get_student, list_exercises): ~10 passos cobrem com folga e barram loop.
-                maxSteps: buildTurn ? 12 : 5,
+                // stopWhen é o TETO de passos. O build é UMA chamada grande precedida de
+                // leituras (get_student, list_exercises): ~12 passos cobrem e barram loop.
+                stopWhen: stepCountIs(buildTurn ? 12 : 5),
                 tools,
                 // Progresso ao vivo: emite um rótulo por tool executada (streaming na UI).
                 onStepFinish: ({ toolCalls }) => {
@@ -570,10 +570,10 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         interface RawToolCall {
             toolCallId: string
             toolName: string
-            args?: Record<string, unknown>
+            input?: Record<string, unknown>
         }
         interface RawToolResult extends RawToolCall {
-            result?: unknown
+            output?: unknown
         }
         const steps = result.steps as unknown as Array<{ toolResults: RawToolResult[] }>
         const toolCalls = result.toolCalls as unknown as RawToolCall[]
@@ -583,7 +583,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         for (const step of steps) {
             for (const tr of step.toolResults) {
                 executedIds.add(tr.toolCallId)
-                executed.push({ toolName: tr.toolName, args: tr.args ?? {}, result: tr.result })
+                executed.push({ toolName: tr.toolName, args: tr.input ?? {}, result: tr.output })
             }
         }
 
@@ -591,10 +591,10 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         let blockedReason: string | null = null
         for (const tc of toolCalls) {
             if (!executedIds.has(tc.toolCallId) && CONFIRM_TOOLS.has(tc.toolName)) {
-                const card = buildConfirmation(tc.toolName, tc.args ?? {})
+                const card = buildConfirmation(tc.toolName, tc.input ?? {})
                 // G5: valida os args ANTES de mostrar o card. Inválido → não mostra
                 // card, vira clarificação. Válido com alvo → resumo legível no card.
-                const validation = await validateConfirmArgs(admin, trainerId, tc.toolName, tc.args ?? {})
+                const validation = await validateConfirmArgs(admin, trainerId, tc.toolName, tc.input ?? {})
                 if (!validation.ok) {
                     blockedReason = validation.reason
                 } else {
@@ -616,7 +616,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         let question: QuestionRequest | null = null
         for (const tc of toolCalls) {
             if (!executedIds.has(tc.toolCallId) && tc.toolName === 'perguntar_treinador') {
-                const a = (tc.args ?? {}) as { pergunta?: unknown; opcoes?: unknown; multipla?: unknown }
+                const a = (tc.input ?? {}) as { pergunta?: unknown; opcoes?: unknown; multipla?: unknown }
                 const options = Array.isArray(a.opcoes)
                     ? a.opcoes.map((o) => String(o).trim()).filter(Boolean).slice(0, 6)
                     : []
@@ -631,7 +631,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         let proposal: ProposalRequest | null = null
         for (const tc of toolCalls) {
             if (!executedIds.has(tc.toolCallId) && tc.toolName === 'propor_ao_treinador') {
-                const a = (tc.args ?? {}) as { itens?: unknown; rotulo_acao?: unknown }
+                const a = (tc.input ?? {}) as { itens?: unknown; rotulo_acao?: unknown }
                 const items = Array.isArray(a.itens)
                     ? a.itens
                           .map((it) => {
@@ -672,8 +672,8 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         }))
         const credits = computeTurnCredits(turnCalls)
         const costMicros = turnCostMicros(turnModel, {
-            inputTokens: result.usage.promptTokens,
-            outputTokens: result.usage.completionTokens,
+            inputTokens: (result.totalUsage.inputTokens ?? 0),
+            outputTokens: (result.totalUsage.outputTokens ?? 0),
         })
 
         const events: AiUsageEventInput[] = turnCalls.map((c, idx) => ({
@@ -683,8 +683,8 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             ...(idx === 0
                 ? {
                       model: turnModel,
-                      inputTokens: result.usage.promptTokens,
-                      outputTokens: result.usage.completionTokens,
+                      inputTokens: (result.totalUsage.inputTokens ?? 0),
+                      outputTokens: (result.totalUsage.outputTokens ?? 0),
                       costMicros,
                   }
                 : {}),
@@ -695,8 +695,8 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 credits: 1,
                 surface,
                 model: turnModel,
-                inputTokens: result.usage.promptTokens,
-                outputTokens: result.usage.completionTokens,
+                inputTokens: (result.totalUsage.inputTokens ?? 0),
+                outputTokens: (result.totalUsage.outputTokens ?? 0),
                 costMicros,
             })
         }
@@ -740,8 +740,8 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                     : null,
                 intents,
                 credits,
-                inputTokens: result.usage.promptTokens,
-                outputTokens: result.usage.completionTokens,
+                inputTokens: (result.totalUsage.inputTokens ?? 0),
+                outputTokens: (result.totalUsage.outputTokens ?? 0),
                 costMicros,
             })
         } catch (e) {
