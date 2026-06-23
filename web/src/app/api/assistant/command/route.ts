@@ -25,7 +25,7 @@ import { PRO_TIERS, gateAssistant, runAssistantTurn, UUID_RE } from '@/lib/assis
 import { limitTurn } from '@/lib/assistant/rate-limits'
 import { assistantErrorResponse } from '@/lib/assistant/errors'
 
-export const maxDuration = 60
+export const maxDuration = 300 // build Sonnet pode passar de 60s (C5)
 
 const SURFACE = 'command_bar' as const
 const MAX_INPUT_CHARS = 2000

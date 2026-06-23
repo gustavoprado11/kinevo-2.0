@@ -175,9 +175,10 @@ export function actionClassForTool(tool: string): ActionClass {
 export const CREDIT_WEIGHTS: Record<string, number> = {
     // Prescrição completa (action determinística) = ação cara.
     [GENERATE_PROGRAM]: 5,
-    // Writes compostos.
-    kinevo_create_program_template: 3, // programa + sessões + exercícios + supersets
-    kinevo_create_student_draft_program: 3, // idem, mas como rascunho-do-aluno
+    // Writes compostos. Build de programa roda em Claude Sonnet (COGS ~10× o turno
+    // normal) — peso 6 p/ a cobrança refletir o custo real (auditoria C3).
+    kinevo_create_program_template: 6, // programa + sessões + exercícios + supersets
+    kinevo_create_student_draft_program: 6, // idem, mas como rascunho-do-aluno
     kinevo_create_superset: 2,
     kinevo_assign_program: 2,
     kinevo_create_contract: 2,

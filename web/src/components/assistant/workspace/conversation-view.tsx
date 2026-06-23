@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, Check, Send, Loader2, ArrowLeft, Pencil, Search, PenLine, ArrowUpRight } from 'lucide-react'
+import { Sparkles, Check, Send, Loader2, ArrowLeft, Pencil, Search, PenLine, ArrowUpRight, Square } from 'lucide-react'
 import { CreditMeter } from '@/components/assistant/credit-meter'
 import { ToolConfirmationCard } from '@/components/assistant/tool-confirmation-card'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
@@ -49,6 +49,7 @@ interface Props {
     onDismissBanner: () => void
     onInput: (v: string) => void
     onSend: () => void
+    onStop: () => void
     onSendText: (text: string) => void
     onBackHome: () => void
     onRename: () => void
@@ -92,7 +93,7 @@ function parseMcpPayload(result: unknown): Record<string, unknown> | null {
 
 export function ConversationView({
     active, summary, messages, loadingMessages, sending, liveSteps, input, students, banner,
-    onDismissBanner, onInput, onSend, onSendText, onBackHome, onRename, onConfirmResolved,
+    onDismissBanner, onInput, onSend, onStop, onSendText, onBackHome, onRename, onConfirmResolved,
 }: Props) {
     const streamRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -213,10 +214,17 @@ export function ConversationView({
                             style={{ outline: 'none' }}
                             className="max-h-[200px] flex-1 resize-none overflow-y-auto bg-transparent px-1.5 py-2 text-[15px] leading-[1.5] text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60"
                         />
-                        <button onClick={onSend} disabled={sending || !input.trim()}
-                            className="flex h-[36px] items-center gap-1.5 rounded-[14px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 text-[13px] font-bold text-white transition hover:brightness-105 disabled:opacity-40">
-                            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-[15px] w-[15px]" strokeWidth={2} />} Agir
-                        </button>
+                        {sending ? (
+                            <button onClick={onStop} type="button" title="Parar"
+                                className="flex h-[36px] items-center gap-1.5 rounded-[14px] border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-4 text-[13px] font-bold text-[#1D1D1F] dark:text-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg">
+                                <Square className="h-3 w-3" strokeWidth={2.5} fill="currentColor" /> Parar
+                            </button>
+                        ) : (
+                            <button onClick={onSend} disabled={!input.trim()}
+                                className="flex h-[36px] items-center gap-1.5 rounded-[14px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 text-[13px] font-bold text-white transition hover:brightness-105 disabled:opacity-40">
+                                <Send className="h-[15px] w-[15px]" strokeWidth={2} /> Agir
+                            </button>
+                        )}
                     </div>
                     <div className="mt-2 flex justify-center gap-4 text-[10.5px] text-[#AEAEB2] dark:text-muted-foreground/60">
                         <span><kbd className="rounded border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-1.5 font-mono text-[#86868B] dark:text-muted-foreground">Enter</kbd> enviar</span>

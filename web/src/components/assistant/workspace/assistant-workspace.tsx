@@ -9,7 +9,7 @@
  * (criar/abrir conversa, enviar turno, HITL).
  */
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { setHomeStyle } from '@/actions/assistant/set-home-style'
 import { setCachedAiAllowed, setCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
@@ -49,6 +49,8 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     const [search, setSearch] = useState('')
     const [focusedStudentId, setFocusedStudentId] = useState<string | null>(null)
     const [error, setError] = useState<AssistantBannerData | null>(null)
+    const abortRef = useRef<AbortController | null>(null) // U-STOP: turno em andamento
+    const [creditWarnDismissed, setCreditWarnDismissed] = useState(false) // U-CRED
 
     const active = useMemo(() => conversations.find((c) => c.id === activeId) ?? null, [conversations, activeId])
 
@@ -130,6 +132,9 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
         setError(null)
         setSending(true)
         const clientMessageId = crypto.randomUUID() // C4: idempotência do turno (anti re-envio)
+        const ac = new AbortController() // U-STOP: permite Parar o turno
+        abortRef.current = ac
+        let optimisticId = ''
 
         let convId = activeId
         try {
@@ -137,6 +142,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 const res = await fetch('/api/assistant/conversations', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(focusedStudentId ? { studentId: focusedStudentId } : {}),
+                    signal: ac.signal,
                 })
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}))
@@ -158,11 +164,13 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 id: `tmp-${Date.now()}`, role: 'user', content: text, parts: [], credits_cost: 0,
                 created_at: new Date().toISOString(),
             }
+            optimisticId = optimistic.id
             setMessages((prev) => [...prev, optimistic])
 
             const res = await fetch(`/api/assistant/conversations/${convId}`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ input: text, clientMessageId }),
+                signal: ac.signal,
             })
             // Erros de setup (gate/cota/rate/validação) vêm como JSON não-2xx.
             if (!res.ok || !res.body) {
@@ -216,8 +224,22 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 if (updated.title === 'Nova conversa') updated.title = text.slice(0, 70)
                 return [updated, ...prev.filter((c) => c.id !== convId)]
             })
-        } catch { /* noop */ } finally { setSending(false); setLiveSteps([]) }
+        } catch (e) {
+            // U-ERR: não engole a falha. Parar (AbortError) é intencional — mantém a msg
+            // do usuário; a resposta, se concluiu no servidor, aparece ao reabrir a
+            // conversa. Outras falhas (rede/timeout) → banner + restaura o texto.
+            if ((e as Error)?.name !== 'AbortError') {
+                if (optimisticId) setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+                setError(bannerFromError(500, {}))
+                if (!override) setInput(text)
+            }
+        } finally {
+            setSending(false); setLiveSteps([]); abortRef.current = null
+        }
     }, [input, sending, activeId, focusedStudentId, students])
+
+    // U-STOP: interrompe o turno em andamento (aborta o fetch/stream).
+    const stop = useCallback(() => { abortRef.current?.abort() }, [])
 
     const starter = useCallback((prompt: string) => { void send(prompt) }, [send])
     // Cards da home: preenchem o composer p/ o treinador revisar/ajustar antes de
@@ -269,9 +291,21 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // Banner ativo: erro de turno tem prioridade; senão cota esgotada (persistente).
+    // U-CRED: aviso de crédito ACABANDO (≥85% usado), antes de zerar.
+    const lowCredit: AssistantBannerData | null =
+        summary && !summary.exhausted && summary.tier !== 'free' && summary.creditsTotal > 0 &&
+        summary.creditsRemaining <= Math.ceil(summary.creditsTotal * 0.15) && !creditWarnDismissed
+            ? {
+                  tone: 'warning',
+                  message: `Seus créditos de IA estão acabando — restam ${summary.creditsRemaining} de ${summary.creditsTotal}. Renovam no próximo ciclo.`,
+              }
+            : null
+
+    // Banner ativo: erro de turno > cota esgotada > crédito acabando.
     const banner: AssistantBannerData | null =
-        error ?? (summary?.exhausted ? bannerFromError(402, {}) : null)
+        error ?? (summary?.exhausted ? bannerFromError(402, {}) : lowCredit)
+
+    const dismissBanner = useCallback(() => { setError(null); setCreditWarnDismissed(true) }, [])
 
     return (
         <div className="kv-mode-in flex h-[100dvh] overflow-hidden bg-[#F5F5F7] text-[#1D1D1F]">
@@ -308,9 +342,10 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     trainerName={trainerName}
                     students={students}
                     banner={banner}
-                    onDismissBanner={() => setError(null)}
+                    onDismissBanner={dismissBanner}
                     onInput={setInput}
                     onSend={() => send()}
+                    onStop={stop}
                     onSendText={starter}
                     onBackHome={goHome}
                     onRename={renameActive}
@@ -328,7 +363,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     input={input}
                     sending={sending}
                     banner={banner}
-                    onDismissBanner={() => setError(null)}
+                    onDismissBanner={dismissBanner}
                     onInput={setInput}
                     onSend={() => send()}
                     onStarter={fillInput}

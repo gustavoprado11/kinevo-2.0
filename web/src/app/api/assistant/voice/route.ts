@@ -24,7 +24,7 @@ import { limitTurn } from '@/lib/assistant/rate-limits'
 import { transcribeAudio } from '@/lib/assistant/voice'
 import { assistantErrorResponse } from '@/lib/assistant/errors'
 
-export const maxDuration = 60
+export const maxDuration = 300 // build Sonnet pode passar de 60s (C5)
 
 const SURFACE = 'voice' as const
 const MAX_INPUT_CHARS = 2000

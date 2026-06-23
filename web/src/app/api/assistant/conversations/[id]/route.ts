@@ -29,7 +29,9 @@ import {
 } from '@/lib/assistant/conversations'
 import { redactSensitive } from '@/lib/assistant/redact'
 
-export const maxDuration = 60
+// Turno de CONSTRUÇÃO de programa (Sonnet, vários passos) pode passar de 60s; 300s
+// evita timeout/orphan no meio do build (auditoria C5). Rota gated (Assistente).
+export const maxDuration = 300
 
 const MAX_INPUT_CHARS = 2000
 

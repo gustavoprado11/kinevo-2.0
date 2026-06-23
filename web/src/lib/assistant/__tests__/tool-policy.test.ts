@@ -61,7 +61,7 @@ describe('tool-policy — pesos de crédito', () => {
         expect(creditWeightForCall('kinevo_list_students')).toBe(1)
         expect(creditWeightForCall('kinevo_update_student')).toBe(1)
         expect(creditWeightForCall(GENERATE_PROGRAM)).toBe(5)
-        expect(creditWeightForCall('kinevo_create_program_template')).toBe(3)
+        expect(creditWeightForCall('kinevo_create_program_template')).toBe(6) // build Sonnet (C3)
         expect(creditWeightForCall('kinevo_create_superset')).toBe(2)
     })
 
@@ -96,7 +96,7 @@ describe('tool-policy — pesos de crédito', () => {
         }))
         expect(computeTurnCredits(loop)).toBe(MAX_TURN_CREDITS)
         // turno legítimo (abaixo do teto) não é afetado
-        expect(computeTurnCredits([{ tool: 'kinevo_create_student_draft_program' }])).toBe(3)
+        expect(computeTurnCredits([{ tool: 'kinevo_create_student_draft_program' }])).toBe(6)
     })
 
     it('actionClassForTool', () => {
