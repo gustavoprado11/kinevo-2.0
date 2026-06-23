@@ -4,8 +4,9 @@
 // (ProgramBuilderClient e EditAssignedProgramClient). Toda a lógica de mutação
 // vive nas funções puras de ../builder-model — aqui é só o cabo React.
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DragEndEvent } from '@dnd-kit/core'
+import { registerCanvasApi, unregisterCanvasApi } from './builder-canvas-bridge'
 import {
     type Workout,
     type WorkoutItem,
@@ -167,6 +168,40 @@ export function useWorkoutModel({ initialWorkouts, workoutName }: UseWorkoutMode
 
     const dissolveSuperset = useCallback((workoutId: string, supersetId: string) => {
         setWorkouts(prev => dissolveSupersetIn(prev, workoutId, supersetId))
+    }, [])
+
+    // ── Ponte do canvas (Fase 1) ──────────────────────────────────────────
+    // Publica a API de mutação pra superfícies irmãs (o chat "Gerar com IA" ao
+    // vivo). Wrappers estáveis delegam pras implementações mais recentes via
+    // ref, então registramos UMA vez no mount e nunca servimos closures velhas.
+    const workoutsRef = useRef(workouts)
+    workoutsRef.current = workouts
+    const activeWorkoutIdRef = useRef(activeWorkoutId)
+    activeWorkoutIdRef.current = activeWorkoutId
+    const implRef = useRef({
+        setWorkouts, setActiveWorkoutId, createWorkoutWithName, updateWorkoutName,
+        updateWorkoutFrequency, deleteWorkout, appendItemsWith, updateItem, deleteItem,
+    })
+    implRef.current = {
+        setWorkouts, setActiveWorkoutId, createWorkoutWithName, updateWorkoutName,
+        updateWorkoutFrequency, deleteWorkout, appendItemsWith, updateItem, deleteItem,
+    }
+    useEffect(() => {
+        registerCanvasApi({
+            getWorkouts: () => workoutsRef.current,
+            getActiveWorkoutId: () => activeWorkoutIdRef.current,
+            setActiveWorkout: (id) => implRef.current.setActiveWorkoutId(id),
+            apply: (mutator) => implRef.current.setWorkouts(prev => mutator(prev)),
+            createWorkoutWithName: (name, frequency) => implRef.current.createWorkoutWithName(name, frequency),
+            updateWorkoutName: (workoutId, name) => implRef.current.updateWorkoutName(workoutId, name),
+            updateWorkoutFrequency: (workoutId, days) => implRef.current.updateWorkoutFrequency(workoutId, days),
+            deleteWorkout: (workoutId) => implRef.current.deleteWorkout(workoutId),
+            appendItemsWith: (workoutId, makeItems) => implRef.current.appendItemsWith(workoutId, makeItems),
+            updateItem: (workoutId, itemId, updates) => implRef.current.updateItem(workoutId, itemId, updates),
+            deleteItem: (workoutId, itemId) => implRef.current.deleteItem(workoutId, itemId),
+        })
+        return () => unregisterCanvasApi()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     return {

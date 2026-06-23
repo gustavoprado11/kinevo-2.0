@@ -53,6 +53,10 @@ const AiPrescriptionPanel = dynamic(
     () => import('./ai-prescription-panel').then(m => ({ default: m.AiPrescriptionPanel })),
     { ssr: false }
 )
+const AiCanvasChatPanel = dynamic(
+    () => import('./ai-canvas-chat/ai-canvas-chat-panel').then(m => ({ default: m.AiCanvasChatPanel })),
+    { ssr: false }
+)
 const ProgramSelector = dynamic(
     () => import('@/components/builder/context-panel/program-selector').then(m => ({ default: m.ProgramSelector })),
     { ssr: false }
@@ -314,6 +318,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         && !!studentContext
         && !!prescriptionData
     const [aiPanelOpen, setAiPanelOpen] = useState(false)
+    // Painel de chat "Gerar com IA" ao vivo (feature nova). O botão abre ESTE;
+    // o wizard de formulário (aiPanelOpen) fica como fallback ("usar formulário").
+    const [chatPanelOpen, setChatPanelOpen] = useState(false)
     const aiPanelAutoOpenedRef = useRef(false)
 
     // ── AI Panel lifecycle ──
@@ -1254,10 +1261,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         {aiPanelAvailable && (
                             <>
                                 <button
-                                    onClick={toggleAiPanel}
+                                    onClick={() => setChatPanelOpen(true)}
                                     data-testid="ai-panel-toggle"
                                     className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                                        aiPanelOpen
+                                        chatPanelOpen
                                             ? 'text-violet-600 dark:text-violet-400 bg-violet-100/80 dark:bg-violet-500/[0.08]'
                                             : 'text-violet-600 dark:text-violet-400 hover:bg-violet-100/60 dark:hover:bg-violet-500/[0.08]'
                                     }`}
@@ -1941,6 +1948,24 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     initialGenerationId={prescriptionGenerationId}
                     onClose={closeAiPanel}
                     onAcceptGeneratedProgram={handleAcceptGeneratedProgram}
+                />
+            )}
+
+            {/* Painel de chat "Gerar com IA" ao vivo — monta no canvas pela ponte */}
+            {aiPanelAvailable && studentContext && (
+                <AiCanvasChatPanel
+                    open={chatPanelOpen}
+                    studentId={studentContext.id}
+                    studentName={studentContext.name}
+                    exercises={localExercises}
+                    currentName={name}
+                    currentDurationWeeks={durationWeeks ? parseInt(durationWeeks) : null}
+                    onApplyMeta={(meta) => {
+                        if (meta.name != null) setName(meta.name)
+                        if (meta.durationWeeks != null) setDurationWeeks(String(meta.durationWeeks))
+                    }}
+                    onUseForm={() => { setChatPanelOpen(false); setAiPanelOpen(true) }}
+                    onClose={() => setChatPanelOpen(false)}
                 />
             )}
 
