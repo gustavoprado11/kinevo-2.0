@@ -173,9 +173,47 @@ export async function validateConfirmArgs(
             // best-effort — NUNCA bloqueiam (a própria tool checa posse na execução);
             // só montam um ALVO LEGÍVEL p/ o card (destinatário + prévia / contagem).
             case 'kinevo_send_message': {
-                // A mensagem aparece (editável) no card; aqui o alvo é só o destinatário.
                 const name = await studentName(admin, trainerId, str(args.student_id))
-                return { ok: true, target: { label: name ? `Para ${name}` : 'Mensagem ao aluno' } }
+                if (!name) return { ok: true, target: null }
+                // Guardrail anti-destinatário-errado (feedback 22/jun: pedido p/ "Gustavo",
+                // modelo mandou p/ "Giovanna"). Se a mensagem ABRE endereçada a OUTRO aluno
+                // (1º nome) e NÃO cita o destinatário, bloqueia p/ o treinador conferir.
+                const content = str(args.content) ?? ''
+                // Deaccent + lowercase sem regex de marcas literais: filtra os
+                // combining marks (U+0300–U+036F) por code-point após NFD.
+                const norm = (s: string) =>
+                    s
+                        .toLowerCase()
+                        .normalize('NFD')
+                        .split('')
+                        .filter((c) => {
+                            const code = c.charCodeAt(0)
+                            return code < 0x300 || code > 0x36f
+                        })
+                        .join('')
+                const recipientFirst = norm(name.split(/\s+/)[0] ?? '')
+                const opening = norm(content.slice(0, 60))
+                if (recipientFirst.length >= 3 && !opening.includes(recipientFirst)) {
+                    const { data: roster } = await admin
+                        .from('students')
+                        .select('name')
+                        .eq('coach_id', trainerId)
+                        .limit(400)
+                    for (const r of (roster ?? []) as Array<{ name: string | null }>) {
+                        const otherFull = (r.name ?? '').trim()
+                        const otherFirst = norm(otherFull.split(/\s+/)[0] ?? '')
+                        if (otherFirst.length < 3 || otherFirst === recipientFirst) continue
+                        const esc = otherFirst.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                        if (new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`).test(opening)) {
+                            return {
+                                ok: false,
+                                reason: `A mensagem parece endereçada a "${otherFull.split(/\s+/)[0]}", mas o destinatário selecionado é ${name}. Confirme para qual aluno é a mensagem — o nome no texto não bate com o destinatário.`,
+                            }
+                        }
+                    }
+                }
+                // A mensagem aparece (editável) no card; o alvo destaca o destinatário.
+                return { ok: true, target: { label: `Para ${name}`, details: { recipientName: name } } }
             }
 
             case 'kinevo_send_form':

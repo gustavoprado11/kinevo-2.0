@@ -109,3 +109,56 @@ describe('validateConfirmArgs — sem validador estrito', () => {
         if (r.ok) expect(r.target).toBeNull()
     })
 })
+
+/** admin p/ send_message: `maybeSingle` → destinatário; await da lista → roster. */
+function makeSendMsgAdmin(recipientName: string | null, roster: Array<{ name: string }>): SupabaseClient {
+    const single = { data: recipientName ? { name: recipientName } : null }
+    const pList = Promise.resolve({ data: roster })
+    const proxy: unknown = new Proxy(function () {}, {
+        get(_t, prop) {
+            if (prop === 'maybeSingle') return () => Promise.resolve(single)
+            if (prop === 'then') return pList.then.bind(pList)
+            if (prop === 'catch') return pList.catch.bind(pList)
+            if (prop === 'finally') return pList.finally.bind(pList)
+            return () => proxy
+        },
+        apply() {
+            return proxy
+        },
+    })
+    return { from: () => proxy } as unknown as SupabaseClient
+}
+
+describe('validateConfirmArgs — send_message (guardrail anti-destinatário-errado)', () => {
+    const roster = [{ name: 'Gustavo Prado' }, { name: 'Giovanna Prado' }, { name: 'Marina Lanza' }]
+
+    it('BLOQUEIA: mensagem endereçada a "Gustavo" mas o destinatário é Giovanna', async () => {
+        const admin = makeSendMsgAdmin('Giovanna Prado', roster)
+        const r = await validateConfirmArgs(admin, T, 'kinevo_send_message', {
+            student_id: 's-gi',
+            content: 'Gustavo, bora treinar hoje? Tô aqui pra te apoiar.',
+        })
+        expect(r.ok).toBe(false)
+        if (!r.ok) expect(r.reason).toMatch(/Gustavo[\s\S]*destinat|não bate/i)
+    })
+
+    it('OK: a mensagem cita o próprio destinatário (Marina)', async () => {
+        const admin = makeSendMsgAdmin('Marina Lanza', roster)
+        const r = await validateConfirmArgs(admin, T, 'kinevo_send_message', {
+            student_id: 's-ma',
+            content: 'Oi Marina! Senti sua falta, bora retomar?',
+        })
+        expect(r.ok).toBe(true)
+        if (r.ok) expect(r.target?.details?.recipientName).toBe('Marina Lanza')
+    })
+
+    it('OK: saudação genérica sem citar outro aluno NÃO bloqueia', async () => {
+        const admin = makeSendMsgAdmin('Giovanna Prado', roster)
+        const r = await validateConfirmArgs(admin, T, 'kinevo_send_message', {
+            student_id: 's-gi',
+            content: 'Bora treinar hoje! Tô aqui pra te apoiar.',
+        })
+        expect(r.ok).toBe(true)
+        if (r.ok) expect(r.target?.details?.recipientName).toBe('Giovanna Prado')
+    })
+})

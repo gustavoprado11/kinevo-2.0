@@ -23,6 +23,14 @@ import type {
 } from '@/lib/assistant/hitl-types'
 import type { AiSurface } from '@/lib/ai-usage/metering'
 
+/** Iniciais p/ o avatar do destinatário (ex.: "Giovanna Prado" → "GP"). */
+function recipientInitials(name: string): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean)
+    const first = parts[0]?.[0] ?? ''
+    const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
+    return (first + last).toUpperCase() || '?'
+}
+
 interface ToolConfirmationCardProps {
     request: ToolConfirmationRequest
     surface?: AiSurface
@@ -96,11 +104,23 @@ export function ToolConfirmationCard({
                     <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px]" style={{ background: '#EDE9FE', color: '#7C3AED' }}>
                         <Send className="h-[15px] w-[15px]" strokeWidth={2} />
                     </span>
-                    <div className="min-w-0">
-                        <b className="block text-[13.5px] font-bold text-[#1D1D1F] dark:text-foreground">{request.title}</b>
-                        <span className="block truncate text-[11.5px] text-[#86868B] dark:text-muted-foreground">{request.summary}</span>
-                    </div>
+                    <b className="block text-[13.5px] font-bold text-[#1D1D1F] dark:text-foreground">{request.title}</b>
                 </div>
+
+                {/* Destinatário EM DESTAQUE — o treinador confere pra quem vai antes de enviar. */}
+                {request.recipientName ? (
+                    <div className="mt-2.5 flex items-center gap-2.5 rounded-[12px] border border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-glass-bg px-3 py-2">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EDE9FE] text-[12px] font-bold text-[#7C3AED]">
+                            {recipientInitials(request.recipientName)}
+                        </span>
+                        <div className="min-w-0 leading-tight">
+                            <span className="block text-[10px] font-bold uppercase tracking-[0.06em] text-[#86868B] dark:text-muted-foreground">Enviar para</span>
+                            <b className="block truncate text-[14px] font-bold text-[#1D1D1F] dark:text-foreground">{request.recipientName}</b>
+                        </div>
+                    </div>
+                ) : (
+                    <span className="mt-1 block truncate text-[11.5px] text-[#86868B] dark:text-muted-foreground">{request.summary}</span>
+                )}
 
                 {sent ? (
                     <div className="mt-2.5 whitespace-pre-wrap rounded-[12px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1D1D1F] dark:text-foreground">

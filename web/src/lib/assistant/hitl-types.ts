@@ -34,6 +34,12 @@ export interface ToolConfirmationRequest {
      */
     editableField?: string
     editableLabel?: string
+    /**
+     * Destinatário legível (ex.: nome do aluno de kinevo_send_message). O card o
+     * mostra EM DESTAQUE para o treinador conferir pra quem vai antes de enviar
+     * (rede de segurança contra destinatário errado).
+     */
+    recipientName?: string
 }
 
 /** Resultado da decisão humana sobre um ToolConfirmationRequest. */

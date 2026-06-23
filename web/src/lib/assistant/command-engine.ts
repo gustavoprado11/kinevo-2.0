@@ -574,7 +574,13 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 if (!validation.ok) {
                     blockedReason = validation.reason
                 } else {
-                    if (validation.target) card.summary = validation.target.label
+                    if (validation.target) {
+                        card.summary = validation.target.label
+                        // Destinatário em destaque no card (ex.: nome do aluno da mensagem).
+                        if (validation.target.details?.recipientName) {
+                            card.recipientName = validation.target.details.recipientName
+                        }
+                    }
                     confirmation = card
                 }
                 break
@@ -757,7 +763,11 @@ const MCP_HITL_INSTRUCTIONS = `
 - ENVIAR MENSAGEM a um aluno (kinevo_send_message): VOCÊ MESMO redige a mensagem — NUNCA peça o texto
   ao treinador e NUNCA escreva a mensagem na sua resposta. Pegue o student_id do CONTEXTO (a lista de
   alunos traz "Nome (id: UUID)"): use o UUID direto e NÃO chame kinevo_list_students/kinevo_get_student
-  para "achar" o aluno. Aí CHAME kinevo_send_message (student_id + content) numa única vez — o app abre
+  para "achar" o aluno. ⚠️ PAREIE PELO NOME COMPLETO, não só o 1º nome — CUIDADO com nomes parecidos / da
+  mesma família (ex.: "Gustavo Prado" vs "Giovanna Prado"): pegar o UUID errado manda a mensagem pra
+  pessoa ERRADA. Se houver nomes parecidos ou QUALQUER dúvida de qual aluno é, use perguntar_treinador
+  com as opções em vez de chutar o UUID. E endereça a mensagem ao MESMO aluno do destinatário (não cite
+  outro nome no texto). Aí CHAME kinevo_send_message (student_id + content) numa única vez — o app abre
   um card com a mensagem para o treinador APROVAR ou AJUSTAR antes de enviar (não pergunte "confirmo?").
   VOZ: você é o PERSONAL TRAINER falando 1:1 com o aluno — primeira pessoa do SINGULAR, calorosa e
   direta ("Senti sua falta", "Bora retomar", "Tô aqui pra te ajudar"). JAMAIS voz de estúdio/equipe
