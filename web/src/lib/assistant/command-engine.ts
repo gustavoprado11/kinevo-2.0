@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto'
 import { generateText, tool, jsonSchema, stepCountIs, type ToolSet } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
+import { google } from '@ai-sdk/google'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildMcpTools } from '@/lib/assistant/mcp-bridge'
 import {
@@ -53,8 +54,9 @@ export const ASSISTANT_MODEL: LLMModel = 'gpt-4.1-mini'
  * mais forte SÓ no build — onde a qualidade da prescrição importa — sem encarecer
  * os turnos normais (consulta/edição). Whitelist p/ não aceitar lixo de env.
  */
-const BUILD_MODELS: ReadonlySet<string> = new Set<LLMModel>([
+const BUILD_MODELS: ReadonlySet<string> = new Set([
     'gpt-4.1', 'gpt-4.1-mini', 'gpt-4o-mini', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001',
+    'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash',
 ])
 /**
  * Default do build = Claude Sonnet. Medição (5x glúteo+costas) mostrou diferença
@@ -63,17 +65,21 @@ const BUILD_MODELS: ReadonlySet<string> = new Set<LLMModel>([
  * certos, volume distribuído, ênfase honrada). Custo ~10x (COGS, não crédito do
  * treinador), justificado pela qualidade — que é o produto.
  */
-const DEFAULT_BUILD_MODEL: LLMModel = 'claude-sonnet-4-6'
-function resolveBuildModel(): LLMModel {
+// Padrão dos build turns do treinador = Gemini 3.5 Flash (decisão jun/2026: IA do
+// treinador padroniza no Gemini; ~2× mais barato que o Sonnet com qualidade próxima).
+// Configurável por ASSISTANT_BUILD_MODEL. Sem a key do provedor → cai pro mini.
+const DEFAULT_BUILD_MODEL = 'gemini-3.5-flash'
+function resolveBuildModel(): string {
     const env = process.env.ASSISTANT_BUILD_MODEL
-    const wanted: LLMModel = env && BUILD_MODELS.has(env) ? (env as LLMModel) : DEFAULT_BUILD_MODEL
-    // Claude exige a key; sem ela, cai pro modelo padrão do assistente (mini).
+    const wanted = env && BUILD_MODELS.has(env) ? env : DEFAULT_BUILD_MODEL
     if (wanted.startsWith('claude') && !process.env.ANTHROPIC_API_KEY) return ASSISTANT_MODEL
+    if (wanted.startsWith('gemini') && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) return ASSISTANT_MODEL
     return wanted
 }
 
-/** Provider correto pelo prefixo do modelo: claude → Anthropic; resto → OpenAI. */
-function providerFor(model: LLMModel) {
+/** Provider pelo prefixo: gemini → Google; claude → Anthropic; resto → OpenAI. */
+function providerFor(model: string) {
+    if (model.startsWith('gemini')) return google(model)
     return model.startsWith('claude') ? anthropic(model) : openai(model)
 }
 
@@ -520,9 +526,9 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         // teto de passos maior (ler contexto + listar exercícios + criar). `buildTurn`
         // já foi calculado no passo 1 (afeta o subset de tools). O modelo do build é
         // configurável (qualidade-crítico) — ver resolveBuildModel.
-        let turnModel: LLMModel = buildTurn ? resolveBuildModel() : ASSISTANT_MODEL
+        let turnModel: string = buildTurn ? resolveBuildModel() : ASSISTANT_MODEL
 
-        const runGen = (model: LLMModel) =>
+        const runGen = (model: string) =>
             generateText({
                 model: providerFor(model),
                 system,

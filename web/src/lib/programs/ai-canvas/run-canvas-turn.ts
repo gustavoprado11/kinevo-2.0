@@ -30,7 +30,7 @@ const BUILD_MODELS: ReadonlySet<string> = new Set([
     // signatures tratadas pelo provider). 2.5-flash mantido como alternativa.
     'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash',
 ])
-const DEFAULT_BUILD_MODEL = 'claude-sonnet-4-6'
+const DEFAULT_BUILD_MODEL = 'gemini-3.5-flash'
 const FALLBACK_MODEL = 'gpt-4.1-mini'
 
 /**

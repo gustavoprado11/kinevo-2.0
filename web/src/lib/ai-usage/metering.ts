@@ -42,18 +42,31 @@ export function usdToMicros(usd: number): number {
     return Math.round(usd * 1_000_000)
 }
 
+// Pricing do Gemini (NÃO está no PRICING do llm-client, que cobre OpenAI/Anthropic).
+// USD por 1M tokens (jun/2026). Mantido aqui (lib não-protegida) p/ não tocar lib/prescription.
+const GEMINI_PRICE_PER_MTOK: Record<string, { in: number; cached: number; out: number }> = {
+    'gemini-3.5-flash': { in: 1.5, cached: 0.15, out: 9 },
+    'gemini-3-flash-preview': { in: 0.5, cached: 0.05, out: 3 },
+    'gemini-2.5-flash': { in: 0.3, cached: 0.075, out: 2.5 },
+}
+
 /** Custo em USD de um turno a partir do uso de tokens (cache-aware). */
-export function turnCostUsd(model: LLMModel, usage: TokenUsage): number {
+export function turnCostUsd(model: LLMModel | string, usage: TokenUsage): number {
     const cached = Math.max(0, Math.min(usage.cachedInputTokens ?? 0, usage.inputTokens))
-    return computeCost(model, {
-        input_new: usage.inputTokens - cached,
+    const inputNew = usage.inputTokens - cached
+    const gemini = typeof model === 'string' ? GEMINI_PRICE_PER_MTOK[model] : undefined
+    if (gemini) {
+        return (inputNew * gemini.in + cached * gemini.cached + usage.outputTokens * gemini.out) / 1_000_000
+    }
+    return computeCost(model as LLMModel, {
+        input_new: inputNew,
         input_cached: cached,
         output: usage.outputTokens,
     })
 }
 
 /** Custo em micros (para persistir). */
-export function turnCostMicros(model: LLMModel, usage: TokenUsage): number {
+export function turnCostMicros(model: LLMModel | string, usage: TokenUsage): number {
     return usdToMicros(turnCostUsd(model, usage))
 }
 
