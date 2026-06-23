@@ -11,7 +11,7 @@ import { WorkoutPanel } from './workout-panel'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableWorkoutTab } from './sortable-workout-tab'
-import { ExerciseLibraryPanel } from './exercise-library-panel'
+import { ExerciseLibrarySkeleton } from './exercise-library-panel-skeleton'
 import { VolumeSummary } from './volume-summary'
 import { ProgramFormTriggers, type TriggerSelection, type InitialTrigger } from './program-form-triggers'
 import { useToast } from '@/components/ui/toast'
@@ -30,6 +30,13 @@ const WorkoutExecutionPreview = dynamic(
 const ProgramSelector = dynamic(
     () => import('@/components/builder/context-panel/program-selector').then(m => ({ default: m.ProgramSelector })),
     { ssr: false }
+)
+// Biblioteca de exercícios deferida (ssr:false): tira o rail de centenas a
+// milhares de linhas do HTML do SSR e do chunk inicial. Skeleton ocupa a mesma
+// caixa de 320px → sem CLS. Mesmo racional do program-builder-client.
+const ExerciseLibraryPanel = dynamic(
+    () => import('./exercise-library-panel').then(m => ({ default: m.ExerciseLibraryPanel })),
+    { ssr: false, loading: () => <ExerciseLibrarySkeleton /> }
 )
 // ── Núcleo compartilhado: tipos, helpers per-set e mutações puras ──
 import {

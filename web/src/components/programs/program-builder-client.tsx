@@ -8,15 +8,13 @@ import { WorkoutPanel } from './workout-panel'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableWorkoutTab } from './sortable-workout-tab'
-import { ExerciseLibraryPanel } from './exercise-library-panel'
+import { ExerciseLibrarySkeleton } from './exercise-library-panel-skeleton'
 import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Sparkles, Settings } from 'lucide-react'
 import { KINEVO_DEFAULT_PREFERENCES, type PrescriptionPreferences } from '@/types/prescription-preferences'
 import { usePrescriptionPreferencesStore } from '@/stores/prescription-preferences-store'
 import { PreferencesBanner } from './preferences/preferences-banner'
-import { PreferencesDrawer } from './preferences/preferences-drawer'
-import { PreferencesWizard } from './preferences/preferences-wizard'
 import { track } from '@/lib/analytics'
 
 import dynamic from 'next/dynamic'
@@ -57,6 +55,26 @@ const AiPrescriptionPanel = dynamic(
 )
 const ProgramSelector = dynamic(
     () => import('@/components/builder/context-panel/program-selector').then(m => ({ default: m.ProgramSelector })),
+    { ssr: false }
+)
+
+// Biblioteca de exercícios: rail lateral que renderiza centenas a milhares de
+// linhas (não é o elemento de LCP — esse é o canvas central). Defer com
+// ssr:false tira esse HTML enorme do payload do SSR (LCP central paga mais
+// cedo) e do chunk de hidratação inicial. O skeleton ocupa a mesma caixa de
+// 320px → sem CLS. É a rota mais pesada do app (Speed Insights: RES 45).
+const ExerciseLibraryPanel = dynamic(
+    () => import('./exercise-library-panel').then(m => ({ default: m.ExerciseLibraryPanel })),
+    { ssr: false, loading: () => <ExerciseLibrarySkeleton /> }
+)
+// Drawers de preferências: overlays que só abrem em interação e arrastam
+// framer-motion. Defer tira a engine de animação do chunk inicial do builder.
+const PreferencesDrawer = dynamic(
+    () => import('./preferences/preferences-drawer').then(m => ({ default: m.PreferencesDrawer })),
+    { ssr: false }
+)
+const PreferencesWizard = dynamic(
+    () => import('./preferences/preferences-wizard').then(m => ({ default: m.PreferencesWizard })),
     { ssr: false }
 )
 
