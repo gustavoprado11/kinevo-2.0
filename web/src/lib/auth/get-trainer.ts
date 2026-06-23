@@ -16,6 +16,7 @@ interface TrainerRecord {
     ai_tier?: string | null
     onboarding_state: OnboardingState | null
     modality_focus: TrainerModalityFocus
+    home_style?: 'classic' | 'assistant' | null
     [key: string]: any
 }
 
@@ -50,7 +51,7 @@ export async function getTrainerWithSubscription(userId?: string) {
     const { data: t1, error: e1 } = await supabase
         .from('trainers')
         .select(
-            'id, name, email, avatar_url, theme, ai_prescriptions_enabled, ai_tier, onboarding_state, modality_focus, ' +
+            'id, name, email, avatar_url, theme, ai_prescriptions_enabled, ai_tier, onboarding_state, modality_focus, home_style, ' +
             'subscriptions(status, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_price_id, created_at)'
         )
         .eq('auth_user_id', authUserId)
@@ -60,7 +61,7 @@ export async function getTrainerWithSubscription(userId?: string) {
         const { subscriptions: subs, ...rest } = t1 as any
         trainer = rest as TrainerRecord
         subscription = pickActiveSubscription(subs)
-    } else if (e1 && (e1.message?.includes('onboarding_state') || e1.message?.includes('modality_focus'))) {
+    } else if (e1 && (e1.message?.includes('onboarding_state') || e1.message?.includes('modality_focus') || e1.message?.includes('home_style'))) {
         // Legacy DB sem onboarding_state e/ou modality_focus (pré Fase 17a).
         const { data: t2 } = await supabase
             .from('trainers')
@@ -76,6 +77,7 @@ export async function getTrainerWithSubscription(userId?: string) {
                 ...rest,
                 onboarding_state: DEFAULT_ONBOARDING_STATE,
                 modality_focus: null,
+                home_style: null,
             } as TrainerRecord
             subscription = pickActiveSubscription(subs)
         }
