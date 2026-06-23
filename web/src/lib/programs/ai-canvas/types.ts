@@ -1,6 +1,9 @@
 // DTOs do turno de build "ao vivo" do canvas (feature: docs/feature-ia-builder-chat.md).
-// Shape simples e desacoplado dos tipos do motor de prescrição — o cliente
-// adapta RenderedProgram → Workout[] do builder via hydrateGeneratedWorkout.
+// Shape simples e desacoplado do MOTOR de prescrição (lib/prescription) — o cliente
+// adapta RenderedProgram → Workout[] do builder com os MESMOS construtores do builder
+// (makeExerciseItem + applyPreset), então métodos/supersets saem idênticos à UI.
+
+import type { MethodKey } from '@kinevo/shared/types/prescription'
 
 export interface CanvasExercise {
     id: string
@@ -15,6 +18,11 @@ export interface CanvasItemDTO {
     reps?: string | null
     rest_seconds?: number | null
     notes?: string | null
+    /** Método de série (preset). No save aplica o set_scheme canônico do preset
+     *  (igual ao chip de método do builder). null/'standard' = séries retas. */
+    method?: MethodKey | null
+    /** Tag de agrupamento: itens CONSECUTIVOS com a mesma tag viram um superset. */
+    superset_group?: string | null
 }
 
 export interface CanvasSessionDTO {

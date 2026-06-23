@@ -187,6 +187,14 @@ export const CREDIT_WEIGHTS: Record<string, number> = {
 const DEFAULT_WEIGHT = 1
 
 /**
+ * Crédito de um turno de build do canvas "Gerar com IA". Um turno que RENDERIZA
+ * (monta/ajusta o programa no canvas) é prescrição — mas iterativa e em Gemini
+ * (COGS menor que o build do MCP, peso 6), então pesa menos que a prescrição
+ * determinística (GENERATE_PROGRAM=5). Turno sem render (pergunta/só busca) = 1.
+ */
+export const CANVAS_BUILD_CREDITS = 3
+
+/**
  * Peso de uma única chamada de tool. Para BULK, multiplica pelo nº de alunos
  * (cap em BULK_MAX). Reads e writes simples = 1.
  */

@@ -2,13 +2,19 @@
 // docs/feature-ia-builder-chat.md). Stream NDJSON: progresso → program → done.
 // Não persiste nada — o programa vai pro canvas do cliente; o save é no builder.
 //
-// Metering/quota: o GATE (tier Pro+ + cota) é aplicado; o REGISTRO de uso
-// (recordAiUsage) fica pra F4 junto com o resto do acabamento.
+// Metering/quota: o GATE (tier Pro+ + cota) é aplicado ANTES; o REGISTRO de uso
+// (recordAiUsage) roda DEPOIS do turno (best-effort) — debita crédito no período
+// e loga custo/tokens em ai_usage_events (surface 'canvas'). Build (rendered) =
+// prescription/CANVAS_BUILD_CREDITS; turno sem render = 1 (query). Só tier pago
+// chega aqui (gate Pro+), então não há trilha free.
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gateAssistant } from '@/lib/assistant/command-engine'
 import { runCanvasTurn } from '@/lib/programs/ai-canvas/run-canvas-turn'
+import { recordAiUsage, turnCostMicros, type TokenUsage } from '@/lib/ai-usage/metering'
+import { getQuotaForTier } from '@/lib/ai-usage/quota'
+import { CANVAS_BUILD_CREDITS } from '@/lib/assistant/tool-policy'
 import type { CanvasStreamEvent, CanvasTurnRequest } from '@/lib/programs/ai-canvas/types'
 
 export const runtime = 'nodejs'
@@ -31,6 +37,8 @@ export async function POST(req: Request) {
     if (!gate.allowed) {
         return Response.json({ error: gate.error, message: gate.message }, { status: gate.status })
     }
+    // Narrowing fora do closure do stream (TS não preserva narrowing em closure).
+    const { tier, period } = gate
 
     let body: CanvasTurnRequest
     try {
@@ -57,7 +65,7 @@ export async function POST(req: Request) {
             const send = (e: CanvasStreamEvent) =>
                 controller.enqueue(encoder.encode(JSON.stringify(e) + '\n'))
             try {
-                await runCanvasTurn({
+                const turn = await runCanvasTurn({
                     trainerId: trainer.id,
                     trainerName: trainer.name ?? '',
                     studentId: body.studentId,
@@ -68,6 +76,35 @@ export async function POST(req: Request) {
                     currentProgram: body.currentProgram ?? { sessions: [] },
                     onEvent: send,
                 })
+                // F4 — metering best-effort. O `done` já foi emitido pelo runCanvasTurn,
+                // então isto NÃO bloqueia o usuário; falha aqui só loga (nunca derruba o
+                // turno). Build (rendered) cobra como prescrição; turno sem render = 1.
+                try {
+                    const credits = turn.rendered ? CANVAS_BUILD_CREDITS : 1
+                    const tokenUsage: TokenUsage = {
+                        inputTokens: turn.usage.inputTokens,
+                        outputTokens: turn.usage.outputTokens,
+                    }
+                    const costMicros = turnCostMicros(turn.model, tokenUsage)
+                    await recordAiUsage(admin, {
+                        trainerId: trainer.id,
+                        periodType: period,
+                        creditLimit: getQuotaForTier(tier)?.credits ?? null,
+                        credits,
+                        costMicros,
+                        events: [{
+                            actionClass: turn.rendered ? 'prescription' : 'query',
+                            credits,
+                            surface: 'canvas',
+                            model: turn.model,
+                            inputTokens: tokenUsage.inputTokens,
+                            outputTokens: tokenUsage.outputTokens,
+                            costMicros,
+                        }],
+                    })
+                } catch (meterErr) {
+                    console.error('[ai-canvas] metering error:', meterErr)
+                }
             } catch (err) {
                 send({ type: 'error', message: err instanceof Error ? err.message : 'Erro ao gerar.' })
             } finally {

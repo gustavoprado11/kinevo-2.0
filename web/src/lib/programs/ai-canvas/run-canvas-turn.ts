@@ -80,6 +80,10 @@ function buildSystemPrompt(studentContext: string, studentName: string, currentP
         '4. SPLIT COERENTE: para a frequência pedida, use uma divisão que cubra todos os grupos com volume equilibrado (ex.: 5x → Push/Pull/Legs + Upper/Lower, ou Inferior/Superior alternando ênfases). Não repita o mesmo exercício em sessões diferentes sem motivo.',
         '5. ORDEM E PRESCRIÇÃO: 1–2 compostos do grupo-alvo no início, depois acessórios e isoladores. Reps/descanso de hipertrofia (compostos 6–10, isoladores 10–15; descanso 60–120s).',
         '',
+        'PRESCRIÇÃO AVANÇADA (opcional — use quando elevar a qualidade, sem exagerar):',
+        '- MÉTODOS (campo "method" do item): drop_set (queda de carga sem descanso — ótimo p/ finalizar isoladores), pyramid_down/pyramid_up (pirâmide de reps), 5x5 (força em compostos), top_backoff (série pesada + backoffs ~80%), cluster (rest-pause). Aplique em 1–2 exercícios-CHAVE por sessão quando fizer sentido; o resto fica em séries retas (sem method).',
+        '- SUPERSETS (campo "superset_group"): p/ bi-set/tri-set, dê a MESMA tag (ex.: "A1") a itens CONSECUTIVOS (antagonistas ou economia de tempo). Um exercício em superset NÃO leva method.',
+        '',
         'COMO MONTAR:',
         '- Chame search_exercises UMA VEZ POR GRUPO MUSCULAR (parâmetro muscle) pra achar os exercícios certos de cada sessão — busque quantas vezes precisar ANTES de montar.',
         '- Use SOMENTE exercise_id retornado por search_exercises. NUNCA invente ids.',
@@ -106,6 +110,8 @@ export interface RunCanvasTurnResult {
     text: string
     rendered: boolean
     model: string
+    /** Uso de tokens do turno inteiro (todos os passos) — para metering na rota. */
+    usage: { inputTokens: number; outputTokens: number }
 }
 
 export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasTurnResult> {
@@ -155,6 +161,10 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
                         reps: z.string().optional().describe('Reps (ex.: "8-12", "10", "AMRAP")'),
                         rest_seconds: z.number().optional().describe('Descanso entre séries (s)'),
                         notes: z.string().optional().describe('Observação curta'),
+                        method: z.enum(['standard', 'pyramid_down', 'pyramid_up', 'drop_set', 'top_backoff', '5x5', 'cluster']).optional()
+                            .describe('Método de série. standard=séries retas (padrão). drop_set=queda de carga; pyramid_down/up=pirâmide; 5x5=força; top_backoff=top+backoffs; cluster=rest-pause. Use só em 1–2 exercícios-chave/sessão.'),
+                        superset_group: z.string().optional()
+                            .describe('Tag p/ superset (ex.: "A1"). Itens CONSECUTIVOS com a MESMA tag viram um bi/tri-set. Não combine com method no mesmo item.'),
                     })).describe('Exercícios na ordem (compostos primeiro)'),
                 })).describe('Sessões na ordem (Treino A, B, …)'),
             }),
@@ -175,6 +185,8 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
                             reps: it.reps ?? null,
                             rest_seconds: it.rest_seconds ?? null,
                             notes: it.notes ?? null,
+                            method: it.method && it.method !== 'standard' ? it.method : null,
+                            superset_group: it.superset_group?.trim() || null,
                         })),
                 }))
                 const program: RenderedProgram = {
@@ -253,5 +265,10 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
         result.text?.trim() ||
         (rendered ? 'Pronto — montei no canvas. Quer ajustar algo?' : 'Me diz o objetivo do ciclo e a frequência (dias) que eu monto.')
     onEvent({ type: 'done', text, model })
-    return { text, rendered, model }
+    // totalUsage = soma de TODOS os passos (buscas + render), não só o último.
+    const usage = {
+        inputTokens: result.totalUsage?.inputTokens ?? 0,
+        outputTokens: result.totalUsage?.outputTokens ?? 0,
+    }
+    return { text, rendered, model, usage }
 }
