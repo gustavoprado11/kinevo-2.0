@@ -7,13 +7,13 @@
 
 ---
 
-## ⛔ VEREDITO: NO-GO para abrir a venda dos planos com IA hoje
+## ✅ VEREDITO ATUALIZADO (24/jun/2026): funil de venda PRONTO e no ar — resta só o portão LGPD
 
-As 4 frentes convergiram **independentemente** no mesmo bloqueio central: **a economia de 4 tiers existe no backend, mas o funil só vende 1 plano (R$ 39,90 → `essencial`), e esse plano é exatamente o que o gate do Assistente bloqueia (Pro+ only).** Resultado: **nenhum cliente real consegue comprar o produto que a landing anuncia.** Runtime confirma: **24 free, 1 `premium_ia` (override manual do Gustavo, não Stripe), 0 pagantes Pro/Premium, 13/14 assinaturas com `stripe_price_id` NULL.**
+As correções foram **implementadas, deployadas em produção e testadas E2E ao vivo** (Fase 3 = vazamentos; Fase 2 = escada de 4 tiers). O bloqueio central foi **resolvido**: o funil agora vende os **4 tiers** (free / essencial / pro_ia / premium_ia), o tier comprado libera exatamente o que a landing promete, e os 3 prices live do Stripe + envs Vercel estão corretos. **Um cliente real já consegue comprar Pro (R$ 79,90) e Premium (R$ 129,90).** Validado ao vivo: landing SSR com 4 tiers; checkout de cada tier → sessão Stripe `cs_live_…` (200); cap de aluno (free+1→403, pago→bypass); gate de cota draft/winback (402 esgotado + débito no balde).
 
-Além disso há **vazamento de custo/monetização** (chamadas LLM e criação de aluno sem gate) e o **portão LGPD** segue aberto no código.
+**Único bloqueante remanescente: LGPD** (DPA + ZDR + disclosure de sub-processadores + minimização do dado de saúde) — está **fora do código**, depende dos consoles dos provedores (OpenAI **e** Google) e do jurídico. Ver item 4 e `05-riscos-lancamento.md`. Recomendação: resolver antes de empurrar **tráfego pago/aquisição em massa**.
 
-> **Caminho escolhido (24/jun/2026): B — escada de 4 tiers.** O Assistente completo é o upsell dos tiers `pro_ia`/`premium_ia`; `essencial` é a entrada barata. O backend já assume esse modelo — falta alinhar landing+funil+Stripe e tapar os vazamentos. **Plano de execução na §5.**
+> **Histórico (resolvido):** o funil vendia só 1 plano (R$ 39,90 → `essencial`) que era 403 no Assistente, e havia vazamento de custo (LLM/criação de aluno sem gate). **Caminho B — escada de 4 tiers** escolhido (24/jun) e **entregue** no mesmo dia. Plano de execução na §5.
 
 ---
 
@@ -23,14 +23,14 @@ Legenda status: ✅ pronto · ⚠️ risco · ❌ bloqueante. Esforço: **P** (�
 
 | # | Item necessário para vender | Status | Sev. | O que falta (resumo) | Esforço |
 |---|---|:--:|:--:|---|:--:|
-| 1 | **Cliente consegue comprar Pro/Premium** | ❌ | Crít | Funil vende só 1 price; tiers só em `/settings`; `STRIPE_PRICE_PRO/PREMIUM` provavelmente não setados em prod. `checkout/route.ts:68-70`, `landing-pricing.tsx:118-123` | M |
-| 2 | **Tier comprado libera o que a landing promete** | ❌ | Crít | `essencial` (R$39,90) é **403 no Assistente** (`PRO_TIERS` só pro/premium). Landing vende "Assistente IA incluído". `command-engine.ts:100,118` × `landing-pricing.tsx:13,26` | P–M |
-| 3 | **Price→tier resolve em produção** | ❌ | Crít | 13/14 subs com `stripe_price_id` NULL [C runtime]; `/api/stripe/sync` não grava price (`sync/route.ts:84-91`); precisa criar 3 prices live + envs + backfill | M |
-| 4 | **LGPD: dado de saúde → LLM com DPA + ZDR** | ❌ | Crít | 0 config de zero-retention/DPA em `web/src`; disclosure atual cobre só o *conector*, não o Assistente in-app. `privacy/page.tsx:71` | G (legal/config) |
-| 5 | **Trava de "Free = 1 aluno" inviolável** | ❌ | Crít | Edge fn `create-student/index.ts:96-110` cria aluno **sem** `assertCanCreateStudent` → mobile/lead burlam o cap. Web e MCP travam | P–M |
-| 6 | **Nenhuma chamada LLM fora do gate de cota** | ❌ | Alto | `draft-message`, `winback-draft` (sem gate de tier/crédito) e `insight-enricher` (cron, todos os tiers) chamam LLM pago fora do balde. `draft-message/route.ts:34-105` | M |
-| 7 | **Economia de cota testada end-to-end** | ⚠️ | Alto | `ai_free_trials`=0, `ai_usage_periods`=1 linha [C runtime] → nunca exercitada em prod. Falta E2E free→pago→esgota→reset | M |
-| 8 | **Landing comunica crédito/cota e os 4 tiers** | ⚠️ | Alto | Landing = "plano único tudo incluso"; zero menção a crédito/cota/trial; sem tabela de tiers. `landing-pricing.tsx:77` | M |
+| 1 | **Cliente consegue comprar Pro/Premium** | ✅ | — | **FEITO + no ar** (commit `35aed91`): funil vende os 4 tiers, CTA `?tier=` → checkout. E2E live: pro/premium/essencial → sessão Stripe `cs_live_…` (200). `landing-pricing.tsx`, `checkout/route.ts` | — |
+| 2 | **Tier comprado libera o que a landing promete** | ✅ | — | **FEITO**: landing honesta — `essencial` = entrada barata SEM Assistente agêntico (só IA leve, 20 cr); `pro`/`premium` liberam ⌘K/voz. Fonte única `lib/billing/tiers.ts` (landing = /settings = código) | — |
+| 3 | **Price→tier resolve em produção** | ✅ | — | **FEITO**: 3 prices live + envs Vercel **corretos** [C: env pull] — `STRIPE_PRICE_PRO=price_1Tix2d…`, `PREMIUM=price_1Tix2n…`, `ESSENCIAL`/`ID=price_1SzFq…`. Confirmado por 3 checkout 200 | — |
+| 4 | **LGPD: dado de saúde → LLM com DPA + ZDR + disclosure** | ⚠️ | Alto | **Único bloqueante restante.** Provedores: **OpenAI** (chat, rascunhos, insights, prescrição, voz/Whisper) **+ Google Gemini** (só os *build turns*). Os dois **não treinam em dado de API por padrão (planos pagos)** — mitigação real, MAS falta: (a) DPA OpenAI + ZDR p/ os caminhos de saúde; (b) confirmar Gemini no tier **PAGO/Vertex** (o AI Studio FREE treina no input); (c) disclosure dos **2** sub-processadores na política (hoje só "conector"); (d) minimizar payload (`medical_restrictions`/check-in cru). `privacy/page.tsx:71` | G (legal/config) |
+| 5 | **Trava de "Free = 1 aluno" inviolável** | ✅ | — | **FEITO + deployado** (edge fn `create-student` v7): cap com paridade web/MCP. E2E live: free+1→403 `student_cap_reached`, premium/sub→bypass (pagante nunca bloqueado) | — |
+| 6 | **Nenhuma chamada LLM fora do gate de cota** | ✅ | — | **FEITO + deployado**: `draft-message`/`winback-draft` atrás do gate (402 esgotado) + débito no balde; `insight-enricher` só tier pago. E2E live: 402 + 1 crédito debitado (`ai_usage_events surface=proactive`) | — |
+| 7 | **Economia de cota testada end-to-end** | ✅ | — | **FEITO**: exercitada E2E ao vivo — gate 402, débito de 1 crédito, surface `proactive`, reset UTC correto. [C live] (antes: `ai_free_trials`=0, nunca rodada) | — |
+| 8 | **Landing comunica crédito/cota e os 4 tiers** | ✅ | — | **FEITO + no ar**: grade de 4 tiers com preços (R$ 39,90/79,90/129,90), cotas (20/300/1.000 créditos) e nota de degrade-pra-GUI. SSR verificado live; card "plano único" removido | — |
 | 9 | **Margem positiva por tier (build Gemini)** | ⚠️ | Médio | Canvas cobra 3 créditos por turno Gemini de 8000 tok/16 passos (peso ½ do build MCP); revalidar com custos reais. `ai-canvas/route.ts:83` | P (análise) |
 | 10 | **Gate ciente do custo do turno** | ⚠️ | Médio | `checkQuota` binário/TOCTOU; clamp tampa o ledger, não o COGS clampado. `quota.ts:101` | M |
 | 11 | **Conversão no muro (paywall → checkout)** | ⚠️ | Médio | Dock engole erro 402/429 (`assistant-panel-content.tsx:106`); CTA de upgrade → `/settings`, não checkout; banner só na superfície Pro+ | M |
@@ -41,6 +41,8 @@ Legenda status: ✅ pronto · ⚠️ risco · ❌ bloqueante. Esforço: **P** (�
 | 16 | **Isolamento multi-tenant em billing/cota** | ✅ | — | Tudo por `trainer_id` resolvido da sessão/JWT; sem furo cross-tenant. `00 §5`/`05 R5` | — |
 | 17 | **Topups (`ai_credit_topups`) — não prometer** | ✅ | — | Tabela **órfã** (0 refs, 0 linhas) [C]. Não anunciar compra de créditos avulsos enquanto não for plugada | — |
 | 18 | **Saúde do código (baseline pré-mexida)** | ⚠️ | Baixo | typecheck ✅; testes ✅; **lint ❌** (dívida pré-existente, não do Assistente) | — |
+
+> **Status de execução (24/jun/2026):** itens **1–3, 5–8 ✅ deployados em produção e testados E2E ao vivo**. Fase 3 (vazamentos): edge fn `create-student` v7 + gates de cota em draft/winback + tier no enricher (commits `b8b9abf`). Fase 2 (escada de 4 tiers): `lib/billing/tiers.ts` fonte única + landing 4 tiers + funil `signup?tier=` (commit `35aed91`). Stripe live prices + envs Vercel (`STRIPE_PRICE_PRO/PREMIUM/ESSENCIAL`) já existiam e estão **corretos**. **Resta o item 4 (LGPD)** — legal/config, fora do código. Itens 9–12 são polimento de margem/conversão (não travam o GO comercial). Execução detalhada na §5.
 
 ---
 
