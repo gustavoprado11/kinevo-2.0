@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createStudent } from '@/actions/create-student'
+import Link from 'next/link'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
 import { StudentAccessDialog } from '@/components/students'
 import { Button } from '@/components/ui/button'
@@ -61,6 +62,7 @@ export function StudentModal({
     const [modality, setModality] = useState<'online' | 'presential'>('online')
     const [selectedFormId, setSelectedFormId] = useState('')
     const [error, setError] = useState<string | null>(null)
+    const [capReached, setCapReached] = useState(false)
     const [loading, setLoading] = useState(false)
     const [createdCredentials, setCreatedCredentials] = useState<{
         name: string
@@ -98,6 +100,7 @@ export function StudentModal({
                 setSelectedFormId('')
             }
             setError(null)
+            setCapReached(false)
             setCreatedCredentials(null)
         }
     }, [isOpen, initialData])
@@ -105,6 +108,7 @@ export function StudentModal({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
+        setCapReached(false)
         setLoading(true)
 
         if (initialData) {
@@ -143,6 +147,7 @@ export function StudentModal({
 
             if (!result.success) {
                 setError(result.error || 'Erro ao criar aluno')
+                if ((result as { code?: string }).code === 'student_cap_reached') setCapReached(true)
                 setLoading(false)
                 return
             }
@@ -244,9 +249,25 @@ export function StudentModal({
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="bg-white dark:bg-transparent p-8 space-y-6">
                             {error && (
-                                <div className="bg-[#FF3B30]/10 dark:bg-red-500/10 border border-[#FF3B30]/20 dark:border-red-500/20 text-[#FF3B30] dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-start gap-3">
+                                <div
+                                    className={`px-4 py-3 rounded-xl text-sm flex items-start gap-3 ${
+                                        capReached
+                                            ? 'bg-violet-500/10 border border-violet-500/20 text-violet-700 dark:text-violet-300'
+                                            : 'bg-[#FF3B30]/10 dark:bg-red-500/10 border border-[#FF3B30]/20 dark:border-red-500/20 text-[#FF3B30] dark:text-red-400'
+                                    }`}
+                                >
                                     <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                                    {error}
+                                    <div className="flex-1 space-y-2">
+                                        <p>{error}</p>
+                                        {capReached && (
+                                            <Link
+                                                href="/settings#planos"
+                                                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-3 py-1.5 text-xs font-bold text-white shadow-[0_4px_12px_-4px_rgba(124,58,237,0.5)] transition hover:brightness-[1.07]"
+                                            >
+                                                Ver planos
+                                            </Link>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 

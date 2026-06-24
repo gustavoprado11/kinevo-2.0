@@ -6,6 +6,7 @@ import { DefaultChatTransport, type UIMessage } from 'ai'
 import { Sparkles, Send, User, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useCommunicationStore } from '@/stores/communication-store'
+import { AssistantBanner, bannerFromError, type AssistantBannerData } from '@/components/assistant/workspace/assistant-banner'
 
 // ── Quick action chips based on insight category ──
 
@@ -99,8 +100,26 @@ export function AssistantPanelContent() {
     }, [initialMessage])
 
     const [input, setInput] = useState('')
+    const [banner, setBanner] = useState<AssistantBannerData | null>(null)
     const transport = useMemo(
-        () => new DefaultChatTransport({ api: '/api/assistant/chat', body: { studentId, insightId } }),
+        () =>
+            new DefaultChatTransport({
+                api: '/api/assistant/chat',
+                body: { studentId, insightId },
+                // O dock ENGOLIA 402/403/429 (front D): o treinador free batia no muro
+                // e não via nada. Interceptamos a resposta de erro e mostramos o banner
+                // de upsell, cujo CTA leva à tabela de planos (/settings#planos, Pro em
+                // destaque).
+                fetch: (async (reqInput: RequestInfo | URL, init?: RequestInit) => {
+                    setBanner(null)
+                    const res = await fetch(reqInput, init)
+                    if (!res.ok) {
+                        const body = await res.clone().json().catch(() => null)
+                        setBanner(bannerFromError(res.status, body))
+                    }
+                    return res
+                }) as typeof fetch,
+            }),
         [studentId, insightId],
     )
     const { messages, sendMessage, status } = useChat({
@@ -255,6 +274,13 @@ export function AssistantPanelContent() {
                             {chip}
                         </button>
                     ))}
+                </div>
+            )}
+
+            {/* Muro de cota/tier (402/403) — antes era engolido em silêncio. */}
+            {banner && (
+                <div className="px-4 pb-1">
+                    <AssistantBanner data={banner} onDismiss={() => setBanner(null)} />
                 </div>
             )}
 

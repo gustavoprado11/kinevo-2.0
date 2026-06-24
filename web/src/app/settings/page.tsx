@@ -252,9 +252,12 @@ export default async function SettingsPage() {
             )}
 
             {/* ── 05/06 · Plano e IA ── */}
-            <SettingsSection number={aiPlanNumber} title="Plano e IA" hint="Seus créditos de IA e os planos disponíveis">
-                <AiPlanSection summary={aiUsage} />
-            </SettingsSection>
+            {/* id="planos": destino dos CTAs de upgrade (muro do Assistente, cap de aluno). */}
+            <div id="planos" className="scroll-mt-20">
+                <SettingsSection number={aiPlanNumber} title="Plano e IA" hint="Seus créditos de IA e os planos disponíveis">
+                    <AiPlanSection summary={aiUsage} />
+                </SettingsSection>
+            </div>
         </AppLayout>
     )
 }

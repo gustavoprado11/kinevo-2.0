@@ -24,6 +24,8 @@ export interface CreateStudentInput {
 export interface CreateStudentResult {
     success: boolean
     error?: string
+    /** Código de erro estável (ex.: 'student_cap_reached') p/ a UI rotear o upsell. */
+    code?: string
     studentId?: string
     email?: string
     password?: string
@@ -43,7 +45,9 @@ export async function createStudentCore(
             await assertCanCreateStudent(supabaseAdmin, trainerId, tier)
         } catch (capError) {
             if (capError instanceof StudentCapError) {
-                return { success: false, error: capError.message }
+                // `code` deixa a UI distinguir o muro de monetização (cap do Free) de
+                // um erro genérico → mostra o CTA de upgrade direto pro checkout.
+                return { success: false, error: capError.message, code: capError.code }
             }
             throw capError
         }
