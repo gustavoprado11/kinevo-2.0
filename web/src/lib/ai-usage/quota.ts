@@ -31,6 +31,14 @@ export function getQuotaForTier(tier: AiTier): PlanQuota | null {
     return PLAN_AI_QUOTA[tier]
 }
 
+/**
+ * Franquia mensal de CONVERSAS de IA do tier Free (chat do dock). Esgotou → o chat
+ * bate o muro (402) e mostra o upsell. As AÇÕES PESADAS (gerar programa, etc.) têm
+ * um teste 1× à parte (ai_free_trials), checado no call-site. Contado em
+ * `ai_usage_periods` (mês), com clamp atômico via consume_ai_usage.
+ */
+export const FREE_MONTHLY_CHAT_LIMIT = 25
+
 type DBClient = SupabaseClient<Database>
 
 export interface QuotaStatus {

@@ -16,7 +16,7 @@ import {
     type AiSurface,
     type TokenUsage,
 } from '@/lib/ai-usage/metering'
-import { recordFreeTrial, getQuotaForTier, checkFreeTrial } from '@/lib/ai-usage/quota'
+import { recordFreeTrial, getQuotaForTier, checkFreeTrial, FREE_MONTHLY_CHAT_LIMIT } from '@/lib/ai-usage/quota'
 import {
     computeTurnCredits,
     actionClassForTool,
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
         if (usage.exhausted) {
             const message =
                 tier === 'free'
-                    ? 'Você já testou os recursos de IA do plano Gratuito. Assine um plano para continuar com a IA — o resto do app segue normal.'
+                    ? `Você usou suas ${FREE_MONTHLY_CHAT_LIMIT} conversas com a IA deste mês no plano Gratuito. Assine um plano para continuar — o resto do app segue normal.`
                     : 'Cota de IA do período atingida. A IA volta no próximo ciclo; você pode continuar usando o app normalmente.'
             return new Response(
                 JSON.stringify({
@@ -210,9 +210,35 @@ export async function POST(req: Request) {
                     if (testedClasses.size === 0) testedClasses.add('query')
 
                     if (tier === 'free') {
+                        // Ações PESADAS (ex.: prescription do generateProgram) têm o teste
+                        // 1× à parte — registramos as flags em ai_free_trials.
                         for (const actionClass of testedClasses) {
                             await recordFreeTrial(supabaseAdmin, trainer.id, actionClass)
                         }
+                        // Franquia mensal de conversas: cada turno do dock consome 1 (clamp
+                        // atômico no DB). Esgotou → getAiUsageSummary.exhausted → o próximo
+                        // turno bate o muro (402) com upsell.
+                        const tokenUsage: TokenUsage = {
+                            inputTokens: turnUsage.inputTokens ?? 0,
+                            outputTokens: turnUsage.outputTokens ?? 0,
+                        }
+                        const costMicros = turnCostMicros(CHAT_MODEL, tokenUsage)
+                        await recordAiUsage(supabaseAdmin, {
+                            trainerId: trainer.id,
+                            periodType: 'month',
+                            creditLimit: FREE_MONTHLY_CHAT_LIMIT,
+                            credits: 1,
+                            costMicros,
+                            events: [{
+                                actionClass: 'query',
+                                credits: 1,
+                                surface: CHAT_SURFACE,
+                                model: CHAT_MODEL,
+                                inputTokens: tokenUsage.inputTokens,
+                                outputTokens: tokenUsage.outputTokens,
+                                costMicros,
+                            }],
+                        })
                         return
                     }
 

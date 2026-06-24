@@ -8,9 +8,8 @@
  * Fonte da verdade do orçamento:
  *   - Pago (essencial/pro/premium): balde mensal de créditos (PLAN_AI_QUOTA) +
  *     `ai_usage_periods` do período corrente (via checkQuota).
- *   - Free: NÃO usa o balde — usa `ai_free_trials` (cada action_class 1×). O
- *     "total" aqui é simbólico (nº de classes de ação testáveis); o medidor
- *     mostra quantas o treinador já experimentou.
+ *   - Free: franquia mensal de 25 conversas de IA (chat) em `ai_usage_periods`. As
+ *     ações pesadas (gerar programa, etc.) têm um teste 1× à parte (`ai_free_trials`).
  *
  * Estouro NÃO trava o app: `exhausted=true` só sinaliza pra UI degradar pra GUI
  * (banner/upsell). A decisão de UX é da superfície.
@@ -20,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@kinevo/shared/types/database'
 import type { AiTier } from '@/lib/auth/get-ai-tier'
 import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
-import { checkQuota, PLAN_AI_QUOTA } from './quota'
+import { checkQuota, PLAN_AI_QUOTA, FREE_MONTHLY_CHAT_LIMIT } from './quota'
 import { currentPeriodStart } from './metering'
 
 type DBClient = SupabaseClient<Database>
@@ -44,13 +43,7 @@ export interface AiUsageSummary {
     exhausted: boolean
 }
 
-/**
- * Classes de ação testáveis 1× no tier Free (espelha ActionClass de
- * tool-policy). Usado só como total simbólico do medidor Free.
- */
-const FREE_ACTION_CLASSES: readonly string[] = ['query', 'write', 'prescription', 'bulk']
-
-/** Início do mês seguinte (ISO date) — fim simbólico da janela Free. */
+/** Início do mês seguinte (ISO date) — fim da janela Free. */
 function nextMonthStart(periodStart: string): string {
     const [y, m] = periodStart.split('-').map(Number)
     // periodStart é o dia 1 do mês; m é 1-based → Date.UTC(y, m, 1) = mês seguinte.
@@ -84,16 +77,21 @@ export async function getAiUsageSummary(
         }
     }
 
-    // --- Free: "1× cada ação" (ai_free_trials). Total simbólico. ---
+    // --- Free: franquia mensal de 25 CONVERSAS de IA (chat do dock), contada em
+    //     ai_usage_periods. As AÇÕES PESADAS (gerar programa, etc.) têm um teste 1×
+    //     à parte (ai_free_trials), checado no call-site. ---
     const periodStart = currentPeriodStart('month', now)
-    const creditsTotal = FREE_ACTION_CLASSES.length
+    const creditsTotal = FREE_MONTHLY_CHAT_LIMIT
 
-    const { count } = await admin
-        .from('ai_free_trials')
-        .select('action_class', { count: 'exact', head: true })
+    const { data } = await admin
+        .from('ai_usage_periods')
+        .select('credits_used')
         .eq('trainer_id', trainerId)
+        .eq('period_type', 'month')
+        .eq('period_start', periodStart)
+        .maybeSingle()
 
-    const creditsUsed = Math.min(count ?? 0, creditsTotal)
+    const creditsUsed = Math.min(data?.credits_used ?? 0, creditsTotal)
 
     return {
         tier,
