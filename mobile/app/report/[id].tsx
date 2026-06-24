@@ -426,6 +426,12 @@ export default function ReportScreen() {
             <ScrollView
                 contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 }}
                 showsVerticalScrollIndicator={false}
+                // Campo "Observações do Treinador" fica embaixo na rolagem: no iOS o
+                // teclado cobriria o input (tela não faz resize como o Android). Isto
+                // ajusta os insets e rola o campo focado pra cima. No Android é no-op
+                // (o adjustResize da janela já resolve).
+                automaticallyAdjustKeyboardInsets
+                keyboardShouldPersistTaps="handled"
                 refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />}
             >
                 {/* KPI Cards

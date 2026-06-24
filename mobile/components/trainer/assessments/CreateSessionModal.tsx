@@ -8,6 +8,8 @@ import {
     TextInput,
     ActivityIndicator,
     ScrollView,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Search, ClipboardList, Users, Check } from 'lucide-react-native';
@@ -140,7 +142,12 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
 
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-            <View style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
+            <KeyboardAvoidingView
+                style={{ flex: 1, backgroundColor: colors.surface.canvas }}
+                // <Modal> no Android é janela própria (não faz resize): sem KAV o
+                // teclado cobria o campo de notas (step 3). "height" encolhe a coluna.
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
                 {/* Header */}
                 <View
                     style={{
@@ -447,7 +454,7 @@ export function CreateSessionModal({ visible, onClose, onCreated }: Props) {
                         </View>
                     </View>
                 )}
-            </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 }

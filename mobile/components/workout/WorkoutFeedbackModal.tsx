@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     TextInput,
     KeyboardAvoidingView,
-    Platform,
     ScrollView,
     StyleSheet,
 } from 'react-native';
@@ -96,8 +95,12 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm, summary }: W
             onRequestClose={onClose}
         >
             <View style={styles.backdrop}>
+                {/* behavior="padding" + flex:1/flex-end levantam o sheet ancorado
+                    embaixo acima do teclado (em ambas plataformas). "height" antes
+                    encolhia o sheet e, dentro de um <Modal> (janela própria que não
+                    faz resize no Android), o teclado cobria as Observações. */}
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior="padding"
                     style={styles.kavContainer}
                 >
                     <View style={styles.sheet}>
@@ -271,7 +274,8 @@ function makeStyles(colors: V2Palette) {
             justifyContent: 'flex-end',
         },
         kavContainer: {
-            width: '100%',
+            flex: 1,
+            justifyContent: 'flex-end',
         },
         sheet: {
             backgroundColor: colors.surface.canvas,

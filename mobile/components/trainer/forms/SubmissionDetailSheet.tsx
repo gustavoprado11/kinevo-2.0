@@ -80,7 +80,7 @@ export function SubmissionDetailSheet({ visible, submissionId, onClose, onFeedba
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
             <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={{ flex: 1, backgroundColor: colors.surface.canvas }}
             >
                 {/* Header */}

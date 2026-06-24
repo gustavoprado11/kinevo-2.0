@@ -107,7 +107,7 @@ export function PlanFormSheet({ visible, onClose, onSubmit, onUpdate, plan }: Pl
             <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
-                    behavior={Platform.OS === "ios" ? "padding" : undefined}
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
                 >
                     {/* Header */}
                     <View style={{

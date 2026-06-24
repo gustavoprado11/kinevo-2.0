@@ -62,7 +62,9 @@ export function WorkoutFeedbackModal({
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                // Android com undefined = sem proteção → o teclado cobria as
+                // Observações e o rodapé. "height" encolhe a coluna e sobe o footer.
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1, backgroundColor: '#f8fafc' }}
             >
                 {/* Header */}
