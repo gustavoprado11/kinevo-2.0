@@ -505,7 +505,17 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         // 2. Prompt + histórico. Instruções estáveis (system-prompt v2) primeiro;
         //    bloco HITL/MCP em seguida; contexto dinâmico por último (studentId
         //    enriquece com o perfil do aluno).
-        const dynamicContext = await buildChatContext(trainerId, trainerName ?? '', opts.studentId)
+        // Minimização LGPD: dado clínico/saúde só vai ao LLM nos turnos que precisam.
+        // Restrição médica (clínica) → só prescrição/avaliação/build. Check-in cru →
+        // turnos de saúde/monitoramento (inclui alunos/forms/comunicação). Turnos
+        // puramente financeiros/agenda/leads não recebem nem um nem outro.
+        const isHealthIntent = (i: ToolIntent) => i === 'prescricao' || i === 'avaliacao'
+        const isMonitorIntent = (i: ToolIntent) =>
+            isHealthIntent(i) || i === 'alunos' || i === 'forms' || i === 'comunicacao'
+        const dynamicContext = await buildChatContext(trainerId, trainerName ?? '', opts.studentId, {
+            includeMedical: buildTurn || intents.some(isHealthIntent),
+            includeCheckins: buildTurn || intents.some(isMonitorIntent),
+        })
         const routeHint = opts.route ? `\nTela atual do treinador: ${opts.route}.` : ''
         const studentHint = opts.studentId
             ? `\nAluno em foco (UUID): ${opts.studentId}. Os dados dele JÁ ESTÃO no contexto acima — NÃO chame kinevo_list_students nem kinevo_get_student para "encontrar" o aluno (você já o tem); use este UUID direto nas ações. Só faça uma leitura do aluno se precisar de um dado específico que realmente não esteja no contexto, e NUNCA repita a mesma leitura.`

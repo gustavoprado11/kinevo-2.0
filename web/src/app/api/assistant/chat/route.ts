@@ -144,7 +144,13 @@ export async function POST(req: Request) {
 
         // 5. Build context. Instruções estáveis (system-prompt v2) primeiro; contexto
         //    dinâmico (data/hora, alunos, snapshot) em seguida.
-        const dynamicContext = await buildChatContext(trainer.id, trainer.name, studentId)
+        // Minimização LGPD: o dock é de monitoramento (mantém check-ins), mas não
+        // prescreve direto aqui (generateProgram chama o motor à parte) → não enviamos
+        // a lista clínica de restrições, só o aviso de existência.
+        const dynamicContext = await buildChatContext(trainer.id, trainer.name, studentId, {
+            includeMedical: false,
+            includeCheckins: true,
+        })
         const systemPrompt = buildInstructions(CHAT_SURFACE) + '\n\n' + dynamicContext
 
         // Student ID context for tools (when in contextual mode)

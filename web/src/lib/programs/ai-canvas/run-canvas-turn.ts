@@ -117,7 +117,12 @@ export interface RunCanvasTurnResult {
 export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasTurnResult> {
     const { trainerId, trainerName, studentId, studentName, message, history, exercises, currentProgram, onEvent } = args
 
-    const studentContext = await buildChatContext(trainerId, trainerName, studentId)
+    // Canvas é SEMPRE prescrição (montar/ajustar treino) → precisa do detalhe clínico
+    // e dos check-ins para prescrever com segurança (restrições/dores).
+    const studentContext = await buildChatContext(trainerId, trainerName, studentId, {
+        includeMedical: true,
+        includeCheckins: true,
+    })
     const catalogById = new Map(exercises.map(e => [e.id, e]))
     let rendered = false
 

@@ -33,7 +33,7 @@ export default function PrivacyPage() {
                     <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">
                         Política de Privacidade
                     </h1>
-                    <p className="text-slate-400 text-sm">Última atualização: 29 de maio de 2026</p>
+                    <p className="text-slate-400 text-sm">Última atualização: 24 de junho de 2026</p>
                 </header>
 
                 <Section title="1. Dados coletados">
@@ -66,7 +66,41 @@ export default function PrivacyPage() {
                     legais e prevenção de fraude. Após isso, os dados podem ser anonimizados ou excluídos.
                 </Section>
 
-                <Section title="7. Conector MCP e assistentes de IA">
+                <Section title="7. Recursos de IA do próprio Kinevo (Assistente, prescrição, formulários e voz)">
+                    Além do conector opcional descrito abaixo, o Kinevo oferece recursos de inteligência
+                    artificial integrados — o Assistente do treinador, a prescrição assistida por IA, a
+                    geração de formulários, os rascunhos de mensagens, os insights e a transcrição de
+                    comandos de voz. Para gerar essas respostas, trechos dos dados da sua conta são
+                    transmitidos a provedores de modelos de linguagem que atuam como operadores
+                    (sub-processadores) por nossa conta: a{" "}
+                    <a
+                        href="https://openai.com/policies/privacy-policy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-violet-400 hover:text-violet-300 underline"
+                    >
+                        OpenAI
+                    </a>{" "}
+                    (provedor principal, inclusive a transcrição de voz) e o{" "}
+                    <a
+                        href="https://policies.google.com/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-violet-400 hover:text-violet-300 underline"
+                    >
+                        Google
+                    </a>{" "}
+                    (modelo Gemini, usado na geração de programas de treino). Esses dados podem incluir
+                    informações pessoais e <strong className="text-slate-100">dados sensíveis de saúde</strong>{" "}
+                    dos seus alunos (por exemplo, restrições clínicas e respostas de check-in). Nos planos de
+                    API pagos que utilizamos, esses provedores{" "}
+                    <strong className="text-slate-100">não usam o conteúdo enviado para treinar seus modelos</strong>{" "}
+                    e aplicam retenção limitada apenas para segurança e prevenção de abuso. Aplicamos
+                    minimização de dados: informações clínicas e respostas de saúde só são enviadas quando a
+                    tarefa exige (por exemplo, ao prescrever um treino).
+                </Section>
+
+                <Section title="8. Conector MCP e assistentes de IA">
                     O Kinevo oferece um conector MCP (Model Context Protocol) que permite operar a plataforma a partir
                     de assistentes de IA como o Claude (Anthropic) e o ChatGPT (OpenAI). A conexão é opcional e iniciada
                     por você: ao autorizá-la, o assistente passa a poder consultar e gerenciar, em seu nome, dados da
@@ -76,7 +110,7 @@ export default function PrivacyPage() {
                     treinador autenticada.
                 </Section>
 
-                <Section title="8. Compartilhamento com provedores de IA">
+                <Section title="9. Compartilhamento com provedores de IA (conector)">
                     Quando você usa o conector, os dados retornados pelas ferramentas são transmitidos ao provedor do
                     assistente que você escolheu (por exemplo, a Anthropic, no caso do Claude) para que ele gere as
                     respostas, passando a ser tratados conforme a política de privacidade desse provedor. Como esses
@@ -94,7 +128,7 @@ export default function PrivacyPage() {
                     .
                 </Section>
 
-                <Section title="9. Credenciais, autenticação e revogação">
+                <Section title="10. Credenciais, autenticação e revogação">
                     O acesso ao conector é autenticado por API keys ou por tokens OAuth 2.0. As credenciais são
                     armazenadas apenas de forma cifrada (hash) — nunca em texto puro — e a chave ou segredo é exibida
                     uma única vez, no momento da criação. Os tokens de acesso expiram automaticamente e podem ser
@@ -104,7 +138,7 @@ export default function PrivacyPage() {
                     prevenção de abuso.
                 </Section>
 
-                <Section title="10. Contato">
+                <Section title="11. Contato">
                     Em caso de dúvidas sobre privacidade e proteção de dados, utilize os canais de suporte oficiais da
                     plataforma.
                 </Section>

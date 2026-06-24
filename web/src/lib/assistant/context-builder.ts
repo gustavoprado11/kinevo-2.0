@@ -201,12 +201,33 @@ async function buildGeneralSnapshot(trainerId: string): Promise<GeneralSnapshot>
  * dois consumidores (command-engine e chat/route) compartilham as mesmas instruções
  * estáveis e este arquivo cuida só do que muda a cada turno.
  */
-export async function buildChatContext(trainerId: string, trainerName: string, studentId?: string): Promise<string> {
+export interface ChatContextOptions {
+    /** Inclui a LISTA clínica de restrições médicas (dado sensível) no payload do LLM. */
+    includeMedical?: boolean
+    /** Inclui o conteúdo CRU dos check-ins (pode citar dor/sintoma/medicação). */
+    includeCheckins?: boolean
+}
+
+export async function buildChatContext(
+    trainerId: string,
+    trainerName: string,
+    studentId?: string,
+    opts: ChatContextOptions = {},
+): Promise<string> {
     if (studentId) {
         const snapshot = await buildStudentSnapshot(trainerId, studentId)
 
+        // Minimização LGPD: a lista CLÍNICA de restrições médicas é dado sensível de
+        // saúde — só vai ao LLM quando o turno precisa (prescrição/avaliação). Nos
+        // demais turnos enviamos só um aviso de existência: o modelo fica ciente (não
+        // prescreve cego) sem receber o detalhe clínico.
+        const medicalStr = snapshot.profile?.medical_restrictions?.length
+            ? opts.includeMedical
+                ? `\nRestrições médicas: ${JSON.stringify(snapshot.profile.medical_restrictions)}`
+                : `\n⚠️ Restrições médicas: ${snapshot.profile.medical_restrictions.length} registrada(s) — considere-as ao prescrever (detalhe no perfil do aluno).`
+            : ''
         const profileStr = snapshot.profile
-            ? `Nível: ${snapshot.profile.training_level} | Objetivo: ${snapshot.profile.goal} | Duração sessão: ${snapshot.profile.session_duration_minutes}min${snapshot.profile.medical_restrictions?.length ? `\nRestrições médicas: ${JSON.stringify(snapshot.profile.medical_restrictions)}` : ''}`
+            ? `Nível: ${snapshot.profile.training_level} | Objetivo: ${snapshot.profile.goal} | Duração sessão: ${snapshot.profile.session_duration_minutes}min${medicalStr}`
             : 'Perfil de prescrição não preenchido'
 
         const programStr = snapshot.activeProgram
@@ -219,11 +240,14 @@ export async function buildChatContext(trainerId: string, trainerName: string, s
 
         const patternsStr = `Padrões de treino: ${snapshot.enriched.session_patterns.completed_sessions_4w} sessões em 4 semanas${snapshot.enriched.session_patterns.avg_session_duration_minutes ? `, duração média ${snapshot.enriched.session_patterns.avg_session_duration_minutes}min` : ''}`
 
-        // A6: check-ins/insights contêm texto livre do ALUNO. Envolvemos em
-        // delimitadores explícitos — é DADO, nunca instrução (defesa contra
-        // injeção de prompt via conteúdo do aluno em tools de escrita).
+        // A6: check-ins contêm texto livre do ALUNO — envolvemos em delimitadores
+        // (é DADO, nunca instrução; defesa contra injeção). Minimização LGPD: o
+        // conteúdo CRU (que pode citar dor/sintoma/medicação) só vai ao LLM em turnos
+        // de saúde/monitoramento; nos demais, apenas a contagem.
         const checkinsStr = snapshot.recentCheckins.length > 0
-            ? `Últimos check-ins pós-treino:\n<<DADOS_DO_ALUNO>>\n${snapshot.recentCheckins.map(c => `  - ${new Date(c.created_at).toLocaleDateString('pt-BR')}: ${c.answers_preview}`).join('\n')}\n<<FIM_DADOS_DO_ALUNO>>`
+            ? opts.includeCheckins
+                ? `Últimos check-ins pós-treino:\n<<DADOS_DO_ALUNO>>\n${snapshot.recentCheckins.map(c => `  - ${new Date(c.created_at).toLocaleDateString('pt-BR')}: ${c.answers_preview}`).join('\n')}\n<<FIM_DADOS_DO_ALUNO>>`
+                : `Check-ins pós-treino recentes: ${snapshot.recentCheckins.length} registrado(s) (abra o perfil do aluno para o conteúdo).`
             : ''
 
         const insightsStr = snapshot.activeInsights.length > 0
