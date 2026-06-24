@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useId } from 'react'
+import { useState, useCallback, useEffect, useId, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks } from 'lucide-react'
@@ -58,6 +58,7 @@ import { useCompareMode } from './helpers/use-compare-mode'
 import { useProgramSchedule } from './helpers/use-program-schedule'
 import { useCanvasDnd } from './helpers/use-canvas-dnd'
 import { useBuilderChrome } from './helpers/use-builder-chrome'
+import { useBuilderDraft, buildDraftKey } from './helpers/use-builder-draft'
 
 
 interface AssignedProgramData {
@@ -278,6 +279,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
     const {
         workouts,
+        setWorkouts,
         activeWorkoutId,
         setActiveWorkoutId,
         activeWorkout,
@@ -302,6 +304,52 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [nameShake, setNameShake] = useState(false)
+
+    // ── Rascunho local (anti-perda de trabalho) ──────────────────────────────
+    // O editor de programa ATRIBUÍDO não persiste no servidor a cada tecla — o
+    // envio pro aluno é o "Salvar Alterações". Este rascunho local (mesma base
+    // do builder de criação) garante que edições não enviadas não se percam:
+    // autosalva no navegador (debounce) e oferece restauração ao reabrir.
+    const draftStorageKey = useMemo(
+        () => buildDraftKey({ trainerId: trainer.id, isEditing: true, isStudentContext: true, studentId, assignedProgramId: program.id }),
+        [trainer.id, studentId, program.id],
+    )
+    const draftSnapshot = useMemo(
+        () => ({ name, description, workouts, formTriggers }),
+        [name, description, workouts, formTriggers],
+    )
+    const isDraftMeaningful = useCallback(
+        (s: typeof draftSnapshot) => s.name.trim() !== '' || s.workouts.some(w => (w.items?.length ?? 0) > 0),
+        [],
+    )
+    const { pendingDraft, dismissPending, discardPending, clearDraft, isDirty } = useBuilderDraft({
+        storageKey: draftStorageKey,
+        snapshot: draftSnapshot,
+        enabled: true,
+        isMeaningful: isDraftMeaningful,
+    })
+    // Restaura o rascunho pendente sob demanda — NÃO auto-aplica sobre os dados
+    // do servidor (evita surpresa se o programa mudou em outro lugar); o
+    // treinador decide pelo banner. Após restaurar fica "dirty" vs o servidor
+    // (são edições ainda não enviadas), o que está correto.
+    const restoreDraft = useCallback(() => {
+        if (!pendingDraft) return
+        const d = pendingDraft.data
+        setName(d.name)
+        setDescription(d.description)
+        setWorkouts(d.workouts)
+        setFormTriggers(d.formTriggers)
+        dismissPending()
+    }, [pendingDraft, setWorkouts, dismissPending])
+    // Se o treinador começa a editar sem restaurar, o banner some (as novas
+    // edições passam a ser o rascunho) — evita oferecer restauração obsoleta.
+    useEffect(() => {
+        if (isDirty && pendingDraft) dismissPending()
+    }, [isDirty, pendingDraft, dismissPending])
+    // pendingDraft vem do localStorage (só no cliente) → só renderiza o banner
+    // após montar, pra não dar mismatch de hidratação com o HTML do servidor.
+    const [hydrated, setHydrated] = useState(false)
+    useEffect(() => setHydrated(true), [])
     // Chrome da tela (header auto-hide, preview scale, biblioteca) — hook compartilhado.
     const {
         canvasScrollRef,
@@ -478,6 +526,9 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             // Success feedback
             toast({ message: 'Programa atualizado com sucesso!', type: 'success' })
 
+            // Enviado com sucesso ao aluno → o rascunho local não é mais necessário.
+            clearDraft()
+
             // Fire-and-forget: capture edits for AI learning (only processes AI-generated programs)
             capturePostAssignmentEdits(program.id).catch(() => {})
 
@@ -619,7 +670,10 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => router.push(`/students/${studentId}`)}
+                            onClick={() => {
+                                if (isDirty && !confirm('Você tem alterações não enviadas ao aluno (salvas como rascunho neste navegador). Sair mesmo assim?')) return
+                                router.push(`/students/${studentId}`)
+                            }}
                             className="w-9 h-9 rounded-full hover:bg-glass-bg-active text-k-text-tertiary hover:text-k-text-primary transition-all flex-shrink-0"
                         >
                             <ChevronLeft className="w-5 h-5" />
@@ -726,6 +780,14 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
                     {/* Save */}
                     <div className="flex items-center gap-1.5 lg:gap-3 flex-shrink-0">
+                        {isDirty && (
+                            <span
+                                className="hidden sm:inline text-[11px] text-k-text-quaternary whitespace-nowrap"
+                                title="Suas edições ficam salvas automaticamente como rascunho neste navegador. Clique em Salvar Alterações para enviá-las ao aluno."
+                            >
+                                Rascunho salvo
+                            </span>
+                        )}
                         {/* Terciário: Salvar Modelo — ghost text. Only shown at min-[1700px] since at narrower widths its ~120px would push the primary action button off-screen (2xl alone isn't wide enough — at 1536-1700px the layout still overflows). */}
                         <button
                             onClick={() => {
@@ -752,6 +814,31 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         </Button>
                     </div>
                 </div>
+
+                {/* Rascunho local: oferece restaurar edições não enviadas de uma sessão anterior. */}
+                {hydrated && pendingDraft && (
+                    <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 lg:px-6 py-2 bg-violet-50 dark:bg-violet-500/[0.08] border-b border-violet-200 dark:border-violet-500/20">
+                        <span className="text-xs text-violet-700 dark:text-violet-300 min-w-0 truncate">
+                            Você tem alterações não enviadas deste programa, guardadas automaticamente em {new Date(pendingDraft.savedAt).toLocaleString('pt-BR')}.
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={restoreDraft}
+                                className="px-3 py-1 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium transition-colors"
+                            >
+                                Restaurar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={discardPending}
+                                className="px-3 py-1 rounded-full text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-500/10 text-xs transition-colors"
+                            >
+                                Descartar
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Header-based Description Area */}
                 {isDescriptionOpen && (

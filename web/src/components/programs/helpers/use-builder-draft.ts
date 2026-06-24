@@ -37,8 +37,12 @@ export function buildDraftKey(opts: {
     programId?: string | null
     isStudentContext: boolean
     studentId?: string | null
+    /** Editor de programa ATRIBUÍDO a um aluno (rota /students/:sid/program/:pid/edit).
+     *  Chave distinta da edição de template (kind 'edit' → /programs/:id). */
+    assignedProgramId?: string | null
 }): string | null {
     const base = `${DRAFT_KEY_BASE}:${opts.trainerId}`
+    if (opts.assignedProgramId && opts.studentId) return `${base}:assigned:${opts.studentId}:${opts.assignedProgramId}`
     if (opts.isEditing && opts.programId) return `${base}:edit:${opts.programId}`
     if (opts.isStudentContext && opts.studentId) return `${base}:student:${opts.studentId}`
     if (!opts.isStudentContext && !opts.isEditing) return `${base}:template:new`
@@ -49,7 +53,9 @@ export function buildDraftKey(opts: {
 export function draftKeyToRoute(key: string, trainerId: string): string | null {
     const prefix = `${DRAFT_KEY_BASE}:${trainerId}:`
     if (!key.startsWith(prefix)) return null
-    const [kind, id] = key.slice(prefix.length).split(':')
+    const parts = key.slice(prefix.length).split(':')
+    const [kind, id] = parts
+    if (kind === 'assigned' && parts[1] && parts[2]) return `/students/${parts[1]}/program/${parts[2]}/edit`
     if (kind === 'edit' && id) return `/programs/${id}`
     if (kind === 'student' && id) return `/students/${id}/program/new`
     if (kind === 'template') return '/programs/new'
