@@ -1151,6 +1151,10 @@ export default function TrainingRoomScreen() {
                         onSkip={handleRestTimerSkip}
                         onComplete={handleRestTimerComplete}
                         onAdjustTime={handleAdjustRestTimer}
+                        // A Sala de Treino vive dentro do (trainer-tabs): a BottomNav
+                        // flutuante (offset 8 + altura 64 + folga) cobria os botões de
+                        // ajuste. Ver components/v2/BottomNav.tsx e (trainer-tabs)/_layout.tsx.
+                        bottomChrome={96}
                     />
                 )}
             </SafeAreaView>

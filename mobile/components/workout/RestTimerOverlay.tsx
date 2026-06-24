@@ -14,6 +14,13 @@ interface RestTimerOverlayProps {
     onSkip: () => void;
     onComplete: () => void;
     onAdjustTime: (deltaSeconds: number) => void;
+    /**
+     * Espaço extra (px) no rodapé para a barra não ficar atrás de chrome
+     * flutuante — ex.: a BottomNav do treinador na Sala de Treino, que do
+     * contrário cobre os botões de ajuste (-15s / +30s). Default 0, pois as
+     * telas do aluno são rotas em stack sem tab bar flutuante.
+     */
+    bottomChrome?: number;
 }
 
 const CIRCLE_SIZE = 140;
@@ -28,10 +35,11 @@ export function RestTimerOverlay({
     onSkip,
     onComplete,
     onAdjustTime,
+    bottomChrome = 0,
 }: RestTimerOverlayProps) {
     const colors = useV2Colors();
     const isDark = useIsDark();
-    const styles = makeStyles(colors);
+    const styles = makeStyles(colors, bottomChrome);
     const [remaining, setRemaining] = useState(() =>
         Math.max(0, Math.ceil((endTime - Date.now()) / 1000))
     );
@@ -150,7 +158,7 @@ export function RestTimerOverlay({
     );
 }
 
-function makeStyles(colors: V2Palette) {
+function makeStyles(colors: V2Palette, bottomChrome: number) {
     return StyleSheet.create({
         overlay: {
             position: 'absolute',
@@ -165,7 +173,9 @@ function makeStyles(colors: V2Palette) {
             borderTopWidth: 1,
             borderColor: colors.border.subtle,
             paddingTop: 16,
-            paddingBottom: 44,
+            // 44 = folga base sobre o safe-area do host; bottomChrome levanta o
+            // conteúdo acima de uma tab bar flutuante (Sala de Treino).
+            paddingBottom: 44 + bottomChrome,
             paddingHorizontal: 24,
             alignItems: 'center',
             shadowColor: colors.purple[600],
