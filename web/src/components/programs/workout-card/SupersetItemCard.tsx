@@ -11,7 +11,6 @@ import { ExerciseItemCard } from './ExerciseItemCard'
 interface SupersetItemCardProps {
     item: WorkoutItem
     exercises: Exercise[]
-    onUpdate: (updates: Partial<WorkoutItem>) => void
     onDelete: () => void
     onDuplicate?: () => void
     onUpdateChild?: (childId: string, updates: Partial<WorkoutItem>) => void
@@ -29,7 +28,7 @@ interface SupersetItemCardProps {
  * Card de superset do builder de treino.
  *
  * Layout:
- *   ▍ [grip]  Superset (2)              Descanso  [0] s   [↻]  [🗑]
+ *   ▍ [grip]  Superset (2)                              [↻]  [🗑]
  *   ▍
  *   ▍   ┌──────────────────────────────────────────┐
  *   ▍   │ <SupersetChildCard />                    │
@@ -44,7 +43,9 @@ interface SupersetItemCardProps {
  * - Faixa azul/violeta vertical à esquerda como identidade do superset.
  *   Substitui o ícone do tipo: o rail é mais discreto e marca melhor o
  *   agrupamento dos filhos.
- * - Ações do canto superior direito (descanso, dissolver, excluir) sempre
+ * - O descanso é editado POR EXERCÍCIO (em cada filho), não no superset: o
+ *   descanso do último filho é o tempo após a rodada; os do meio, a transição
+ *   pro próximo. Ações (minimizar, duplicar, dissolver, excluir) sempre
  *   visíveis — nunca dependem de hover.
  * - Filhos renderizados em coluna, sem wrapper extra com fundo: o rail à
  *   esquerda já amarra visualmente o grupo.
@@ -52,7 +53,6 @@ interface SupersetItemCardProps {
 export function SupersetItemCard({
     item,
     exercises,
-    onUpdate,
     onDelete,
     onDuplicate,
     onUpdateChild,
@@ -99,37 +99,6 @@ export function SupersetItemCard({
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-[#8E8E93] dark:text-k-text-tertiary">
-                            Descanso
-                        </span>
-                        {readonly ? (
-                            <span className="text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium">
-                                {item.rest_seconds || 0}s
-                            </span>
-                        ) : (
-                            <>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    step={15}
-                                    value={item.rest_seconds || ''}
-                                    onChange={(e) =>
-                                        onUpdate({
-                                            rest_seconds: parseInt(e.target.value) || null,
-                                        })
-                                    }
-                                    onFocus={(e) => e.target.select()}
-                                    placeholder="0"
-                                    className="w-8 bg-transparent text-[#1C1C1E] dark:text-k-text-primary text-xs font-medium text-center focus:outline-none focus:text-[#7C3AED] dark:focus:text-violet-400 transition-colors placeholder:text-k-border-subtle border-b border-transparent focus:border-[#7C3AED]/50 dark:focus:border-violet-500/50 p-0"
-                                />
-                                <span className="text-[10px] text-[#8E8E93] dark:text-k-text-tertiary">
-                                    s
-                                </span>
-                            </>
-                        )}
-                    </div>
-
                     {/* Ações sempre visíveis */}
                     {!readonly && (
                         <div className="flex items-center gap-1">
@@ -182,9 +151,10 @@ export function SupersetItemCard({
             </div>
 
             {/* Filhos — escondidos quando o superset está minimizado.
-             *  Reusam o ExerciseItemCard completo (nota técnica, substituições,
-             *  pills musculares, trocar exercício), porém com `omitRest` (o
-             *  descanso é do superset pai) e sem grip de arrastar. */}
+             *  Reusam o ExerciseItemCard completo (séries, reps, DESCANSO próprio,
+             *  nota técnica, substituições, trocar exercício) e sem grip de
+             *  arrastar. Cada exercício do superset edita seu próprio descanso:
+             *  o do meio = transição pro próximo; o do último = após a rodada. */}
             {!isMinimized && (
                 <div className="space-y-2 pl-3">
                     {children.map((child, index) => (
@@ -204,7 +174,6 @@ export function SupersetItemCard({
                                 : {})}
                             onRemoveFromSuperset={() => onRemoveFromSuperset?.(child.id)}
                             readonly={readonly}
-                            omitRest
                             hideDragHandle
                         />
                     ))}

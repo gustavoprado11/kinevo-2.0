@@ -411,11 +411,14 @@ export function updateItemIn(
         ...w,
         items: w.items.map(item => {
             if (item.id === itemId) return { ...item, ...updates }
-            if (item.children) {
-                return {
-                    ...item,
-                    children: item.children.map(c => (c.id === itemId ? { ...c, ...updates } : c)),
+            if (item.children?.some(c => c.id === itemId)) {
+                const newChildren = item.children.map(c => (c.id === itemId ? { ...c, ...updates } : c))
+                // Superset: re-deriva o descanso do pai a partir do último filho
+                // (consumido pelo timer do mobile e pelo label do training-room).
+                if (item.item_type === 'superset') {
+                    return { ...item, children: newChildren, rest_seconds: supersetRestFromChildren(newChildren) }
                 }
+                return { ...item, children: newChildren }
             }
             return item
         }),
@@ -500,8 +503,18 @@ export function reorderItemIn(
 
 // — Supersets —
 
-/** Agrupa um exercício com o seguinte num superset novo. O rest do superset
- *  herda do item atual (ou 60s) — é o que o SupersetItemCard exibe/edita. */
+/** Descanso "agregado" do superset = descanso do ÚLTIMO filho (o tempo após
+ *  completar a rodada). Cada filho guarda seu próprio descanso; este derivado
+ *  existe só pros consumidores que leem o descanso no item-pai (timer do mobile
+ *  e label do training-room). Preserva 0 ("sem descanso"); null = não definido. */
+function supersetRestFromChildren(children: WorkoutItem[]): number | null {
+    if (children.length === 0) return null
+    return children[children.length - 1].rest_seconds ?? null
+}
+
+/** Agrupa um exercício com o seguinte num superset novo. Cada filho mantém seu
+ *  descanso individual; o descanso do superset-pai (lido por mobile/training-room)
+ *  é derivado do último filho via supersetRestFromChildren. */
 export function createSupersetWithNextIn(workouts: Workout[], workoutId: string, itemId: string): Workout[] {
     return mapWorkout(workouts, workoutId, w => {
         const index = w.items.findIndex(i => i.id === itemId)
@@ -512,6 +525,10 @@ export function createSupersetWithNextIn(workouts: Workout[], workoutId: string,
         if (currentItem.item_type !== 'exercise' || nextItem.item_type !== 'exercise') return w
 
         const supersetId = tempId()
+        const children: WorkoutItem[] = [
+            { ...currentItem, parent_item_id: supersetId, order_index: 0 },
+            { ...nextItem, parent_item_id: supersetId, order_index: 1 },
+        ]
         const superset: WorkoutItem = {
             id: supersetId,
             item_type: 'superset',
@@ -521,12 +538,9 @@ export function createSupersetWithNextIn(workouts: Workout[], workoutId: string,
             substitute_exercise_ids: [],
             sets: null,
             reps: null,
-            rest_seconds: currentItem.rest_seconds || 60,
+            rest_seconds: supersetRestFromChildren(children),
             notes: null,
-            children: [
-                { ...currentItem, parent_item_id: supersetId, order_index: 0 },
-                { ...nextItem, parent_item_id: supersetId, order_index: 1 },
-            ],
+            children,
         }
 
         const newItems = [...w.items]
@@ -557,7 +571,11 @@ export function addToExistingSupersetIn(
             items: reindexItems(
                 w.items
                     .filter(i => i.id !== itemId)
-                    .map(i => (i.id === supersetId ? { ...i, children: newChildren } : i)),
+                    .map(i =>
+                        i.id === supersetId
+                            ? { ...i, children: newChildren, rest_seconds: supersetRestFromChildren(newChildren) }
+                            : i,
+                    ),
             ),
         }
     })
@@ -596,9 +614,11 @@ export function removeFromSupersetIn(
             return { ...w, items: reindexItems(newItems) }
         }
 
+        const reindexedChildren = newChildren.map((c, i) => ({ ...c, order_index: i }))
         const updatedSuperset = {
             ...superset,
-            children: newChildren.map((c, i) => ({ ...c, order_index: i })),
+            children: reindexedChildren,
+            rest_seconds: supersetRestFromChildren(reindexedChildren),
         }
         newItems.splice(supersetIndex, 1, updatedSuperset)
         newItems.splice(supersetIndex + 1, 0, removedChild)

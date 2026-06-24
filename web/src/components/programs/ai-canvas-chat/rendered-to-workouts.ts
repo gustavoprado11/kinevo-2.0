@@ -57,7 +57,7 @@ function buildExerciseItem(it: CanvasItemDTO, exercise: Exercise): WorkoutItem {
 
 /** Agrupa itens CONSECUTIVOS com a mesma superset_group num superset (≥2 itens).
  *  Espelha createSupersetWithNextIn: container 'superset' + filhos com
- *  parent_item_id, rest herdado, e SEM método/scheme (regra V1 — supersets não
+ *  parent_item_id, rest do pai derivado do último filho, e SEM método/scheme (regra V1 — supersets não
  *  persistem scheme nos filhos; o save os ignora via effectiveMethodKey). */
 function groupSupersets(built: Array<{ item: WorkoutItem; group: string | null }>): WorkoutItem[] {
     const result: WorkoutItem[] = []
@@ -79,7 +79,7 @@ function groupSupersets(built: Array<{ item: WorkoutItem; group: string | null }
                     substitute_exercise_ids: [],
                     sets: null,
                     reps: null,
-                    rest_seconds: run[0].item.rest_seconds || 60,
+                    rest_seconds: run[run.length - 1].item.rest_seconds ?? null,
                     notes: null,
                     children: run.map((r, ci) => ({
                         ...r.item,

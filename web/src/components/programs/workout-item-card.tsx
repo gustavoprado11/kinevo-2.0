@@ -99,7 +99,6 @@ export function WorkoutItemCard({
             <SupersetItemCard
                 item={item}
                 exercises={exercises}
-                onUpdate={onUpdate}
                 onDelete={onDelete}
                 onDuplicate={onDuplicate}
                 onUpdateChild={onUpdateChild}

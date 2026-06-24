@@ -100,14 +100,26 @@ describe('createSupersetWithNextIn', () => {
         expect(orderIndexes(result)).toEqual([0, 1])
     })
 
-    it('herda o rest do item atual no superset (fallback 60s)', () => {
-        const w = workout('w1', [exercise('a', { rest_seconds: 90 }), exercise('b')])
+    it('deriva o rest do superset do ÚLTIMO filho e mantém o rest de cada filho', () => {
+        // Modelo por-exercício: cada filho guarda seu próprio descanso...
+        const w = workout('w1', [exercise('a', { rest_seconds: 90 }), exercise('b', { rest_seconds: 30 })])
         const [result] = createSupersetWithNextIn([w], 'w1', 'a')
-        expect(result.items[0].rest_seconds).toBe(90)
+        expect(result.items[0].children!.map(c => c.rest_seconds)).toEqual([90, 30])
+        // ...e o descanso do superset-pai (lido por mobile/training-room) é o do
+        // último filho (= tempo após a rodada).
+        expect(result.items[0].rest_seconds).toBe(30)
+    })
 
-        const w2 = workout('w2', [exercise('a', { rest_seconds: null }), exercise('b')])
+    it('preserva 0 ("sem descanso") no rest do superset — não volta a virar 60', () => {
+        // Repro do bug reportado: 1º exercício em 0s, agrupa em superset.
+        const w = workout('w1', [exercise('a', { rest_seconds: 0 }), exercise('b', { rest_seconds: 0 })])
+        const [result] = createSupersetWithNextIn([w], 'w1', 'a')
+        expect(result.items[0].rest_seconds).toBe(0)
+
+        // null (não definido) permanece null.
+        const w2 = workout('w2', [exercise('a', { rest_seconds: null }), exercise('b', { rest_seconds: null })])
         const [result2] = createSupersetWithNextIn([w2], 'w2', 'a')
-        expect(result2.items[0].rest_seconds).toBe(60)
+        expect(result2.items[0].rest_seconds).toBeNull()
     })
 
     it('não agrupa quando o vizinho não é exercício ou é o último item', () => {
@@ -174,6 +186,46 @@ describe('dissolveSupersetIn', () => {
         const [result] = dissolveSupersetIn([s1], 'w1', s1.items[1].id)
         expect(ids(result)).toEqual(['a', 'b', 'c'])
         expect(result.items.every(i => i.parent_item_id === null)).toBe(true)
+    })
+})
+
+describe('superset — derivação do descanso do pai (add/remove/dissolve)', () => {
+    it('addToExisting: pai segue o NOVO último filho', () => {
+        const base = workout('w1', [
+            exercise('a', { rest_seconds: 30 }),
+            exercise('b', { rest_seconds: 45 }),
+            exercise('c', { rest_seconds: 75 }),
+        ])
+        const [s1] = createSupersetWithNextIn([base], 'w1', 'a') // superset[a,b] → pai=45
+        expect(s1.items[0].rest_seconds).toBe(45)
+        const [s2] = addToExistingSupersetIn([s1], 'w1', 'c', s1.items[0].id) // +c → pai=75
+        expect(s2.items[0].children!.map(x => x.rest_seconds)).toEqual([30, 45, 75])
+        expect(s2.items[0].rest_seconds).toBe(75)
+    })
+
+    it('removeFrom (3→2): pai re-deriva do novo último filho', () => {
+        const base = workout('w1', [
+            exercise('a', { rest_seconds: 30 }),
+            exercise('b', { rest_seconds: 45 }),
+            exercise('c', { rest_seconds: 75 }),
+        ])
+        const [s1] = createSupersetWithNextIn([base], 'w1', 'a')
+        const [s2] = addToExistingSupersetIn([s1], 'w1', 'c', s1.items[0].id) // [a,b,c] pai=75
+        const [s3] = removeFromSupersetIn([s2], 'w1', s2.items[0].id, 'c') // remove c → [a,b] pai=45
+        expect(s3.items[0].item_type).toBe('superset')
+        expect(s3.items[0].children!.map(x => x.id)).toEqual(['a', 'b'])
+        expect(s3.items[0].rest_seconds).toBe(45)
+    })
+
+    it('dissolve: filhos promovidos mantêm o descanso próprio (incl. 0)', () => {
+        const base = workout('w1', [
+            exercise('a', { rest_seconds: 0 }),
+            exercise('b', { rest_seconds: 90 }),
+        ])
+        const [s1] = createSupersetWithNextIn([base], 'w1', 'a')
+        const [result] = dissolveSupersetIn([s1], 'w1', s1.items[0].id)
+        expect(result.items.map(i => i.id)).toEqual(['a', 'b'])
+        expect(result.items.map(i => i.rest_seconds)).toEqual([0, 90])
     })
 })
 
@@ -263,6 +315,22 @@ describe('updateItemIn', () => {
 
         const [r2] = updateItemIn([s1], 'w1', 'b', { reps: '15' })
         expect(r2.items[0].children![1].reps).toBe('15')
+    })
+
+    it('re-deriva o rest do superset quando o rest de um filho muda', () => {
+        const base = workout('w1', [exercise('a', { rest_seconds: 0 }), exercise('b', { rest_seconds: 0 })])
+        const [s1] = createSupersetWithNextIn([base], 'w1', 'a')
+        expect(s1.items[0].rest_seconds).toBe(0)
+
+        // Editar o descanso do ÚLTIMO filho re-sincroniza o pai (lido por mobile).
+        const [r1] = updateItemIn([s1], 'w1', 'b', { rest_seconds: 120 })
+        expect(r1.items[0].children![1].rest_seconds).toBe(120)
+        expect(r1.items[0].rest_seconds).toBe(120)
+
+        // Editar um filho não-último não muda o pai (que segue o último filho).
+        const [r2] = updateItemIn([r1], 'w1', 'a', { rest_seconds: 45 })
+        expect(r2.items[0].children![0].rest_seconds).toBe(45)
+        expect(r2.items[0].rest_seconds).toBe(120)
     })
 })
 

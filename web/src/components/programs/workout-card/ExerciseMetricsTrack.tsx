@@ -109,7 +109,7 @@ export const ExerciseMetricsTrack = memo(function ExerciseMetricsTrack({
                             step={15}
                             value={item.rest_seconds ?? ''}
                             onChange={(e) =>
-                                onUpdate({ rest_seconds: parseInt(e.target.value) || null })
+                                onUpdate({ rest_seconds: parseRestSeconds(e.target.value) })
                             }
                             onFocus={(e) => e.target.select()}
                             placeholder="0"
@@ -291,6 +291,15 @@ function compactSequence<T>(values: T[]): string {
     const first = values[0]
     if (values.every((v) => v === first)) return String(first)
     return values.map((v) => String(v)).join(' · ')
+}
+
+/** Descanso aceita 0 ("sem descanso", comum em supersets/circuitos); só vazio
+ *  ou valor inválido vira null. Corrige o bug do `parseInt() || null`, que
+ *  transformava 0 em null (e depois o agrupamento o ressuscitava como 60s). */
+function parseRestSeconds(value: string): number | null {
+    if (value.trim() === '') return null
+    const n = parseInt(value, 10)
+    return Number.isFinite(n) && n >= 0 ? n : null
 }
 
 function clampRounds(n: number | null | undefined): number {
