@@ -48,7 +48,32 @@ describe('get-ai-tier — precedência override > price > free', () => {
     it('sem assinatura ativa → free', () => {
         expect(getAiTier({ ai_tier: 'free' }, null)).toBe('free')
         expect(getAiTier(null, { status: 'canceled', stripe_price_id: 'price_pro' })).toBe('free')
+        // past_due SEM current_period_end → free (fail-safe; não dá pra computar a graça).
         expect(getAiTier(null, { status: 'past_due', stripe_price_id: 'price_pro' })).toBe('free')
+    })
+
+    it('past_due DENTRO da graça do dunning (period_end recente) → mantém o tier pago', () => {
+        const now = new Date('2026-06-24T12:00:00Z')
+        // period_end há 3 dias → dentro dos 14 dias de graça.
+        expect(
+            getAiTier(
+                null,
+                { status: 'past_due', stripe_price_id: 'price_pro', current_period_end: '2026-06-21T00:00:00Z' },
+                now,
+            ),
+        ).toBe('pro_ia')
+    })
+
+    it('past_due FORA da graça (period_end > 14 dias) → free', () => {
+        const now = new Date('2026-06-24T12:00:00Z')
+        // period_end há 23 dias → graça (período + 14d) já expirou.
+        expect(
+            getAiTier(
+                null,
+                { status: 'past_due', stripe_price_id: 'price_pro', current_period_end: '2026-06-01T00:00:00Z' },
+                now,
+            ),
+        ).toBe('free')
     })
 
     it('ai_tier inválido é tratado como sem override', () => {

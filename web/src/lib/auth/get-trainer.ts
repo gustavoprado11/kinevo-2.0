@@ -120,7 +120,11 @@ export function pickActiveSubscription(subs: any): any | null {
     if (!subs) return null
     const arr: any[] = Array.isArray(subs) ? subs : [subs]
     if (arr.length === 0) return null
-    const active = arr.find(s => s?.status === 'active' || s?.status === 'trialing')
+    // Prefere active/trialing; depois past_due (graça do dunning, resolvido em
+    // getAiTier); senão a mais recente.
+    const active =
+        arr.find(s => s?.status === 'active' || s?.status === 'trialing') ??
+        arr.find(s => s?.status === 'past_due')
     if (active) return active
     return [...arr].sort((a, b) => {
         const ad = a?.created_at ? new Date(a.created_at).getTime() : 0

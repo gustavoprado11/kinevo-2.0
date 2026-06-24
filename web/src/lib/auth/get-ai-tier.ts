@@ -35,6 +35,23 @@ export interface AiTierTrainer {
 export interface AiTierSubscription {
     status?: string | null
     stripe_price_id?: string | null
+    current_period_end?: string | null
+}
+
+/**
+ * Janela de GRAÇA do dunning. Quando a renovação falha, o Stripe põe a assinatura
+ * em `past_due` e fica re-tentando cobrar por ~2-3 semanas (Smart Retries) antes de
+ * cancelar. Não derrubamos o pagante na hora: mantemos o tier pago até
+ * current_period_end + GRACE_DAYS. É time-bounded de propósito (fail-safe): se o
+ * webhook de cancelamento falhar — como no incidente de abril/2026 — o acesso
+ * expira sozinho em vez de ficar pago "de graça" pra sempre.
+ */
+const DUNNING_GRACE_DAYS = 14
+
+function isInDunningGrace(sub: AiTierSubscription, now: Date): boolean {
+    if (sub.status !== 'past_due' || !sub.current_period_end) return false
+    const graceUntil = new Date(sub.current_period_end).getTime() + DUNNING_GRACE_DAYS * 86_400_000
+    return Number.isFinite(graceUntil) && graceUntil > now.getTime()
 }
 
 /**
@@ -81,6 +98,7 @@ export function priceIdForTier(tier: AiTier): string | null {
 export function getAiTier(
     trainer: AiTierTrainer | null | undefined,
     subscription: AiTierSubscription | null | undefined,
+    now: Date = new Date(),
 ): AiTier {
     // 1. Override manual explícito (qualquer tier válido != 'free').
     const override = trainer?.ai_tier
@@ -88,13 +106,14 @@ export function getAiTier(
         return override as AiTier
     }
 
-    // 2. Sem assinatura ativa → free.
+    // 2. Acesso pago = assinatura active/trialing OU past_due dentro da janela de
+    //    graça do dunning (cartão falhou, Stripe ainda tentando cobrar). Senão → free.
     const status = subscription?.status
-    if (!subscription || !status || !ACTIVE_STATUSES.has(status)) {
-        return 'free'
-    }
+    if (!subscription || !status) return 'free'
+    const hasAccess = ACTIVE_STATUSES.has(status) || isInDunningGrace(subscription, now)
+    if (!hasAccess) return 'free'
 
-    // 3. Pagante ativo: deriva do price; price desconhecido → essencial (nunca free).
+    // 3. Pagante (ou em graça): deriva do price; price desconhecido → essencial (nunca free).
     return priceToTier(subscription.stripe_price_id) ?? 'essencial'
 }
 
@@ -110,7 +129,7 @@ export async function getAiTierForTrainer(
 ): Promise<AiTier> {
     const { data } = await admin
         .from('trainers')
-        .select('ai_tier, subscriptions(status, stripe_price_id, created_at)')
+        .select('ai_tier, subscriptions(status, current_period_end, stripe_price_id, created_at)')
         .eq('id', trainerId)
         .single()
 
@@ -133,7 +152,10 @@ function pickActiveAiSubscription(
     if (!subs) return null
     const arr = Array.isArray(subs) ? subs : [subs]
     if (arr.length === 0) return null
-    const active = arr.find((s) => s?.status && ACTIVE_STATUSES.has(s.status))
+    // Prefere active/trialing; depois past_due (em graça); senão a mais recente.
+    const active =
+        arr.find((s) => s?.status && ACTIVE_STATUSES.has(s.status)) ??
+        arr.find((s) => s?.status === 'past_due')
     if (active) return active
     return [...arr].sort((a, b) => {
         const ad = a?.created_at ? new Date(a.created_at).getTime() : 0
