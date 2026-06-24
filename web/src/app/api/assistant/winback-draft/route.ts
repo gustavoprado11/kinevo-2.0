@@ -15,6 +15,9 @@ import { callLLM, callWithRetry } from '@/lib/prescription/llm-client'
 import { parseDraftOutput } from '@/lib/assistant/draft-prompt'
 import { WINBACK_SYSTEM_PROMPT, buildWinbackContextBlock, type WinbackContext } from '@/lib/assistant/winback-prompt'
 import { getWalletRow, summarizeWallet } from '@/lib/asaas/wallet-service'
+import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
+import { recordAiUsage, usdToMicros } from '@/lib/ai-usage/metering'
+import { recordFreeTrial, getQuotaForTier } from '@/lib/ai-usage/quota'
 
 export const maxDuration = 45
 
@@ -53,6 +56,21 @@ export async function POST(req: Request) {
         })
         if (!limit.allowed) {
             return new Response(limit.error || 'Rate limit exceeded', { status: 429 })
+        }
+
+        // 3b. Gate de cota de IA (defense-in-depth) — paridade com o chat. ANTES
+        //     chamava o LLM pago sem checar tier/cota (vazamento). Esgotou (free-trial
+        //     OU balde) → 402 amigável; débito após gerar (passo 9b). Não trava o app.
+        const usage = await getAiUsageSummary(supabaseAdmin, trainer.id)
+        if (usage.exhausted) {
+            const message =
+                usage.tier === 'free'
+                    ? 'Você já testou os recursos de IA do plano Gratuito. Assine um plano para continuar gerando rascunhos com IA.'
+                    : 'Cota de IA do período atingida. A IA volta no próximo ciclo; você pode escrever a mensagem manualmente.'
+            return new Response(
+                JSON.stringify({ error: 'ai_quota_exhausted', tier: usage.tier, message, resetAt: usage.periodEnd }),
+                { status: 402, headers: { 'Content-Type': 'application/json' } },
+            )
         }
 
         // 4. Validate body
@@ -149,6 +167,34 @@ export async function POST(req: Request) {
             } catch (e) {
                 console.error('[winback-draft] usage log failed:', e)
             }
+        }
+
+        // 9b. Metering no balde de cota (paridade com o chat). Pago → debita 1
+        //     crédito (clamp no teto do plano); free → marca o free-trial 'write'.
+        try {
+            const costMicros = result.usage ? usdToMicros(result.usage.cost_usd) : 0
+            if (usage.tier === 'free') {
+                await recordFreeTrial(supabaseAdmin, trainer.id, 'write')
+            } else {
+                await recordAiUsage(supabaseAdmin, {
+                    trainerId: trainer.id,
+                    periodType: getQuotaForTier(usage.tier)?.period ?? 'month',
+                    creditLimit: getQuotaForTier(usage.tier)?.credits ?? null,
+                    credits: 1,
+                    costMicros,
+                    events: [{
+                        actionClass: 'write',
+                        credits: 1,
+                        surface: 'proactive',
+                        model: result.model,
+                        inputTokens: result.usage?.input_tokens,
+                        outputTokens: result.usage?.output_tokens,
+                        costMicros,
+                    }],
+                })
+            }
+        } catch (meterErr) {
+            console.error('[winback-draft] metering best-effort falhou:', meterErr)
         }
 
         return Response.json({ draft, can_attach_link: canAttachLink, cost_usd: result.usage?.cost_usd ?? 0 })

@@ -9,6 +9,11 @@ vi.mock('@/lib/prescription/llm-client', () => ({
     callWithRetry: vi.fn(),
 }))
 vi.mock('@/lib/assistant/student-context', () => ({ buildDraftContext: vi.fn() }))
+vi.mock('@/lib/ai-usage/usage-summary', () => ({ getAiUsageSummary: vi.fn() }))
+vi.mock('@/lib/ai-usage/metering', () => ({
+    recordAiUsage: vi.fn(async () => ({ ok: true })),
+    usdToMicros: (u: number) => Math.round(u * 1_000_000),
+}))
 // draft-prompt stays REAL (pure functions, already tested) — integration.
 
 import { createClient } from '@/lib/supabase/server'
@@ -17,6 +22,7 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import { callWithRetry } from '@/lib/prescription/llm-client'
 import { buildDraftContext } from '@/lib/assistant/student-context'
 import type { DraftContext } from '@/lib/assistant/student-context'
+import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { POST } from './route'
 
 const sbCreate = vi.mocked(createClient)
@@ -24,6 +30,18 @@ const sbAdmin = vi.mocked(supabaseAdmin)
 const rateMock = vi.mocked(consumeRateLimit)
 const retryMock = vi.mocked(callWithRetry)
 const ctxMock = vi.mocked(buildDraftContext)
+const usageMock = vi.mocked(getAiUsageSummary)
+
+const usageOk = (over: Partial<Awaited<ReturnType<typeof getAiUsageSummary>>> = {}) => ({
+    tier: 'pro_ia' as const,
+    creditsUsed: 0,
+    creditsTotal: 300,
+    creditsRemaining: 300,
+    periodStart: '2026-06-01',
+    periodEnd: '2026-07-01',
+    exhausted: false,
+    ...over,
+})
 
 const TRAINER_AUTH_UID = '00000000-0000-4000-8000-000000000001'
 const TRAINER_ID = '7aec3555-600c-4e7c-966e-028116921683'
@@ -94,6 +112,14 @@ describe('POST /api/assistant/draft-message', () => {
         retryMock.mockResolvedValue(llmOk() as never)
         ctxMock.mockResolvedValue(goodCtx)
         usageInsert.mockReturnValue(Promise.resolve({ error: null }))
+        usageMock.mockResolvedValue(usageOk())
+    })
+
+    it('402 quando a cota de IA está esgotada (gate de custo)', async () => {
+        sbCreate.mockResolvedValue(makeServerClient({ id: TRAINER_AUTH_UID }, { id: TRAINER_ID, name: 'Carlos' }))
+        usageMock.mockResolvedValue(usageOk({ exhausted: true }))
+        const res = await POST(makeRequest(validBody))
+        expect(res.status).toBe(402)
     })
 
     it('401 quando não autenticado', async () => {

@@ -8,6 +8,11 @@ vi.mock('@/lib/asaas/wallet-service', () => ({
     getWalletRow: vi.fn(),
     summarizeWallet: vi.fn(),
 }))
+vi.mock('@/lib/ai-usage/usage-summary', () => ({ getAiUsageSummary: vi.fn() }))
+vi.mock('@/lib/ai-usage/metering', () => ({
+    recordAiUsage: vi.fn(async () => ({ ok: true })),
+    usdToMicros: (u: number) => Math.round(u * 1_000_000),
+}))
 // draft-prompt (parseDraftOutput) and winback-prompt stay REAL.
 
 import { createClient } from '@/lib/supabase/server'
@@ -15,6 +20,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { callWithRetry } from '@/lib/prescription/llm-client'
 import { getWalletRow, summarizeWallet } from '@/lib/asaas/wallet-service'
+import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { POST } from './route'
 
 const sbCreate = vi.mocked(createClient)
@@ -23,6 +29,18 @@ const rateMock = vi.mocked(consumeRateLimit)
 const retryMock = vi.mocked(callWithRetry)
 const walletRowMock = vi.mocked(getWalletRow)
 const summarizeMock = vi.mocked(summarizeWallet)
+const usageMock = vi.mocked(getAiUsageSummary)
+
+const usageOk = (over: Partial<Awaited<ReturnType<typeof getAiUsageSummary>>> = {}) => ({
+    tier: 'pro_ia' as const,
+    creditsUsed: 0,
+    creditsTotal: 300,
+    creditsRemaining: 300,
+    periodStart: '2026-06-01',
+    periodEnd: '2026-07-01',
+    exhausted: false,
+    ...over,
+})
 
 const TRAINER_AUTH_UID = '00000000-0000-4000-8000-000000000001'
 const TRAINER_ID = '7aec3555-600c-4e7c-966e-028116921683'
@@ -84,6 +102,13 @@ describe('POST /api/assistant/winback-draft', () => {
         walletRowMock.mockResolvedValue({ status: 'approved' } as never)
         summarizeMock.mockReturnValue({ canReceivePayments: true } as never)
         usageInsert.mockReturnValue(Promise.resolve({ error: null }))
+        usageMock.mockResolvedValue(usageOk())
+    })
+
+    it('402 quando a cota de IA está esgotada (gate de custo)', async () => {
+        sbCreate.mockResolvedValue(makeServerClient({ id: TRAINER_AUTH_UID }, { id: TRAINER_ID, name: 'Carlos' }))
+        usageMock.mockResolvedValue(usageOk({ exhausted: true }))
+        expect((await POST(makeRequest(validBody))).status).toBe(402)
     })
 
     it('401 sem usuário', async () => {

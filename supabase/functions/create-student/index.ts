@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
 
         const { data: trainer, error: trainerError } = await adminClient
             .from("trainers")
-            .select("id")
+            .select("id, ai_tier")
             .eq("auth_user_id", user.id)
             .single();
 
@@ -52,6 +52,45 @@ Deno.serve(async (req: Request) => {
                 JSON.stringify({ success: false, error: "Treinador não encontrado" }),
                 { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
+        }
+
+        // 3b. Trava de monetização "Free = 1 aluno" (paridade com o web
+        //     assertCanCreateStudent / a tool MCP kinevo_create_student). Esta edge
+        //     function é chamada pelo app (AddStudentModal + conversão de lead) e
+        //     ANTES não checava o cap → o mobile burlava o limite que sustenta a
+        //     venda. Checa ANTES de criar o auth user (sem órfão). Só o tier Free é
+        //     limitado (cap=1, o "aluno-teste"); qualquer tier pago = ilimitado.
+        //     Free = sem override de ai_tier pago E sem assinatura active/trialing
+        //     (espelha lib/auth/get-ai-tier).
+        const aiTier = (trainer.ai_tier ?? "free") as string;
+        let isPaid = aiTier !== "free";
+        if (!isPaid) {
+            const { data: activeSub } = await adminClient
+                .from("subscriptions")
+                .select("status")
+                .eq("trainer_id", trainer.id)
+                .in("status", ["active", "trialing"])
+                .maybeSingle();
+            isPaid = !!activeSub;
+        }
+        if (!isPaid) {
+            const { count, error: countError } = await adminClient
+                .from("students")
+                .select("id", { count: "exact", head: true })
+                .eq("coach_id", trainer.id);
+            // Falha ao contar não bloqueia uma criação legítima (gate de produto,
+            // não de segurança) — espelha o assertCanCreateStudent do web.
+            if (!countError && (count ?? 0) >= 1) {
+                return new Response(
+                    JSON.stringify({
+                        success: false,
+                        code: "student_cap_reached",
+                        error:
+                            "O plano Gratuito permite apenas 1 aluno (você mesmo, como aluno-teste). Assine um plano para adicionar mais alunos.",
+                    }),
+                    { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
+            }
         }
 
         // 4. Parse request body

@@ -5,6 +5,7 @@ import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
 import { upsertInsightByKey } from '@/lib/insights/upsert'
 import { evaluateStagnation } from '@/lib/insights/stagnation'
+import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -105,21 +106,30 @@ export async function GET(request: NextRequest) {
                     // texto neutro/consolidado e o enricher tende a reintroduzir
                     // viés de carga ("aumente a carga"). Mantemos a enrichment
                     // pros demais (inclui a consolidação de estagnação).
-                    try {
-                        const enrichResult = await enrichInsightsWithLLM(trainerId, insights
-                            .filter(i => !i.insight_key.startsWith('ready_to_progress'))
-                            .map(i => ({
-                                insight_key: i.insight_key,
-                                student_id: i.student_id,
-                                category: i.category,
-                                title: i.title,
-                                body: i.body,
-                                action_metadata: i.action_metadata as Record<string, unknown>,
-                            })))
-                        totalEnriched += enrichResult.enriched
-                        totalConsolidated += enrichResult.consolidated
-                    } catch (enrichError) {
-                        console.error(`[cron:generate-insights] LLM enrichment failed for trainer ${trainerId}, keeping rule-based insights:`, enrichError)
+                    //
+                    // GATE DE TIER (vazamento de custo): o enrichment por LLM é um
+                    // benefício de tier PAGO. Antes rodava p/ TODOS os treinadores no
+                    // cron — free recebia insights reescritos por IA de graça e o custo
+                    // não era contabilizado. Agora o free fica com os insights
+                    // DETERMINÍSTICOS (já gerados acima); só pago passa pelo LLM.
+                    const enrichTier = await getAiTierForTrainer(supabaseAdmin, trainerId)
+                    if (enrichTier !== 'free') {
+                        try {
+                            const enrichResult = await enrichInsightsWithLLM(trainerId, insights
+                                .filter(i => !i.insight_key.startsWith('ready_to_progress'))
+                                .map(i => ({
+                                    insight_key: i.insight_key,
+                                    student_id: i.student_id,
+                                    category: i.category,
+                                    title: i.title,
+                                    body: i.body,
+                                    action_metadata: i.action_metadata as Record<string, unknown>,
+                                })))
+                            totalEnriched += enrichResult.enriched
+                            totalConsolidated += enrichResult.consolidated
+                        } catch (enrichError) {
+                            console.error(`[cron:generate-insights] LLM enrichment failed for trainer ${trainerId}, keeping rule-based insights:`, enrichError)
+                        }
                     }
 
                     // Phase 3: Push notifications for critical insights (best-effort)
