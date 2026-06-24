@@ -92,30 +92,30 @@ export default function WorkoutPlayerScreen() {
         const exercise = exercisesRef.current[exerciseIndex];
         if (!exercise) return;
 
-        // Superset logic: only trigger rest after the last exercise in the round
+        // Superset: descanso POR EXERCÍCIO. Cada exercício usa o próprio
+        // rest_seconds (0 = sem descanso → vai direto pro próximo). No ÚLTIMO
+        // exercício do grupo o descanso é "após a rodada": só dispara se ainda
+        // houver rodada por fazer (evita timer sobrando no fim do superset).
         if (exercise.supersetId) {
-            const supersetExercises = exercisesRef.current.filter(
-                (e) => e.supersetId === exercise.supersetId
-            );
-            const isLastInGroup = supersetExercises[supersetExercises.length - 1]?.id === exercise.id;
-
-            if (!isLastInGroup) {
-                // Not the last exercise in superset round — no rest timer
-                return;
-            }
-
-            // Last exercise in superset — use supersetRestSeconds
-            const restSeconds = exercise.supersetRestSeconds || exercise.rest_seconds || 60;
-            const hasRemainingRounds = supersetExercises.some(
-                (e) => e.setsData.some((s, i) => i > _setIndex && !s.completed)
-            );
-            if (hasRemainingRounds && restSeconds > 0) {
-                liveActivityRef.current?.startRestTimer(exerciseIndex, restSeconds);
-                setRestTimer({
-                    endTime: Date.now() + restSeconds * 1000,
-                    totalSeconds: restSeconds,
-                    exerciseName: 'Superset',
-                });
+            const restSeconds = exercise.rest_seconds;
+            if (restSeconds > 0) {
+                const supersetExercises = exercisesRef.current.filter(
+                    (e) => e.supersetId === exercise.supersetId
+                );
+                const isLastInGroup = supersetExercises[supersetExercises.length - 1]?.id === exercise.id;
+                const hasRemainingRounds = supersetExercises.some(
+                    (e) => e.setsData.some((s, i) => i > _setIndex && !s.completed)
+                );
+                // Entre exercícios há sempre um próximo na rodada; no último,
+                // só descansa se houver rodada seguinte.
+                if (!isLastInGroup || hasRemainingRounds) {
+                    liveActivityRef.current?.startRestTimer(exerciseIndex, restSeconds);
+                    setRestTimer({
+                        endTime: Date.now() + restSeconds * 1000,
+                        totalSeconds: restSeconds,
+                        exerciseName: exercise.name,
+                    });
+                }
             }
             return;
         }

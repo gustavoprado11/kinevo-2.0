@@ -761,7 +761,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                 for (const item of items) {
                     if (item.item_type === 'superset') {
-                        supersetMap.set(item.id, { rest_seconds: item.rest_seconds || 60, order_index: item.order_index });
+                        supersetMap.set(item.id, { rest_seconds: item.rest_seconds ?? 60, order_index: item.order_index });
                     } else if (item.item_type === 'note' && item.notes?.trim()) {
                         noteItems.push({ id: item.id, notes: item.notes, order_index: item.order_index });
                     }
@@ -815,7 +815,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         assignedSets,
                         aggregateSets: item.sets || 3,
                         aggregateReps: item.reps || '10',
-                        aggregateRestSeconds: item.rest_seconds || 60,
+                        aggregateRestSeconds: item.rest_seconds ?? 60,
                     });
                     const effectiveSetCount = setPrescriptions.length;
 
@@ -827,7 +827,8 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         name: item.exercise_name,
                         sets: effectiveSetCount || (item.sets || 3),
                         reps: item.reps || '10',
-                        rest_seconds: item.rest_seconds || 60,
+                        // ?? (não ||): preserva 0 ("sem descanso") — só null/undefined cai pro default 60.
+                        rest_seconds: item.rest_seconds ?? 60,
                         video_url: trainerVideoMap.get(item.exercise_id) || item.exercises?.video_url,
                         substitute_exercise_ids: item.substitute_exercise_ids || [],
                         swap_source: 'none',

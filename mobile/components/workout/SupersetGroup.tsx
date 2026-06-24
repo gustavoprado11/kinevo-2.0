@@ -109,12 +109,13 @@ export const SupersetGroup = React.memo(function SupersetGroup({
                             methodKey={exercise.methodKey}
                             rounds={exercise.rounds}
                         />
-                        {/* "sem descanso" connector between exercises */}
+                        {/* Conector entre exercícios — reflete o descanso do exercício
+                            atual (0 = sem descanso → vai direto pro próximo). */}
                         {localIdx < exercises.length - 1 && (
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 2, marginBottom: 8 }}>
                                 <View style={{ height: 1, flex: 1, backgroundColor: toRgba(colors.purple[600], 0.15) }} />
                                 <Text style={{ color: colors.purple[500], fontSize: 10, marginHorizontal: 8, fontWeight: '500' }}>
-                                    sem descanso
+                                    {exercise.rest_seconds > 0 ? `descanso ${exercise.rest_seconds}s` : 'sem descanso'}
                                 </Text>
                                 <View style={{ height: 1, flex: 1, backgroundColor: toRgba(colors.purple[600], 0.15) }} />
                             </View>
