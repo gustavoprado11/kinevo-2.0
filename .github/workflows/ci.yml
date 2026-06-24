@@ -1,9 +1,12 @@
 # CI mínimo — análise noturna 09/06/2026 (achado: 5 testes red por 6 semanas
-# sem ninguém notar, por ausência total de CI).
+# sem ninguém notar). Reforçado 24/jun/2026: typecheck nos 3 workspaces + ratchet de lint.
 #
-# Gates (falham o build): typecheck do web + testes dos 3 workspaces.
-# Lint roda como não-bloqueante por enquanto (599 erros legados — gate só
-# depois da limpeza), para dar visibilidade sem travar todo push.
+# Gates (falham o build):
+#   - typecheck (web, shared, mobile);
+#   - testes dos 3 workspaces (shared, web, mobile);
+#   - lint do web via RATCHET (web/scripts/lint-ci.mjs): falha se a contagem de erros
+#     SUBIR acima do baseline (559). NÃO exige limpar a dívida antiga (559 erros em 161
+#     arquivos) — só impede dívida NOVA. Limpa-se baixando o baseline conforme reduz.
 name: CI
 
 on:
@@ -33,6 +36,14 @@ jobs:
       - name: Typecheck (web)
         run: npm run typecheck --workspace=web
 
+      - name: Typecheck (shared)
+        run: npx tsc --noEmit
+        working-directory: shared
+
+      - name: Typecheck (mobile)
+        run: npx tsc --noEmit
+        working-directory: mobile
+
       - name: Tests (shared)
         run: npm run test --workspace=shared
 
@@ -42,6 +53,6 @@ jobs:
       - name: Tests (mobile)
         run: npm run test --workspace=mobile
 
-      - name: Lint (web) — não-bloqueante
-        run: npm run lint --workspace=web
-        continue-on-error: true
+      - name: Lint (web) — ratchet (trava dívida NOVA)
+        run: node scripts/lint-ci.mjs
+        working-directory: web
