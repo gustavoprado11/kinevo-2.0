@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { AuthLayout } from '@/components/auth/auth-layout'
 import { signupTrainer } from '@/actions/auth/signup-trainer'
+import { paidTierFromParam, tierDisplay } from '@/lib/billing/tiers'
 
 // Public Turnstile site key. When unset (operator hasn't enabled CAPTCHA
 // yet), the widget block below is short-circuited and the server action
@@ -55,6 +56,10 @@ export default function SignupPage() {
 function SignupPageInner() {
     const searchParams = useSearchParams()
     const isFromMobile = searchParams?.get('ref') === 'mobile'
+    // Tier escolhido na landing (?tier=essencial|pro_ia|premium_ia). Sem tier =
+    // entrada Gratuita (sem checkout, sem cartão).
+    const selectedTier = paidTierFromParam(searchParams?.get('tier'))
+    const selectedPlan = selectedTier ? tierDisplay(selectedTier) : null
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -137,14 +142,26 @@ function SignupPageInner() {
             return
         }
 
-        // Step 3 — Stripe Checkout. The server action plumbed the auth
-        // session cookie back to the browser, so this fetch is now
-        // authenticated and the API route will find the trainer.
+        // Step 3 — destino pós-cadastro:
+        //   - entrada Gratuita (sem ?tier=) → direto pro dashboard, SEM cartão. O
+        //     treinador experimenta o produto e faz upgrade quando quiser (Caminho B);
+        //   - tier pago escolhido na landing → Stripe Checkout daquele plano.
+        if (!selectedTier) {
+            window.location.href = '/dashboard'
+            return
+        }
+
+        // The server action plumbed the auth session cookie back to the browser,
+        // so this fetch is now authenticated and the API route will find the trainer.
         try {
             const checkoutUrl = isFromMobile
                 ? '/api/stripe/checkout?source=mobile'
                 : '/api/stripe/checkout'
-            const res = await fetch(checkoutUrl, { method: 'POST' })
+            const res = await fetch(checkoutUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tier: selectedTier }),
+            })
             const json = await res.json()
 
             if (!res.ok || !json.url) {
@@ -189,6 +206,12 @@ function SignupPageInner() {
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-slate-900">Crie sua conta</h1>
                     <p className="text-slate-500 mt-1.5">Comece a transformar sua consultoria hoje</p>
+                    {selectedPlan && (
+                        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700">
+                            Plano {selectedPlan.name} · {selectedPlan.price}
+                            {selectedPlan.priceSuffix} · 7 dias grátis
+                        </div>
+                    )}
                 </div>
 
                 <form onSubmit={handleSignup} className="space-y-5">
@@ -308,11 +331,17 @@ function SignupPageInner() {
                         disabled={loading}
                         className="w-full py-3 px-4 bg-gradient-to-r from-[#7C3AED] to-[#A855F7] hover:from-[#6D28D9] hover:to-[#9333EA] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-500/15"
                     >
-                        {loading ? 'Criando conta...' : 'Criar conta e começar trial'}
+                        {loading
+                            ? 'Criando conta...'
+                            : selectedTier
+                              ? 'Criar conta e começar trial'
+                              : 'Criar conta grátis'}
                     </button>
 
                     <p className="text-center text-sm text-slate-400">
-                        7 dias grátis, depois R$ 39,90/mês
+                        {selectedPlan
+                            ? `7 dias grátis, depois ${selectedPlan.price}${selectedPlan.priceSuffix ?? ''}`
+                            : 'Plano Gratuito — sem cartão. Faça upgrade quando quiser.'}
                     </p>
                 </form>
             </div>

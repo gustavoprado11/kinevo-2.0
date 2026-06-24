@@ -20,93 +20,12 @@ import { Check, ArrowRight, Sparkles } from 'lucide-react'
 import { CreditMeter } from '@/components/assistant/credit-meter'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AiTier } from '@/lib/auth/get-ai-tier'
+import { TIER_DISPLAY, type TierFeature } from '@/lib/billing/tiers'
 
 interface AiPlanSectionProps {
     /** null quando a leitura de uso falhou — render degrada (sem medidor). */
     summary: AiUsageSummary | null
 }
-
-/** Uma linha de feature do card. `off`=indisponível, `star`=destaque premium. */
-interface TierFeature {
-    label: string
-    state?: 'on' | 'off' | 'star'
-}
-
-interface TierCard {
-    tier: AiTier
-    name: string
-    price: string
-    priceSuffix?: string
-    credits: string
-    features: TierFeature[]
-    featured?: boolean
-    free?: boolean
-    /** Rótulo do botão de assinatura (tiers pagos não-atuais). */
-    cta: string
-}
-
-const TIERS: readonly TierCard[] = [
-    {
-        tier: 'free',
-        name: 'Gratuito',
-        price: 'R$ 0',
-        credits: '1× cada ação de IA, para testar',
-        free: true,
-        cta: 'Plano de teste',
-        features: [
-            { label: 'Conhecer o Kinevo' },
-            { label: 'Provar a IA uma vez cada ação' },
-            { label: 'Adicionar alunos', state: 'off' },
-            { label: 'Uso recorrente de IA', state: 'off' },
-        ],
-    },
-    {
-        tier: 'essencial',
-        name: 'Essencial',
-        price: 'R$ 39,90',
-        priceSuffix: '/mês',
-        credits: 'Alunos ilimitados + 20 créditos de IA/mês',
-        cta: 'Assinar Essencial',
-        features: [
-            { label: 'Alunos ilimitados' },
-            { label: 'Treinos, agenda, financeiro' },
-            { label: 'IA: 20 ações/mês (um gostinho)' },
-            { label: '⌘K + UI generativa', state: 'off' },
-            { label: 'Briefing & voz', state: 'off' },
-        ],
-    },
-    {
-        tier: 'pro_ia',
-        name: 'Pro IA',
-        price: 'R$ 79,90',
-        priceSuffix: '/mês',
-        credits: 'Alunos ilimitados + 300 créditos de IA/mês',
-        featured: true,
-        cta: 'Assinar Pro IA',
-        features: [
-            { label: 'Tudo do Essencial' },
-            { label: 'Barra de comando ⌘K' },
-            { label: 'Treino/cobrança editáveis pela IA' },
-            { label: 'Briefing matinal + fila de aprovação' },
-            { label: '300 ações de IA/mês' },
-        ],
-    },
-    {
-        tier: 'premium_ia',
-        name: 'Premium IA',
-        price: 'R$ 129,90',
-        priceSuffix: '/mês',
-        credits: 'Alunos ilimitados + 1.000 créditos de IA/mês',
-        cta: 'Assinar Premium',
-        features: [
-            { label: 'Tudo do Pro IA' },
-            { label: 'Suporte exclusivo', state: 'star' },
-            { label: 'Acesso prioritário a novidades', state: 'star' },
-            { label: 'Voz no mobile + relatórios de IA' },
-            { label: '1.000 ações de IA/mês' },
-        ],
-    },
-]
 
 /** Legenda "como os créditos são gastos" (espelha o mock). */
 const CREDIT_LEGEND: readonly string[] = [
@@ -179,7 +98,7 @@ export function AiPlanSection({ summary }: AiPlanSectionProps) {
 
             {/* 4 tiers. */}
             <div className="grid grid-cols-1 gap-[13px] sm:grid-cols-2 xl:grid-cols-4">
-                {TIERS.map((card) => {
+                {TIER_DISPLAY.map((card) => {
                     const isCurrent = card.tier === currentTier
                     const isLoading = loadingTier === card.tier
 
