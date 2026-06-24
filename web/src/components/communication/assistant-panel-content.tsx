@@ -154,6 +154,27 @@ export function AssistantPanelContent() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages])
 
+    // Muro da 2ª geração de programa no Free: a tool generateProgram devolve
+    // { code: 'free_trial_used' } como RESULTADO (200, não 402) → o interceptor de
+    // erro não pega. Detectamos o marcador no output da tool e mostramos o mesmo
+    // banner de upsell (CTA → tabela de planos). Roda só com o turno concluído.
+    useEffect(() => {
+        if (isLoading) return
+        const last = messages[messages.length - 1]
+        if (!last || last.role !== 'assistant') return
+        for (const part of (last.parts ?? []) as Array<{ type?: string; output?: unknown; result?: unknown }>) {
+            if (!part.type?.startsWith('tool-')) continue
+            const out = (part.output ?? part.result) as { code?: string; error?: string } | undefined
+            if (out?.code === 'free_trial_used') {
+                // Seguro: as deps do efeito (messages/isLoading) não mudam por este
+                // setState, então não há cascata de renders.
+                // eslint-disable-next-line react-hooks/set-state-in-effect
+                setBanner(bannerFromError(402, { error: 'free_trial_used', tier: 'free', message: out.error }))
+                return
+            }
+        }
+    }, [messages, isLoading])
+
     // Focus input on mount
     useEffect(() => {
         setTimeout(() => inputRef.current?.focus(), 300)

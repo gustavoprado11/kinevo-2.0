@@ -296,7 +296,14 @@ export async function POST(req: Request) {
                         if (tier === 'free') {
                             const trial = await checkFreeTrial(supabaseAdmin, trainer.id, 'prescription')
                             if (trial.alreadyUsed) {
-                                return { success: false, error: 'No plano Gratuito você já testou a geração de programa. Assine um plano para gerar mais.' }
+                                // `code` estável: NÃO é um 402 (é resultado de tool, 200), então o
+                                // dock detecta este marcador no output da tool e mostra o banner
+                                // de upsell (CTA → tabela de planos), em vez de só texto.
+                                return {
+                                    success: false,
+                                    code: 'free_trial_used',
+                                    error: 'No plano Gratuito você já testou a geração de programa. Assine um plano para gerar mais.',
+                                }
                             }
                         }
                         const sid = await resolveStudentId(rawId)
