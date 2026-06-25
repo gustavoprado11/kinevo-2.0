@@ -28,6 +28,7 @@ import { useAssistantMode } from '../../hooks/useAssistantMode';
 import { AssistantModeToggle } from './AssistantModeToggle';
 import { AssistantComposer } from './AssistantComposer';
 import { HOME_SUGGESTIONS, optimizePrompt } from '../../lib/assistantPrompts';
+import { Avatar } from '../v2';
 
 const { spacing, radius, typography } = v2;
 
@@ -73,7 +74,6 @@ export function AssistantDashboard() {
     const { setMode } = useAssistantMode();
 
     const firstName = trainerProfile?.name?.split(' ')[0] || 'Treinador';
-    const initial = firstName.charAt(0).toUpperCase();
 
     const openChat = (initialMessage?: string) => {
         router.push({
@@ -175,20 +175,11 @@ export function AssistantDashboard() {
                         {getGreeting()}, {firstName}
                     </Text>
                 </View>
-                <View
-                    style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 22,
-                        backgroundColor: colors.text.primary,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}
-                >
-                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: '#FFFFFF' }}>
-                        {initial}
-                    </Text>
-                </View>
+                <Avatar
+                    name={trainerProfile?.name || 'Treinador'}
+                    src={trainerProfile?.avatar_url ?? undefined}
+                    size="md"
+                />
             </Animated.View>
 
             {/* Mode toggle */}
