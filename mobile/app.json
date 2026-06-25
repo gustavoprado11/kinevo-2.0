@@ -84,6 +84,13 @@
           "color": "#7c3aed"
         }
       ],
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "O Kinevo usa o microfone para você ditar mensagens ao Assistente.",
+          "speechRecognitionPermission": "O Kinevo usa reconhecimento de fala para transcrever o que você dita ao Assistente."
+        }
+      ],
       "@bacons/apple-targets",
       "./plugins/with-watch-app",
       [

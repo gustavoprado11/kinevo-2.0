@@ -16,6 +16,7 @@
     "@kinevo/shared": "*",
     "@kingstinct/react-native-healthkit": "^14.0.0",
     "@react-native-community/netinfo": "11.4.1",
+    "@react-native-voice/voice": "^3.2.4",
     "@react-navigation/native": "^7.0.13",
     "@supabase/supabase-js": "^2.49.2",
     "@types/react": "~19.1.10",

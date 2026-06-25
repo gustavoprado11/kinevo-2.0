@@ -38,6 +38,10 @@ import {
     KSkeletonKPICard,
 } from "../../components/v2";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { useAssistantMode, syncAssistantModeFromServer } from "../../hooks/useAssistantMode";
+import { useAssistantAccess } from "../../hooks/useAssistantAccess";
+import { AssistantModeToggle } from "../../components/assistant/AssistantModeToggle";
+import { AssistantDashboard } from "../../components/assistant/AssistantDashboard";
 
 // Palette light fallback usada em arrays/configs module-level (cores brand
 // não diferem entre modos). Componentes interno chamam `useV2Colors()` pra
@@ -84,7 +88,22 @@ const QUICK_ACCESS: Array<{
 ];
 
 export default function DashboardScreen() {
+    // Modo da Home: clássico (default) ou assistente (mirror de trainers.home_style).
+    const { mode } = useAssistantMode();
+    const { allowed } = useAssistantAccess();
+    // Sincroniza com o servidor uma vez ao entrar (paridade web↔mobile).
+    React.useEffect(() => {
+        void syncAssistantModeFromServer();
+    }, []);
+    // Gate Pro+: só honra o modo assistente se o tier permite.
+    if (mode === "assistant" && allowed) return <AssistantDashboard />;
+    return <ClassicDashboard />;
+}
+
+function ClassicDashboard() {
     const colors = useV2Colors();
+    const { setMode: setAssistantMode } = useAssistantMode();
+    const { allowed: assistantAllowed } = useAssistantAccess();
     const { trainerProfile } = useRoleMode();
     const { stats, pendingActions, dailyActivity, isLoading, isRefreshing, refresh } = useTrainerDashboard();
     const router = useRouter();
@@ -203,6 +222,14 @@ export default function DashboardScreen() {
                             )}
                         </Pressable>
                     </Animated.View>
+
+                    {/* Mode toggle (Clássico / Assistente) — espelha trainers.home_style.
+                        Só aparece para Pro+ (gate do Assistente). */}
+                    {assistantAllowed ? (
+                        <View style={{ marginTop: spacing[4], paddingHorizontal: spacing[5] }}>
+                            <AssistantModeToggle mode="classic" onChange={setAssistantMode} />
+                        </View>
+                    ) : null}
 
                     {/* Training Room CTA */}
                     <Animated.View
