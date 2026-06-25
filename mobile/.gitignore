@@ -18,6 +18,10 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Credenciais de release (ASC API key, Google Play service account) — NUNCA commitar
+/credentials/
+google-service-account.json
+
 # Metro
 .metro-health-check*
 
