@@ -107,7 +107,10 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: [
               "camera=()",
-              "microphone=()",
+              // microphone=(self): permite o ditado por voz do Assistente
+              // (getUserMedia) na própria origem. iframes cross-origin seguem
+              // bloqueados; o browser ainda pede permissão ao usuário.
+              "microphone=(self)",
               "geolocation=()",
               "payment=(self)",
               "usb=()",
