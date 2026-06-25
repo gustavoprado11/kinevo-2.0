@@ -200,7 +200,7 @@ export function ConversationView({
                         </div>
                     )}
                     <div className="flex items-end gap-2 rounded-[22px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-2.5 py-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_3px_rgba(60,60,67,0.07)]">
-                        <MicButton disabled={sending} onTranscript={(t) => onInput(input ? `${input} ${t}` : t)} />
+                        <MicButton disabled={sending} value={input} onChange={onInput} />
                         <textarea
                             ref={inputRef}
                             value={input}

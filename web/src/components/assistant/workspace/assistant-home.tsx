@@ -180,7 +180,7 @@ export function AssistantHome({
                         className="max-h-[280px] w-full resize-none overflow-y-auto bg-transparent px-4 py-3 text-[16px] leading-relaxed text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60"
                     />
                     <div className="flex items-center gap-2.5 px-2 pb-1 pt-1">
-                        <MicButton disabled={sending} onTranscript={(t) => onInput(input ? `${input} ${t}` : t)} />
+                        <MicButton disabled={sending} value={input} onChange={onInput} />
                         <span className="flex-1" />
                         <button onClick={onSend} disabled={sending || !input.trim()}
                             className="flex h-10 items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-[18px] text-[14px] font-bold text-white transition hover:brightness-[1.07] disabled:opacity-50">
