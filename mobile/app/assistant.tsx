@@ -27,7 +27,7 @@ import { useV2Colors } from '../hooks/useV2Colors';
 import { useAssistantChat, type AssistantError } from '../hooks/useAssistantChat';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { AssistantMessageBubble } from '../components/assistant/AssistantMessageBubble';
-import { AssistantComposer } from '../components/assistant/AssistantComposer';
+import { AssistantComposer, type AssistantComposerHandle } from '../components/assistant/AssistantComposer';
 import { AssistantParts } from '../components/assistant/AssistantParts';
 import { AssistantConversationsSheet } from '../components/assistant/AssistantConversationsSheet';
 import { CreditMeter } from '../components/assistant/CreditMeter';
@@ -47,7 +47,14 @@ export default function AssistantChatScreen() {
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const voice = useVoiceInput((t) => setInput(t));
     const scrollRef = useRef<ScrollView>(null);
+    const composerRef = useRef<AssistantComposerHandle>(null);
     const didInit = useRef(false);
+
+    // Preenche o composer com um prompt (sem enviar) e foca, pro usuário editar.
+    const fillInput = (text: string) => {
+        setInput(text);
+        requestAnimationFrame(() => composerRef.current?.focus());
+    };
 
     // Quando o teclado sobe, o próprio teclado cobre a área do home-indicator,
     // então colapsamos o inset de baixo do composer (senão sobra um vão).
@@ -66,11 +73,12 @@ export default function AssistantChatScreen() {
         requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     };
 
-    // Envia a pergunta inicial (vinda da Home Assistente) uma única vez.
+    // Prompt inicial (vindo da Home Assistente): pré-preenche o composer pro
+    // usuário revisar/editar antes de enviar — não envia sozinho.
     useEffect(() => {
         if (didInit.current) return;
         didInit.current = true;
-        if (q && q.trim()) void send(q.trim());
+        if (q && q.trim()) fillInput(q.trim());
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -146,7 +154,7 @@ export default function AssistantChatScreen() {
                 keyboardVerticalOffset={0}
             >
                 {!hasContent ? (
-                    <EmptyState onPick={(s) => submit(s)} />
+                    <EmptyState onPick={(s) => fillInput(s)} />
                 ) : (
                     <ScrollView
                         ref={scrollRef}
@@ -187,6 +195,7 @@ export default function AssistantChatScreen() {
                     }}
                 >
                     <AssistantComposer
+                        ref={composerRef}
                         placeholder="Responder…"
                         value={input}
                         onChangeText={setInput}

@@ -10,7 +10,7 @@
  * Chips de sugestão opcionais aparecem acima da pill (scroll horizontal).
  * Tokens DS v2 + Plus Jakarta + haptics.
  */
-import React from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
     View,
     Text,
@@ -44,20 +44,30 @@ export interface AssistantComposerProps {
     onStop?: () => void;
 }
 
-export function AssistantComposer({
-    placeholder = 'Pergunte ou peça algo…',
-    suggestions,
-    onSuggestionPress,
-    onPressMic,
-    listening,
-    onPress,
-    value,
-    onChangeText,
-    onSend,
-    sending,
-    onStop,
-}: AssistantComposerProps) {
+export interface AssistantComposerHandle {
+    focus: () => void;
+}
+
+export const AssistantComposer = forwardRef<AssistantComposerHandle, AssistantComposerProps>(
+    function AssistantComposer(
+        {
+            placeholder = 'Pergunte ou peça algo…',
+            suggestions,
+            onSuggestionPress,
+            onPressMic,
+            listening,
+            onPress,
+            value,
+            onChangeText,
+            onSend,
+            sending,
+            onStop,
+        },
+        ref,
+    ) {
     const colors = useV2Colors();
+    const inputRef = useRef<TextInput>(null);
+    useImperativeHandle(ref, () => ({ focus: () => inputRef.current?.focus() }), []);
     const isInput = !onPress;
     const canSend = isInput && !!value && value.trim().length > 0;
 
@@ -128,6 +138,7 @@ export function AssistantComposer({
             >
                 {isInput ? (
                     <TextInput
+                        ref={inputRef}
                         value={value}
                         onChangeText={onChangeText}
                         placeholder={placeholder}
@@ -243,4 +254,5 @@ export function AssistantComposer({
             </View>
         </View>
     );
-}
+    },
+);
