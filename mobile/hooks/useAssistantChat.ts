@@ -8,7 +8,7 @@
  * Idempotência: cada envio carrega um clientMessageId (UUID) — re-tentativas
  * não duplicam o turno (contrato C4 do backend).
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetch as expoFetch } from 'expo/fetch';
 import { supabase } from '../lib/supabase';
 
@@ -58,6 +58,17 @@ export type AssistantErrorKind = 'tier_locked' | 'quota_exceeded' | 'rate_limite
 export interface AssistantError {
     kind: AssistantErrorKind;
     message: string;
+}
+
+/** Medidor de créditos do período (espelha AiUsageSummary do web). */
+export interface AiUsageSummary {
+    tier: string;
+    creditsUsed: number;
+    creditsTotal: number;
+    creditsRemaining: number;
+    periodStart: string;
+    periodEnd: string;
+    exhausted: boolean;
 }
 
 interface ServerError {
@@ -120,6 +131,7 @@ async function streamTurn(
     convId: string,
     payload: Record<string, unknown>,
     onProgress: (label: string) => void,
+    signal?: AbortSignal,
 ): Promise<NdjsonResult> {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -129,6 +141,7 @@ async function streamTurn(
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
+        signal,
     });
 
     if (!res.ok) {
@@ -192,7 +205,9 @@ export interface UseAssistantChatReturn {
     isSending: boolean;
     progress: string | null;
     error: AssistantError | null;
+    summary: AiUsageSummary | null;
     send: (text: string) => Promise<void>;
+    stop: () => void;
     confirmAction: (part: ConfirmationPart, editedArgs?: Record<string, unknown>) => Promise<void>;
     cancelAction: (part: ConfirmationPart) => Promise<void>;
     loadConversation: (id: string) => Promise<void>;
@@ -229,8 +244,27 @@ export function useAssistantChat(): UseAssistantChatReturn {
     const [isSending, setIsSending] = useState(false);
     const [progress, setProgress] = useState<string | null>(null);
     const [error, setError] = useState<AssistantError | null>(null);
+    const [summary, setSummary] = useState<AiUsageSummary | null>(null);
     const convIdRef = useRef<string | null>(null);
     const sendingRef = useRef(false);
+    const abortRef = useRef<AbortController | null>(null);
+
+    // Semeia o medidor de créditos ao abrir (mesmo summary que volta nos turnos).
+    useEffect(() => {
+        let active = true;
+        void (async () => {
+            try {
+                const res = await authedFetch('/api/trainer/assistant/access', { method: 'GET' });
+                const json = await res.json().catch(() => null);
+                if (active && json?.summary) setSummary(json.summary as AiUsageSummary);
+            } catch {
+                // sem rede: o medidor aparece após o primeiro turno.
+            }
+        })();
+        return () => {
+            active = false;
+        };
+    }, []);
 
     const resolveConfirmation = useCallback(
         async (
@@ -348,6 +382,9 @@ export function useAssistantChat(): UseAssistantChatReturn {
 
         const dropTemp = () => setMessages((prev) => prev.filter((m) => m.id !== tempId));
 
+        const controller = new AbortController();
+        abortRef.current = controller;
+
         try {
             // 1. Garante uma conversa (cria sob demanda).
             let convId = convIdRef.current;
@@ -376,6 +413,7 @@ export function useAssistantChat(): UseAssistantChatReturn {
                 convId,
                 { input: content, clientMessageId: uuidv4() },
                 (label) => setProgress(label),
+                controller.signal,
             );
 
             if (!result.ok) {
@@ -393,15 +431,26 @@ export function useAssistantChat(): UseAssistantChatReturn {
                 if (assistantMessage) next.push(assistantMessage);
                 return next;
             });
+            if (result.done?.summary) setSummary(result.done.summary as AiUsageSummary);
         } catch {
-            setError({ kind: 'generic', message: 'Não foi possível conectar. Tente novamente.' });
-            dropTemp();
+            if (controller.signal.aborted) {
+                // Parada intencional (botão parar): mantém a mensagem do usuário
+                // (o turno seguiu no servidor e a resposta aparece ao reabrir).
+            } else {
+                setError({ kind: 'generic', message: 'Não foi possível conectar. Tente novamente.' });
+                dropTemp();
+            }
         } finally {
+            abortRef.current = null;
             sendingRef.current = false;
             setIsSending(false);
             setProgress(null);
         }
     }, []);
 
-    return { messages, isSending, progress, error, send, confirmAction, cancelAction, loadConversation, reset, clearError };
+    const stop = useCallback(() => {
+        abortRef.current?.abort();
+    }, []);
+
+    return { messages, isSending, progress, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError };
 }

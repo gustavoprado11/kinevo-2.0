@@ -19,7 +19,7 @@ import {
     ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Mic, ArrowUp } from 'lucide-react-native';
+import { Mic, ArrowUp, Square } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { v2 } from '@kinevo/shared/tokens';
 import { useV2Colors } from '../../hooks/useV2Colors';
@@ -39,6 +39,9 @@ export interface AssistantComposerProps {
     value?: string;
     onChangeText?: (text: string) => void;
     onSend?: () => void;
+    /** Turno em andamento → o botão de enviar vira "parar". */
+    sending?: boolean;
+    onStop?: () => void;
 }
 
 export function AssistantComposer({
@@ -51,6 +54,8 @@ export function AssistantComposer({
     value,
     onChangeText,
     onSend,
+    sending,
+    onStop,
 }: AssistantComposerProps) {
     const colors = useV2Colors();
     const isInput = !onPress;
@@ -189,28 +194,52 @@ export function AssistantComposer({
                     </Pressable>
                 )}
 
-                <Pressable
-                    onPress={handleSend}
-                    disabled={isInput && !canSend}
-                    accessibilityRole="button"
-                    accessibilityLabel="Enviar"
-                    hitSlop={6}
-                    style={{ borderRadius: 20, overflow: 'hidden', opacity: isInput && !canSend ? 0.55 : 1 }}
-                >
-                    <LinearGradient
-                        colors={[colors.purple[500], colors.purple[700]]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
+                {sending && onStop ? (
+                    <Pressable
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            onStop();
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Parar"
+                        hitSlop={6}
                         style={{
                             width: 40,
                             height: 40,
+                            borderRadius: 20,
                             alignItems: 'center',
                             justifyContent: 'center',
+                            backgroundColor: colors.surface.card2,
+                            borderWidth: 1,
+                            borderColor: colors.border.default,
                         }}
                     >
-                        <ArrowUp size={19} color="#FFFFFF" strokeWidth={2.1} />
-                    </LinearGradient>
-                </Pressable>
+                        <Square size={14} color={colors.text.secondary} strokeWidth={2.4} fill={colors.text.secondary} />
+                    </Pressable>
+                ) : (
+                    <Pressable
+                        onPress={handleSend}
+                        disabled={isInput && !canSend}
+                        accessibilityRole="button"
+                        accessibilityLabel="Enviar"
+                        hitSlop={6}
+                        style={{ borderRadius: 20, overflow: 'hidden', opacity: isInput && !canSend ? 0.55 : 1 }}
+                    >
+                        <LinearGradient
+                            colors={[colors.purple[500], colors.purple[700]]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={{
+                                width: 40,
+                                height: 40,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <ArrowUp size={19} color="#FFFFFF" strokeWidth={2.1} />
+                        </LinearGradient>
+                    </Pressable>
+                )}
             </View>
         </View>
     );

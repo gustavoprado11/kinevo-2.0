@@ -29,6 +29,7 @@ import { AssistantMessageBubble } from '../components/assistant/AssistantMessage
 import { AssistantComposer } from '../components/assistant/AssistantComposer';
 import { AssistantParts } from '../components/assistant/AssistantParts';
 import { AssistantConversationsSheet } from '../components/assistant/AssistantConversationsSheet';
+import { CreditMeter } from '../components/assistant/CreditMeter';
 
 const { spacing } = v2;
 
@@ -38,7 +39,7 @@ export default function AssistantChatScreen() {
     const insets = useSafeAreaInsets();
     const { q } = useLocalSearchParams<{ q?: string }>();
 
-    const { messages, isSending, progress, error, send, confirmAction, cancelAction, loadConversation, reset, clearError } =
+    const { messages, isSending, progress, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError } =
         useAssistantChat();
     const [input, setInput] = useState('');
     const [showConversations, setShowConversations] = useState(false);
@@ -109,12 +110,13 @@ export default function AssistantChatScreen() {
                         Contexto dos seus alunos
                     </Text>
                 </View>
+                <CreditMeter summary={summary} />
                 <Pressable
                     onPress={() => setShowConversations(true)}
                     accessibilityRole="button"
                     accessibilityLabel="Histórico de conversas"
                     hitSlop={10}
-                    style={{ marginRight: spacing[1] }}
+                    style={{ marginRight: spacing[1], marginLeft: spacing[1] }}
                 >
                     <MessagesSquare size={21} color={colors.text.secondary} strokeWidth={1.9} />
                 </Pressable>
@@ -170,6 +172,8 @@ export default function AssistantChatScreen() {
                         onSend={() => submit()}
                         onPressMic={voice.toggle}
                         listening={voice.isListening}
+                        sending={isSending}
+                        onStop={stop}
                     />
                 </View>
             </KeyboardAvoidingView>
