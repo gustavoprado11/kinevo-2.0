@@ -9,7 +9,10 @@ import { PressableScale } from "../components/shared/PressableScale";
 import { WEB_URL } from "../lib/config";
 import { useV2Colors, useIsDark } from "../hooks/useV2Colors";
 
-const SUBSCRIBE_URL = `${WEB_URL}/subscription`;
+// /subscription não tem página (404); a página real é /subscription/blocked,
+// que detecta o estado (sem assinatura → trial, past_due → portal, cancelado →
+// reativar) e leva ao checkout/portal do Stripe.
+const SUBSCRIBE_URL = `${WEB_URL}/subscription/blocked`;
 
 export default function TrainerSubscriptionBlockedScreen() {
     const { switchToStudent } = useRoleMode();
