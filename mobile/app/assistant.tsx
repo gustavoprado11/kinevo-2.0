@@ -31,6 +31,7 @@ import { AssistantComposer, type AssistantComposerHandle } from '../components/a
 import { AssistantParts } from '../components/assistant/AssistantParts';
 import { AssistantConversationsSheet } from '../components/assistant/AssistantConversationsSheet';
 import { CreditMeter } from '../components/assistant/CreditMeter';
+import { CHAT_STARTERS } from '../lib/assistantPrompts';
 
 const { spacing } = v2;
 
@@ -270,7 +271,6 @@ function ErrorBanner({ error, onDismiss }: { error: AssistantError; onDismiss: (
 
 function EmptyState({ onPick }: { onPick: (s: string) => void }) {
     const colors = useV2Colors();
-    const prompts = ['Quem precisa de atenção?', 'Como está a aderência e o financeiro?', 'Gerar programa para um aluno'];
     return (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing[6], gap: spacing[4] }}>
             <LinearGradient
@@ -288,15 +288,15 @@ function EmptyState({ onPick }: { onPick: (s: string) => void }) {
                 O assistente conhece seus alunos, programas e financeiro.
             </Text>
             <View style={{ gap: spacing[2], alignSelf: 'stretch', marginTop: spacing[2] }}>
-                {prompts.map((p) => (
+                {CHAT_STARTERS.map((s) => (
                     <Pressable
-                        key={p}
+                        key={s.label}
                         onPress={() => {
                             Haptics.selectionAsync();
-                            onPick(p);
+                            onPick(s.prompt);
                         }}
                         accessibilityRole="button"
-                        accessibilityLabel={p}
+                        accessibilityLabel={s.label}
                         style={{
                             backgroundColor: colors.surface.card,
                             borderWidth: 1,
@@ -307,7 +307,7 @@ function EmptyState({ onPick }: { onPick: (s: string) => void }) {
                         }}
                     >
                         <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13.5, color: colors.text.secondary }}>
-                            {p}
+                            {s.label}
                         </Text>
                     </Pressable>
                 ))}

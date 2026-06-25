@@ -27,12 +27,13 @@ import { useTrainerDashboard } from '../../hooks/useTrainerDashboard';
 import { useAssistantMode } from '../../hooks/useAssistantMode';
 import { AssistantModeToggle } from './AssistantModeToggle';
 import { AssistantComposer } from './AssistantComposer';
+import { HOME_SUGGESTIONS, optimizePrompt } from '../../lib/assistantPrompts';
 
 const { spacing, radius, typography } = v2;
 
 const NAV_CLEARANCE = 80; // BottomNav (64) + offset (8) + folga (8)
 
-const SUGGESTIONS = ['Quem precisa de atenção?', 'Gerar programa', 'Resumo financeiro'];
+const SUGGESTION_LABELS = HOME_SUGGESTIONS.map((s) => s.label);
 
 function getGreeting(): string {
     const hour = new Date().getHours();
@@ -310,8 +311,8 @@ export function AssistantDashboard() {
                 }}
             >
                 <AssistantComposer
-                    suggestions={SUGGESTIONS}
-                    onSuggestionPress={(s) => openChat(s)}
+                    suggestions={SUGGESTION_LABELS}
+                    onSuggestionPress={(label) => openChat(optimizePrompt(label))}
                     onPress={() => openChat()}
                     onPressMic={() => openChat()}
                 />
