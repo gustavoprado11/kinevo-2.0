@@ -485,8 +485,11 @@ function CheckoutDeepLinkBridge() {
             if (host === "dashboard" && url.includes("checkout=success")) {
                 refreshRoleMode().catch(() => {});
             } else if (host === "subscription-blocked") {
+                // Paridade com a web: sem hard-block. Um checkout cancelado volta
+                // o treinador pro dashboard (entra limitado), não pra uma parede
+                // de assinatura. Ver isTrainerSubscriptionBlocked (RoleModeContext).
                 refreshRoleMode().catch(() => {});
-                router.replace("/trainer-subscription-blocked");
+                router.replace("/(trainer-tabs)/dashboard");
             }
         };
 

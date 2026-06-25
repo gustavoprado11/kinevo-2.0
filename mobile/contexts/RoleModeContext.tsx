@@ -20,14 +20,24 @@ type Role = "student" | "trainer" | null;
 export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "none" | null;
 
 /**
- * A2: o gate de assinatura do treinador só deve bloquear quando o status é
- * CONHECIDO e não-ativo ("none"/"canceled"/"past_due"). `null` significa
- * DESCONHECIDO (erro transitório de rede ou ainda resolvendo) — nesse caso NÃO
- * bloqueia, pra não barrar um treinador pagante por um blip de rede. Se o status
- * real for inativo, o próximo resolve (mount/foreground) corrige.
+ * Paridade com a WEB (Fase 1 · Trilha 3): o HARD-BLOCK por assinatura foi
+ * REMOVIDO. Nenhum treinador é barrado na entrada do modo treinador — quem não
+ * tem plano pago ativo entra como "free" (limitado), exatamente como na web
+ * (`web/.../lib/auth/get-ai-tier.ts`: sem assinatura ativa resolve p/ 'free' e
+ * ENTRA; o `/subscription/blocked` virou tela de upgrade OPCIONAL).
+ *
+ * O gate antigo trancava indevidamente:
+ *   • treinadores PAGANTES por um blip de rede / status transitório (`null`);
+ *   • TODOS os treinadores de plano gratuito ("none"/"canceled"/"past_due"),
+ *     que na web têm acesso.
+ *
+ * Limites por tier no mobile (cap de alunos, créditos de IA) são aplicados por
+ * FEATURE e no SERVIDOR — não negando acesso ao modo treinador. Mantido como
+ * no-op (em vez de remover os call sites) para reversão trivial se a política
+ * mudar. O parâmetro é preservado p/ não mexer nos 4 chamadores.
  */
-export function isTrainerSubscriptionBlocked(status: SubscriptionStatus): boolean {
-    return status != null && status !== "active" && status !== "trialing";
+export function isTrainerSubscriptionBlocked(_status: SubscriptionStatus): boolean {
+    return false;
 }
 
 export type TrainerModalityFocus = "presencial" | "online" | "ambos";
