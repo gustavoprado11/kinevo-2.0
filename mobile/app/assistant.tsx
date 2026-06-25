@@ -15,6 +15,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
@@ -43,9 +44,23 @@ export default function AssistantChatScreen() {
         useAssistantChat();
     const [input, setInput] = useState('');
     const [showConversations, setShowConversations] = useState(false);
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
     const voice = useVoiceInput((t) => setInput(t));
     const scrollRef = useRef<ScrollView>(null);
     const didInit = useRef(false);
+
+    // Quando o teclado sobe, o próprio teclado cobre a área do home-indicator,
+    // então colapsamos o inset de baixo do composer (senão sobra um vão).
+    useEffect(() => {
+        const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+        const s = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
+        const h = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
+        return () => {
+            s.remove();
+            h.remove();
+        };
+    }, []);
 
     const scrollToEnd = () => {
         requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
@@ -128,7 +143,7 @@ export default function AssistantChatScreen() {
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={insets.top + 8}
+                keyboardVerticalOffset={0}
             >
                 {!hasContent ? (
                     <EmptyState onPick={(s) => submit(s)} />
@@ -164,7 +179,13 @@ export default function AssistantChatScreen() {
                 {error ? <ErrorBanner error={error} onDismiss={clearError} /> : null}
 
                 {/* Composer */}
-                <View style={{ paddingHorizontal: spacing[4], paddingTop: spacing[2], paddingBottom: insets.bottom + spacing[2] }}>
+                <View
+                    style={{
+                        paddingHorizontal: spacing[4],
+                        paddingTop: spacing[2],
+                        paddingBottom: keyboardVisible ? spacing[2] : insets.bottom + spacing[2],
+                    }}
+                >
                     <AssistantComposer
                         placeholder="Responder…"
                         value={input}
