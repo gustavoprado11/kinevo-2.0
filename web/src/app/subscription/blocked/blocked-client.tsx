@@ -8,8 +8,8 @@ const stateConfig = {
     no_subscription: {
         icon: <Lock size={28} className="text-violet-400" />,
         title: 'Complete sua assinatura',
-        description: 'Para acessar o Kinevo, você precisa ativar sua assinatura. Comece com 7 dias grátis!',
-        buttonText: 'Assinar agora — 7 dias grátis',
+        description: 'Para acessar o modo treinador completo, ative sua assinatura.',
+        buttonText: 'Assinar agora',
         action: 'checkout' as const,
         showPrice: true,
     },

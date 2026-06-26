@@ -83,7 +83,7 @@ export function LandingCtaFooter() {
                         transition={{ duration: 0.8, delay: 0.3 }}
                         className="font-jakarta text-white/25 text-sm mt-5"
                     >
-                        7 dias grátis &bull; Setup em 2 minutos &bull; Sem fidelidade &bull; Cancele quando quiser
+                        Comece grátis &bull; Setup em 2 minutos &bull; Sem fidelidade &bull; Cancele quando quiser
                     </m.p>
 
                     {/* Trust badges */}

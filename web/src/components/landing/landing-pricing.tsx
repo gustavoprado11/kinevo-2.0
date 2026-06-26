@@ -148,7 +148,7 @@ export function LandingPricing() {
                         Escolha o plano do seu momento.
                     </h2>
                     <p className="font-jakarta text-[#6E6E73] text-base md:text-lg mt-4">
-                        Comece grátis. Quando quiser a IA trabalhando junto, é só assinar — 7 dias grátis, sem fidelidade.
+                        Comece grátis. Quando quiser a IA trabalhando junto, é só assinar — sem fidelidade.
                     </p>
                 </m.div>
 

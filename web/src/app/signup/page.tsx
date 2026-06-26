@@ -190,7 +190,7 @@ function SignupPageInner() {
             <AuthLayout
             tagline="A ferramenta à altura"
             taglineAccent="do seu trabalho."
-            subtitle="Sistema completo para prescrição, acompanhamento e pagamentos. 7 dias grátis."
+            subtitle="Sistema completo para prescrição, acompanhamento e pagamentos. Comece grátis."
             backHref="/"
             backLabel="Voltar"
             footer={
@@ -209,7 +209,7 @@ function SignupPageInner() {
                     {selectedPlan && (
                         <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700">
                             Plano {selectedPlan.name} · {selectedPlan.price}
-                            {selectedPlan.priceSuffix} · 7 dias grátis
+                            {selectedPlan.priceSuffix}
                         </div>
                     )}
                 </div>
@@ -334,13 +334,13 @@ function SignupPageInner() {
                         {loading
                             ? 'Criando conta...'
                             : selectedTier
-                              ? 'Criar conta e começar trial'
+                              ? 'Criar conta e assinar'
                               : 'Criar conta grátis'}
                     </button>
 
                     <p className="text-center text-sm text-slate-400">
                         {selectedPlan
-                            ? `7 dias grátis, depois ${selectedPlan.price}${selectedPlan.priceSuffix ?? ''}`
+                            ? `${selectedPlan.price}${selectedPlan.priceSuffix ?? ''} · cancele quando quiser`
                             : 'Plano Gratuito — sem cartão. Faça upgrade quando quiser.'}
                     </p>
                 </form>

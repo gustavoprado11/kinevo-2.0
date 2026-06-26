@@ -710,7 +710,7 @@ export function LandingHero() {
                     transition={{ duration: 0.6, delay: 0.4 }}
                     className="font-jakarta text-[#6E6E73] text-xs mt-5"
                 >
-                    <strong className="font-semibold text-[#1D1D1F]">7 dias grátis</strong>
+                    <strong className="font-semibold text-[#1D1D1F]">Plano gratuito</strong>
                     {' • '}
                     <strong className="font-semibold text-[#1D1D1F]">cancele quando quiser</strong>
                     {' • comece em 2 minutos'}

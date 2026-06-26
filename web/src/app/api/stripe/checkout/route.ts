@@ -104,7 +104,8 @@ export async function POST(request: NextRequest) {
             quantity: 1,
         }],
         subscription_data: {
-            trial_period_days: 7,
+            // Sem trial: o plano Gratuito já serve de teste para o treinador, então
+            // os planos pagos cobram na hora (antes havia trial_period_days: 7).
             metadata: {
                 trainer_id: trainer.id,
             },

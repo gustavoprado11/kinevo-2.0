@@ -14,7 +14,7 @@ export interface Faq {
 export const faqs: Faq[] = [
     {
         question: 'Preciso pagar para testar?',
-        answer: 'Não. Você tem 7 dias grátis com acesso completo. Cancele a qualquer momento se não gostar.',
+        answer: 'Não. Há um plano Gratuito para você experimentar o Kinevo sem cartão. Quando quiser mais, faça upgrade — sem fidelidade, cancele quando quiser.',
     },
     {
         question: 'Quanto o Kinevo cobra sobre meus pagamentos?',
