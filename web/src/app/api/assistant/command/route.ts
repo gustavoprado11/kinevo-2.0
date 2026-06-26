@@ -21,7 +21,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
-import { PRO_TIERS, gateAssistant, runAssistantTurn, UUID_RE } from '@/lib/assistant/command-engine'
+import { ASSISTANT_TIERS, gateAssistant, runAssistantTurn, UUID_RE } from '@/lib/assistant/command-engine'
 import { limitTurn } from '@/lib/assistant/rate-limits'
 import { assistantErrorResponse } from '@/lib/assistant/errors'
 
@@ -53,7 +53,7 @@ export async function GET() {
         const summary = await getAiUsageSummary(supabaseAdmin, trainer.id)
         return NextResponse.json({
             tier: summary.tier,
-            allowed: PRO_TIERS.has(summary.tier),
+            allowed: ASSISTANT_TIERS.has(summary.tier),
             homeStyle,
             summary,
         })

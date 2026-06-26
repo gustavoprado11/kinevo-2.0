@@ -4,12 +4,13 @@
  *   POST → cria uma thread (opcionalmente vinculada a um aluno).
  *
  * Espelha /api/assistant/conversations, mas autentica via Bearer token (mobile).
- * Gate Pro+ aplicado. Escrita via service role. Reusa a mesma camada de dados.
+ * Todos os planos têm o Assistente (ASSISTANT_TIERS); limite por-uso é no turno.
+ * Escrita via service role. Reusa a mesma camada de dados.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
-import { PRO_TIERS, UUID_RE } from '@/lib/assistant/command-engine'
+import { ASSISTANT_TIERS, UUID_RE } from '@/lib/assistant/command-engine'
 import { listConversations, createConversation } from '@/lib/assistant/conversations'
 import { resolveTrainerBearer } from '@/lib/assistant/mobile-auth'
 
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
         const trainer = await resolveTrainerBearer(req)
         if (trainer instanceof NextResponse) return trainer
         const tier = await getAiTierForTrainer(supabaseAdmin, trainer.id)
-        if (!PRO_TIERS.has(tier)) return NextResponse.json({ error: 'tier_locked' }, { status: 403 })
+        if (!ASSISTANT_TIERS.has(tier)) return NextResponse.json({ error: 'tier_locked' }, { status: 403 })
         const conversations = await listConversations(supabaseAdmin, trainer.id)
         return NextResponse.json({ conversations })
     } catch (error) {
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
         const trainer = await resolveTrainerBearer(req)
         if (trainer instanceof NextResponse) return trainer
         const tier = await getAiTierForTrainer(supabaseAdmin, trainer.id)
-        if (!PRO_TIERS.has(tier)) return NextResponse.json({ error: 'tier_locked' }, { status: 403 })
+        if (!ASSISTANT_TIERS.has(tier)) return NextResponse.json({ error: 'tier_locked' }, { status: 403 })
 
         const body = await req.json().catch(() => null)
         const rawStudentId: unknown = body?.studentId

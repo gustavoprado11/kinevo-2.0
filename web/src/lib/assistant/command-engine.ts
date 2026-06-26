@@ -37,8 +37,8 @@ import {
     type AiUsageEventInput,
 } from '@/lib/ai-usage/metering'
 import { getAiUsageSummary, type AiUsageSummary } from '@/lib/ai-usage/usage-summary'
-import { checkQuota, getQuotaForTier } from '@/lib/ai-usage/quota'
-import { getAiTierForTrainer, type AiTier } from '@/lib/auth/get-ai-tier'
+import { getQuotaForTier } from '@/lib/ai-usage/quota'
+import { type AiTier } from '@/lib/auth/get-ai-tier'
 import type { ToolConfirmationRequest, QuestionRequest, ProposalRequest } from '@/lib/assistant/hitl-types'
 import { buildChatContext } from '@/lib/assistant/context-builder'
 import { buildInstructions, PROMPT_VERSION } from '@/lib/assistant/system-prompt'
@@ -96,8 +96,17 @@ function isBuildTurn(input: string, history: AssistantTurnHistory[]): boolean {
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/** Tiers que liberam o Assistente com IA (⌘K e aba dedicada). */
+/** Tiers Pro+ — usados SÓ onde o recurso é exclusivo do topo (ex.: briefing
+ *  proativo). O Assistente on-demand NÃO usa isto (ver ASSISTANT_TIERS). */
 export const PRO_TIERS: ReadonlySet<AiTier> = new Set<AiTier>(['pro_ia', 'premium_ia'])
+
+/** Tiers que TÊM o Assistente on-demand = TODOS. O free entra com "taste"
+ *  (1× cada ação pesada + N conversas/mês); os pagos pelo balde de créditos.
+ *  O limite por-uso é decidido em gateAssistant (getAiUsageSummary.exhausted).
+ *  Mantido como ponto único caso um tier futuro precise ficar sem IA. */
+export const ASSISTANT_TIERS: ReadonlySet<AiTier> = new Set<AiTier>([
+    'free', 'essencial', 'pro_ia', 'premium_ia',
+])
 
 export type AssistantGate =
     | { allowed: true; tier: AiTier; period: 'week' | 'month' }
@@ -105,37 +114,42 @@ export type AssistantGate =
     | { allowed: false; status: 402; error: 'quota_exceeded'; message: string; resetAt: string | null }
 
 /**
- * Gate de acesso ao Assistente (defense-in-depth — a UI já esconde):
- *   - tier Pro+ obrigatório;
- *   - cota do ciclo não esgotada (esgotou → 402 amigável; degrada pra GUI).
+ * Gate de acesso ao Assistente (defense-in-depth — a UI já reflete).
+ * TODOS os planos têm o Assistente; o acesso é por USO, não por tier:
+ *   - tier precisa estar em ASSISTANT_TIERS (hoje: todos);
+ *   - orçamento do ciclo não esgotado — unificado em getAiUsageSummary.exhausted
+ *     (free: taste 1×/ação + N conversas/mês; pagos: balde de créditos).
+ *     Esgotou → 402 amigável (degrada pra GUI).
  * Compartilhado pelo ⌘K (command_bar) e pela aba dedicada (workspace).
  */
 export async function gateAssistant(
     admin: SupabaseClient,
     trainerId: string,
 ): Promise<AssistantGate> {
-    const tier = await getAiTierForTrainer(admin, trainerId)
-    if (!PRO_TIERS.has(tier)) {
+    // getAiUsageSummary já resolve o tier + o estado de cota/free-trial num só lugar.
+    const summary = await getAiUsageSummary(admin, trainerId)
+    const tier = summary.tier
+    if (!ASSISTANT_TIERS.has(tier)) {
         return {
             allowed: false,
             status: 403,
             error: 'tier_locked',
-            message:
-                'O Assistente com IA está disponível nos planos Pro e Premium. Faça upgrade para operar o Kinevo com IA.',
+            message: 'O Assistente com IA não está disponível no seu plano.',
         }
     }
-    const quota = await checkQuota(admin, trainerId, tier)
-    if (!quota.allowed) {
+    if (summary.exhausted) {
         return {
             allowed: false,
             status: 402,
             error: 'quota_exceeded',
             message:
-                'Sua cota de IA deste ciclo acabou. Você pode continuar pela interface normal; os créditos renovam em breve.',
-            resetAt: quota.resetAt ?? null,
+                tier === 'free'
+                    ? 'Você usou suas conversas com a IA deste mês no plano Gratuito. Assine um plano para continuar com o Assistente — o resto do app segue normal.'
+                    : 'Sua cota de IA deste ciclo acabou. Você pode continuar pela interface normal; os créditos renovam em breve.',
+            resetAt: summary.periodEnd ?? null,
         }
     }
-    return { allowed: true, tier, period: quota.period ?? 'month' }
+    return { allowed: true, tier, period: getQuotaForTier(tier)?.period ?? 'month' }
 }
 
 // ----------------------------------------------------------------------------

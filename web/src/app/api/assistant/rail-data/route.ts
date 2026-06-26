@@ -11,7 +11,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { listConversations } from '@/lib/assistant/conversations'
 import { getAttentionInsights } from '@/lib/assistant/home-data'
-import { PRO_TIERS } from '@/lib/assistant/command-engine'
+import { ASSISTANT_TIERS } from '@/lib/assistant/command-engine'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +22,7 @@ export async function GET() {
         if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
         const { trainer, tier } = await getTrainerWithSubscription(user.id)
-        if (!PRO_TIERS.has(tier)) return NextResponse.json({ students: [], conversations: [] })
+        if (!ASSISTANT_TIERS.has(tier)) return NextResponse.json({ students: [], conversations: [] })
 
         const [conversations, studentsRes, attention] = await Promise.all([
             listConversations(supabaseAdmin, trainer.id),

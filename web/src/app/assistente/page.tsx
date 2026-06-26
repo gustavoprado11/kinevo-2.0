@@ -14,7 +14,7 @@ import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { listConversations } from '@/lib/assistant/conversations'
 import { getAttentionInsights } from '@/lib/assistant/home-data'
-import { PRO_TIERS } from '@/lib/assistant/command-engine'
+import { ASSISTANT_TIERS } from '@/lib/assistant/command-engine'
 import { AssistantWorkspace } from '@/components/assistant/workspace/assistant-workspace'
 
 export const dynamic = 'force-dynamic'
@@ -25,7 +25,7 @@ export default async function AssistentePage() {
     if (!user) redirect('/login')
 
     const { trainer, tier } = await getTrainerWithSubscription(user.id)
-    if (!PRO_TIERS.has(tier)) redirect('/settings')
+    if (!ASSISTANT_TIERS.has(tier)) redirect('/settings')
 
     const [summary, conversations, studentsRes, attention] = await Promise.all([
         getAiUsageSummary(supabaseAdmin, trainer.id),
