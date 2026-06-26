@@ -54,7 +54,7 @@ export interface AssistantMessage {
     created_at: string;
 }
 
-export type AssistantErrorKind = 'tier_locked' | 'quota_exceeded' | 'rate_limited' | 'generic';
+export type AssistantErrorKind = 'tier_locked' | 'quota_exceeded' | 'free_trial_used' | 'rate_limited' | 'generic';
 export interface AssistantError {
     kind: AssistantErrorKind;
     message: string;
@@ -92,9 +92,11 @@ function mapError(json: ServerError | null, fallback = 'Erro ao falar com o assi
             ? 'tier_locked'
             : code === 'quota_exceeded'
               ? 'quota_exceeded'
-              : code === 'rate_limited'
-                ? 'rate_limited'
-                : 'generic';
+              : code === 'free_trial_used' // free testou a ação pesada 1× → upsell
+                ? 'free_trial_used'
+                : code === 'rate_limited'
+                  ? 'rate_limited'
+                  : 'generic';
     return { kind, message: json?.message || fallback };
 }
 

@@ -242,7 +242,12 @@ function ThinkingRow({ label }: { label?: string | null }) {
 
 function ErrorBanner({ error, onDismiss }: { error: AssistantError; onDismiss: () => void }) {
     const colors = useV2Colors();
-    const isWarn = error.kind === 'quota_exceeded' || error.kind === 'rate_limited';
+    // Paredes de upsell do free (cota/teste/tier) + rate-limit = tom de aviso, não erro.
+    const isWarn =
+        error.kind === 'quota_exceeded' ||
+        error.kind === 'free_trial_used' ||
+        error.kind === 'tier_locked' ||
+        error.kind === 'rate_limited';
     const tone = isWarn ? colors.semantic.warning : colors.semantic.danger;
     return (
         <View
