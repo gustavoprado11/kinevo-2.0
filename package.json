@@ -14,7 +14,8 @@
     "test:coverage": "npm run test:coverage --workspace=shared"
   },
   "overrides": {
-    "react-native-svg": "15.12.1"
+    "react-native-svg": "15.12.1",
+    "form-data": "4.0.6"
   },
   "dependencies": {
     "expo-file-system": "~19.0.21"
