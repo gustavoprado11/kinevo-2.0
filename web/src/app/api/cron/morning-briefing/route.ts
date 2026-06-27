@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyCronAuth } from '@/lib/cron-auth'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
@@ -26,8 +27,7 @@ const TIME_BUDGET_MS = 270_000
  * LLM. Roda após o generate-insights (09:00 UTC) para resumir os alertas do dia.
  */
 export async function GET(request: NextRequest) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!verifyCronAuth(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

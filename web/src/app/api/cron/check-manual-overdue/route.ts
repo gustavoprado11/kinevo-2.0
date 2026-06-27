@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyCronAuth } from '@/lib/cron-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logContractEvent } from '@/lib/contract-events'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
 import { sendTrainerPush } from '@/lib/push-notifications'
 
 export async function GET(request: NextRequest) {
-    // Verify CRON_SECRET to prevent external calls
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!verifyCronAuth(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

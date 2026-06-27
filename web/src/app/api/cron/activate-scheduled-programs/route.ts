@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyCronAuth } from '@/lib/cron-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { activateAssignedProgram } from '@/lib/programs/activate-assigned-program'
 import { insertTrainerNotification } from '@/lib/trainer-notifications'
@@ -67,8 +68,7 @@ async function notifyActivationBlocked(params: {
 }
 
 export async function GET(request: NextRequest) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!verifyCronAuth(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { verifyCronAuth } from '@/lib/cron-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
@@ -10,9 +11,7 @@ export const maxDuration = 30
  * Cleans up tickets older than 7 days.
  */
 export async function GET(request: Request) {
-    // Verify cron secret
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!verifyCronAuth(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

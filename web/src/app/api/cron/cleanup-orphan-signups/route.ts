@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { verifyCronAuth } from '@/lib/cron-auth'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
@@ -43,8 +44,7 @@ export const maxDuration = 30
  * this codebase. No body, no params, idempotent.
  */
 export async function GET(request: Request) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!verifyCronAuth(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

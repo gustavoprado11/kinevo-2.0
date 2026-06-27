@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyCronAuth } from '@/lib/cron-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendStudentPush } from '@/lib/push-notifications'
 
@@ -9,8 +10,7 @@ import { sendStudentPush } from '@/lib/push-notifications'
  * inbox item already exists for that student+template), then advances next_due_at.
  */
 export async function GET(request: NextRequest) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!verifyCronAuth(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

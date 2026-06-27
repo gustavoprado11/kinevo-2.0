@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyCronAuth } from '@/lib/cron-auth'
 import { processPendingPush, processStudentPendingPush } from '@/lib/push-notifications'
 
 /**
@@ -8,8 +9,7 @@ import { processPendingPush, processStudentPendingPush } from '@/lib/push-notifi
  * Handles both trainer and student notifications.
  */
 export async function GET(request: NextRequest) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!verifyCronAuth(request)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
