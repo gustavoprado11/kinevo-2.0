@@ -43,9 +43,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true, ignored: 'unknown channel' })
     }
 
-    // Validação mínima: token deve bater com trainer_id
-    if (channelToken && channelToken !== conn.trainer_id) {
-        console.warn('[google-webhook] invalid token for channel:', channelId)
+    // Validação: o token (X-Goog-Channel-Token = o trainer_id que registramos no
+    // watch) é OBRIGATÓRIO e tem que bater. Antes havia um `channelToken &&` que
+    // PULAVA a checagem quando o header vinha ausente — quem soubesse um
+    // watch_channel_id válido forjava o webhook sem o token. Agora a ausência
+    // (null !== trainer_id) também cai aqui e é rejeitada.
+    if (channelToken !== conn.trainer_id) {
+        console.warn('[google-webhook] missing/invalid token for channel:', channelId)
         return NextResponse.json({ ok: true, ignored: 'token mismatch' })
     }
 
