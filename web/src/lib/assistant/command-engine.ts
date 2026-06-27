@@ -440,7 +440,7 @@ const MAX_HISTORY = 20
 /**
  * Executa um turno: entende a intenção, auto-executa leituras/ações simples e
  * pausa nas CONFIRM_TOOLS (HITL). Faz o metering e devolve o medidor atualizado.
- * Pressupõe que o caller já validou auth + tier (Pro+) + cota.
+ * Pressupõe que o caller já validou auth + tier (gateAssistant) + cota.
  */
 export async function runAssistantTurn(opts: AssistantTurnInput): Promise<AssistantTurnResult> {
     const { admin, trainerId, trainerName, input, surface, periodType } = opts

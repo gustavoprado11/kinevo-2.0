@@ -7,7 +7,7 @@
  * "Esta semana" e uma barra de composição fixa que abre o chat.
  *
  * Phase 1: apresentacional. A composição abre /assistant (chat). Wiring de
- * backend (envio real, créditos, Pro+) entra na Fase 2.
+ * backend (envio real, créditos) entra na Fase 2.
  */
 import React from 'react';
 import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';

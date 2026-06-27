@@ -2,7 +2,7 @@
  * GET /api/assistant/rail-data — alimenta o rail "Conversas & Alunos" da
  * AssistantSidebar quando ela persiste nas demais abas (casca AppLayout).
  * Mesma lógica de dados da home do chat (/assistente): alunos (com avatar e
- * marcação de atenção) + conversas. Gate Pro+.
+ * marcação de atenção) + conversas. Acesso: tiers com IA.
  */
 
 import { NextResponse } from 'next/server'

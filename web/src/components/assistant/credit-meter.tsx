@@ -58,7 +58,7 @@ export function CreditMeter({ summary, compact = false, pill = false }: CreditMe
           : { width: `${pct}%`, background: 'linear-gradient(90deg, #7C3AED, #A78BFA)' }
 
     const isFree = tier === 'free'
-    const unitLabel = isFree ? 'ações testadas' : 'créditos'
+    const unitLabel = isFree ? 'conversas' : 'créditos'
     const renewalLabel = isFree
         ? 'no plano gratuito'
         : days <= 0

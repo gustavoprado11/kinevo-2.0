@@ -12,8 +12,8 @@
  * conversacional (/assistente, surface 'workspace').
  *
  * Gate em 2 níveis (defense-in-depth):
- *   - GET: informa a UI se o tier libera a superfície (Pro+) + medidor de cota.
- *   - POST: revalida tier (Pro+) e cota antes de gastar LLM. Cota esgotada →
+ *   - GET: informa a UI se o tier tem o Assistente (hoje: todos) + medidor de cota.
+ *   - POST: gateAssistant (uso/cota, todos os tiers) antes de gastar LLM. Cota esgotada →
  *     402 amigável (a UI degrada pra GUI; nunca trava o app).
  */
 
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'rate_limited', message: rl.error }, { status: 429 })
         }
 
-        // 3. Gate (Pro+ + cota) — compartilhado com a aba dedicada.
+        // 3. Gate (uso/cota, todos os tiers) — compartilhado com a aba dedicada.
         const gate = await gateAssistant(supabaseAdmin, trainer.id)
         if (!gate.allowed) {
             const { status, ...body } = gate

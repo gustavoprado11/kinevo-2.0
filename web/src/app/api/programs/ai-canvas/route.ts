@@ -2,11 +2,12 @@
 // docs/feature-ia-builder-chat.md). Stream NDJSON: progresso → program → done.
 // Não persiste nada — o programa vai pro canvas do cliente; o save é no builder.
 //
-// Metering/quota: o GATE (tier Pro+ + cota) é aplicado ANTES; o REGISTRO de uso
-// (recordAiUsage) roda DEPOIS do turno (best-effort) — debita crédito no período
-// e loga custo/tokens em ai_usage_events (surface 'canvas'). Build (rendered) =
-// prescription/CANVAS_BUILD_CREDITS; turno sem render = 1 (query). Só tier pago
-// chega aqui (gate Pro+), então não há trilha free.
+// Metering/quota: o GATE (gateAssistant — todos os tiers, limite por USO) é aplicado
+// ANTES; o REGISTRO de uso (recordAiUsage) roda DEPOIS do turno (best-effort) — debita
+// crédito no período e loga custo/tokens em ai_usage_events (surface 'canvas'). Build
+// (rendered) = CANVAS_BUILD_CREDITS; turno sem render = 1 (query). Free TAMBÉM chega
+// (gateAssistant) e é metrificado contra a franquia de teste — ATENÇÃO: aqui NÃO há
+// gate 1×-por-ação como no generateProgram do chat (paridade pendente — ver follow-up).
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'

@@ -1,7 +1,7 @@
 /**
  * /assistente — modo Assistente (Cowork). Casca própria de COLUNA ÚNICA
  * (sem AppLayout): a AssistantSidebar (toggle/nav recolhida/Alunos/Conversas/
- * perfil) à esquerda e a home conversacional à direita. Gate Pro+.
+ * perfil) à esquerda e a home conversacional à direita. Acesso: tiers com IA.
  *
  * O motor MCP+HITL é o mesmo do ⌘K (lib/assistant/command-engine), aqui
  * conversacional e persistido (ai_conversations / ai_messages, migration 209).

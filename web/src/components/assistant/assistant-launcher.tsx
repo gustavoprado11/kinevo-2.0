@@ -3,7 +3,7 @@
 /**
  * AssistantLauncher — bolha flutuante que ABRE O DOCK do Assistente (não navega).
  *
- * Bolha global (canto inferior direito), Pro+ apenas. Abre o mesmo painel
+ * Bolha global (canto inferior direito), para tiers com Assistente. Abre o mesmo painel
  * ancorado à direita (communication-store) — sem trocar o homeStyle. Some na
  * home do Assistente (/assistente, que já é o chat em tela cheia) e quando o
  * dock já está aberto. Convive com o ⌘K e o item da sidebar.
@@ -29,7 +29,7 @@ export function AssistantLauncher() {
         return () => { active = false }
     }, [])
 
-    // Não mostra na home do Assistente, com o dock já aberto, nem fora do Pro+.
+    // Não mostra na home do Assistente, com o dock já aberto, nem sem acesso à IA.
     if (!allowed || isChatOpen || pathname?.startsWith('/assistente')) return null
 
     return (

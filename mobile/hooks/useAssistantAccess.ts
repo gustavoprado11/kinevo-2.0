@@ -1,5 +1,5 @@
 /**
- * useAssistantAccess — o treinador pode usar o modo Assistente? (Pro+)
+ * useAssistantAccess — o treinador pode usar o modo Assistente? (todos os tiers têm IA)
  *
  * Consulta /api/trainer/assistant/access (Bearer). Cacheia em memória para não
  * re-buscar a cada navegação. Fail-closed: na dúvida (erro/sem rede), allowed=false.

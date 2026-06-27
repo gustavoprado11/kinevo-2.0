@@ -197,8 +197,8 @@ export function AiPlanSection({ summary }: AiPlanSectionProps) {
                     })}
                 </div>
                 <small className="mt-[10px] block text-[11.5px] text-[#8A8A8E]">
-                    Créditos renovam a cada ciclo e não acumulam. Acabou? Você pode comprar um pacote avulso (+500 por
-                    R$ 29,90) ou esperar o próximo ciclo — o resto do Kinevo continua funcionando normalmente.
+                    Créditos renovam a cada ciclo e não acumulam. Acabou a cota? O resto do Kinevo continua funcionando
+                    normalmente — você só perde o atalho da IA até o próximo ciclo.
                 </small>
             </div>
         </div>

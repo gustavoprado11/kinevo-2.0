@@ -7,7 +7,7 @@
  * executa leituras/ações simples e PAUSA nas ações sensíveis com um card de
  * confirmação (HITL). Espelha o mock `ai-trainer-mock-commandbar.html`.
  *
- * Gate em 2 níveis: o componente só é montado para tier Pro+ (a UI esconde via
+ * Gate em 2 níveis: o componente só é montado quando o tier tem o Assistente (a UI esconde via
  * `fetchAiAccess`) e o handler /api/assistant/command revalida tier+cota. Quando
  * a cota esgota (402), degrada pra GUI com um banner — nunca trava o app.
  *

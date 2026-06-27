@@ -46,8 +46,8 @@ export function bannerFromError(status: number, data: unknown): AssistantBannerD
     if (status === 403 || code === 'tier_locked') {
         return {
             tone: 'warning',
-            message: message || 'O Assistente com IA está nos planos Pro e Premium.',
-            cta: { label: 'Fazer upgrade', href: '/settings#planos' },
+            message: message || 'O Assistente com IA não está disponível no seu plano.',
+            cta: { label: 'Ver planos', href: '/settings#planos' },
         }
     }
     if (status === 429 || code === 'rate_limited') {

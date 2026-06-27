@@ -139,7 +139,7 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
             {/* Command Palette — global, ⌘K to open */}
             <CommandPaletteWrapper students={students} />
 
-            {/* Floating launcher — abre o mesmo dock (Pro+) */}
+            {/* Floating launcher — abre o mesmo dock */}
             <AssistantLauncher />
         </div>
     )

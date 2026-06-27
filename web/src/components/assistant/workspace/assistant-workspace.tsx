@@ -274,7 +274,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
         } catch { /* noop */ }
     }, [activeId])
 
-    // Estamos no Assistente (⇒ Pro+ + modo 'assistant'): semeia o cache do gate de
+    // Estamos no Assistente (⇒ tier com IA + modo 'assistant'): semeia o cache do gate de
     // IA e do modo para a Sidebar global pintar o toggle correto já na 1ª pintura.
     useEffect(() => {
         setCachedAiAllowed(true)

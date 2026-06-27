@@ -17,7 +17,7 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ students = [] }: CommandPaletteProps) {
     const [open, setOpen] = useState(false)
-    // ── IA: barra de comando ⌘K (Trilha 1). Gated por tier Pro+. ──
+    // ── IA: barra de comando ⌘K (Trilha 1). Visível quando o tier tem IA. ──
     const [aiAccess, setAiAccess] = useState<AiAccess | null>(null)
     const [aiOpen, setAiOpen] = useState(false)
     const [aiQuery, setAiQuery] = useState('')
@@ -81,7 +81,7 @@ export function CommandPalette({ students = [] }: CommandPaletteProps) {
 
     return (
         <>
-            {/* Barra de comando de IA (⌘K · Trilha 1) — gated por tier Pro+. */}
+            {/* Barra de comando de IA (⌘K · Trilha 1) — visível quando o tier tem IA. */}
             <CommandBar
                 open={aiOpen}
                 onClose={() => setAiOpen(false)}
@@ -103,7 +103,7 @@ export function CommandPalette({ students = [] }: CommandPaletteProps) {
                         <div
                             className="bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl shadow-2xl overflow-hidden"
                         >
-                            {/* Campo de IA — só aparece nos planos Pro+. Enter roteia para a barra de comando. */}
+                            {/* Campo de IA — aparece quando o tier tem IA. Enter roteia para a barra de comando. */}
                             {aiAllowed && (
                                 <div className="flex items-center gap-3 px-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
                                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-[#7C3AED] to-[#A78BFA] text-white">

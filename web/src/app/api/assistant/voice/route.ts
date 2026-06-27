@@ -7,7 +7,7 @@
  *   - application/json `{ input, studentId?, route? }` quando o cliente já fez o
  *     STT on-device (browser/mobile).
  *
- * Em ambos: gate (Pro+ + cota) + rate-limit de turno, depois `runAssistantTurn`
+ * Em ambos: gate (uso/cota, todos os tiers) + rate-limit de turno, depois `runAssistantTurn`
  * com `surface:'voice'` (resposta curta e falável pelo system-prompt v2).
  * Devolve `{ transcript, text, confirmation, executed, credits, summary }`.
  *
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'rate_limited', message: rl.error }, { status: 429 })
         }
 
-        // 3. Gate (Pro+ + cota).
+        // 3. Gate (uso/cota, todos os tiers).
         const gate = await gateAssistant(supabaseAdmin, trainer.id)
         if (!gate.allowed) {
             const { status, ...body } = gate

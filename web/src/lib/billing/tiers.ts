@@ -7,18 +7,21 @@
  * falsa: o `essencial` que o R$39,90 compra é 403 no Assistente). Este módulo
  * centraliza preço/cota/features para que TODA superfície (landing, settings,
  * signup) conte a MESMA história, sempre coerente com o código (PLAN_AI_QUOTA,
- * STUDENT_CAP, gateAssistant Pro+).
+ * STUDENT_CAP, gateAssistant por uso).
  *
- * Modelo (decisão Gustavo, jun/2026):
- *   - free:       1 aluno (você), IA "1× cada ação" para experimentar.
- *   - essencial:  alunos ∞ + 20 créditos/mês de IA LEVE (rascunhos/winback) —
- *                 SEM o Assistente agêntico (⌘K/voz/canvas são Pro+).
- *   - pro_ia:     alunos ∞ + 300 créditos + Assistente completo (⌘K, briefing…).
- *   - premium_ia: alunos ∞ + 1.000 créditos + voz no mobile + relatórios de IA.
+ * Modelo (decisão Gustavo, jun/2026 — atualizado 26/jun): IA em TODOS os planos,
+ * escalada por COTA de créditos. TODOS os pagos têm o Assistente COMPLETO
+ * (⌘K + voz + aba /assistente). Únicos perks NÃO-crédito: briefing proativo (Pro+)
+ * e suporte exclusivo (Premium).
+ *   - free:       1 aluno (você); IA "taste" (1× cada ação + algumas conversas/mês).
+ *   - essencial:  alunos ∞ + 20 créditos/mês + Assistente completo (⌘K + voz).
+ *   - pro_ia:     alunos ∞ + 300 créditos + Resumo da manhã (briefing proativo).
+ *   - premium_ia: alunos ∞ + 1.000 créditos + suporte exclusivo.
  *
  * Os números batem com `lib/ai-usage/quota.ts` (20/300/1000) e `lib/limits/
  * student-cap.ts` (free=1, pagos=∞). O tier→price (Stripe) vive em
- * `lib/auth/get-ai-tier.ts` (priceIdForTier).
+ * `lib/auth/get-ai-tier.ts` (priceIdForTier). NÃO mudar as chaves de `tier` nem
+ * `creditsPerMonth` sem alinhar PLAN_AI_QUOTA (load-bearing p/ checkout/cota).
  */
 
 import type { AiTier } from '@/lib/auth/get-ai-tier'
@@ -46,75 +49,83 @@ export interface TierDisplay {
     free?: boolean
     /** Rótulo do botão de assinatura. */
     cta: string
+    /** Landing (marketing): eyebrow curto sob o nome do plano. */
+    tagline?: string
+    /** Landing: tradução do crédito em trabalho real ("≈ uns 30 treinos montados com a IA"). */
+    creditsHint?: string
+    /** Landing: nota ao lado do preço (ex.: free "pra sempre"). */
+    priceNote?: string
+    /** Landing: rodapé do card (ex.: free "Mais de 1 aluno? A partir do Essencial."). */
+    footnote?: string
 }
 
 export const TIER_DISPLAY: readonly TierDisplay[] = [
     {
         tier: 'free',
-        name: 'Gratuito',
+        name: 'Free',
+        tagline: 'Pra testar com calma',
         price: 'R$ 0',
+        priceNote: 'pra sempre',
         monthlyBrl: 0,
         creditsPerMonth: null,
-        credits: '1× cada ação de IA, para testar',
+        credits: 'Experimente a IA: 1× cada ação',
         free: true,
         cta: 'Começar grátis',
         features: [
-            { label: 'Conhecer o Kinevo' },
-            { label: 'Provar a IA uma vez cada ação' },
-            { label: 'Adicionar alunos', state: 'off' },
-            { label: 'Uso recorrente de IA', state: 'off' },
+            { label: '1 aluno (você, como aluno-teste)' },
+            { label: 'Treino, agenda e financeiro' },
+            { label: 'App do aluno + Apple Watch' },
         ],
+        footnote: 'Mais de 1 aluno? A partir do plano Essencial.',
     },
     {
         tier: 'essencial',
         name: 'Essencial',
+        tagline: 'Pra rodar sua carteira',
         price: 'R$ 39,90',
         priceSuffix: '/mês',
         monthlyBrl: 39.9,
         creditsPerMonth: 20,
         credits: 'Alunos ilimitados + 20 créditos de IA/mês',
+        creditsHint: '≈ uns 2 treinos montados com a IA',
         cta: 'Assinar Essencial',
         features: [
             { label: 'Alunos ilimitados' },
-            { label: 'Treinos, agenda, financeiro' },
-            { label: 'IA: 20 ações/mês (um gostinho)' },
-            { label: '⌘K + UI generativa', state: 'off' },
-            { label: 'Briefing & voz', state: 'off' },
+            { label: 'Treino, agenda e financeiro' },
+            { label: 'Assistente de IA completo (⌘K + voz)' },
         ],
     },
     {
         tier: 'pro_ia',
         name: 'Pro IA',
+        tagline: 'A IA trabalhando por você',
         price: 'R$ 79,90',
         priceSuffix: '/mês',
         monthlyBrl: 79.9,
         creditsPerMonth: 300,
         credits: 'Alunos ilimitados + 300 créditos de IA/mês',
+        creditsHint: '≈ uns 30 treinos montados com a IA',
         featured: true,
         cta: 'Assinar Pro IA',
         features: [
-            { label: 'Tudo do Essencial' },
-            { label: 'Barra de comando ⌘K' },
-            { label: 'Treino/cobrança editáveis pela IA' },
-            { label: 'Briefing matinal + fila de aprovação' },
-            { label: '300 ações de IA/mês' },
+            { label: 'Tudo do Essencial (Assistente completo incluído)' },
+            { label: 'Resumo da manhã: briefing proativo' },
         ],
     },
     {
         tier: 'premium_ia',
         name: 'Premium IA',
+        tagline: 'Tudo, no automático',
         price: 'R$ 129,90',
         priceSuffix: '/mês',
         monthlyBrl: 129.9,
         creditsPerMonth: 1000,
         credits: 'Alunos ilimitados + 1.000 créditos de IA/mês',
+        creditsHint: '≈ uns 100 treinos montados com a IA',
         cta: 'Assinar Premium',
         features: [
             { label: 'Tudo do Pro IA' },
             { label: 'Suporte exclusivo', state: 'star' },
-            { label: 'Acesso prioritário a novidades', state: 'star' },
-            { label: 'Voz no mobile + relatórios de IA' },
-            { label: '1.000 ações de IA/mês' },
         ],
     },
 ]

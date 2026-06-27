@@ -95,7 +95,7 @@ export default function DashboardScreen() {
     React.useEffect(() => {
         void syncAssistantModeFromServer();
     }, []);
-    // Gate Pro+: só honra o modo assistente se o tier permite.
+    // Gate por acesso: só honra o modo assistente se o tier tem IA (hoje: todos).
     if (mode === "assistant" && allowed) return <AssistantDashboard />;
     return <ClassicDashboard />;
 }
@@ -224,7 +224,7 @@ function ClassicDashboard() {
                     </Animated.View>
 
                     {/* Mode toggle (Clássico / Assistente) — espelha trainers.home_style.
-                        Só aparece para Pro+ (gate do Assistente). */}
+                        Só aparece quando o tier tem IA (hoje: todos). */}
                     {assistantAllowed ? (
                         <View style={{ marginTop: spacing[4], paddingHorizontal: spacing[5] }}>
                             <AssistantModeToggle mode="classic" onChange={setAssistantMode} />

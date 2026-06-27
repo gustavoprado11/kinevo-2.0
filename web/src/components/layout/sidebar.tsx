@@ -46,7 +46,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
 
     const assistantMode = homeStyle === 'assistant'
 
-    // Item "Assistente" só aparece nos planos Pro+ (gate de superfície de IA).
+    // Item "Assistente" aparece quando o tier tem IA (hoje: todos) — via fetchAiAccess.
     useEffect(() => {
         let active = true
         fetchAiAccess().then((a) => {
@@ -60,7 +60,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
         }
     }, [])
 
-    // Aquece a rota do Assistente p/ a troca de modo ser instantânea (Pro+).
+    // Aquece a rota do Assistente p/ a troca de modo ser instantânea.
     useEffect(() => {
         if (aiAllowed) router.prefetch('/assistente')
     }, [aiAllowed, router])
@@ -165,7 +165,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                 {isCollapsed ? <ChevronRight size={14} strokeWidth={2} /> : <ChevronLeft size={14} strokeWidth={2} />}
             </button>
 
-            {/* Toggle de modo (Pro+): Clássico ⇄ Assistente — componente compartilhado. */}
+            {/* Toggle de modo: Clássico ⇄ Assistente — componente compartilhado. */}
             {aiAllowed && !isCollapsed && (
                 <ModeToggle
                     active={assistantMode ? 'assistant' : 'classic'}
@@ -230,7 +230,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                     )
                 })}
 
-                {/* Assistente IA — FEATURE do modo Clássico (Pro+): abre o dock à
+                {/* Assistente IA — FEATURE do modo Clássico: abre o dock à
                     direita SEM trocar o homeStyle e SEM navegar para casca separada.
                     No modo Assistente este item NÃO existe — lá o próprio "Dashboard"
                     já É o chat. O ⌘K segue como atalho da barra de comando. */}
