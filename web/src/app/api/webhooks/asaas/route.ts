@@ -63,9 +63,18 @@ export async function POST(request: NextRequest) {
                 console.log(`[asaas-webhook] Event ${event.id} already processed, skipping`)
                 return NextResponse.json({ received: true })
             }
-            console.error('[asaas-webhook] Idempotency insert failed:', idemErr)
-            // Don't 500 — Asaas would retry indefinitely. Just log.
-            return NextResponse.json({ received: true })
+            // Store de idempotência indisponível (erro transitório, NÃO
+            // duplicata — o 23505 já retornou 200 acima). O insert acontece
+            // ANTES do dispatch, então NADA foi processado ainda: devolver 500
+            // faz o Asaas reentregar com segurança, sem risco de aplicar o
+            // evento duas vezes. Devolver 200 aqui descartaria silenciosamente
+            // um pagamento real. Mesmo padrão do webhook do Stripe
+            // (stripe/route.ts:78-79).
+            console.error('[asaas-webhook] Idempotency store unavailable:', idemErr)
+            return NextResponse.json(
+                { error: 'Idempotency store unavailable' },
+                { status: 500 },
+            )
         }
     }
 

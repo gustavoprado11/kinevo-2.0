@@ -156,10 +156,12 @@ describe('POST /api/webhooks/asaas', () => {
             expect(stub.queries.length).toBe(1)
         })
 
-        it('returns 200 without processing when the idempotency insert fails for another reason', async () => {
-            // comportamento atual: erro não-unique no idempotency store devolve
-            // 200 e descarta o evento — o Asaas não vai reentregar (contraste
-            // com o webhook Stripe, que devolve 500 pra forçar retry).
+        it('returns 500 without processing when the idempotency store fails (transient, not a duplicate)', async () => {
+            // Erro transitório (não-unique) ao gravar a idempotência: como o
+            // insert acontece ANTES do dispatch, nada foi processado — devolver
+            // 500 faz o Asaas reentregar com segurança (sem duplicar). Mesmo
+            // padrão do Stripe. O caso de duplicata (23505) continua 200 — ver
+            // o teste acima.
             stub.onQuery((q) => {
                 if (q.table === 'webhook_events' && q.op === 'insert') {
                     return { error: { code: '08006', message: 'connection failure' } }
@@ -167,7 +169,8 @@ describe('POST /api/webhooks/asaas', () => {
                 return undefined
             })
             const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_1', value: 100 })))
-            expect(res.status).toBe(200)
+            expect(res.status).toBe(500)
+            // Não processou nada além da tentativa de insert.
             expect(stub.queries.length).toBe(1)
         })
     })
