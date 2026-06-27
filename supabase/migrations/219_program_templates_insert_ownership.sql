@@ -1,0 +1,34 @@
+-- ============================================================================
+-- 219_program_templates_insert_ownership.sql
+-- ============================================================================
+-- Fecha um INSERT cross-tenant em program_templates.
+--
+-- A policy de INSERT (program_templates_trainer_insert, migration 005) usa
+-- WITH CHECK (is_trainer()) — só verifica "o chamador É um treinador", não "a
+-- linha pertence a ESTE treinador". Como o trigger set_trainer_id (migration
+-- 200) preserva um trainer_id explícito (só preenche quando NULL), um treinador
+-- autenticado podia inserir via PostgREST direto um program_template com o
+-- trainer_id de OUTRO treinador; a linha aparece na biblioteca da vítima (que
+-- casa o SELECT por trainer_id). Blast radius limitado — o atacante controla só
+-- name/description, NÃO consegue ler de volta nem anexar workouts filhos (as
+-- policies-filhas exigem o template pertencer a ele) — mas é injeção
+-- cross-tenant e precisa fechar.
+--
+-- Fix: trocar o WITH CHECK para a checagem de posse real, igual às demais
+-- tabelas de tenant (assessment_sessions migr. 122, student_contracts migr. 102).
+--
+-- ATÔMICO / SEM JANELA: usa ALTER POLICY (uma única instrução). DROP+CREATE
+-- teria um instante entre as duas instruções com program_templates SEM nenhuma
+-- policy de INSERT; ALTER troca o WITH CHECK in-place, sem essa janela.
+--
+-- BACKWARD-COMPAT: nenhum fluxo legítimo usa o caminho de INSERT autenticado em
+-- program_templates. Toda criação passa por RPCs SECURITY DEFINER
+-- (create_program_template_tree migr. 200, duplicate_program_template migr. 152)
+-- ou pelo MCP (service-role) — todos dão bypass de RLS. Esta policy só guarda
+-- INSERT direto via PostgREST autenticado (o vetor do ataque). E mesmo um insert
+-- legítimo direto passaria: o trigger BEFORE INSERT preenche
+-- trainer_id = current_trainer_id() (quando NULL) ANTES do WITH CHECK rodar.
+-- ============================================================================
+
+ALTER POLICY program_templates_trainer_insert ON public.program_templates
+    WITH CHECK (trainer_id = current_trainer_id());
