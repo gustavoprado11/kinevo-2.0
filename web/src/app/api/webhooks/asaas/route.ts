@@ -15,6 +15,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
     parseWebhookEvent,
     verifyWebhookSecret,
+    PermanentWebhookError,
     ASAAS_WEBHOOK_TOKEN_HEADER,
     type AsaasWebhookEvent,
 } from '@/lib/asaas'
@@ -119,9 +120,37 @@ export async function POST(request: NextRequest) {
         }
         return NextResponse.json({ received: true })
     } catch (err) {
-        console.error(`[asaas-webhook] Handler error for ${event.event}:`, err)
-        // Still return 200 — we logged it, retry won't help.
-        return NextResponse.json({ received: true })
+        // Handler falhou DEPOIS do registro de idempotência. Dois caminhos
+        // (mesmo princípio do webhook do Stripe — stripe/route.ts:105-118):
+        //
+        //   • PERMANENTE/conhecido (PermanentWebhookError): reprocessar nunca
+        //     vai ajudar (mensagem-veneno / payload definitivamente inválido).
+        //     ACK com 200 e MANTEMOS a linha de idempotência — qualquer
+        //     reentrega do mesmo event.id cai no skip por 23505 em vez de
+        //     reprocessar em loop.
+        //
+        //   • RETRYABLE (exceção inesperada / falha transitória de DB): se
+        //     devolvêssemos 200, a linha de idempotência já gravada faria a
+        //     reentrega do Asaas PULAR o evento para sempre → pagamento real
+        //     perdido, aluno preso em pending_payment (achado da auditoria).
+        //     Desfazemos o registro (DELETE) e devolvemos 500 para o Asaas
+        //     re-entregar limpo.
+        if (err instanceof PermanentWebhookError) {
+            console.error(
+                `[asaas-webhook] Permanent error for ${event.event} (${event.id}), acking without retry:`,
+                err.message,
+            )
+            return NextResponse.json({ received: true })
+        }
+        console.error(`[asaas-webhook] Retryable handler error for ${event.event} (${event.id}):`, err)
+        await supabaseAdmin
+            .from('webhook_events')
+            .delete()
+            .eq('event_id', `asaas-${event.id}`)
+        return NextResponse.json(
+            { error: 'Handler failed, event released for retry' },
+            { status: 500 },
+        )
     }
 }
 

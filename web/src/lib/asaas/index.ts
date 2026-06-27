@@ -9,7 +9,7 @@ export { createPaymentLink, getPaymentLink, deactivatePaymentLink, listPaymentsB
 export { createTransfer, getTransfer } from './transfers'
 export { validatePixKey, isPixKeyFormatValid, normalizePixKey } from './pix'
 export { getBalance } from './balance'
-export { verifyWebhookSecret, parseWebhookEvent, ASAAS_WEBHOOK_TOKEN_HEADER } from './webhook'
+export { verifyWebhookSecret, parseWebhookEvent, ASAAS_WEBHOOK_TOKEN_HEADER, PermanentWebhookError } from './webhook'
 export { ensureSubaccountWebhook, tryEnsureSubaccountWebhook } from './webhook-setup'
 export { encryptApiKey, decryptApiKey } from './encryption'
 export { listPendingDocuments, uploadDocument, summarizeDocuments } from './documents'

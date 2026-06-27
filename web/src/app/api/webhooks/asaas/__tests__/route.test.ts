@@ -48,6 +48,7 @@ import {
     resolveTrainerByAsaasTransfer,
 } from '@/lib/financial/notify'
 import { logContractEvent } from '@/lib/contract-events'
+import { PermanentWebhookError } from '@/lib/asaas'
 import { POST } from '../route'
 
 const notifyMock = vi.mocked(notifyFinancial)
@@ -576,16 +577,36 @@ describe('POST /api/webhooks/asaas', () => {
             expect(await res.json()).toEqual({ received: true })
         })
 
-        it('returns 200 even when a handler throws (Asaas must not retry-loop)', async () => {
-            // comportamento atual: erro interno em handler é só logado e o
-            // webhook responde 200 — o evento não será reprocessado.
+        it('releases the idempotency row and returns 500 when a handler throws a retryable error', async () => {
+            // Erro inesperado / falha transitória de DB: o webhook precisa
+            // LIBERAR a linha de idempotência e responder 500 para o Asaas
+            // re-entregar — senão o pagamento real se perde e o aluno fica
+            // preso em pending_payment. Mesmo padrão do webhook do Stripe.
             stub.onQuery((q) => {
                 if (q.table === 'student_contracts') throw new Error('db exploded')
                 return undefined
             })
             const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_boom', value: 1 })))
+            expect(res.status).toBe(500)
+
+            const releases = stub.calls('webhook_events', 'delete')
+            expect(releases.length).toBe(1)
+            expect(hasFilter(releases[0], 'eq', 'event_id', 'asaas-evt_1')).toBe(true)
+        })
+
+        it('acks with 200 and keeps the idempotency row on a permanent error (no retry loop)', async () => {
+            // Erro PERMANENTE (mensagem-veneno): ACK 200 e MANTÉM a linha de
+            // idempotência — não adianta reprocessar, e qualquer reentrega do
+            // mesmo event.id deve cair no skip por 23505.
+            stub.onQuery((q) => {
+                if (q.table === 'student_contracts') throw new PermanentWebhookError('poison')
+                return undefined
+            })
+            const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_perm', value: 1 })))
             expect(res.status).toBe(200)
             expect(await res.json()).toEqual({ received: true })
+            // Não liberou a idempotência.
+            expect(stub.calls('webhook_events', 'delete').length).toBe(0)
         })
     })
 })

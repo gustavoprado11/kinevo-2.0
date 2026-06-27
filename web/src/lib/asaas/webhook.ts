@@ -50,3 +50,21 @@ export function parseWebhookEvent(body: unknown): AsaasWebhookEvent {
 }
 
 export { ASAAS_WEBHOOK_TOKEN_HEADER }
+
+/**
+ * Erro PERMANENTE de processamento de webhook: reprocessar não vai ajudar
+ * (payload estruturalmente inválido, recurso que nunca vai existir, regra de
+ * negócio definitivamente violada). Um handler lança isto para sinalizar
+ * "dá ACK (200) e NÃO re-entrega" — em vez do default RETRYABLE (que libera a
+ * linha de idempotência e devolve 500 para o Asaas reentregar). Sem essa
+ * distinção, um erro determinístico viraria loop de reentrega (mensagem-veneno).
+ * Hoje os casos conhecidos/não-processáveis já retornam cedo (200) sem lançar;
+ * esta classe é o canal explícito para abortar como permanente no meio do
+ * processamento.
+ */
+export class PermanentWebhookError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = 'PermanentWebhookError'
+    }
+}
