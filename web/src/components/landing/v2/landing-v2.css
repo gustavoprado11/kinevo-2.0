@@ -1,0 +1,101 @@
+/*
+ * Landing V2 — CSS escopado (tokens + keyframes + utilitários responsivos).
+ * Tudo sob `.kvlp` para NÃO vazar pro resto do app (que tem dark mode + Tailwind).
+ * Tokens = kinevo-tokens.css do design (subset light); idênticos ao sistema web atual.
+ */
+
+.kvlp {
+  /* ── Brand ── */
+  --kv-brand-50: #F5F3FF; --kv-brand-100: #EDE9FE; --kv-brand-200: #DDD6FE;
+  --kv-brand-300: #C4B5FD; --kv-brand-400: #A78BFA; --kv-brand-500: #8B5CF6;
+  --kv-brand-600: #7C3AED; --kv-brand-700: #6D28D9; --kv-brand-800: #5B21B6; --kv-brand-900: #4C1D95;
+  /* ── Neutral (Apple HIG light) ── */
+  --kv-neutral-0: #FFFFFF; --kv-neutral-50: #FAFAFA; --kv-neutral-100: #F5F5F7;
+  --kv-neutral-150: #ECECF0; --kv-neutral-200: #E8E8ED; --kv-neutral-300: #D2D2D7;
+  --kv-neutral-400: #AEAEB2; --kv-neutral-500: #86868B; --kv-neutral-600: #6E6E73;
+  --kv-neutral-700: #48484A; --kv-neutral-800: #1D1D1F; --kv-neutral-900: #09090B;
+  /* ── Status ── */
+  --kv-success: #16A34A; --kv-success-soft: #F0FDF4;
+  --kv-warning: #F59E0B; --kv-warning-soft: #FFFBEB;
+  --kv-error: #EF4444; --kv-error-soft: #FEF2F2;
+  --kv-info: #3B82F6; --kv-info-soft: #EFF6FF;
+  /* ── Surfaces / text / borders ── */
+  --kv-surface-canvas: var(--kv-neutral-100); --kv-surface-card: var(--kv-neutral-0);
+  --kv-surface-subtle: var(--kv-neutral-50);
+  --kv-text-primary: var(--kv-neutral-800); --kv-text-secondary: var(--kv-neutral-600);
+  --kv-text-tertiary: var(--kv-neutral-500); --kv-text-quaternary: var(--kv-neutral-400);
+  --kv-border-default: var(--kv-neutral-300); --kv-border-subtle: var(--kv-neutral-200);
+  /* ── Shadows ── */
+  --kv-shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --kv-shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.03);
+  --kv-shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --kv-shadow-lg: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+  --kv-shadow-xl: 0 12px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.05);
+  --kv-shadow-brand: 0 8px 24px rgba(124,58,237,0.25);
+  --kv-shadow-brand-sm: 0 2px 8px rgba(124,58,237,0.15);
+  /* ── Motion ── */
+  --kv-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --kv-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --kv-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* ── Font ── (app já carrega Plus Jakarta via next/font → var --font-jakarta) */
+  --kv-font-sans: var(--font-jakarta), 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  position: relative;
+  width: 100%;
+  overflow-x: hidden;
+  background: var(--kv-surface-canvas);
+  font-family: var(--kv-font-sans);
+  color: var(--kv-text-primary);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+.kvlp *, .kvlp *::before, .kvlp *::after { box-sizing: border-box; }
+.kvlp a { text-decoration: none; color: inherit; }
+.kvlp ::selection { background: var(--kv-brand-200); }
+.kvlp summary::-webkit-details-marker { display: none; }
+.kvlp summary { list-style: none; cursor: pointer; }
+
+/* ── Keyframes ── */
+@keyframes kvfloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-16px)} }
+@keyframes kvfloat2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(12px)} }
+@keyframes kvpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+@keyframes kvmarquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+@keyframes kvblink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+@keyframes kvfadeup { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+
+/* ── Reveal-on-scroll (só esconde quando o JS marcou `.reveal-on` no root → degrada bem) ── */
+.kvlp.reveal-on [data-reveal] { opacity:0; transform:translateY(30px); transition:opacity .75s var(--kv-ease-out), transform .75s var(--kv-ease-out); }
+.kvlp.reveal-on [data-reveal].revealed { opacity:1; transform:none; }
+
+/* ── Marquee ── */
+.kvlp .kvmq { animation: kvmarquee 34s linear infinite; }
+.kvlp .kvmq:hover { animation-play-state: paused; }
+
+/* ── FAQ chevron ── */
+.kvlp details[open] .faq-chev { transform: rotate(180deg); }
+.kvlp .faq-chev { transition: transform .3s var(--kv-ease-out); }
+
+/* ── Hooks de animação (chat do assistente) ── */
+.kvlp .kvhide { display: none; }
+
+/* ── Responsivo (utilitários usados no markup) ── */
+@media (max-width: 980px) {
+  .kvlp #hero-grid { grid-template-columns: 1fr !important; text-align: center; }
+  .kvlp #hero-cta, .kvlp #hero-micro, .kvlp #hero-eyebrow { justify-content: center; }
+  .kvlp #nav-links { display: none !important; }
+  .kvlp .two-col { grid-template-columns: 1fr !important; }
+  .kvlp .three-col { grid-template-columns: 1fr !important; }
+  .kvlp .four-col { grid-template-columns: repeat(2,1fr) !important; }
+  .kvlp .ai-grid { grid-template-columns: 1fr !important; }
+  .kvlp .biz-grid { grid-template-columns: 1fr !important; }
+  .kvlp .display-xl { font-size: 42px !important; }
+}
+@media (max-width: 640px) {
+  .kvlp .four-col { grid-template-columns: 1fr !important; }
+  .kvlp .pricing-grid { grid-template-columns: 1fr !important; }
+  .kvlp .display-xl { font-size: 34px !important; }
+  .kvlp .sec { padding: 60px 0 !important; }
+  .kvlp .comp-wrap { overflow-x: auto; }
+  .kvlp #hero-visual { transform: scale(.92); }
+}
