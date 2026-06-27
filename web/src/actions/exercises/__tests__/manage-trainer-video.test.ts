@@ -5,11 +5,22 @@ vi.mock('next/cache', () => ({
     revalidatePath: vi.fn(),
 }))
 
+// Mantém o isOwnedStoragePath REAL (queremos exercitar a validação de verdade)
+// e troca só o checkVideoCompat por um stub — sem rede de fetch nos testes.
+const h = vi.hoisted(() => ({ checkVideoCompat: vi.fn() }))
+vi.mock('@/lib/video-codec-server', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/lib/video-codec-server')>()
+    return { ...actual, checkVideoCompat: h.checkVideoCompat }
+})
+
 // Build chainable Supabase mock
 function createSupabaseMock(overrides: Record<string, any> = {}) {
     const storageMock = {
         from: vi.fn().mockReturnValue({
             remove: vi.fn().mockResolvedValue({ data: null, error: null }),
+            getPublicUrl: vi.fn((p: string) => ({
+                data: { publicUrl: `https://kinevo-test.supabase.co/storage/v1/object/public/trainer-videos/${p}` },
+            })),
         }),
     }
 
@@ -62,6 +73,7 @@ describe('saveTrainerVideoMetadata', () => {
     beforeEach(() => {
         vi.resetModules()
         mockSupabase = createSupabaseMock()
+        h.checkVideoCompat.mockReset().mockResolvedValue({ compatible: true })
     })
 
     it('returns error when not authenticated', async () => {
@@ -114,6 +126,45 @@ describe('saveTrainerVideoMetadata', () => {
         expect(result.success).toBe(true)
         expect(result.data?.video_url).toBe('https://youtube.com/watch?v=abc')
         expect(result.data?.video_type).toBe('external_url')
+    })
+
+    it('derives the fetched URL from storagePath and never fetches the client videoUrl (SSRF)', async () => {
+        mockSupabase = createSupabaseMock({
+            tevResponses: [
+                { data: null, error: null }, // existing check
+                { data: null, error: null }, // upsert
+            ],
+        })
+
+        const { saveTrainerVideoMetadata } = await import('../manage-trainer-video')
+        const result = await saveTrainerVideoMetadata({
+            exerciseId: 'ex-1',
+            videoType: 'upload',
+            storagePath: 'user-1/ex-1/1718000000_video.mp4',
+            // URL maliciosa do cliente: tem que ser IGNORADA pelo fetch.
+            videoUrl: 'http://169.254.169.254/latest/meta-data/',
+        })
+
+        expect(result.success).toBe(true)
+        // checkVideoCompat recebeu a URL DERIVADA do storagePath, não o videoUrl.
+        expect(h.checkVideoCompat).toHaveBeenCalledTimes(1)
+        const fetchedUrl = h.checkVideoCompat.mock.calls[0][0] as string
+        expect(fetchedUrl).toContain('trainer-videos/user-1/ex-1/1718000000_video.mp4')
+        expect(fetchedUrl).not.toContain('169.254.169.254')
+    })
+
+    it('rejects a foreign/traversal storagePath before any fetch', async () => {
+        const { saveTrainerVideoMetadata } = await import('../manage-trainer-video')
+        const result = await saveTrainerVideoMetadata({
+            exerciseId: 'ex-1',
+            videoType: 'upload',
+            storagePath: 'user-1/../user-2/evil.mp4', // traversal pra fora do dono
+            videoUrl: 'https://whatever',
+        })
+
+        expect(result.success).toBe(false)
+        expect(result.message).toBe('Caminho de vídeo inválido.')
+        expect(h.checkVideoCompat).not.toHaveBeenCalled()
     })
 })
 

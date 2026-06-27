@@ -84,3 +84,42 @@ export async function checkVideoCompat(publicUrl: string): Promise<VideoCompatCh
         return { compatible: true }
     }
 }
+
+/** Caractere de controle ou DEL (0x00–0x1F, 0x7F)? Checagem por código pra não
+ *  precisar de literais de controle no fonte. */
+function hasControlChar(s: string): boolean {
+    for (let i = 0; i < s.length; i++) {
+        const code = s.charCodeAt(i)
+        if (code < 0x20 || code === 0x7f) return true
+    }
+    return false
+}
+
+/**
+ * Valida que um caminho do bucket `trainer-videos` pertence ao usuário
+ * autenticado e não escapa do próprio prefixo. Quando o servidor DERIVA a URL
+ * pública a partir do storagePath (em vez de confiar no videoUrl do cliente),
+ * o path passa a ser a entrada confiável — então precisa barrar traversal e
+ * paths de outro dono, senão só trocamos "URL não-confiável" por "path
+ * não-confiável". Convenção de upload (exercise-form-modal / trainer-video-modal):
+ *   `${authUserId}/${exerciseId}/${timestamp}_video.${ext}`
+ */
+export function isOwnedStoragePath(path: unknown, ownerId: unknown): boolean {
+    if (typeof path !== 'string' || typeof ownerId !== 'string' || ownerId.length === 0) {
+        return false
+    }
+    // Sem traversal, barra inicial/absoluta, backslash, esquema/URL embutida ou
+    // caractere de controle/NUL.
+    if (
+        path.includes('..') ||
+        path.startsWith('/') ||
+        path.includes('\\') ||
+        path.includes('://') ||
+        hasControlChar(path)
+    ) {
+        return false
+    }
+    // Tem que viver sob o prefixo do próprio usuário, com um nome de arquivo
+    // depois da barra (não só `${ownerId}/`).
+    return path.startsWith(`${ownerId}/`) && path.length > ownerId.length + 1
+}

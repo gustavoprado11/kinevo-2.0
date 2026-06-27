@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { checkVideoCompat } from '@/lib/video-codec-server'
+import { checkVideoCompat, isOwnedStoragePath } from '@/lib/video-codec-server'
 
 export type TrainerVideoResult = {
     success: boolean
@@ -43,7 +43,21 @@ export async function saveTrainerVideoMetadata(params: {
         // navegador falhou ou foi contornada. Roda ANTES de tocar no registro
         // existente, pra não apagar um vídeo bom ao rejeitar o novo.
         if (params.videoType === 'upload' && params.storagePath) {
-            const compat = await checkVideoCompat(params.videoUrl)
+            // SSRF: o storagePath é entrada do cliente e passa a ser a fonte da
+            // URL que o servidor busca. Ele PRECISA pertencer ao usuário e não
+            // escapar do próprio prefixo — senão só trocamos "URL não-confiável"
+            // por "path não-confiável".
+            if (!isOwnedStoragePath(params.storagePath, user.id)) {
+                return { success: false, message: 'Caminho de vídeo inválido.' }
+            }
+            // A URL buscada é DERIVADA no servidor a partir do storagePath (host
+            // fixo do Supabase Storage via getPublicUrl). params.videoUrl NUNCA é
+            // buscado — assim deixa de ser um sink de SSRF (169.254.x, hosts
+            // internos, redirect 3xx, DNS rebinding: eliminados por construção).
+            const { data: { publicUrl } } = supabase.storage
+                .from('trainer-videos')
+                .getPublicUrl(params.storagePath)
+            const compat = await checkVideoCompat(publicUrl)
             if (!compat.compatible) {
                 await supabase.storage.from('trainer-videos').remove([params.storagePath])
                 return {
