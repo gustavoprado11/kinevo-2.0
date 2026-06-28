@@ -72,7 +72,8 @@ export default function PrivacyPage() {
                     geração de formulários, os rascunhos de mensagens, os insights e a transcrição de
                     comandos de voz. Para gerar essas respostas, trechos dos dados da sua conta são
                     transmitidos a provedores de modelos de linguagem que atuam como operadores
-                    (sub-processadores) por nossa conta: a{" "}
+                    (sub-processadores) por nossa conta, todos com processamento nos{" "}
+                    <strong className="text-slate-100">Estados Unidos (EUA)</strong>:{" "}
                     <a
                         href="https://openai.com/policies/privacy-policy"
                         target="_blank"
@@ -81,7 +82,17 @@ export default function PrivacyPage() {
                     >
                         OpenAI
                     </a>{" "}
-                    (provedor principal, inclusive a transcrição de voz) e o{" "}
+                    (provedor principal — Assistente, geração de formulários, rascunhos de mensagens,
+                    insights e transcrição de voz), a{" "}
+                    <a
+                        href="https://www.anthropic.com/legal/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-violet-400 hover:text-violet-300 underline"
+                    >
+                        Anthropic
+                    </a>{" "}
+                    (modelo Claude — prescrição assistida por IA e parte do Assistente) e o{" "}
                     <a
                         href="https://policies.google.com/privacy"
                         target="_blank"
@@ -90,9 +101,12 @@ export default function PrivacyPage() {
                     >
                         Google
                     </a>{" "}
-                    (modelo Gemini, usado na geração de programas de treino). Esses dados podem incluir
+                    (modelo Gemini — geração de programas de treino). Esses dados podem incluir
                     informações pessoais e <strong className="text-slate-100">dados sensíveis de saúde</strong>{" "}
-                    dos seus alunos (por exemplo, restrições clínicas e respostas de check-in). Nos planos de
+                    dos seus alunos (por exemplo, restrições clínicas e respostas de check-in). Como o
+                    processamento ocorre nos EUA, há{" "}
+                    <strong className="text-slate-100">transferência internacional de dados pessoais</strong>,{" "}
+                    realizada com base nas salvaguardas e hipóteses legais previstas na LGPD. Nos planos de
                     API pagos que utilizamos, esses provedores{" "}
                     <strong className="text-slate-100">não usam o conteúdo enviado para treinar seus modelos</strong>{" "}
                     e aplicam retenção limitada apenas para segurança e prevenção de abuso. Aplicamos
