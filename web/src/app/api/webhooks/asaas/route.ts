@@ -16,9 +16,13 @@ import {
     parseWebhookEvent,
     verifyWebhookSecret,
     PermanentWebhookError,
+    getPayment,
+    AsaasApiError,
     ASAAS_WEBHOOK_TOKEN_HEADER,
     type AsaasWebhookEvent,
+    type AsaasPayment,
 } from '@/lib/asaas'
+import { getDecryptedApiKey } from '@/lib/asaas/wallet-service'
 import {
     notifyFinancial,
     resolveTrainerByAsaasAccount,
@@ -164,12 +168,134 @@ export async function POST(request: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
+// Verificação autoritativa de pagamento (anti-forja)
+// ---------------------------------------------------------------------------
+// O token do webhook é GLOBAL e recuperável por um treinador (ver auditoria),
+// então NUNCA confiamos no payload. Buscamos o pagamento NA SUBCONTA DO DONO
+// (getPayment com a key da subconta) e só seguimos se ele existir e estiver
+// pago. Classificação de erro (mesmo princípio do release-on-error do POST):
+//   • não existe (404) / não pago        → PermanentWebhookError → 200, não
+//     reprocessa (é forja ou estado que reprocessar não muda)
+//   • key indisponível / Asaas 5xx/timeout/rede/outro → PROPAGA → o catch do
+//     POST solta a idempotência e devolve 500 pra reentregar (não perde
+//     pagamento real por soluço de rede)
+
+const PAID_STATUSES = new Set(['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'])
+
+async function fetchVerifiedPayment(trainerId: string, paymentId: string): Promise<AsaasPayment> {
+    let key: string
+    try {
+        key = await getDecryptedApiKey(trainerId)
+    } catch {
+        // Sem credencial da subconta agora (não aprovada / blip) → não dá pra
+        // verificar → TRANSITÓRIO → reentrega.
+        throw new Error(`[asaas-webhook] subaccount key unavailable for trainer ${trainerId} (transient)`)
+    }
+    let p: AsaasPayment
+    try {
+        p = await getPayment(key, paymentId)
+    } catch (err) {
+        // Classifica por SIGNIFICADO, não por código: "o Asaas AFIRMA que isto
+        // não é um pagamento válido" → permanente; "o Asaas não deu resposta
+        // autoritativa agora" → transitório.
+        if (err instanceof AsaasApiError && (err.status === 404 || err.status === 400)) {
+            // 404 = não existe; 400 = id malformado/rejeitado (reentregar a mesma
+            // pergunta dá 400 de novo). Ambos: o id do payload é lixo → forja/evento
+            // corrompido → permanente.
+            console.warn(`[asaas-webhook] payment id rejected by Asaas (status ${err.status}) for trainer ${trainerId}: ${paymentId}`)
+            throw new PermanentWebhookError(`payment ${paymentId} rejected by Asaas (status ${err.status})`)
+        }
+        // 401/403 (não posso perguntar) / 5xx / timeout / rede → indisponível
+        // agora → transitório → reentrega.
+        throw err
+    }
+    if (!PAID_STATUSES.has(p.status)) {
+        throw new PermanentWebhookError(`payment ${paymentId} not in a paid status (status=${p.status})`)
+    }
+    return p
+}
+
+interface OwnerContractRef {
+    id: string
+    trainer_id: string
+    asaas_payment_id: string | null
+    asaas_payment_link_id: string | null
+}
+
+/** Resolve o contrato dono deste pagamento (qualquer status), pra derivar o
+ *  trainer e verificar antes de mutar. Precedência igual às estratégias de
+ *  registro: asaas_payment_id, asaas_payment_link_id, externalReference (= id). */
+async function resolveOwnerContract(
+    payment: NonNullable<AsaasWebhookEvent['payment']>,
+): Promise<OwnerContractRef | null> {
+    const sel = 'id, trainer_id, asaas_payment_id, asaas_payment_link_id'
+    if (payment.id) {
+        const { data } = await supabaseAdmin.from('student_contracts').select(sel).eq('asaas_payment_id', payment.id).maybeSingle()
+        if (data) return data as OwnerContractRef
+    }
+    if (payment.paymentLink) {
+        const { data } = await supabaseAdmin.from('student_contracts').select(sel).eq('asaas_payment_link_id', payment.paymentLink).maybeSingle()
+        if (data) return data as OwnerContractRef
+    }
+    if (payment.externalReference) {
+        const { data } = await supabaseAdmin.from('student_contracts').select(sel).eq('id', payment.externalReference).maybeSingle()
+        if (data) return data as OwnerContractRef
+    }
+    return null
+}
+
+// ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
 async function handlePaymentReceived(event: AsaasWebhookEvent) {
     const payment = event.payment
     if (!payment) return
+
+    // ── Anti-forja: verificação autoritativa ANTES de qualquer mutação ──────
+    // Resolve o contrato dono, confirma o pagamento na subconta do dono e que
+    // ele amarra a ESTE contrato; então sobrescreve os VALORES do payload pelos
+    // autoritativos (re-fetch). Os IDs já batem; só números/datas/método podem
+    // ter sido forjados.
+    {
+        const ownerContract = await resolveOwnerContract(payment)
+        let authPayment: AsaasPayment
+        if (ownerContract) {
+            authPayment = await fetchVerifiedPayment(ownerContract.trainer_id, payment.id)
+            const tiesToContract =
+                authPayment.externalReference === ownerContract.id ||
+                (!!authPayment.paymentLink && authPayment.paymentLink === ownerContract.asaas_payment_link_id) ||
+                authPayment.id === ownerContract.asaas_payment_id
+            if (!tiesToContract) {
+                // Pagamento real, mas de OUTRO contrato → tentativa de ativar o
+                // contrato errado com um pagamento alheio. Forja.
+                throw new PermanentWebhookError(
+                    `payment ${payment.id} does not tie to contract ${ownerContract.id} (extRef=${authPayment.externalReference}, link=${authPayment.paymentLink})`,
+                )
+            }
+        } else {
+            // Sem contrato resolvido: resta só o caminho legado de update de
+            // transação (não ativa acesso). Verifica via o trainer da transação
+            // existente; se não houver transação, nada nosso casa → ack.
+            const { data: tx } = await supabaseAdmin
+                .from('financial_transactions')
+                .select('coach_id')
+                .eq('asaas_payment_id', payment.id)
+                .maybeSingle()
+            if (!tx?.coach_id) return
+            authPayment = await fetchVerifiedPayment(tx.coach_id as string, payment.id)
+        }
+        // Sobrescreve só os VALORES monetários/forjáveis pelos autoritativos.
+        // IDs/identificadores (customer, subscription, paymentLink) ficam do
+        // payload — não são vetor de forja de valor e são usados como referência.
+        payment.value = authPayment.value
+        payment.netValue = authPayment.netValue
+        payment.billingType = authPayment.billingType
+        payment.installmentNumber = authPayment.installmentNumber
+        payment.estimatedCreditDate = authPayment.estimatedCreditDate
+        payment.creditDate = authPayment.creditDate
+        payment.description = authPayment.description
+    }
 
     // Resolve qual contrato esse pagamento está fechando. Três estratégias,
     // tentadas em ordem:

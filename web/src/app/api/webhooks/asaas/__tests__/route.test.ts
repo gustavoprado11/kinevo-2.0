@@ -5,6 +5,7 @@ import {
     hasFilter,
     type SupabaseAdminStub,
     type RecordedQuery,
+    type StubResult,
 } from '@/test/supabase-admin-stub'
 
 // Holder mutável pro stub — factories de vi.mock são hoisted e não podem
@@ -14,6 +15,8 @@ const h = vi.hoisted(() => ({
         from: (table: string) => unknown
         rpc: (fn: string, args?: unknown) => Promise<unknown>
     },
+    getPayment: vi.fn(),
+    getKey: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase-admin', () => ({
@@ -23,12 +26,20 @@ vi.mock('@/lib/supabase-admin', () => ({
     },
 }))
 
-// O route importa do barrel '@/lib/asaas', que puxa client/encryption/etc.
-// Substituímos o barrel pelo módulo real de webhook (verifyWebhookSecret e
-// parseWebhookEvent reais — queremos testar a auth de verdade).
+// O route importa do barrel '@/lib/asaas'. Mantemos os reais de webhook
+// (verifyWebhookSecret/parseWebhookEvent/PermanentWebhookError) e a AsaasApiError
+// (classe REAL — o route faz instanceof + checa .status), e SÓ mockamos
+// getPayment (o re-fetch autoritativo) pra testar a verificação anti-forja sem rede.
 vi.mock('@/lib/asaas', async () => {
-    return await vi.importActual<typeof import('@/lib/asaas/webhook')>('@/lib/asaas/webhook')
+    const webhook = await vi.importActual<typeof import('@/lib/asaas/webhook')>('@/lib/asaas/webhook')
+    const client = await vi.importActual<typeof import('@/lib/asaas/client')>('@/lib/asaas/client')
+    return { ...webhook, AsaasApiError: client.AsaasApiError, getPayment: h.getPayment }
 })
+
+// A credencial da subconta (re-fetch) — mockada pra não decriptar nada real.
+vi.mock('@/lib/asaas/wallet-service', () => ({
+    getDecryptedApiKey: h.getKey,
+}))
 
 vi.mock('@/lib/financial/notify', () => ({
     notifyFinancial: vi.fn(),
@@ -48,7 +59,7 @@ import {
     resolveTrainerByAsaasTransfer,
 } from '@/lib/financial/notify'
 import { logContractEvent } from '@/lib/contract-events'
-import { PermanentWebhookError } from '@/lib/asaas'
+import { PermanentWebhookError, AsaasApiError, type AsaasPayment } from '@/lib/asaas'
 import { POST } from '../route'
 
 const notifyMock = vi.mocked(notifyFinancial)
@@ -68,12 +79,11 @@ let originalToken: string | undefined
 function makeRequest(body: unknown, token: string | null = WEBHOOK_TOKEN): NextRequest {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (token !== null) headers['asaas-access-token'] = token
-    const init: RequestInit = {
+    return new NextRequest('http://localhost/api/webhooks/asaas', {
         method: 'POST',
         headers,
         body: typeof body === 'string' ? body : JSON.stringify(body),
-    }
-    return new NextRequest('http://localhost/api/webhooks/asaas', init as any)
+    })
 }
 
 function paymentEvent(
@@ -82,6 +92,45 @@ function paymentEvent(
     id = 'evt_1',
 ): Record<string, unknown> {
     return { id, event, dateCreated: '2026-06-11T10:00:00Z', payment }
+}
+
+// ── Helpers da verificação autoritativa (Fase 1) ───────────────────────────
+const OWNER = {
+    id: CONTRACT_ID,
+    trainer_id: TRAINER_ID,
+    student_id: STUDENT_ID,
+    asaas_payment_id: null as string | null,
+    asaas_payment_link_id: null as string | null,
+    installment_count: null as number | null,
+}
+
+/** Pagamento AUTORITATIVO (o que o re-fetch devolve). Default: pago e amarrado
+ *  ao CONTRACT_ID via externalReference. */
+function paid(over: Partial<AsaasPayment> = {}): AsaasPayment {
+    return {
+        id: 'pay_auth',
+        status: 'RECEIVED',
+        value: 0,
+        netValue: 0,
+        billingType: 'PIX',
+        externalReference: CONTRACT_ID,
+        ...over,
+    } as AsaasPayment
+}
+
+/** Faz o resolveOwnerContract (e o SELECT de detalhe do contrato) enxergarem o
+ *  contrato dono: intercepta SELECT maybeSingle em student_contracts e devolve
+ *  o superset `owner`; o resto vai pro resolver `inner` do teste. */
+function withOwner(
+    owner: Record<string, unknown>,
+    inner: (q: RecordedQuery) => StubResult | undefined = () => undefined,
+): (q: RecordedQuery) => StubResult | undefined {
+    return (q) => {
+        if (q.table === 'student_contracts' && q.op === 'select' && q.maybeSingle) {
+            return { data: owner }
+        }
+        return inner(q)
+    }
 }
 
 describe('POST /api/webhooks/asaas', () => {
@@ -94,6 +143,9 @@ describe('POST /api/webhooks/asaas', () => {
         resolveByPaymentMock.mockResolvedValue(null)
         resolveByTransferMock.mockResolvedValue(null)
         resolveByAccountMock.mockResolvedValue(null)
+        // Defaults da verificação: key disponível + pagamento pago amarrado.
+        h.getKey.mockResolvedValue('sk-subaccount')
+        h.getPayment.mockResolvedValue(paid())
     })
 
     afterEach(() => {
@@ -175,31 +227,29 @@ describe('POST /api/webhooks/asaas', () => {
         })
     })
 
-    describe('PAYMENT_RECEIVED', () => {
-        it('activates the contract by asaas_payment_id, records the transaction, unblocks the student and notifies', async () => {
+    describe('PAYMENT_RECEIVED (com verificação autoritativa)', () => {
+        it('activates the contract, records the AUTHORITATIVE transaction (not the forged payload), unblocks and notifies', async () => {
             resolveByPaymentMock.mockResolvedValue(TRAINER_ID)
-            stub.onQuery((q) => {
+            // Re-fetch traz os valores REAIS (150/145.5/PIX); o payload abaixo
+            // traz lixo forjado (9999/BOLETO) que NÃO pode ser gravado.
+            h.getPayment.mockResolvedValue(paid({ value: 150, netValue: 145.5, billingType: 'PIX' }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_1' }, (q) => {
                 if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'asaas_payment_id', 'pay_1')) {
                     return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
                 }
-                if (q.table === 'student_contracts' && q.op === 'select' && hasFilter(q, 'eq', 'id', CONTRACT_ID)) {
-                    return { data: { trainer_id: TRAINER_ID, student_id: STUDENT_ID, installment_count: null } }
-                }
                 if (q.table === 'students') return { data: { name: 'Maria' } }
                 return undefined
-            })
+            }))
 
             const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', {
-                id: 'pay_1', value: 150, netValue: 145.5, billingType: 'PIX',
+                id: 'pay_1', value: 9999, netValue: 9999, billingType: 'BOLETO',
             })))
             expect(res.status).toBe(200)
 
-            // Transição de status restrita a pending_payment/past_due
             const activation = stub.calls('student_contracts', 'update')[0]
             expect(activation.payload).toMatchObject({ status: 'active' })
             expect(hasFilter(activation, 'in', 'status')).toBe(true)
 
-            // UPSERT da transação keyed por asaas_payment_id
             const upserts = stub.calls('financial_transactions', 'upsert')
             expect(upserts.length).toBe(1)
             expect(upserts[0].payload).toMatchObject({
@@ -207,22 +257,19 @@ describe('POST /api/webhooks/asaas', () => {
                 student_id: STUDENT_ID,
                 provider: 'asaas',
                 asaas_payment_id: 'pay_1',
-                amount_gross: 150,
-                amount_net: 145.5,
+                amount_gross: 150,    // autoritativo, não 9999
+                amount_net: 145.5,    // autoritativo
                 type: 'charge',
                 status: 'completed',
-                payment_method: 'PIX',
+                payment_method: 'PIX', // autoritativo, não BOLETO
                 contract_id: CONTRACT_ID,
             })
             expect(upserts[0].options).toEqual({ onConflict: 'asaas_payment_id' })
 
-            // Desbloqueio idempotente do aluno
             expect(stub.rpcCalls).toContainEqual({
                 fn: 'unblock_student_access',
                 args: { p_student_id: STUDENT_ID },
             })
-
-            // Timeline + notificação
             expect(logEventMock).toHaveBeenCalledWith(expect.objectContaining({
                 contractId: CONTRACT_ID,
                 eventType: 'payment_received',
@@ -235,15 +282,13 @@ describe('POST /api/webhooks/asaas', () => {
         })
 
         it('falls back to asaas_payment_link_id and backfills the payment id on the contract', async () => {
-            stub.onQuery((q) => {
+            h.getPayment.mockResolvedValue(paid({ value: 99, paymentLink: 'pl_1' }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_link_id: 'pl_1' }, (q) => {
                 if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'asaas_payment_link_id', 'pl_1')) {
                     return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
                 }
-                if (q.table === 'student_contracts' && q.op === 'select' && hasFilter(q, 'eq', 'id', CONTRACT_ID)) {
-                    return { data: { trainer_id: TRAINER_ID, student_id: STUDENT_ID, installment_count: null } }
-                }
                 return undefined
-            })
+            }))
 
             const res = await POST(makeRequest(paymentEvent('PAYMENT_CONFIRMED', {
                 id: 'pay_2', value: 99, paymentLink: 'pl_1', customer: 'cus_9',
@@ -254,7 +299,7 @@ describe('POST /api/webhooks/asaas', () => {
                 .calls('student_contracts', 'update')
                 .find((q) => hasFilter(q, 'eq', 'asaas_payment_link_id', 'pl_1'))
             expect(byLink).toBeDefined()
-            // Backfill: payment id + customer colados no contrato
+            // Backfill: payment id + customer (identificador do payload) colados.
             expect(byLink!.payload).toMatchObject({
                 status: 'active',
                 asaas_payment_id: 'pay_2',
@@ -264,15 +309,13 @@ describe('POST /api/webhooks/asaas', () => {
         })
 
         it('falls back to externalReference as the contract id', async () => {
-            stub.onQuery((q) => {
+            h.getPayment.mockResolvedValue(paid({ value: 80, externalReference: CONTRACT_ID }))
+            stub.onQuery(withOwner(OWNER, (q) => {
                 if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'id', CONTRACT_ID)) {
                     return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
                 }
-                if (q.table === 'student_contracts' && q.op === 'select' && hasFilter(q, 'eq', 'id', CONTRACT_ID)) {
-                    return { data: { trainer_id: TRAINER_ID, student_id: STUDENT_ID, installment_count: null } }
-                }
                 return undefined
-            })
+            }))
 
             const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', {
                 id: 'pay_3', value: 80, externalReference: CONTRACT_ID,
@@ -281,47 +324,48 @@ describe('POST /api/webhooks/asaas', () => {
             expect(stub.calls('financial_transactions', 'upsert').length).toBe(1)
         })
 
-        it('records revenue for follow-up installments even without a status transition', async () => {
-            // Parcela 2..N: contrato já está active, os UPDATEs não casam nada,
-            // mas o SELECT por paymentLink encontra o contrato pra registro.
-            stub.onQuery((q) => {
+        it('FIRST-CLASS: a legit recurring installment (N>1) applies with the AUTHORITATIVE installment value', async () => {
+            // Parcela 2: contrato já está active (UPDATEs não casam nada), achado
+            // por paymentLink pro registro. Re-fetch traz o valor REAL da parcela
+            // (100); o payload traz lixo (9999). Cruza Fase 1 + #9: grava o
+            // autoritativo, não o do payload.
+            h.getPayment.mockResolvedValue(paid({ value: 100, netValue: 100, paymentLink: 'pl_inst', installmentNumber: 2 }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_link_id: 'pl_inst', installment_count: 12 }, (q) => {
                 if (q.table === 'student_contracts' && q.op === 'select' && hasFilter(q, 'eq', 'asaas_payment_link_id', 'pl_inst')) {
                     return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
                 }
-                if (q.table === 'student_contracts' && q.op === 'select' && hasFilter(q, 'eq', 'id', CONTRACT_ID)) {
-                    return { data: { trainer_id: TRAINER_ID, student_id: STUDENT_ID, installment_count: 12 } }
-                }
                 return undefined
-            })
+            }))
 
             const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', {
-                id: 'pay_inst_2', value: 100, paymentLink: 'pl_inst', installmentNumber: 2,
+                id: 'pay_inst_2', value: 9999, paymentLink: 'pl_inst', installmentNumber: 2,
             })))
             expect(res.status).toBe(200)
 
+            // Parcela N>1: as estratégias de ativação TENTAM o UPDATE, mas com
+            // filtro status IN (pending_payment, past_due) — não reativam um
+            // contrato já active. A prova do registro é o upsert autoritativo:
             const upserts = stub.calls('financial_transactions', 'upsert')
             expect(upserts.length).toBe(1)
             expect(upserts[0].payload).toMatchObject({
                 asaas_payment_id: 'pay_inst_2',
+                amount_gross: 100,    // AUTORITATIVO (parcela real), não 9999
                 installment_number: 2,
                 installment_total: 12,
             })
         })
 
         it('dedupes contract_events by paymentId (RECEIVED followed by CONFIRMED)', async () => {
-            stub.onQuery((q) => {
+            h.getPayment.mockResolvedValue(paid({ value: 150 }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_1' }, (q) => {
                 if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'asaas_payment_id', 'pay_1')) {
                     return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
                 }
-                if (q.table === 'student_contracts' && q.op === 'select' && hasFilter(q, 'eq', 'id', CONTRACT_ID)) {
-                    return { data: { trainer_id: TRAINER_ID, student_id: STUDENT_ID, installment_count: null } }
-                }
                 if (q.table === 'contract_events' && q.op === 'select') {
-                    // Evento payment_received já existe pra esse paymentId
                     return { data: { id: 'existing-event' } }
                 }
                 return undefined
-            })
+            }))
 
             const res = await POST(makeRequest(paymentEvent('PAYMENT_CONFIRMED', { id: 'pay_1', value: 150 })))
             expect(res.status).toBe(200)
@@ -329,15 +373,13 @@ describe('POST /api/webhooks/asaas', () => {
         })
 
         it('backfills asaas_subscription_id only when still null', async () => {
-            stub.onQuery((q) => {
+            h.getPayment.mockResolvedValue(paid({ value: 50 }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_sub' }, (q) => {
                 if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'asaas_payment_id', 'pay_sub')) {
                     return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
                 }
-                if (q.table === 'student_contracts' && q.op === 'select' && hasFilter(q, 'eq', 'id', CONTRACT_ID)) {
-                    return { data: { trainer_id: TRAINER_ID, student_id: STUDENT_ID, installment_count: null } }
-                }
                 return undefined
-            })
+            }))
 
             await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', {
                 id: 'pay_sub', value: 50, subscription: 'asaas-sub-1',
@@ -351,37 +393,117 @@ describe('POST /api/webhooks/asaas', () => {
         })
 
         it('routes PAYMENT_RECEIVED_IN_CASH through the same received handler', async () => {
-            stub.onQuery((q) => {
+            h.getPayment.mockResolvedValue(paid({ status: 'RECEIVED_IN_CASH', value: 70 }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_cash' }, (q) => {
                 if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'asaas_payment_id', 'pay_cash')) {
                     return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
                 }
-                if (q.table === 'student_contracts' && q.op === 'select' && hasFilter(q, 'eq', 'id', CONTRACT_ID)) {
-                    return { data: { trainer_id: TRAINER_ID, student_id: STUDENT_ID, installment_count: null } }
-                }
                 return undefined
-            })
+            }))
 
             const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED_IN_CASH', { id: 'pay_cash', value: 70 })))
             expect(res.status).toBe(200)
             expect(stub.calls('financial_transactions', 'upsert').length).toBe(1)
         })
 
-        it('falls back to updating the transaction by payment id when no contract matches', async () => {
-            const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_orphan', value: 10, netValue: 9 })))
+        it('no contract AND no transaction → acks without verifying or mutating', async () => {
+            const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_orphan', value: 10 })))
             expect(res.status).toBe(200)
-
             expect(stub.calls('financial_transactions', 'upsert').length).toBe(0)
+            expect(stub.calls('financial_transactions', 'update').length).toBe(0)
+            expect(h.getPayment).not.toHaveBeenCalled()
+        })
+
+        it('legacy: no contract but an existing transaction → verifies via the tx trainer, completes it with the AUTHORITATIVE net value', async () => {
+            h.getPayment.mockResolvedValue(paid({ id: 'pay_legacy', value: 60, netValue: 58 }))
+            stub.onQuery((q) => {
+                // resolveOwnerContract → null (sem contrato), mas há transação legada.
+                if (q.table === 'financial_transactions' && q.op === 'select' && hasFilter(q, 'eq', 'asaas_payment_id', 'pay_legacy')) {
+                    return { data: { coach_id: TRAINER_ID } }
+                }
+                return undefined
+            })
+
+            const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_legacy', value: 9999, netValue: 9999 })))
+            expect(res.status).toBe(200)
+            expect(h.getPayment).toHaveBeenCalledWith('sk-subaccount', 'pay_legacy')
             const fallback = stub.calls('financial_transactions', 'update')
             expect(fallback.length).toBe(1)
-            expect(fallback[0].payload).toMatchObject({ status: 'completed', amount_net: 9 })
-            expect(hasFilter(fallback[0], 'eq', 'asaas_payment_id', 'pay_orphan')).toBe(true)
-            expect(notifyMock).not.toHaveBeenCalled()
+            expect(fallback[0].payload).toMatchObject({ status: 'completed', amount_net: 58 }) // autoritativo, não 9999
         })
 
         it('does nothing beyond idempotency when the event carries no payment object', async () => {
             const res = await POST(makeRequest({ id: 'evt_np', event: 'PAYMENT_RECEIVED', dateCreated: 'x' }))
             expect(res.status).toBe(200)
             expect(stub.queries.length).toBe(1) // só webhook_events
+        })
+    })
+
+    describe('PAYMENT_RECEIVED — verificação anti-forja', () => {
+        function forge(extra: Record<string, unknown> = {}) {
+            return makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_forged', value: 500, ...extra }))
+        }
+        function expectNoMutation() {
+            expect(stub.calls('student_contracts', 'update').length).toBe(0)
+            expect(stub.calls('financial_transactions', 'upsert').length).toBe(0)
+            expect(stub.calls('financial_transactions', 'update').length).toBe(0)
+            expect(stub.rpcCalls.length).toBe(0)
+        }
+
+        it('PERMANENT: payment not found in the owner subaccount (404) → 200, keeps row, NO mutation', async () => {
+            h.getPayment.mockRejectedValue(new AsaasApiError(404, { errors: [{ description: 'not found' }] }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_forged' }))
+            const res = await POST(forge())
+            expect(res.status).toBe(200)
+            expect(stub.calls('webhook_events', 'delete').length).toBe(0) // não soltou a idempotência
+            expectNoMutation()
+        })
+
+        it('PERMANENT: a malformed id rejected by Asaas (400) → 200, NO mutation', async () => {
+            h.getPayment.mockRejectedValue(new AsaasApiError(400, { errors: [{ description: 'invalid id' }] }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_forged' }))
+            const res = await POST(forge())
+            expect(res.status).toBe(200)
+            expect(stub.calls('webhook_events', 'delete').length).toBe(0)
+            expectNoMutation()
+        })
+
+        it('PERMANENT: payment exists but is NOT paid (PENDING) → 200, NO mutation', async () => {
+            h.getPayment.mockResolvedValue(paid({ status: 'PENDING' }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_forged' }))
+            const res = await POST(forge())
+            expect(res.status).toBe(200)
+            expectNoMutation()
+        })
+
+        it('PERMANENT: a real paid payment that ties to ANOTHER contract → 200, NO mutation', async () => {
+            // Existe e pago, mas o externalReference autoritativo é de outro
+            // contrato (e nenhum link/id casa) → ativar contrato alheio.
+            h.getPayment.mockResolvedValue(paid({ externalReference: 'other-contract', paymentLink: null, id: 'pay_other' }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_forged' }))
+            const res = await POST(forge())
+            expect(res.status).toBe(200)
+            expectNoMutation()
+        })
+
+        it('TRANSIENT: Asaas 5xx on re-fetch → 500 + releases the idempotency row (redeliver)', async () => {
+            h.getPayment.mockRejectedValue(new AsaasApiError(503, { errors: [{ description: 'unavailable' }] }))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_forged' }))
+            const res = await POST(forge())
+            expect(res.status).toBe(500)
+            const releases = stub.calls('webhook_events', 'delete')
+            expect(releases.length).toBe(1)
+            expect(hasFilter(releases[0], 'eq', 'event_id', 'asaas-evt_1')).toBe(true)
+            expectNoMutation()
+        })
+
+        it('TRANSIENT: subaccount key unavailable → 500 + releases the idempotency row', async () => {
+            h.getKey.mockRejectedValue(new Error('wallet not approved'))
+            stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_forged' }))
+            const res = await POST(forge())
+            expect(res.status).toBe(500)
+            expect(stub.calls('webhook_events', 'delete').length).toBe(1)
+            expectNoMutation()
         })
     })
 
