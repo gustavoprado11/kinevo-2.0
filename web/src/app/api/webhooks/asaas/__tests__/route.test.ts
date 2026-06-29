@@ -69,6 +69,7 @@ const resolveByAccountMock = vi.mocked(resolveTrainerByAsaasAccount)
 const logEventMock = vi.mocked(logContractEvent)
 
 const WEBHOOK_TOKEN = 'test-webhook-token'
+const SCOPED_TOKEN = 'subaccount-scoped-token' // token POR SUBCONTA (Fase 2)
 const TRAINER_ID = 'trainer-1'
 const STUDENT_ID = 'student-1'
 const CONTRACT_ID = 'contract-1'
@@ -179,7 +180,9 @@ describe('POST /api/webhooks/asaas', () => {
         it('returns 400 when the payload misses id or event', async () => {
             const res = await POST(makeRequest({ event: 'PAYMENT_RECEIVED' }))
             expect(res.status).toBe(400)
-            expect(stub.queries.length).toBe(0)
+            // +1: o dual-accept faz 1 lookup (resolveScopedTrainer) antes do parse.
+            expect(stub.queries.length).toBe(1)
+            expect(stub.calls('webhook_events', 'insert').length).toBe(0) // nada processado
         })
     })
 
@@ -204,8 +207,8 @@ describe('POST /api/webhooks/asaas', () => {
             })
             const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_1', value: 100 })))
             expect(res.status).toBe(200)
-            // Só a tentativa de insert — nenhum handler rodou.
-            expect(stub.queries.length).toBe(1)
+            // resolveScopedTrainer (1) + insert de idempotência (1); nenhum handler rodou.
+            expect(stub.queries.length).toBe(2)
         })
 
         it('returns 500 without processing when the idempotency store fails (transient, not a duplicate)', async () => {
@@ -222,8 +225,8 @@ describe('POST /api/webhooks/asaas', () => {
             })
             const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_1', value: 100 })))
             expect(res.status).toBe(500)
-            // Não processou nada além da tentativa de insert.
-            expect(stub.queries.length).toBe(1)
+            // resolveScopedTrainer (1) + a tentativa de insert (1).
+            expect(stub.queries.length).toBe(2)
         })
     })
 
@@ -435,7 +438,7 @@ describe('POST /api/webhooks/asaas', () => {
         it('does nothing beyond idempotency when the event carries no payment object', async () => {
             const res = await POST(makeRequest({ id: 'evt_np', event: 'PAYMENT_RECEIVED', dateCreated: 'x' }))
             expect(res.status).toBe(200)
-            expect(stub.queries.length).toBe(1) // só webhook_events
+            expect(stub.queries.length).toBe(2) // resolveScopedTrainer + webhook_events
         })
     })
 
@@ -732,6 +735,98 @@ describe('POST /api/webhooks/asaas', () => {
             expect(await res.json()).toEqual({ received: true })
             // Não liberou a idempotência.
             expect(stub.calls('webhook_events', 'delete').length).toBe(0)
+        })
+    })
+
+    // ── Fase 2 — escopo por subconta (token POR SUBCONTA) ───────────────────
+    // O token escopado resolve para EXATAMENTE um trainer (resolveScopedTrainer
+    // via webhook_token_hash). A partir daí: o payment-received cruza o dono do
+    // contrato contra o trainer escopado, e os handlers não-payment restringem
+    // as mutações às linhas do trainer escopado (defense-in-depth).
+    describe('Fase 2 — escopo por subconta', () => {
+        /** Faz resolveScopedTrainer (SELECT maybeSingle em trainer_payment_accounts
+         *  por webhook_token_hash) enxergar este token como sendo do `trainerId`. */
+        function scopedTo(trainerId: string, inner: (q: RecordedQuery) => StubResult | undefined = () => undefined) {
+            return (q: RecordedQuery): StubResult | undefined => {
+                if (q.table === 'trainer_payment_accounts' && q.op === 'select' && q.maybeSingle) {
+                    return { data: { trainer_id: trainerId } }
+                }
+                return inner(q)
+            }
+        }
+
+        it('scoped-to-RIGHT trainer: PAYMENT_RECEIVED do dono do contrato APLICA (cross-check passa)', async () => {
+            h.getPayment.mockResolvedValue(paid({ value: 150, netValue: 145.5 }))
+            stub.onQuery(scopedTo(TRAINER_ID, withOwner({ ...OWNER, asaas_payment_id: 'pay_scoped' }, (q) => {
+                if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'asaas_payment_id', 'pay_scoped')) {
+                    return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
+                }
+                return undefined
+            })))
+
+            const res = await POST(makeRequest(
+                paymentEvent('PAYMENT_RECEIVED', { id: 'pay_scoped', value: 150, externalReference: CONTRACT_ID }),
+                SCOPED_TOKEN,
+            ))
+            expect(res.status).toBe(200)
+            // Mesmo trainer → cross-check passa → re-fetch autoritativo + upsert.
+            expect(h.getPayment).toHaveBeenCalledWith('sk-subaccount', 'pay_scoped')
+            const upserts = stub.calls('financial_transactions', 'upsert')
+            expect(upserts.length).toBe(1)
+            expect(upserts[0].payload).toMatchObject({ coach_id: TRAINER_ID, amount_gross: 150 })
+        })
+
+        it('scoped-to-WRONG trainer: contrato pertence a OUTRO trainer → 200, NENHUMA mutação, SEM re-fetch', async () => {
+            // Token da subconta de 'trainer-OTHER', mas o contrato dono é do TRAINER_ID.
+            stub.onQuery(scopedTo('trainer-OTHER', withOwner({ ...OWNER, asaas_payment_id: 'pay_scoped' })))
+
+            const res = await POST(makeRequest(
+                paymentEvent('PAYMENT_RECEIVED', { id: 'pay_scoped', value: 150, externalReference: CONTRACT_ID }),
+                SCOPED_TOKEN,
+            ))
+            // PermanentWebhookError (cross-check) → ack, mantém idempotência.
+            expect(res.status).toBe(200)
+            expect(stub.calls('webhook_events', 'delete').length).toBe(0)
+            // O cross-check barra ANTES do re-fetch e de QUALQUER mutação.
+            expect(h.getPayment).not.toHaveBeenCalled()
+            expect(stub.calls('financial_transactions', 'upsert').length).toBe(0)
+            expect(stub.calls('student_contracts', 'update').length).toBe(0)
+            expect(stub.rpcCalls.length).toBe(0)
+        })
+
+        it('scoped non-payment (OVERDUE): o filtro de tenant prende as mutações ao trainer escopado', async () => {
+            stub.onQuery(scopedTo(TRAINER_ID, (q) => {
+                if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'asaas_payment_id', 'pay_late')) {
+                    return { data: [{ id: CONTRACT_ID, trainer_id: TRAINER_ID, student_id: STUDENT_ID }] }
+                }
+                return undefined
+            }))
+
+            const res = await POST(makeRequest(
+                paymentEvent('PAYMENT_OVERDUE', { id: 'pay_late', value: 200 }),
+                SCOPED_TOKEN,
+            ))
+            expect(res.status).toBe(200)
+            // Um OVERDUE forjado chegando neste token só pode marcar as linhas
+            // DESTE trainer — nunca as de outro tenant.
+            const txUpdate = stub.calls('financial_transactions', 'update')[0]
+            expect(hasFilter(txUpdate, 'eq', 'coach_id', TRAINER_ID)).toBe(true)
+            const contractUpdate = stub.calls('student_contracts', 'update')[0]
+            expect(hasFilter(contractUpdate, 'eq', 'trainer_id', TRAINER_ID)).toBe(true)
+        })
+
+        it('caminho GLOBAL legado: emite um warn IDENTIFICÁVEL (evento + id do recurso) pra triagem da rotação', async () => {
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+            // Token GLOBAL (default WEBHOOK_TOKEN) → scopedTrainerId null → caminho legado.
+            await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_glob' }, 'evt_glob')))
+            const identifiable = warnSpy.mock.calls.find(
+                (c) => typeof c[0] === 'string' && c[0].includes('legacy GLOBAL token'),
+            )
+            expect(identifiable).toBeDefined()
+            expect(identifiable![0]).toContain('event=PAYMENT_RECEIVED')
+            expect(identifiable![0]).toContain('id=evt_glob')
+            expect(identifiable![0]).toContain('resource=pay_glob')
+            warnSpy.mockRestore()
         })
     })
 })

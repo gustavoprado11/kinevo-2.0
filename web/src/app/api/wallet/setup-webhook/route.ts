@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     try {
         const trainer = await requireTrainer(request)
         const apiKey = await getDecryptedApiKey(trainer.id)
-        const result = await ensureSubaccountWebhook(apiKey)
+        const result = await ensureSubaccountWebhook(apiKey, { trainerId: trainer.id })
         return NextResponse.json({
             ok: true,
             created: result.created,

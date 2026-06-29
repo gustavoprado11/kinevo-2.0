@@ -8,9 +8,25 @@
 // Each event has a stable `id` we use for idempotency in webhook_events.
 // ============================================================================
 
+import { createHash, randomBytes } from 'crypto'
 import type { AsaasWebhookEvent } from '@kinevo/shared/types/asaas'
 
 const ASAAS_WEBHOOK_TOKEN_HEADER = 'asaas-access-token'
+
+// ── Token POR SUBCONTA (Fase 2) ─────────────────────────────────────────────
+// Cada subconta tem um authToken aleatório próprio. Guardamos só o HASH no
+// banco (trainer_payment_accounts.webhook_token_hash); o token cru vive só no
+// Asaas (authToken da subconta) e no header que ele manda de volta.
+
+/** Gera um token aleatório de alta entropia pro authToken de uma subconta. */
+export function generateWebhookToken(): string {
+    return randomBytes(32).toString('hex')
+}
+
+/** sha256 hex do token — o que persistimos e comparamos. */
+export function hashWebhookToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex')
+}
 
 /**
  * Verify the Asaas webhook secret. Returns true if the header matches the

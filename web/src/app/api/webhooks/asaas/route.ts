@@ -18,6 +18,7 @@ import {
     PermanentWebhookError,
     getPayment,
     AsaasApiError,
+    hashWebhookToken,
     ASAAS_WEBHOOK_TOKEN_HEADER,
     type AsaasWebhookEvent,
     type AsaasPayment,
@@ -32,12 +33,35 @@ import {
 import { logContractEvent } from '@/lib/contract-events'
 import { formatBRL } from '@kinevo/shared/utils/currency'
 
+// ── Auth do webhook: token POR SUBCONTA + global legado (Fase 2) ────────────
+// Resolve o asaas-access-token → exatamente um trainer_id (a subconta dona do
+// token). Quem vier pelo token GLOBAL legado resolve null (sem escopo; a Fase 1
+// ainda protege o payment-received). Dual-accept até a rotação fechar.
+
+/** Resolve o trainer dono do token (por-subconta) via hash, ou null (global/inválido). */
+async function resolveScopedTrainer(token: string | null | undefined): Promise<string | null> {
+    if (!token) return null
+    const { data } = await supabaseAdmin
+        .from('trainer_payment_accounts')
+        .select('trainer_id')
+        .eq('webhook_token_hash', hashWebhookToken(token))
+        .maybeSingle()
+    return (data?.trainer_id as string | undefined) ?? null
+}
+
 export async function POST(request: NextRequest) {
-    // 1. Verify shared-secret header
+    // 1. Auth DUAL-ACCEPT: token POR SUBCONTA (escopado) tem precedência; o
+    //    token GLOBAL legado é aceito SEM escopo até a rotação fechar.
     const headerValue = request.headers.get(ASAAS_WEBHOOK_TOKEN_HEADER)
-    if (!verifyWebhookSecret(headerValue)) {
-        console.warn('[asaas-webhook] Rejected: bad asaas-access-token')
-        return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    const scopedTrainerId = await resolveScopedTrainer(headerValue)
+    if (!scopedTrainerId) {
+        if (!verifyWebhookSecret(headerValue)) {
+            console.warn('[asaas-webhook] Rejected: bad asaas-access-token')
+            return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        }
+        // Caminho GLOBAL legado (sem escopo de tenant), aceito só durante a
+        // transição. O warn IDENTIFICÁVEL (qual evento/subconta) é emitido logo
+        // após o parse — aqui ainda não temos o body.
     }
 
     // 2. Parse body
@@ -51,6 +75,19 @@ export async function POST(request: NextRequest) {
     } catch (err) {
         console.error('[asaas-webhook] Bad payload:', err)
         return NextResponse.json({ error: 'bad payload' }, { status: 400 })
+    }
+
+    // 2b. Caminho GLOBAL legado IDENTIFICÁVEL: carrega evento + id do recurso
+    //     pra mapear QUAL subconta ainda manda pelo token global (= ainda não
+    //     rotacionou). Esperado só na transição; quando
+    //     allApprovedSubaccountsRotated() = true este log NÃO deveria mais
+    //     aparecer — se aparecer, é subconta que escapou da rotação ou uso do
+    //     token legado → investigar e rotacionar a subconta dona do recurso.
+    if (!scopedTrainerId) {
+        const resourceId = event.payment?.id ?? event.transfer?.id ?? event.account?.id ?? 'unknown'
+        console.warn(
+            `[asaas-webhook] event via legacy GLOBAL token (unscoped) — event=${event.event} id=${event.id} resource=${resourceId} — rotate the owning subaccount`,
+        )
     }
 
     // 3. Idempotency: insert into webhook_events. If unique violation, skip.
@@ -90,42 +127,42 @@ export async function POST(request: NextRequest) {
             case 'PAYMENT_RECEIVED':
             case 'PAYMENT_CONFIRMED':
             case 'PAYMENT_RECEIVED_IN_CASH'.toUpperCase() as never:
-                await handlePaymentReceived(event)
+                await handlePaymentReceived(event, scopedTrainerId)
                 break
 
             case 'PAYMENT_OVERDUE':
-                await handlePaymentOverdue(event)
+                await handlePaymentOverdue(event, scopedTrainerId)
                 break
 
             case 'PAYMENT_REFUNDED':
             case 'PAYMENT_DELETED':
-                await handlePaymentRefunded(event)
+                await handlePaymentRefunded(event, scopedTrainerId)
                 break
 
             case 'PAYMENT_CHARGEBACK_REQUESTED':
             case 'PAYMENT_CHARGEBACK_DISPUTE':
             case 'PAYMENT_AWAITING_CHARGEBACK_REVERSAL':
-                await handlePaymentChargeback(event)
+                await handlePaymentChargeback(event, scopedTrainerId)
                 break
 
             case 'TRANSFER_DONE':
-                await handleTransferDone(event)
+                await handleTransferDone(event, scopedTrainerId)
                 break
 
             case 'TRANSFER_FAILED':
             case 'TRANSFER_CANCELLED':
-                await handleTransferFailed(event)
+                await handleTransferFailed(event, scopedTrainerId)
                 break
 
             case 'TRANSFER_PENDING':
             case 'TRANSFER_IN_BANK_PROCESSING':
-                await handleTransferProcessing(event)
+                await handleTransferProcessing(event, scopedTrainerId)
                 break
 
             case 'ACCOUNT_STATUS_UPDATED':
             case 'ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED':
             case 'ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED':
-                await handleAccountStatusUpdated(event)
+                await handleAccountStatusUpdated(event, scopedTrainerId)
                 break
 
             default:
@@ -248,7 +285,7 @@ async function resolveOwnerContract(
 // Handlers
 // ---------------------------------------------------------------------------
 
-async function handlePaymentReceived(event: AsaasWebhookEvent) {
+async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: string | null) {
     const payment = event.payment
     if (!payment) return
 
@@ -261,6 +298,12 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
         const ownerContract = await resolveOwnerContract(payment)
         let authPayment: AsaasPayment
         if (ownerContract) {
+            // Token POR SUBCONTA: o evento tem que ser do dono do contrato.
+            if (scopedTrainerId && ownerContract.trainer_id !== scopedTrainerId) {
+                throw new PermanentWebhookError(
+                    `event scoped to trainer ${scopedTrainerId} but contract ${ownerContract.id} belongs to ${ownerContract.trainer_id}`,
+                )
+            }
             authPayment = await fetchVerifiedPayment(ownerContract.trainer_id, payment.id)
             const tiesToContract =
                 authPayment.externalReference === ownerContract.id ||
@@ -512,30 +555,34 @@ async function handlePaymentReceived(event: AsaasWebhookEvent) {
     }
 }
 
-async function handlePaymentOverdue(event: AsaasWebhookEvent) {
+async function handlePaymentOverdue(event: AsaasWebhookEvent, scopedTrainerId: string | null) {
     const payment = event.payment
     if (!payment) return
-    await supabaseAdmin
+    let txq = supabaseAdmin
         .from('financial_transactions')
         .update({ status: 'overdue' })
         .eq('asaas_payment_id', payment.id)
+    if (scopedTrainerId) txq = txq.eq('coach_id', scopedTrainerId)
+    await txq
     // Tenta atualizar contrato por asaas_payment_id (Payment Link já tinha
     // sido backfilled em PAYMENT_RECEIVED) OU diretamente pelo paymentLink id
     type ContractRef = { id: string; trainer_id: string; student_id: string }
     let matchedContract: ContractRef | null = null
-    const { data: byPay } = await supabaseAdmin
+    let cq = supabaseAdmin
         .from('student_contracts')
         .update({ status: 'past_due' })
         .eq('asaas_payment_id', payment.id)
-        .select('id, trainer_id, student_id')
+    if (scopedTrainerId) cq = cq.eq('trainer_id', scopedTrainerId)
+    const { data: byPay } = await cq.select('id, trainer_id, student_id')
     if (byPay && byPay.length > 0) {
         matchedContract = byPay[0] as ContractRef
     } else if (payment.paymentLink) {
-        const { data: byLink } = await supabaseAdmin
+        let lq = supabaseAdmin
             .from('student_contracts')
             .update({ status: 'past_due', asaas_payment_id: payment.id })
             .eq('asaas_payment_link_id', payment.paymentLink)
-            .select('id, trainer_id, student_id')
+        if (scopedTrainerId) lq = lq.eq('trainer_id', scopedTrainerId)
+        const { data: byLink } = await lq.select('id, trainer_id, student_id')
         if (byLink && byLink.length > 0) {
             matchedContract = byLink[0] as ContractRef
         }
@@ -569,13 +616,15 @@ async function handlePaymentOverdue(event: AsaasWebhookEvent) {
     }
 }
 
-async function handlePaymentRefunded(event: AsaasWebhookEvent) {
+async function handlePaymentRefunded(event: AsaasWebhookEvent, scopedTrainerId: string | null) {
     const payment = event.payment
     if (!payment) return
-    await supabaseAdmin
+    let q = supabaseAdmin
         .from('financial_transactions')
         .update({ status: 'refunded' })
         .eq('asaas_payment_id', payment.id)
+    if (scopedTrainerId) q = q.eq('coach_id', scopedTrainerId)
+    await q
 
     const trainerId = await resolveTrainerByAsaasPayment(payment.id, payment.paymentLink)
     if (trainerId) {
@@ -591,14 +640,16 @@ async function handlePaymentRefunded(event: AsaasWebhookEvent) {
 
 // PAYMENT_CHARGEBACK_REQUESTED / DISPUTE / AWAITING_REVERSAL.
 // Crítico: o trainer precisa responder dentro do prazo da operadora via Asaas.
-async function handlePaymentChargeback(event: AsaasWebhookEvent) {
+async function handlePaymentChargeback(event: AsaasWebhookEvent, scopedTrainerId: string | null) {
     const payment = event.payment
     if (!payment) return
     // Marca a transação como contestada pra refletir no extrato.
-    await supabaseAdmin
+    let q = supabaseAdmin
         .from('financial_transactions')
         .update({ status: 'disputed' })
         .eq('asaas_payment_id', payment.id)
+    if (scopedTrainerId) q = q.eq('coach_id', scopedTrainerId)
+    await q
 
     const reversed = event.event === 'PAYMENT_AWAITING_CHARGEBACK_REVERSAL'
     const trainerId = await resolveTrainerByAsaasPayment(payment.id, payment.paymentLink)
@@ -615,10 +666,10 @@ async function handlePaymentChargeback(event: AsaasWebhookEvent) {
     }
 }
 
-async function handleTransferDone(event: AsaasWebhookEvent) {
+async function handleTransferDone(event: AsaasWebhookEvent, scopedTrainerId: string | null) {
     const transfer = event.transfer
     if (!transfer) return
-    await supabaseAdmin
+    let q = supabaseAdmin
         .from('payouts')
         .update({
             status: 'completed',
@@ -626,6 +677,8 @@ async function handleTransferDone(event: AsaasWebhookEvent) {
             completed_at: new Date().toISOString(),
         })
         .eq('asaas_transfer_id', transfer.id)
+    if (scopedTrainerId) q = q.eq('trainer_id', scopedTrainerId)
+    await q
 
     // Notifica o trainer que o saque caiu na conta
     const trainerId = await resolveTrainerByAsaasTransfer(transfer.id)
@@ -640,18 +693,20 @@ async function handleTransferDone(event: AsaasWebhookEvent) {
     }
 }
 
-async function handleTransferFailed(event: AsaasWebhookEvent) {
+async function handleTransferFailed(event: AsaasWebhookEvent, scopedTrainerId: string | null) {
     const transfer = event.transfer
     if (!transfer) return
     const cancelled = transfer.status === 'CANCELLED'
     const reason = transfer.failReason ?? 'Transfer failed at Asaas'
-    await supabaseAdmin
+    let q = supabaseAdmin
         .from('payouts')
         .update({
             status: cancelled ? 'cancelled' : 'failed',
             failure_reason: reason,
         })
         .eq('asaas_transfer_id', transfer.id)
+    if (scopedTrainerId) q = q.eq('trainer_id', scopedTrainerId)
+    await q
 
     // Crítico: o trainer tentou sacar e não caiu. Sempre notifica.
     const trainerId = await resolveTrainerByAsaasTransfer(transfer.id)
@@ -666,16 +721,18 @@ async function handleTransferFailed(event: AsaasWebhookEvent) {
     }
 }
 
-async function handleTransferProcessing(event: AsaasWebhookEvent) {
+async function handleTransferProcessing(event: AsaasWebhookEvent, scopedTrainerId: string | null) {
     const transfer = event.transfer
     if (!transfer) return
-    await supabaseAdmin
+    let q = supabaseAdmin
         .from('payouts')
         .update({ status: 'processing' })
         .eq('asaas_transfer_id', transfer.id)
+    if (scopedTrainerId) q = q.eq('trainer_id', scopedTrainerId)
+    await q
 }
 
-async function handleAccountStatusUpdated(event: AsaasWebhookEvent) {
+async function handleAccountStatusUpdated(event: AsaasWebhookEvent, scopedTrainerId: string | null) {
     const account = event.account
     if (!account?.id) return
 
@@ -687,10 +744,12 @@ async function handleAccountStatusUpdated(event: AsaasWebhookEvent) {
     if (localStatus === 'approved') {
         updates.activated_at = new Date().toISOString()
     }
-    await supabaseAdmin
+    let q = supabaseAdmin
         .from('trainer_payment_accounts')
         .update(updates)
         .eq('asaas_account_id', account.id)
+    if (scopedTrainerId) q = q.eq('trainer_id', scopedTrainerId)
+    await q
 
     // Notifica o trainer de mudanças significativas no KYC. Aprovação é
     // notícia boa, rejeição/bloqueio é crítico.
