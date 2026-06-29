@@ -173,19 +173,30 @@ export async function markAsPaidCore(
     if (!contract) return { error: 'Contrato não encontrado' }
     if (contract.trainer_id !== trainerId) return { error: 'Sem permissão' }
 
-    // manual_one_off: marca pago, NÃO renova período
-    if (contract.billing_type === 'manual_one_off') {
-        const { error: updateError } = await supabaseAdmin
-            .from('student_contracts')
-            .update({ status: 'active' })
-            .eq('id', contractId)
+    // one_off NÃO renova período; qualquer outro tipo manual (recurring) renova.
+    const isRecurring = contract.billing_type !== 'manual_one_off'
 
-        if (updateError) {
-            console.error('[markAsPaidCore] DB error:', updateError)
-            return { error: 'Erro ao atualizar contrato' }
-        }
+    // Período sendo liquidado, capturado ANTES de qualquer avanço — é o que
+    // amarra a idempotência aos DOIS efeitos (linha duplicada + avanço duplo).
+    const currentEnd = contract.current_period_end
+        ? new Date(contract.current_period_end)
+        : new Date()
 
-        await supabaseAdmin.from('financial_transactions').insert({
+    // Chave de idempotência DETERMINÍSTICA (substitui o `manual_<uuid>` aleatório,
+    // que nunca colidia → não dedupava nada):
+    //   • avulso (one_off): liquidado uma vez → chave estável.
+    //   • recorrente: por período liquidado (currentEnd, antes do avanço).
+    const idemKey = isRecurring
+        ? `manual_${contractId}_${currentEnd.toISOString()}`
+        : `manual_${contractId}_oneoff`
+
+    // INSERT-FIRST como lock de idempotência. A unique parcial em
+    // stripe_payment_id (migration 220) garante que só UMA chamada grava a
+    // transação dessa chave; o avanço de período abaixo só roda pra quem GANHOU
+    // o insert — então a dupla-chamada não duplica a linha NEM adianta o período.
+    const { error: insertError } = await supabaseAdmin
+        .from('financial_transactions')
+        .insert({
             coach_id: trainerId,
             student_id: contract.student_id,
             amount_gross: contract.amount,
@@ -193,60 +204,40 @@ export async function markAsPaidCore(
             currency: 'brl',
             type: 'subscription',
             status: 'succeeded',
-            stripe_payment_id: `manual_${crypto.randomUUID()}`,
-            description: 'Pagamento avulso registrado',
+            stripe_payment_id: idemKey,
+            description: isRecurring ? 'Pagamento manual registrado' : 'Pagamento avulso registrado',
         })
-
-        await logContractEvent({
-            studentId: contract.student_id,
-            trainerId,
-            contractId,
-            eventType: 'payment_received',
-            metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_one_off' },
-        })
-
-        return { success: true }
+    if (insertError) {
+        // 23505 = unique_violation → esse período já foi liquidado (dupla-chamada)
+        // → no-op idempotente: não grava de novo e NÃO avança o período.
+        if (insertError.code === '23505') return { success: true }
+        console.error('[markAsPaidCore] DB error (insert):', insertError)
+        return { error: 'Erro ao registrar pagamento' }
     }
 
-    // manual_recurring: renova a partir do vencimento anterior (não de hoje)
-    const currentEnd = contract.current_period_end
-        ? new Date(contract.current_period_end)
-        : new Date()
-
+    // Só a 1ª chamada (quem ganhou o insert) chega aqui. Ativa e — no recorrente
+    // — avança o período a partir do vencimento ANTERIOR (não de hoje).
     const planInterval = (contract.trainer_plans as { interval: string } | null)?.interval || 'month'
-    const newPeriodEnd = addInterval(currentEnd, planInterval)
-
     const { error: updateError } = await supabaseAdmin
         .from('student_contracts')
-        .update({
-            status: 'active',
-            current_period_end: newPeriodEnd.toISOString(),
-        })
+        .update(
+            isRecurring
+                ? { status: 'active', current_period_end: addInterval(currentEnd, planInterval).toISOString() }
+                : { status: 'active' },
+        )
         .eq('id', contractId)
 
     if (updateError) {
-        console.error('[markAsPaidCore] DB error:', updateError)
+        console.error('[markAsPaidCore] DB error (update):', updateError)
         return { error: 'Erro ao atualizar contrato' }
     }
-
-    await supabaseAdmin.from('financial_transactions').insert({
-        coach_id: trainerId,
-        student_id: contract.student_id,
-        amount_gross: contract.amount,
-        amount_net: contract.amount,
-        currency: 'brl',
-        type: 'subscription',
-        status: 'succeeded',
-        stripe_payment_id: `manual_${crypto.randomUUID()}`,
-        description: 'Pagamento manual registrado',
-    })
 
     await logContractEvent({
         studentId: contract.student_id,
         trainerId,
         contractId,
         eventType: 'payment_received',
-        metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_recurring' },
+        metadata: { amount: contract.amount, method: 'manual', billing_type: contract.billing_type },
     })
 
     return { success: true }
