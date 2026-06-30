@@ -3861,6 +3861,7 @@ export type Database = {
           trainer_id: string
           updated_at: string
           webhook_configured_at: string | null
+          webhook_token_hash: string | null
         }
         Insert: {
           account_mode?: string
@@ -3885,6 +3886,7 @@ export type Database = {
           trainer_id: string
           updated_at?: string
           webhook_configured_at?: string | null
+          webhook_token_hash?: string | null
         }
         Update: {
           account_mode?: string
@@ -3909,6 +3911,7 @@ export type Database = {
           trainer_id?: string
           updated_at?: string
           webhook_configured_at?: string | null
+          webhook_token_hash?: string | null
         }
         Relationships: []
       }
