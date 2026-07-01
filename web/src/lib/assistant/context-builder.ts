@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { enrichStudentContext, type EnrichedStudentContext } from '@/lib/prescription/context-enricher'
+import { firstNameOf } from '@/lib/assistant/ambiguity'
 
 // ── Contexto temporal ──
 // TODO: usar o timezone por treinador quando existir coluna no schema (trainers.timezone).
@@ -285,11 +286,26 @@ ${insightsStr}`.trim()
         ? `\nInsights ativos:\n<<DADOS_DO_ALUNO>>\n${snapshot.insights.map(i => `  - [${i.category}] ${i.student_name ? `${i.student_name}: ` : ''}${i.title}`).join('\n')}\n<<FIM_DADOS_DO_ALUNO>>`
         : ''
 
+    // Homônimos: primeiros nomes repetidos são a causa nº 1 de "agiu no aluno
+    // errado". O aviso explícito faz o modelo perguntar ANTES (a guarda
+    // determinística no motor segura o que passar).
+    const byFirst = new Map<string, string[]>()
+    for (const s of snapshot.students) {
+        const f = firstNameOf(s.name)
+        if (f.length < 3) continue
+        byFirst.set(f, [...(byFirst.get(f) ?? []), s.name])
+    }
+    const dupGroups = [...byFirst.values()].filter((names) => names.length > 1)
+    const dupWarning = dupGroups.length > 0
+        ? `\n⚠️ Primeiro nome repetido entre alunos: ${dupGroups.map((n) => n.join(' × ')).join('; ')}. Ao agir sobre um deles, confirme QUAL com perguntar_treinador (opções = nomes completos) — nunca escolha sozinho.`
+        : ''
+
     return `# Contexto
 ${nowLine()}
 Treinador: ${trainerName} — ${snapshot.students.length} alunos ativos
 
 Alunos:
 ${studentsStr}
+${dupWarning}
 ${insightsStr}`.trim()
 }
