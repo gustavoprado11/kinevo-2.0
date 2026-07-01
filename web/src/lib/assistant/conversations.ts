@@ -37,6 +37,14 @@ export type AssistantMessagePart =
           request: ProposalRequest
           status: 'pending' | 'answered'
       }
+    | {
+          // Memória INTERNA de leitura (Onda 2): digest compacto de um tool-result
+          // que re-entra no histórico do modelo em turnos futuros (tool-memory.ts).
+          // Nunca chega ao cliente — stripInternalParts remove nas rotas.
+          type: 'context'
+          toolName: string
+          digest: string
+      }
 
 export interface ConversationRow {
     id: string

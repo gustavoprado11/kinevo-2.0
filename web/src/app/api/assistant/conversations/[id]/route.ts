@@ -28,6 +28,7 @@ import {
     type AssistantMessagePart,
 } from '@/lib/assistant/conversations'
 import { redactSensitive } from '@/lib/assistant/redact'
+import { toModelHistory, deriveProgramFocus, stripInternalParts } from '@/lib/assistant/tool-memory'
 
 // Turno de CONSTRUÇÃO de programa (Sonnet, vários passos) pode passar de 60s; 300s
 // evita timeout/orphan no meio do build (auditoria C5). Rota gated (Assistente).
@@ -77,7 +78,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         const { id } = await ctx.params
         const data = await getConversationWithMessages(supabaseAdmin, trainer.id, id)
         if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-        return NextResponse.json(data)
+        // Parts `context` são memória interna do modelo — nunca vão ao cliente.
+        return NextResponse.json({ ...data, messages: data.messages.map(stripInternalParts) })
     } catch (error) {
         return assistantErrorResponse('conversation GET', error)
     }
@@ -183,11 +185,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                     existing.messages.find(
                         (m) => m.role === 'assistant' && m.created_at >= dupUser.created_at,
                     ) ?? null
-                return streamDoneResponse({ userMessage: dupUser, message: reply, summary: null })
+                return streamDoneResponse({
+                    userMessage: dupUser,
+                    message: reply ? stripInternalParts(reply) : null,
+                    summary: null,
+                })
             }
         }
 
-        const history = existing.messages.map((m) => ({ role: m.role, content: m.content }))
+        // Onda 2: histórico com memória de tools (blocos <<DADOS_DE_TOOLS>>) +
+        // programa em foco derivado da própria conversa.
+        const history = toModelHistory(existing.messages)
+        const programFocus = deriveProgramFocus(existing.messages)
         const isFirstUserMessage = !existing.messages.some((m) => m.role === 'user')
 
         // Persiste a mensagem do usuário antes do turno (com a key de idempotência).
@@ -235,6 +244,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                         tier: gate.tier,
                         history,
                         studentId: existing.conversation.student_id ?? undefined,
+                        programFocus,
                         onProgress: (label) => emit({ type: 'progress', label }),
                         onTextDelta: (delta) => emit({ type: 'text', delta }),
                         onTextReset: () => emit({ type: 'text_reset' }),
@@ -248,6 +258,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                     if (turn.confirmation) parts.push({ type: 'confirmation', request: turn.confirmation, status: 'pending' })
                     if (turn.question) parts.push({ type: 'question', request: turn.question, status: 'pending' })
                     if (turn.proposal) parts.push({ type: 'proposal', request: turn.proposal, status: 'pending' })
+                    // Memória do turno (Onda 2): interna — persiste, mas não vai ao cliente.
+                    for (const m of turn.memory) parts.push({ type: 'context', toolName: m.toolName, digest: m.digest })
 
                     const assistantMessage = await appendMessage(supabaseAdmin, {
                         conversationId: id, trainerId: trainer.id, role: 'assistant',
@@ -258,7 +270,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                         firstUserMessage: isFirstUserMessage ? input : undefined,
                     })
 
-                    emit({ type: 'done', userMessage, message: assistantMessage, summary: turn.summary })
+                    emit({ type: 'done', userMessage, message: stripInternalParts(assistantMessage), summary: turn.summary })
                 } catch (err) {
                     if ((err as Error)?.name === 'AbortError') {
                         // Stop real: o treinador interrompeu — o LLM parou no servidor,

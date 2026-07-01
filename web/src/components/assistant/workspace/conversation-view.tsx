@@ -312,6 +312,9 @@ function PartView({ part, interactive, onConfirmResolved, onSendText }: {
     onConfirmResolved: (toolName: string, confirmed: boolean, result?: unknown) => void
     onSendText: (text: string) => void
 }) {
+    // Memória interna do modelo (Onda 2) — as rotas já a removem das respostas;
+    // guarda defensiva caso um payload antigo/novo vaze uma part `context`.
+    if (part.type === 'context') return null
     if (part.type === 'executed') {
         const r = part.result as { success?: boolean; reviewUrl?: string } | null
         const failed = r && typeof r === 'object' && r.success === false

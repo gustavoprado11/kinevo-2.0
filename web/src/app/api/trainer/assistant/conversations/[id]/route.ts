@@ -26,6 +26,7 @@ import {
 import { redactSensitive } from '@/lib/assistant/redact'
 import { resolveTrainerBearer } from '@/lib/assistant/mobile-auth'
 import { prepareMobileTurn, finishMobileTurn } from '@/lib/assistant/mobile-turn'
+import { stripInternalParts } from '@/lib/assistant/tool-memory'
 
 // Turno de CONSTRUÇÃO de programa pode passar de 60s; 300s evita timeout no meio.
 export const maxDuration = 300
@@ -54,7 +55,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         const { id } = await ctx.params
         const data = await getConversationWithMessages(supabaseAdmin, trainer.id, id)
         if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-        return NextResponse.json(data)
+        // Parts `context` são memória interna do modelo — nunca vão ao cliente.
+        return NextResponse.json({ ...data, messages: data.messages.map(stripInternalParts) })
     } catch (error) {
         return assistantErrorResponse('trainer/assistant conversation GET', error)
     }

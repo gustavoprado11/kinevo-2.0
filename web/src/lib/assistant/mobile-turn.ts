@@ -22,6 +22,12 @@ import {
     type AssistantMessagePart,
 } from '@/lib/assistant/conversations'
 import { redactSensitive } from '@/lib/assistant/redact'
+import {
+    toModelHistory,
+    deriveProgramFocus,
+    stripInternalParts,
+    type ProgramFocus,
+} from '@/lib/assistant/tool-memory'
 
 const MAX_INPUT_CHARS = 2000
 
@@ -40,6 +46,8 @@ export interface MobileTurnContext {
     gate: AllowedGate
     history: { role: 'user' | 'assistant'; content: string }[]
     studentId?: string
+    /** Programa em foco (Onda 2), derivado da conversa. */
+    programFocus?: ProgramFocus | null
     userMessage: AssistantMessage
     isFirstUserMessage: boolean
 }
@@ -87,11 +95,16 @@ export async function prepareMobileTurn(args: {
                 existing.messages.find(
                     (m) => m.role === 'assistant' && m.created_at >= dupUser.created_at,
                 ) ?? null
-            return { kind: 'done', body: { userMessage: dupUser, message: reply, summary: null } }
+            return {
+                kind: 'done',
+                body: { userMessage: dupUser, message: reply ? stripInternalParts(reply) : null, summary: null },
+            }
         }
     }
 
-    const history = existing.messages.map((m) => ({ role: m.role, content: m.content }))
+    // Onda 2: histórico com memória de tools (<<DADOS_DE_TOOLS>>) + programa em foco.
+    const history = toModelHistory(existing.messages)
+    const programFocus = deriveProgramFocus(existing.messages)
     const isFirstUserMessage = !existing.messages.some((m) => m.role === 'user')
 
     let userMessage: AssistantMessage
@@ -121,6 +134,7 @@ export async function prepareMobileTurn(args: {
             gate,
             history,
             studentId: existing.conversation.student_id ?? undefined,
+            programFocus,
             userMessage,
             isFirstUserMessage,
         },
@@ -152,6 +166,7 @@ export async function finishMobileTurn(
         tier: ctx.gate.tier,
         history: ctx.history,
         studentId: ctx.studentId,
+        programFocus: ctx.programFocus,
         onProgress: hooks?.onProgress,
         onTextDelta: hooks?.onTextDelta,
         onTextReset: hooks?.onTextReset,
@@ -166,6 +181,8 @@ export async function finishMobileTurn(
     if (turn.confirmation) parts.push({ type: 'confirmation', request: turn.confirmation, status: 'pending' })
     if (turn.question) parts.push({ type: 'question', request: turn.question, status: 'pending' })
     if (turn.proposal) parts.push({ type: 'proposal', request: turn.proposal, status: 'pending' })
+    // Memória do turno (Onda 2): interna — persiste, mas não vai ao cliente.
+    for (const m of turn.memory) parts.push({ type: 'context', toolName: m.toolName, digest: m.digest })
 
     const assistantMessage = await appendMessage(supabaseAdmin, {
         conversationId: ctx.conversationId,
@@ -180,5 +197,5 @@ export async function finishMobileTurn(
         firstUserMessage: ctx.isFirstUserMessage ? ctx.input : undefined,
     })
 
-    return { userMessage: ctx.userMessage, message: assistantMessage, summary: turn.summary }
+    return { userMessage: ctx.userMessage, message: stripInternalParts(assistantMessage), summary: turn.summary }
 }
