@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Users, UserPlus, Loader2, KeyRound, X, ShieldCheck } from 'lucide-react'
 import { addCoach } from '@/actions/organizations/add-coach'
 import { updateOrgVisibility } from '@/actions/organizations/update-org-visibility'
+import { updateCoachStatus } from '@/actions/organizations/update-coach-status'
 
-interface Coach { trainerId: string; role: string; name: string; email: string }
+interface Coach { trainerId: string; role: string; status: string; name: string; email: string }
 interface Props {
     organization: { id: string; name: string; visibility: 'open' | 'restricted' }
     isManager: boolean
@@ -19,6 +20,7 @@ export function EquipeSection({ organization, isManager, currentTrainerId, coach
     const router = useRouter()
     const [showForm, setShowForm] = useState(false)
     const [credential, setCredential] = useState<Credential | null>(null)
+    const [actionError, setActionError] = useState<string | null>(null)
     const [isPending, startTransition] = useTransition()
 
     function toggleVisibility() {
@@ -27,6 +29,16 @@ export function EquipeSection({ organization, isManager, currentTrainerId, coach
         startTransition(async () => {
             const res = await updateOrgVisibility({ visibility: next })
             if (res.success) router.refresh()
+        })
+    }
+
+    function runCoachAction(input: Parameters<typeof updateCoachStatus>[0]) {
+        if (!isManager) return
+        setActionError(null)
+        startTransition(async () => {
+            const res = await updateCoachStatus(input)
+            if (res.success) router.refresh()
+            else setActionError(res.error ?? 'Erro ao atualizar o coach')
         })
     }
 
@@ -82,20 +94,49 @@ export function EquipeSection({ organization, isManager, currentTrainerId, coach
                 <AddCoachInline onDone={(cred) => { setShowForm(false); if (cred) setCredential(cred); router.refresh() }} />
             )}
 
+            {actionError && <p className="mb-3 text-sm text-red-500">{actionError}</p>}
+
             <ul className="divide-y divide-k-border-primary">
-                {coaches.map((c) => (
-                    <li key={c.trainerId} className="flex items-center justify-between py-3">
-                        <div>
-                            <p className="text-sm font-medium text-k-text-primary">
-                                {c.name}{c.trainerId === currentTrainerId && ' (você)'}
-                            </p>
-                            <p className="text-xs text-k-text-quaternary">{c.email}</p>
-                        </div>
-                        <span className="rounded-full bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium capitalize text-violet-500">
-                            {c.role}
-                        </span>
-                    </li>
-                ))}
+                {coaches.map((c) => {
+                    const isOwner = c.role === 'owner'
+                    const isSelf = c.trainerId === currentTrainerId
+                    const canManage = isManager && !isOwner && !isSelf
+                    const inactive = c.status === 'inactive'
+                    return (
+                        <li key={c.trainerId} className={`flex items-center justify-between gap-3 py-3 ${inactive ? 'opacity-60' : ''}`}>
+                            <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-k-text-primary">
+                                    {c.name}{isSelf && ' (você)'}
+                                    {inactive && <span className="ml-2 text-xs font-normal text-k-text-quaternary">· inativo</span>}
+                                </p>
+                                <p className="truncate text-xs text-k-text-quaternary">{c.email}</p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                                {canManage && !inactive && (
+                                    <button
+                                        onClick={() => runCoachAction({ trainerId: c.trainerId, action: 'set_role', role: c.role === 'admin' ? 'coach' : 'admin' })}
+                                        disabled={isPending}
+                                        className="rounded-lg border border-k-border-primary px-2.5 py-1 text-xs font-medium text-k-text-secondary disabled:opacity-50"
+                                    >
+                                        {c.role === 'admin' ? 'Tornar coach' : 'Tornar admin'}
+                                    </button>
+                                )}
+                                {canManage && (
+                                    <button
+                                        onClick={() => runCoachAction({ trainerId: c.trainerId, action: inactive ? 'reactivate' : 'deactivate' })}
+                                        disabled={isPending}
+                                        className={`rounded-lg border px-2.5 py-1 text-xs font-medium disabled:opacity-50 ${inactive ? 'border-violet-500/40 text-violet-500' : 'border-red-500/40 text-red-500'}`}
+                                    >
+                                        {inactive ? 'Reativar' : 'Desativar'}
+                                    </button>
+                                )}
+                                <span className="rounded-full bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium capitalize text-violet-500">
+                                    {c.role}
+                                </span>
+                            </div>
+                        </li>
+                    )
+                })}
             </ul>
         </div>
     )
