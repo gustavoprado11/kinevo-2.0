@@ -42,6 +42,8 @@ interface Props {
     loadingMessages: boolean
     sending: boolean
     liveSteps: string[]
+    /** U-STREAM: texto da resposta chegando token a token (substituído pelo `done`). */
+    liveText: string
     input: string
     trainerName: string | null
     students: PickStudent[]
@@ -92,7 +94,7 @@ function parseMcpPayload(result: unknown): Record<string, unknown> | null {
 }
 
 export function ConversationView({
-    active, summary, messages, loadingMessages, sending, liveSteps, input, students, banner,
+    active, summary, messages, loadingMessages, sending, liveSteps, liveText, input, students, banner,
     onDismissBanner, onInput, onSend, onStop, onSendText, onBackHome, onRename, onConfirmResolved,
 }: Props) {
     const streamRef = useRef<HTMLDivElement>(null)
@@ -101,7 +103,7 @@ export function ConversationView({
 
     useEffect(() => {
         if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight
-    }, [messages, sending])
+    }, [messages, sending, liveSteps, liveText])
 
     // Composer cresce com o conteúdo (até ~200px; depois rola internamente).
     useEffect(() => {
@@ -163,19 +165,30 @@ export function ConversationView({
                         <StudentPicker students={students} onPick={(name) => onSendText(name)} onSearchOther={() => inputRef.current?.focus()} />
                     )}
                     {sending && (
-                        liveSteps.length > 0 ? (
-                            <div className="kv-msg-in mb-7 space-y-1">
-                                {liveSteps.map((step, i) => {
-                                    const last = i === liveSteps.length - 1
-                                    return (
-                                        <div key={i} className="flex items-center gap-2 text-[13px] text-[#86868B] dark:text-muted-foreground">
-                                            {last
-                                                ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C3AED] dark:text-violet-400" strokeWidth={2.2} />
-                                                : <Check className="h-3.5 w-3.5 text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} />}
-                                            <span>{step}</span>
-                                        </div>
-                                    )
-                                })}
+                        liveSteps.length > 0 || liveText ? (
+                            <div className="kv-msg-in mb-7">
+                                {liveSteps.length > 0 && (
+                                    <div className="space-y-1">
+                                        {liveSteps.map((step, i) => {
+                                            // Texto já fluindo = passos concluídos (sem spinner preso).
+                                            const spinning = !liveText && i === liveSteps.length - 1
+                                            return (
+                                                <div key={i} className="flex items-center gap-2 text-[13px] text-[#86868B] dark:text-muted-foreground">
+                                                    {spinning
+                                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C3AED] dark:text-violet-400" strokeWidth={2.2} />
+                                                        : <Check className="h-3.5 w-3.5 text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} />}
+                                                    <span>{step}</span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                                {/* U-STREAM: a resposta aparece token a token; o `done` a substitui pela persistida. */}
+                                {liveText && (
+                                    <div className={`whitespace-pre-wrap text-[15.5px] leading-[1.7] text-[#1D1D1F] dark:text-foreground ${liveSteps.length > 0 ? 'mt-3' : ''}`}>
+                                        {liveText}
+                                    </div>
+                                )}
                             </div>
                         ) : <TypingRow />
                     )}

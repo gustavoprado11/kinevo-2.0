@@ -127,10 +127,20 @@ export async function prepareMobileTurn(args: {
     }
 }
 
-/** Roda o turno de IA (emitindo progresso) e persiste a resposta. Devolve o `done`. */
+export interface MobileTurnHooks {
+    onProgress?: (label: string) => void
+    /** Streaming de token (U-STREAM): delta de texto da resposta. */
+    onTextDelta?: (delta: string) => void
+    /** Fallback de modelo de build: o cliente descarta o texto parcial. */
+    onTextReset?: () => void
+    /** Stop real (U-STOP): abortar cancela o LLM no servidor. */
+    abortSignal?: AbortSignal
+}
+
+/** Roda o turno de IA (emitindo progresso + tokens) e persiste a resposta. Devolve o `done`. */
 export async function finishMobileTurn(
     ctx: MobileTurnContext,
-    onProgress?: (label: string) => void,
+    hooks?: MobileTurnHooks,
 ): Promise<Record<string, unknown>> {
     const turn = await runAssistantTurn({
         admin: supabaseAdmin,
@@ -142,7 +152,10 @@ export async function finishMobileTurn(
         tier: ctx.gate.tier,
         history: ctx.history,
         studentId: ctx.studentId,
-        onProgress,
+        onProgress: hooks?.onProgress,
+        onTextDelta: hooks?.onTextDelta,
+        onTextReset: hooks?.onTextReset,
+        abortSignal: hooks?.abortSignal,
     })
 
     const parts: AssistantMessagePart[] = turn.executed.map((e) => ({

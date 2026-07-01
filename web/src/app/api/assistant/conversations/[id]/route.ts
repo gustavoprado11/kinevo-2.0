@@ -211,12 +211,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
         // ── Streaming NDJSON ──
         // O setup (rate-limit, gate, mensagem do usuário) já rodou acima e devolve
-        // erros HTTP normais. Aqui transmitimos: {type:'progress'} a cada passo
-        // (onProgress) e, no fim, {type:'done'} com a mensagem persistida.
+        // erros HTTP normais. Aqui transmitimos: {type:'progress'} no início de
+        // cada tool-call, {type:'text', delta} com os tokens da resposta
+        // (U-STREAM), {type:'text_reset'} se o modelo de build caiu pro fallback,
+        // e no fim {type:'done'} com a mensagem persistida.
         const encoder = new TextEncoder()
         const stream = new ReadableStream<Uint8Array>({
             async start(controller) {
-                const emit = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'))
+                // enqueue lança se o cliente desconectou no meio — nunca derruba o turno.
+                const emit = (obj: unknown) => {
+                    try {
+                        controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'))
+                    } catch { /* cliente foi embora; o abortSignal cuida do resto */ }
+                }
                 try {
                     const turn = await runAssistantTurn({
                         admin: supabaseAdmin,
@@ -229,6 +236,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                         history,
                         studentId: existing.conversation.student_id ?? undefined,
                         onProgress: (label) => emit({ type: 'progress', label }),
+                        onTextDelta: (delta) => emit({ type: 'text', delta }),
+                        onTextReset: () => emit({ type: 'text_reset' }),
+                        // Stop real (U-STOP): Parar/desconectar aborta o LLM no servidor.
+                        abortSignal: req.signal,
                     })
 
                     const parts: AssistantMessagePart[] = turn.executed.map((e) => ({
@@ -249,10 +260,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
                     emit({ type: 'done', userMessage, message: assistantMessage, summary: turn.summary })
                 } catch (err) {
-                    console.error('[conversation POST stream] error:', err)
-                    emit({ type: 'error', message: 'Erro ao gerar a resposta.' })
+                    if ((err as Error)?.name === 'AbortError') {
+                        // Stop real: o treinador interrompeu — o LLM parou no servidor,
+                        // nada foi persistido/cobrado deste turno. A mensagem do usuário
+                        // fica na thread (já persistida no setup).
+                    } else {
+                        console.error('[conversation POST stream] error:', err)
+                        emit({ type: 'error', message: 'Erro ao gerar a resposta.' })
+                    }
                 } finally {
-                    controller.close()
+                    try { controller.close() } catch { /* já fechado/cancelado */ }
                 }
             },
         })

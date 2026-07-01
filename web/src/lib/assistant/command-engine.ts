@@ -15,7 +15,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { generateText, tool, jsonSchema, stepCountIs, type ToolSet } from 'ai'
+import { streamText, tool, jsonSchema, stepCountIs, type ToolSet } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
@@ -44,6 +44,7 @@ import { buildChatContext } from '@/lib/assistant/context-builder'
 import { buildInstructions, PROMPT_VERSION } from '@/lib/assistant/system-prompt'
 import { recordTurnTrace, toolResultOk } from '@/lib/assistant/turn-trace'
 import { validateConfirmArgs } from '@/lib/assistant/arg-validation'
+import { ambiguousStudentTarget, withAmbiguityGuard, type StudentRef } from '@/lib/assistant/ambiguity'
 import type { LLMModel } from '@/lib/prescription/llm-client'
 
 export const ASSISTANT_MODEL: LLMModel = 'gpt-4.1-mini'
@@ -171,15 +172,19 @@ const ROUTE_INTENTS: ReadonlyArray<readonly [string, ToolIntent[]]> = [
     ['/assistente', ['alunos', 'prescricao', 'financeiro', 'agenda', 'comunicacao']],
 ]
 
+// Vocabulário ampliado (Onda 1 — 2026-07-01): sinônimos comuns que antes NÃO
+// casavam ("anamnese", "checkout", "medida", "avisa"…) derrubavam o turno no
+// fallback estreito e o modelo "não conseguia" sem explicar. Falso positivo aqui
+// é barato (só ADICIONA um domínio de tools); falso negativo é falha silenciosa.
 const KEYWORD_INTENTS: ReadonlyArray<readonly [RegExp, ToolIntent]> = [
-    [/pag|cobran|fatur|assinatur|plano|receita|mrr|inadimpl|contrat/i, 'financeiro'],
-    [/treino|programa|prescri|exerc|s[ée]rie|carga|superset/i, 'prescricao'],
-    [/agenda|sess[ãa]o|hor[áa]rio|reagend|marcar|consulta/i, 'agenda'],
-    [/formul[áa]rio|check-?in|question[áa]rio/i, 'forms'],
-    [/avalia|medi[çc][ãa]o|dobra|circunfer/i, 'avaliacao'],
-    [/mensag|conversa|whats|recado/i, 'comunicacao'],
-    [/lead|prospect|convers[ãa]o de lead/i, 'leads'],
-    [/aluno|progresso|ader[êe]ncia|insight/i, 'alunos'],
+    [/pag|cobran|fatur|assinatur|plano|receita|mrr|inadimpl|contrat|checkout|pix|boleto|mensalidade|pre[çc]o|valor|reajust/i, 'financeiro'],
+    [/treino|programa|prescri|exerc|s[ée]rie|carga|superset|ficha|split|periodiz|divis[ãa]o|hipertrofia|m[ée]todo/i, 'prescricao'],
+    [/agenda|sess[ãa]o|hor[áa]rio|reagend|marcar|consulta|compromisso|remarc|desmarc|atendimento/i, 'agenda'],
+    [/formul[áa]rio|check-?in|question[áa]rio|anamnese|par-?q|pesquisa/i, 'forms'],
+    [/avalia|medi[çc][ãa]o|dobra|circunfer|medida|bioimped|antropom|percentual|gordura|composi[çc][ãa]o corporal|imc/i, 'avaliacao'],
+    [/mensag|conversa|whats|recado|respond|avis|escrev|lembre|lembra/i, 'comunicacao'],
+    [/lead|prospect|interessad|indica[çc][ãa]o|convers[ãa]o de lead/i, 'leads'],
+    [/aluno|progresso|ader[êe]ncia|insight|arquiv|inativ|cadastr/i, 'alunos'],
 ]
 
 export function resolveIntents(input: string, route: string | undefined): ToolIntent[] {
@@ -192,12 +197,12 @@ export function resolveIntents(input: string, route: string | undefined): ToolIn
     for (const [re, intent] of KEYWORD_INTENTS) {
         if (re.test(input)) set.add(intent)
     }
-    // Fallback amplo, mas ainda com subsetting (não manda as 55).
-    if (set.size === 0) {
-        set.add('alunos')
-        set.add('financeiro')
-        set.add('agenda')
-    }
+    // Sem sinal confiável de intenção → SEM subsetting: devolve vazio e a ponte
+    // carrega o catálogo INTEIRO (resolveToolSubset([]) = todas as tools). O
+    // fallback antigo ([alunos, financeiro, agenda]) deixava 5 dos 8 domínios de
+    // fora — a principal fonte de "o assistente não conseguiu" silencioso,
+    // pior no mobile (que não tem rota). Subsetting agora é otimização quando há
+    // confiança, nunca amputação quando não há.
     return [...set]
 }
 
@@ -389,8 +394,16 @@ export interface AssistantTurnInput {
     route?: string
     /** Aluno em foco (UUID) — enriquece o contexto e direciona as tools. */
     studentId?: string
-    /** Progresso ao vivo: chamado a cada passo (tool executada) p/ streaming na UI. */
+    /** Progresso ao vivo: chamado no início de cada tool-call p/ streaming na UI. */
     onProgress?: (label: string) => void
+    /** Streaming de token (U-STREAM): delta de texto da resposta, na ordem. */
+    onTextDelta?: (delta: string) => void
+    /** O modelo de build falhou e o turno reiniciou no fallback: o cliente deve
+     *  descartar o texto parcial já recebido. */
+    onTextReset?: () => void
+    /** Stop real (U-STOP): abortar aqui cancela o LLM no SERVIDOR (não só o fetch).
+     *  As rotas passam request.signal — desconexão/Parar do cliente interrompe o turno. */
+    abortSignal?: AbortSignal
 }
 
 // Rótulo presente-contínuo p/ o progresso ao vivo (streaming). Fallback genérico.
@@ -462,35 +475,37 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         const bridge = await buildMcpTools(trainerId, { intents })
         bridgeClose = bridge.close
 
-        async function resolveStudentId(value: string): Promise<string | null> {
-            if (!value || typeof value !== 'string') return null
-            if (UUID_RE.test(value)) {
-                const { data } = await admin
-                    .from('students')
-                    .select('id')
-                    .eq('id', value)
-                    .eq('coach_id', trainerId)
-                    .maybeSingle()
-                return data?.id ?? null
-            }
-            const escaped = value.replace(/[%_\\]/g, '\\$&')
-            const { data } = await admin
-                .from('students')
-                .select('id')
-                .eq('coach_id', trainerId)
-                .ilike('name', `%${escaped}%`)
-                .limit(1)
-                .maybeSingle()
-            return data?.id ?? null
-        }
-
         // Guard anti-loop nas leituras (dedup por tool+args no turno).
-        const guardedBridgeTools = withReadGuard(bridge.tools)
+        const readGuardedTools = withReadGuard(bridge.tools)
         // Aluno em foco: o modelo já TEM o aluno (UUID + perfil no contexto) e não
         // precisa "listar alunos". Em prod ele entrava em loop justamente aqui
         // (kinevo_list_students 12x → estourava maxSteps sem concluir). Removemos a
         // tool nesse caso — determinístico, mata o loop na raiz.
-        if (opts.studentId) delete guardedBridgeTools['kinevo_list_students']
+        if (opts.studentId) delete readGuardedTools['kinevo_list_students']
+
+        // Guarda de homônimos (determinística): write com student_id cujo pedido
+        // cita o aluno só pelo 1º nome havendo 2+ homônimos → NÃO executa; o
+        // corretivo manda o modelo perguntar (perguntar_treinador). CONFIRM_TOOLS
+        // são checadas no card (abaixo). Carteira carregada 1x, sob demanda.
+        let rosterCache: StudentRef[] | null = null
+        const getRoster = async (): Promise<StudentRef[]> => {
+            if (rosterCache) return rosterCache
+            const { data } = await admin
+                .from('students')
+                .select('id, name')
+                .eq('coach_id', trainerId)
+                .eq('is_trainer_profile', false)
+                .limit(400)
+            rosterCache = ((data ?? []) as Array<{ id: string; name: string | null }>)
+                .map((s) => ({ id: s.id, name: (s.name ?? '').trim() }))
+                .filter((s) => s.name.length > 0)
+            return rosterCache
+        }
+        const guardedBridgeTools = withAmbiguityGuard(readGuardedTools, {
+            input,
+            focusedStudentId: opts.studentId,
+            getRoster,
+        })
 
         const tools: ToolSet = {
             ...guardedBridgeTools,
@@ -552,8 +567,14 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         // configurável (qualidade-crítico) — ver resolveBuildModel.
         let turnModel: string = buildTurn ? resolveBuildModel() : ASSISTANT_MODEL
 
-        const runGen = (model: string) =>
-            generateText({
+        // U-STREAM (Onda 1 — 2026-07-01): o turno usa streamText e consome o
+        // fullStream — deltas de texto vão ao cliente via onTextDelta (canal
+        // NDJSON) e o rótulo de progresso sai no INÍCIO do tool-call
+        // (tool-input-start), mais cedo que o antigo onStepFinish. Erro/abort do
+        // stream viram exceção DEPOIS do consumo, preservando o fallback de
+        // modelo de build e o contrato de retorno (texto/steps/usage completos).
+        const runGen = async (model: string) => {
+            const stream = streamText({
                 model: providerFor(model),
                 system,
                 messages,
@@ -563,23 +584,66 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 // leituras (get_student, list_exercises): ~12 passos cobrem e barram loop.
                 stopWhen: stepCountIs(buildTurn ? 12 : 5),
                 tools,
-                // Progresso ao vivo: emite um rótulo por tool executada (streaming na UI).
-                onStepFinish: ({ toolCalls }) => {
-                    if (!opts.onProgress) return
-                    for (const tc of (toolCalls ?? []) as Array<{ toolName: string }>) {
-                        opts.onProgress(progressLabel(tc.toolName))
-                    }
-                },
+                abortSignal: opts.abortSignal,
             })
+            let streamError: unknown = null
+            let aborted = false
+            let lastLabel = ''
+            let sawText = false
+            for await (const part of stream.fullStream) {
+                if (part.type === 'text-delta') {
+                    if (part.text) {
+                        sawText = true
+                        opts.onTextDelta?.(part.text)
+                    }
+                } else if (part.type === 'start-step') {
+                    // Texto de passo INTERMEDIÁRIO (antes de um tool-call) não é a
+                    // resposta final (result.text = último passo): novo passo após
+                    // texto → o cliente descarta o parcial p/ o preview bater com o
+                    // que será persistido.
+                    if (sawText) {
+                        sawText = false
+                        opts.onTextReset?.()
+                    }
+                } else if (part.type === 'tool-input-start') {
+                    const label = progressLabel(part.toolName)
+                    if (label !== lastLabel) {
+                        lastLabel = label
+                        opts.onProgress?.(label)
+                    }
+                } else if (part.type === 'error') {
+                    streamError = part.error
+                } else if (part.type === 'abort') {
+                    aborted = true
+                }
+            }
+            if (aborted) {
+                const e = new Error('Turno interrompido pelo treinador.')
+                e.name = 'AbortError'
+                throw e
+            }
+            if (streamError) {
+                throw streamError instanceof Error ? streamError : new Error(String(streamError))
+            }
+            const [text, steps, totalUsage, toolCalls] = await Promise.all([
+                stream.text,
+                stream.steps,
+                stream.totalUsage,
+                stream.toolCalls,
+            ])
+            return { text, steps, totalUsage, toolCalls }
+        }
 
         // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para. Se o
-        //    modelo de BUILD (ex.: Claude Sonnet) falhar, NÃO derruba o turno: degrada
-        //    para o modelo padrão (gpt-4.1-mini). Captura o erro num trace — o
-        //    console.error dentro do ReadableStream NÃO aparece nos logs do Vercel.
+        //    modelo de BUILD falhar, NÃO derruba o turno: degrada para o modelo padrão
+        //    (gpt-4.1-mini). Captura o erro num trace — o console.error dentro do
+        //    ReadableStream NÃO aparece nos logs do Vercel. Abort (Stop do treinador)
+        //    propaga: quem trata é a rota (nada a persistir/cobrar).
         let result: Awaited<ReturnType<typeof runGen>>
         try {
             result = await runGen(turnModel)
         } catch (genErr) {
+            if ((genErr as Error)?.name === 'AbortError') throw genErr
             if (!buildTurn || turnModel === ASSISTANT_MODEL) throw genErr
             const msg = genErr instanceof Error ? genErr.message : String(genErr)
             await recordTurnTrace(admin, {
@@ -593,6 +657,8 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 intents,
             }).catch(() => {})
             turnModel = ASSISTANT_MODEL
+            // O modelo que falhou pode ter emitido texto parcial: o cliente descarta.
+            opts.onTextReset?.()
             result = await runGen(turnModel)
         }
 
@@ -619,8 +685,29 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
 
         let confirmation: ToolConfirmationRequest | null = null
         let blockedReason: string | null = null
+        let disambigQuestion: QuestionRequest | null = null
         for (const tc of toolCalls) {
             if (!executedIds.has(tc.toolCallId) && CONFIRM_TOOLS.has(tc.toolName)) {
+                // Homônimos (determinístico): CONFIRM_TOOLS não têm execute, então a
+                // guarda roda AQUI — alvo citado só pelo 1º nome com 2+ alunos iguais
+                // → nada de card; vira pergunta estruturada com os nomes completos.
+                const sidArg = (tc.input as { student_id?: unknown } | undefined)?.student_id
+                if (typeof sidArg === 'string' && sidArg.length > 0) {
+                    try {
+                        const cands = ambiguousStudentTarget(input, sidArg, await getRoster(), opts.studentId)
+                        if (cands) {
+                            disambigQuestion = {
+                                question: 'Encontrei mais de um aluno com esse nome — qual deles?',
+                                options: cands.map((c) => c.name).slice(0, 6),
+                                multiple: false,
+                                allowOther: true,
+                            }
+                            break
+                        }
+                    } catch {
+                        // Guarda best-effort: nunca trava uma confirmação legítima.
+                    }
+                }
                 const card = buildConfirmation(tc.toolName, tc.input ?? {})
                 // G5: valida os args ANTES de mostrar o card. Inválido → não mostra
                 // card, vira clarificação. Válido com alvo → resumo legível no card.
@@ -643,8 +730,10 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
 
         // "Ask the user": se o modelo chamou perguntar_treinador (client tool, sem
         // execute), monta a pergunta estruturada p/ a UI mostrar opções clicáveis.
-        let question: QuestionRequest | null = null
+        // A pergunta sintetizada pela guarda de homônimos tem precedência.
+        let question: QuestionRequest | null = disambigQuestion
         for (const tc of toolCalls) {
+            if (question) break
             if (!executedIds.has(tc.toolCallId) && tc.toolName === 'perguntar_treinador') {
                 const a = (tc.input ?? {}) as { pergunta?: unknown; opcoes?: unknown; multipla?: unknown }
                 const options = Array.isArray(a.opcoes)
@@ -680,9 +769,13 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         }
 
         // Se a validação barrou a ação, devolve uma clarificação em vez do card.
+        // Homônimo detectado → o texto do turno é a PERGUNTA (o que o modelo tinha
+        // escrito descrevia uma ação que não vai acontecer sem a escolha).
         let finalText = blockedReason
             ? `${result.text ? result.text + '\n\n' : ''}⚠️ ${blockedReason}`
-            : (result.text || (question?.question ?? '') || (proposal ? 'Aprova a proposta abaixo?' : ''))
+            : disambigQuestion
+              ? disambigQuestion.question
+              : (result.text || (question?.question ?? '') || (proposal ? 'Aprova a proposta abaixo?' : ''))
 
         // Defesa em profundidade: um turno que terminou SEM texto, pergunta, proposta
         // e confirmação (ex.: estourou maxSteps sem concluir) jamais pode aparecer em
@@ -695,7 +788,13 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         //    Só cobra tools que REALMENTE deram certo: uma tool que falhou (mcpError →
         //    isError:true) não pode ser cobrada (auditoria 2026-06-22, C2). O piso de 1
         //    crédito do turno LLM segue (computeTurnCredits) mesmo se todas falharam.
-        const successfulCalls = executed.filter((e) => toolResultOk(e.result))
+        //    Corretivos INTERNOS (read-guard `repeated` / guarda de homônimos `blocked`)
+        //    não são ação nenhuma: nem cobrança, nem card "executado".
+        const isInternalCorrective = (r: unknown): boolean =>
+            !!r && typeof r === 'object' && ('repeated' in (r as object) || 'blocked' in (r as object))
+        const successfulCalls = executed.filter(
+            (e) => toolResultOk(e.result) && !isInternalCorrective(e.result),
+        )
         const turnCalls: TurnToolCall[] = successfulCalls.map((e) => ({
             tool: e.toolName,
             studentCount: studentCountFromArgs(e.args),
@@ -783,11 +882,11 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             confirmation,
             question,
             proposal,
-            // Só AÇÕES (writes) viram cards "executado" na UI. Leituras e a pseudo-resposta
-            // do read-guard NÃO são mostráveis — senão vazam "Ação executada" ×N e tool-speak
-            // técnico ("Você JÁ consultou kinevo_get_student…") pro treinador (feedback 22/jun).
+            // Só AÇÕES (writes) viram cards "executado" na UI. Leituras e corretivos
+            // internos (read-guard `repeated`, homônimo `blocked`) NÃO são mostráveis —
+            // senão vazam "Ação executada" ×N e tool-speak técnico pro treinador.
             executed: executed
-                .filter((e) => !READ_TOOLS.has(e.toolName))
+                .filter((e) => !READ_TOOLS.has(e.toolName) && !isInternalCorrective(e.result))
                 .map((e) => ({ toolName: e.toolName, result: e.result })),
             credits,
             summary,
@@ -827,6 +926,11 @@ const MCP_HITL_INSTRUCTIONS = `
   direta ("Senti sua falta", "Bora retomar", "Tô aqui pra te ajudar"). JAMAIS voz de estúdio/equipe
   ("Estamos sentindo sua falta", "nossa equipe", "sentimos"). Curta (1–3 frases), com o primeiro nome
   do aluno, sem firula. Se o aluno pedido não estiver no contexto, use perguntar_treinador; nunca relê.
+- HOMÔNIMOS (vale para QUALQUER ação sobre um aluno — editar, agendar, cobrar, avaliar, prescrever,
+  não só mensagens): se o pedido cita um primeiro nome que corresponde a MAIS DE UM aluno da carteira
+  (o contexto avisa quando há primeiros nomes repetidos), NUNCA escolha sozinho — chame
+  perguntar_treinador com os NOMES COMPLETOS como opções. Se uma tool responder "ambiguous_student",
+  é exatamente isso que aconteceu: pergunte, não re-tente com outro UUID.
 - Quando faltar uma informação para agir (ex.: para qual aluno, qual objetivo, frequência semanal,
   quais grupos priorizar), NÃO pergunte em texto livre: CHAME a tool perguntar_treinador com a
   pergunta e 2 a 5 opções curtas (use multipla=true quando fizer sentido marcar várias). O app

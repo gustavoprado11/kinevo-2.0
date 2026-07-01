@@ -45,6 +45,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     const [input, setInput] = useState('')
     const [sending, setSending] = useState(false)
     const [liveSteps, setLiveSteps] = useState<string[]>([])
+    const [liveText, setLiveText] = useState('') // U-STREAM: texto da resposta chegando token a token
     const [segment, setSegment] = useState<'alunos' | 'conversas'>('alunos')
     const [search, setSearch] = useState('')
     const [focusedStudentId, setFocusedStudentId] = useState<string | null>(null)
@@ -131,6 +132,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
         if (!override) setInput('')
         setError(null)
         setSending(true)
+        setLiveText('')
         const clientMessageId = crypto.randomUUID() // C4: idempotência do turno (anti re-envio)
         const ac = new AbortController() // U-STOP: permite Parar o turno
         abortRef.current = ac
@@ -180,7 +182,9 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 if (!override) setInput(text) // devolve o texto p/ o usuário reenviar
                 return
             }
-            // Stream NDJSON: {type:'progress'} ao vivo + {type:'done'} no fim.
+            // Stream NDJSON: {type:'progress'} + {type:'text', delta} (U-STREAM) ao
+            // vivo + {type:'done'} no fim. text_reset = fallback de modelo (descarta
+            // o texto parcial).
             const reader = res.body.getReader()
             const decoder = new TextDecoder()
             let buffer = ''
@@ -195,9 +199,11 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     const line = buffer.slice(0, nl).trim()
                     buffer = buffer.slice(nl + 1)
                     if (!line) continue
-                    let ev: { type?: string; label?: string; userMessage?: AssistantMessage; message?: AssistantMessage; summary?: AiUsageSummary }
+                    let ev: { type?: string; label?: string; delta?: string; userMessage?: AssistantMessage; message?: AssistantMessage; summary?: AiUsageSummary }
                     try { ev = JSON.parse(line) } catch { continue }
                     if (ev.type === 'progress' && ev.label) setLiveSteps((s) => [...s, ev.label as string])
+                    else if (ev.type === 'text' && typeof ev.delta === 'string') setLiveText((t) => t + (ev.delta as string))
+                    else if (ev.type === 'text_reset') setLiveText('')
                     else if (ev.type === 'done') final = ev
                     else if (ev.type === 'error') streamError = true
                 }
@@ -234,11 +240,12 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 if (!override) setInput(text)
             }
         } finally {
-            setSending(false); setLiveSteps([]); abortRef.current = null
+            setSending(false); setLiveSteps([]); setLiveText(''); abortRef.current = null
         }
     }, [input, sending, activeId, focusedStudentId, students])
 
-    // U-STOP: interrompe o turno em andamento (aborta o fetch/stream).
+    // U-STOP: interrompe o turno — o abort do fetch derruba a conexão e o servidor
+    // aborta o LLM de verdade (request.signal → abortSignal do motor).
     const stop = useCallback(() => { abortRef.current?.abort() }, [])
 
     const starter = useCallback((prompt: string) => { void send(prompt) }, [send])
@@ -338,6 +345,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     loadingMessages={loadingMessages}
                     sending={sending}
                     liveSteps={liveSteps}
+                    liveText={liveText}
                     input={input}
                     trainerName={trainerName}
                     students={students}

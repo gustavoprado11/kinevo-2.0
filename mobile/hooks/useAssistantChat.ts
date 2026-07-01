@@ -1,9 +1,13 @@
 /**
  * useAssistantChat — conversa do Assistente do treinador no mobile.
  *
- * Fala com os endpoints Bearer do web (/api/trainer/assistant/*). Fase 2:
- * NÃO-streaming — o POST do turno devolve o payload final (userMessage +
- * message). Mantém uma única thread ativa (criada sob demanda no 1º envio).
+ * Fala com os endpoints Bearer do web (/api/trainer/assistant/*) consumindo o
+ * NDJSON do turno em streaming: {progress} (rótulo da tool em execução),
+ * {text, delta} (tokens da resposta ao vivo — U-STREAM, exposto em
+ * `streamingText`), {text_reset} (fallback de modelo: descarta o parcial) e
+ * {done} (payload final persistido). Mantém uma única thread ativa (criada sob
+ * demanda no 1º envio). O botão Parar aborta o fetch E o servidor cancela o LLM
+ * (request.signal → abortSignal do motor).
  *
  * Idempotência: cada envio carrega um clientMessageId (UUID) — re-tentativas
  * não duplicam o turno (contrato C4 do backend).
@@ -124,15 +128,23 @@ interface NdjsonResult {
     errorBody: ServerError | null;
 }
 
+interface StreamTurnHandlers {
+    onProgress: (label: string) => void;
+    /** U-STREAM: delta de texto da resposta, na ordem. */
+    onTextDelta: (delta: string) => void;
+    /** Fallback de modelo no servidor: descartar o texto parcial. */
+    onTextReset: () => void;
+}
+
 /**
  * Envia o turno e consome a resposta NDJSON via expo/fetch (streaming): emite
- * progresso ao vivo e captura o evento final {done}. Faz fallback para leitura
- * do corpo inteiro caso o streaming não esteja disponível em runtime.
+ * progresso + tokens ao vivo e captura o evento final {done}. Faz fallback para
+ * leitura do corpo inteiro caso o streaming não esteja disponível em runtime.
  */
 async function streamTurn(
     convId: string,
     payload: Record<string, unknown>,
-    onProgress: (label: string) => void,
+    handlers: StreamTurnHandlers,
     signal?: AbortSignal,
 ): Promise<NdjsonResult> {
     const { data } = await supabase.auth.getSession();
@@ -157,13 +169,15 @@ async function streamTurn(
     const handleLine = (line: string) => {
         const t = line.trim();
         if (!t) return;
-        let ev: { type?: string; label?: string } & Record<string, unknown>;
+        let ev: { type?: string; label?: string; delta?: string } & Record<string, unknown>;
         try {
             ev = JSON.parse(t);
         } catch {
             return;
         }
-        if (ev.type === 'progress' && typeof ev.label === 'string') onProgress(ev.label);
+        if (ev.type === 'progress' && typeof ev.label === 'string') handlers.onProgress(ev.label);
+        else if (ev.type === 'text' && typeof ev.delta === 'string') handlers.onTextDelta(ev.delta);
+        else if (ev.type === 'text_reset') handlers.onTextReset();
         else if (ev.type === 'done') done = ev;
         else if (ev.type === 'error') sawError = true;
     };
@@ -206,6 +220,8 @@ export interface UseAssistantChatReturn {
     messages: AssistantMessage[];
     isSending: boolean;
     progress: string | null;
+    /** U-STREAM: texto da resposta chegando token a token (null fora de turno). */
+    streamingText: string | null;
     error: AssistantError | null;
     summary: AiUsageSummary | null;
     send: (text: string) => Promise<void>;
@@ -245,6 +261,7 @@ export function useAssistantChat(): UseAssistantChatReturn {
     const [messages, setMessages] = useState<AssistantMessage[]>([]);
     const [isSending, setIsSending] = useState(false);
     const [progress, setProgress] = useState<string | null>(null);
+    const [streamingText, setStreamingText] = useState<string | null>(null);
     const [error, setError] = useState<AssistantError | null>(null);
     const [summary, setSummary] = useState<AiUsageSummary | null>(null);
     const convIdRef = useRef<string | null>(null);
@@ -369,6 +386,7 @@ export function useAssistantChat(): UseAssistantChatReturn {
         sendingRef.current = true;
         setIsSending(true);
         setProgress(null);
+        setStreamingText(null);
         setError(null);
 
         const tempId = `temp-${uuidv4()}`;
@@ -410,11 +428,15 @@ export function useAssistantChat(): UseAssistantChatReturn {
                 convIdRef.current = convId;
             }
 
-            // 2. Envia o turno (streaming NDJSON com progresso ao vivo).
+            // 2. Envia o turno (streaming NDJSON com progresso + tokens ao vivo).
             const result = await streamTurn(
                 convId,
                 { input: content, clientMessageId: uuidv4() },
-                (label) => setProgress(label),
+                {
+                    onProgress: (label) => setProgress(label),
+                    onTextDelta: (delta) => setStreamingText((t) => (t ?? '') + delta),
+                    onTextReset: () => setStreamingText(null),
+                },
                 controller.signal,
             );
 
@@ -436,8 +458,9 @@ export function useAssistantChat(): UseAssistantChatReturn {
             if (result.done?.summary) setSummary(result.done.summary as AiUsageSummary);
         } catch {
             if (controller.signal.aborted) {
-                // Parada intencional (botão parar): mantém a mensagem do usuário
-                // (o turno seguiu no servidor e a resposta aparece ao reabrir).
+                // Parada intencional (botão parar): mantém a mensagem do usuário.
+                // O servidor aborta o LLM de verdade (request.signal) — o turno
+                // não continua nem é cobrado.
             } else {
                 setError({ kind: 'generic', message: 'Não foi possível conectar. Tente novamente.' });
                 dropTemp();
@@ -447,6 +470,7 @@ export function useAssistantChat(): UseAssistantChatReturn {
             sendingRef.current = false;
             setIsSending(false);
             setProgress(null);
+            setStreamingText(null);
         }
     }, []);
 
@@ -454,5 +478,5 @@ export function useAssistantChat(): UseAssistantChatReturn {
         abortRef.current?.abort();
     }, []);
 
-    return { messages, isSending, progress, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError };
+    return { messages, isSending, progress, streamingText, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError };
 }

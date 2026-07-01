@@ -5,8 +5,10 @@
  *   POST  → enviar um turno (input, STREAMING NDJSON) OU registrar o desfecho de
  *           uma confirmação HITL (JSON).
  *
- * O turno transmite {type:'progress'} a cada passo e {type:'done'} no fim — o app
- * consome via expo/fetch. Auth por Bearer; setup/segurança em mobile-turn.ts.
+ * O turno transmite {type:'progress'} no início de cada tool-call, {type:'text',
+ * delta} com os tokens da resposta (U-STREAM), {type:'text_reset'} no fallback de
+ * modelo, e {type:'done'} no fim — o app consome via expo/fetch. Auth por Bearer;
+ * setup/segurança em mobile-turn.ts.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
@@ -132,15 +134,30 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         const encoder = new TextEncoder()
         const stream = new ReadableStream<Uint8Array>({
             async start(controller) {
-                const emit = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'))
+                // enqueue lança se o cliente desconectou no meio — nunca derruba o turno.
+                const emit = (obj: unknown) => {
+                    try {
+                        controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'))
+                    } catch { /* cliente foi embora; o abortSignal cuida do resto */ }
+                }
                 try {
-                    const done = await finishMobileTurn(prep.ctx, (label) => emit({ type: 'progress', label }))
+                    const done = await finishMobileTurn(prep.ctx, {
+                        onProgress: (label) => emit({ type: 'progress', label }),
+                        onTextDelta: (delta) => emit({ type: 'text', delta }),
+                        onTextReset: () => emit({ type: 'text_reset' }),
+                        // Stop real (U-STOP): Parar/desconectar aborta o LLM no servidor.
+                        abortSignal: req.signal,
+                    })
                     emit({ type: 'done', ...done })
                 } catch (err) {
-                    console.error('[trainer/assistant conversation POST stream] error:', err)
-                    emit({ type: 'error', message: 'Erro ao gerar a resposta.' })
+                    if ((err as Error)?.name === 'AbortError') {
+                        // Stop real: o treinador interrompeu — nada persistido/cobrado.
+                    } else {
+                        console.error('[trainer/assistant conversation POST stream] error:', err)
+                        emit({ type: 'error', message: 'Erro ao gerar a resposta.' })
+                    }
                 } finally {
-                    controller.close()
+                    try { controller.close() } catch { /* já fechado/cancelado */ }
                 }
             },
         })

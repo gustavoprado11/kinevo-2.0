@@ -1,10 +1,12 @@
 /**
  * app/assistant — tela de conversa do Assistente do treinador.
  *
- * Fase 2: ligada ao backend real via useAssistantChat (endpoints Bearer
- * /api/trainer/assistant/*). Envio NÃO-streaming — mostra "Pensando…" enquanto
- * o turno roda e renderiza o texto + parts (ações, perguntas clicáveis,
- * confirmações/propostas read-only). HITL acionável e streaming = fases futuras.
+ * Ligada ao backend real via useAssistantChat (endpoints Bearer
+ * /api/trainer/assistant/*). O turno chega em STREAMING NDJSON: rótulo de
+ * progresso ("Pensando…"/tool em execução), tokens da resposta ao vivo
+ * (streamingText — U-STREAM) e o payload final com os parts (ações, perguntas
+ * clicáveis, confirmações/propostas HITL acionáveis). Parar aborta o turno de
+ * verdade no servidor.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -41,7 +43,7 @@ export default function AssistantChatScreen() {
     const insets = useSafeAreaInsets();
     const { q } = useLocalSearchParams<{ q?: string }>();
 
-    const { messages, isSending, progress, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError } =
+    const { messages, isSending, progress, streamingText, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError } =
         useAssistantChat();
     const [input, setInput] = useState('');
     const [showConversations, setShowConversations] = useState(false);
@@ -181,7 +183,11 @@ export default function AssistantChatScreen() {
                                 ) : null}
                             </AssistantMessageBubble>
                         ))}
-                        {isSending ? <ThinkingRow label={progress} /> : null}
+                        {/* U-STREAM: resposta ao vivo token a token; o `done` a substitui pela persistida. */}
+                        {isSending && streamingText ? (
+                            <AssistantMessageBubble role="assistant" text={streamingText} />
+                        ) : null}
+                        {isSending && !streamingText ? <ThinkingRow label={progress} /> : null}
                     </ScrollView>
                 )}
 
