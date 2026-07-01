@@ -85,6 +85,17 @@ export async function addCoach(data: {
                 .update({ status: 'active', role: data.role ?? 'coach', is_coach: true })
                 .eq('id', (existingMember as { id: string }).id)
         } else {
+            // Seat gate: não estoura o seat_limit ao criar um novo assento.
+            if (ctx.organization.seat_limit != null) {
+                const { count } = await supabaseAdmin
+                    .from('organization_members')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('organization_id', ctx.organization.id)
+                    .eq('status', 'active')
+                if ((count ?? 0) >= ctx.organization.seat_limit) {
+                    return { success: false, error: 'Limite de assentos da academia atingido.' }
+                }
+            }
             const { error: memberError } = await supabaseAdmin
                 .from('organization_members')
                 .insert({
