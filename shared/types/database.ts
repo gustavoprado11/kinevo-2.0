@@ -12,8 +12,142 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      ai_action_idempotency: {
+        Row: {
+          created_at: string
+          idempotency_key: string
+          result: Json | null
+          status: string
+          tool_name: string
+          trainer_id: string
+        }
+        Insert: {
+          created_at?: string
+          idempotency_key: string
+          result?: Json | null
+          status?: string
+          tool_name: string
+          trainer_id: string
+        }
+        Update: {
+          created_at?: string
+          idempotency_key?: string
+          result?: Json | null
+          status?: string
+          tool_name?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_action_idempotency_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_briefing_log: {
+        Row: {
+          briefed_on: string
+          created_at: string
+          trainer_id: string
+        }
+        Insert: {
+          briefed_on: string
+          created_at?: string
+          trainer_id: string
+        }
+        Update: {
+          briefed_on?: string
+          created_at?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_briefing_log_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_conversations: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          last_message_at: string
+          message_count: number
+          student_id: string | null
+          title: string
+          trainer_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          student_id?: string | null
+          title?: string
+          trainer_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          student_id?: string | null
+          title?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_credit_topups: {
         Row: {
           consumed_in_period: string | null
@@ -71,6 +205,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ai_free_trials_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_messages: {
+        Row: {
+          client_message_id: string | null
+          content: string
+          conversation_id: string
+          created_at: string
+          credits_cost: number
+          id: string
+          parts: Json
+          role: string
+          trainer_id: string
+        }
+        Insert: {
+          client_message_id?: string | null
+          content?: string
+          conversation_id: string
+          created_at?: string
+          credits_cost?: number
+          id?: string
+          parts?: Json
+          role: string
+          trainer_id: string
+        }
+        Update: {
+          client_message_id?: string | null
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          credits_cost?: number
+          id?: string
+          parts?: Json
+          role?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_messages_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
@@ -862,6 +1047,84 @@ export type Database = {
           },
           {
             foreignKeyName: "assistant_llm_usage_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_turn_traces: {
+        Row: {
+          confirmation: Json | null
+          cost_usd_micros: number | null
+          created_at: string
+          credits: number
+          id: string
+          input: string
+          input_tokens: number | null
+          intents: string[]
+          kind: string
+          model: string | null
+          output: string
+          output_tokens: number | null
+          prompt_version: string | null
+          route: string | null
+          student_id: string | null
+          surface: string | null
+          tools: Json
+          trainer_id: string
+        }
+        Insert: {
+          confirmation?: Json | null
+          cost_usd_micros?: number | null
+          created_at?: string
+          credits?: number
+          id?: string
+          input?: string
+          input_tokens?: number | null
+          intents?: string[]
+          kind?: string
+          model?: string | null
+          output?: string
+          output_tokens?: number | null
+          prompt_version?: string | null
+          route?: string | null
+          student_id?: string | null
+          surface?: string | null
+          tools?: Json
+          trainer_id: string
+        }
+        Update: {
+          confirmation?: Json | null
+          cost_usd_micros?: number | null
+          created_at?: string
+          credits?: number
+          id?: string
+          input?: string
+          input_tokens?: number | null
+          intents?: string[]
+          kind?: string
+          model?: string | null
+          output?: string
+          output_tokens?: number | null
+          prompt_version?: string | null
+          route?: string | null
+          student_id?: string | null
+          surface?: string | null
+          tools?: Json
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_turn_traces_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_turn_traces_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
@@ -2172,7 +2435,10 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          plan_tier: string | null
           seat_limit: number | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           subscription_status: string
           updated_at: string
           visibility: string
@@ -2183,7 +2449,10 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          plan_tier?: string | null
           seat_limit?: number | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_status?: string
           updated_at?: string
           visibility?: string
@@ -2194,7 +2463,10 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          plan_tier?: string | null
           seat_limit?: number | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_status?: string
           updated_at?: string
           visibility?: string
@@ -4047,6 +4319,7 @@ export type Database = {
           created_at: string
           email: string
           financial_attention_seen_at: string | null
+          home_style: string
           id: string
           instagram_handle: string | null
           landing_bio: string | null
@@ -4090,6 +4363,7 @@ export type Database = {
           created_at?: string
           email: string
           financial_attention_seen_at?: string | null
+          home_style?: string
           id?: string
           instagram_handle?: string | null
           landing_bio?: string | null
@@ -4133,6 +4407,7 @@ export type Database = {
           created_at?: string
           email?: string
           financial_attention_seen_at?: string | null
+          home_style?: string
           id?: string
           instagram_handle?: string | null
           landing_bio?: string | null
@@ -4776,6 +5051,17 @@ export type Database = {
       can_write_student: { Args: { p_student: string }; Returns: boolean }
       check_student_access: { Args: { p_student_id: string }; Returns: Json }
       cleanup_stale_sessions: { Args: never; Returns: number }
+      consume_ai_usage: {
+        Args: {
+          p_cost_micros: number
+          p_credits: number
+          p_limit?: number
+          p_period_start: string
+          p_period_type: string
+          p_trainer_id: string
+        }
+        Returns: number
+      }
       consume_rate_limit: {
         Args: { p_key: string; p_per_day: number; p_per_minute: number }
         Returns: Json
@@ -4800,6 +5086,10 @@ export type Database = {
             }
             Returns: string
           }
+      create_assigned_program_tree: {
+        Args: { p_payload: Json; p_student_id: string; p_trainer_id: string }
+        Returns: Json
+      }
       create_program_template_tree: {
         Args: { p_payload: Json; p_trainer_id: string }
         Returns: Json
@@ -5053,6 +5343,7 @@ export type Database = {
         }
         Returns: string
       }
+      trainer_org_id: { Args: never; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
       unblock_student_access: {
         Args: { p_student_id: string }
@@ -5234,6 +5525,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       billing_type: [
