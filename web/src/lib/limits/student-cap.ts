@@ -13,6 +13,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@kinevo/shared/types/database'
 import type { AiTier } from '@/lib/auth/get-ai-tier'
+import { hasOrgCoreAccess } from '@/lib/studio/org-access'
 
 export const STUDENT_CAP: Record<AiTier, number> = {
     free: 1,
@@ -49,6 +50,8 @@ export async function assertCanCreateStudent(
     trainerId: string,
     tier: AiTier,
 ): Promise<void> {
+    // Acesso herdado do estúdio: coach de org ativa = ilimitado (não toca getAiTier).
+    if (await hasOrgCoreAccess(admin, trainerId)) return
     const cap = STUDENT_CAP[tier]
     if (!Number.isFinite(cap)) return
 
@@ -87,6 +90,8 @@ export async function assertCanDowngradeToFree(
     admin: DBClient,
     trainerId: string,
 ): Promise<void> {
+    // Acesso herdado do estúdio: coach de org ativa nunca é bloqueado aqui.
+    if (await hasOrgCoreAccess(admin, trainerId)) return
     const { count, error } = await admin
         .from('students')
         .select('id', { count: 'exact', head: true })

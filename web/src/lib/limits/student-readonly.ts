@@ -20,6 +20,7 @@
 import type { AiTier } from '@/lib/auth/get-ai-tier'
 import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
 import { STUDENT_CAP } from '@/lib/limits/student-cap'
+import { hasOrgCoreAccess } from '@/lib/studio/org-access'
 
 /** Mensagem de erro padrão para as server-actions de mutação de aluno (read-only). */
 export const STUDENT_MANAGEMENT_LOCKED_ERROR =
@@ -56,6 +57,8 @@ export async function isStudentManagementLockedForTrainer(trainerId: string): Pr
     // Import lazy: `supabase-admin` lança no load se a service key faltar (ambiente
     // de teste). Carregar só em runtime mantém get-trainter→student-readonly testável.
     const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    // Coach de estúdio ativo nunca fica read-only (acesso herdado ao núcleo).
+    if (await hasOrgCoreAccess(supabaseAdmin, trainerId)) return false
     const tier = await getAiTierForTrainer(supabaseAdmin, trainerId)
     if (tier !== 'free') return false
     const { count } = await supabaseAdmin

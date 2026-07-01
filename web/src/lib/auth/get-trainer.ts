@@ -5,6 +5,7 @@ import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
 import type { OnboardingState, TrainerModalityFocus } from '@kinevo/shared/types/onboarding'
 import { getAiTier, type AiTier } from '@/lib/auth/get-ai-tier'
 import { isStudentManagementLocked } from '@/lib/limits/student-readonly'
+import { hasOrgCoreAccess } from '@/lib/studio/org-access'
 
 interface TrainerRecord {
     id: string
@@ -101,7 +102,7 @@ export async function getTrainerWithSubscription(userId?: string) {
     // A gestão de alunos vira read-only (dados preservados). Só contamos quando o
     // tier é 'free' — pagante ativo nunca paga o custo da contagem.
     let studentsLocked = false
-    if (tier === 'free') {
+    if (tier === 'free' && !(await hasOrgCoreAccess(supabase, trainer.id))) {
         const { count } = await supabase
             .from('students')
             .select('id', { count: 'exact', head: true })
