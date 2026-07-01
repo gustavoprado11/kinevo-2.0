@@ -22,7 +22,6 @@ export async function updateOrgVisibility(data: { visibility: 'open' | 'restrict
 
         const { error } = await supabaseAdmin
             .from('organizations')
-            // @ts-ignore - tabela de estúdio ainda não tipada no projeto
             .update({ visibility: data.visibility })
             .eq('id', ctx.organization.id)
 

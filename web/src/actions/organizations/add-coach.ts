@@ -58,7 +58,6 @@ export async function addCoach(data: {
 
             const { data: trainerRow, error: trainerError } = await supabaseAdmin
                 .from('trainers')
-                // @ts-ignore - insert mínimo
                 .insert({ auth_user_id: authUser.user.id, name, email })
                 .select('id')
                 .single()
@@ -74,7 +73,6 @@ export async function addCoach(data: {
         // 3. Já é membro?
         const { data: existingMember } = await supabaseAdmin
             .from('organization_members')
-            // @ts-ignore - tipos do projeto ainda não incluem as tabelas de estúdio
             .select('id, status')
             .eq('organization_id', ctx.organization.id)
             .eq('trainer_id', trainerId)
@@ -84,13 +82,11 @@ export async function addCoach(data: {
             // reativa se estava inativo
             await supabaseAdmin
                 .from('organization_members')
-                // @ts-ignore
                 .update({ status: 'active', role: data.role ?? 'coach', is_coach: true })
                 .eq('id', (existingMember as { id: string }).id)
         } else {
             const { error: memberError } = await supabaseAdmin
                 .from('organization_members')
-                // @ts-ignore
                 .insert({
                     organization_id: ctx.organization.id,
                     trainer_id: trainerId,
@@ -106,7 +102,7 @@ export async function addCoach(data: {
             }
         }
 
-        revalidatePath('/studio')
+        revalidatePath('/estudio')
         return { success: true, trainerId, email, password: generatedPassword, name }
     } catch (error) {
         console.error('Unexpected error in addCoach:', error)

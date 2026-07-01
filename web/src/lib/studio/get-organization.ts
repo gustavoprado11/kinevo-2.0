@@ -46,18 +46,23 @@ export async function getOrganizationContext(): Promise<OrganizationContext | nu
     // Vínculo ativo + dados da org (uma org por treinador na v1)
     const { data: member } = await supabase
         .from('organization_members')
-        // @ts-ignore - tipos do projeto ainda não incluem as tabelas de estúdio
         .select('id, role, is_coach, organization:organizations(id, name, logo_url, visibility, seat_limit, subscription_status)')
-        // @ts-ignore
         .eq('trainer_id', trainerId)
-        // @ts-ignore
         .eq('status', 'active')
         .limit(1)
         .maybeSingle()
 
     if (!member) return null
 
-    const m = member as any
+    // O embed to-one do PostgREST pode vir como objeto ou array de 1 — normalizamos.
+    type OrgRow = OrganizationContext['organization']
+    interface MemberRow {
+        id: string
+        role: OrgRole
+        is_coach: boolean
+        organization: OrgRow | OrgRow[] | null
+    }
+    const m = member as unknown as MemberRow
     const org = Array.isArray(m.organization) ? m.organization[0] : m.organization
     if (!org) return null
 
