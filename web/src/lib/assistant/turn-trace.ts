@@ -91,6 +91,30 @@ export function toolResultOk(result: unknown): boolean {
 }
 
 /**
+ * Extrai a mensagem de erro de um resultado MCP que falhou (`mcpError()` empacota
+ * `{"error":"…"}` no content textual). Também cobre `{error}` de topo. Retorna
+ * null se não houver mensagem legível — o caller usa um fallback amigável.
+ */
+export function mcpErrorMessage(result: unknown): string | null {
+    if (!result || typeof result !== 'object') return null
+    const r = result as { error?: unknown; content?: unknown }
+    if (typeof r.error === 'string' && r.error.length > 0) return r.error
+    if (Array.isArray(r.content)) {
+        for (const part of r.content) {
+            const text = (part as { text?: unknown })?.text
+            if (typeof text !== 'string') continue
+            try {
+                const parsed = JSON.parse(text) as { error?: unknown }
+                if (typeof parsed?.error === 'string' && parsed.error.length > 0) return parsed.error
+            } catch {
+                // content não-JSON: ignora
+            }
+        }
+    }
+    return null
+}
+
+/**
  * Grava um trace de turno. Best-effort — engole qualquer erro (loga e segue).
  */
 export async function recordTurnTrace(

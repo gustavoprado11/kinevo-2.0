@@ -22,7 +22,7 @@ import { redactSensitive } from '@/lib/assistant/redact'
 import { CONFIRM_TOOLS, actionClassForTool, creditWeightForCall } from '@/lib/assistant/tool-policy'
 import { checkQuota, checkFreeTrial, recordFreeTrial } from '@/lib/ai-usage/quota'
 import { recordAiUsage, type AiSurface } from '@/lib/ai-usage/metering'
-import { recordTurnTrace, toolResultOk } from '@/lib/assistant/turn-trace'
+import { recordTurnTrace, toolResultOk, mcpErrorMessage } from '@/lib/assistant/turn-trace'
 import { validateConfirmArgs } from '@/lib/assistant/arg-validation'
 import { limitSensitive } from '@/lib/assistant/rate-limits'
 
@@ -168,7 +168,17 @@ export async function executeConfirmedTool(input: {
         if (idemKey) await releaseActionIdempotency(supabaseAdmin, idemKey, trainerId)
         throw execErr
     }
-    if (idemKey) await finishActionIdempotency(supabaseAdmin, idemKey, trainerId, redactSensitive(result))
+
+    // 5a. Falha REAL da tool (mcpError → isError:true): NUNCA reportar sucesso.
+    //     Antes o card mostrava "Feito" mesmo com a ação falhada no servidor
+    //     (auditoria 2026-07-01) — o pior bug de confiança de um caminho de
+    //     dinheiro/destrutivo. Falhou → libera a idempotency key (retry legítimo),
+    //     não cobra, e devolve o motivo ao card.
+    const ok = toolResultOk(result)
+    if (idemKey) {
+        if (ok) await finishActionIdempotency(supabaseAdmin, idemKey, trainerId, redactSensitive(result))
+        else await releaseActionIdempotency(supabaseAdmin, idemKey, trainerId)
+    }
 
     // 5b. Trace de auditoria da ação sensível confirmada (best-effort).
     const argStudentId =
@@ -180,11 +190,24 @@ export async function executeConfirmedTool(input: {
         studentId: argStudentId,
         kind: 'confirmed_action',
         surface: surface ?? null,
-        tools: [{ toolName, args: args as Record<string, unknown>, ok: toolResultOk(result) }],
+        tools: [{ toolName, args: args as Record<string, unknown>, ok }],
         credits,
     })
 
-    // 6. Registrar uso (best-effort: a ação JÁ executou).
+    if (!ok) {
+        const detail = mcpErrorMessage(result)
+        return {
+            status: 502,
+            body: {
+                error: 'tool_failed',
+                message: detail
+                    ? `A ação não foi concluída: ${detail}`
+                    : 'A ação não foi concluída — nada foi alterado. Tente novamente.',
+            },
+        }
+    }
+
+    // 6. Registrar uso (best-effort: a ação JÁ executou com sucesso).
     try {
         if (tier === 'free') {
             await recordFreeTrial(supabaseAdmin, trainerId, actionClass)
