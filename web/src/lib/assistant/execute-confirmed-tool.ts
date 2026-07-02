@@ -45,6 +45,8 @@ const TOOLS_WITH_CONFIRM_PARAM: ReadonlySet<string> = new Set<string>([
     'kinevo_mark_payment_as_paid',
     'kinevo_cancel_contract',
     'kinevo_convert_lead',
+    'kinevo_archive_student',
+    'kinevo_correct_assessment',
 ])
 
 /** UUID v4-ish — valida a idempotency_key recebida do card (C6). */

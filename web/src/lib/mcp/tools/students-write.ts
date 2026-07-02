@@ -4,6 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
 import { assertCanCreateStudent, StudentCapError } from '@/lib/limits/student-cap'
+import { archiveStudentCore } from '@/actions/financial/archive-student-core'
 import { mcpSuccess, mcpError } from '../types'
 
 export function registerStudentWriteTools(server: McpServer, trainerId: string) {
@@ -131,6 +132,87 @@ export function registerStudentWriteTools(server: McpServer, trainerId: string) 
       return mcpSuccess({
         student: data,
         message: `Dados do aluno ${data.name} atualizados.`,
+      })
+    }
+  )
+
+  server.tool(
+    'kinevo_archive_student',
+    "Archive (offboard) a student who stopped training: cancels their active contracts/subscriptions (including Stripe), optionally ends their recurring appointment routines, ends the trainer-student link and notifies the student. The workout HISTORY is preserved, but the student leaves the roster and re-linking requires a new invite — treat as IRREVERSIBLE. This is NOT the same as kinevo_update_student status='inactive' (which just marks the student inactive, keeping contracts and the link). Without confirm=true it only returns a PREVIEW (contracts/routines that would be affected). If the student has active appointment routines and appointment_decision was not given, it returns needs_appointment_decision — ask the trainer whether to cancel or keep them, then call again.",
+    {
+      student_id: z.string().uuid().describe('The student to archive (from kinevo_list_students).'),
+      appointment_decision: z.enum(['keep', 'cancel']).optional()
+        .describe("What to do with the student's ACTIVE recurring appointments: 'cancel' ends the routines, 'keep' leaves them in the calendar."),
+      confirm: z.boolean().default(false)
+        .describe('Set true ONLY after the trainer explicitly confirmed the archive.'),
+    },
+    { title: 'Arquivar aluno', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    async ({ student_id, appointment_decision, confirm }) => {
+      const supabaseAdmin = createAdminClient()
+
+      // Posse + contexto do preview (contratos e rotinas ativos).
+      const { data: student } = await supabaseAdmin
+        .from('students')
+        .select('id, name')
+        .eq('id', student_id)
+        .eq('coach_id', trainerId)
+        .single()
+      if (!student) {
+        return mcpError('Aluno não encontrado ou não pertence a este treinador.')
+      }
+
+      const [{ count: contractsCount }, { count: routinesCount }] = await Promise.all([
+        supabaseAdmin
+          .from('student_contracts')
+          .select('id', { count: 'exact', head: true })
+          .eq('student_id', student_id)
+          .eq('trainer_id', trainerId)
+          .in('status', ['active', 'pending', 'past_due']),
+        supabaseAdmin
+          .from('recurring_appointments')
+          .select('id', { count: 'exact', head: true })
+          .eq('student_id', student_id)
+          .eq('trainer_id', trainerId)
+          .eq('status', 'active'),
+      ])
+
+      if (!confirm) {
+        return mcpSuccess({
+          preview: true,
+          student: { id: student.id, name: student.name },
+          active_contracts: contractsCount ?? 0,
+          active_routines: routinesCount ?? 0,
+          message: `PRÉ-VISUALIZAÇÃO — nada foi executado. Arquivar ${student.name} vai cancelar ${contractsCount ?? 0} contrato(s) ativo(s), ${appointment_decision === 'cancel' ? `encerrar ${routinesCount ?? 0} rotina(s) de agenda` : `manter ${routinesCount ?? 0} rotina(s) de agenda`}, encerrar o vínculo e notificar o aluno. O histórico de treinos é preservado. Confirme com o treinador e repita com confirm=true.`,
+        })
+      }
+
+      const { data: trainer } = await supabaseAdmin
+        .from('trainers')
+        .select('name')
+        .eq('id', trainerId)
+        .single()
+
+      const result = await archiveStudentCore({
+        trainerId,
+        trainerName: trainer?.name ?? null,
+        studentId: student_id,
+        appointmentDecision: appointment_decision,
+      })
+
+      if (result.needsAppointmentDecision) {
+        return mcpSuccess({
+          needs_appointment_decision: true,
+          active_routines: result.activeRoutinesCount ?? 0,
+          message: `${student.name} tem ${result.activeRoutinesCount ?? 0} rotina(s) de agenda ativa(s). Pergunte ao treinador se quer cancelá-las ou mantê-las e chame de novo com appointment_decision='cancel' ou 'keep'.`,
+        })
+      }
+      if (result.error) return mcpError(result.error)
+
+      return mcpSuccess({
+        archived: true,
+        student: { id: student.id, name: student.name },
+        canceled_contracts: result.canceledContractsCount ?? 0,
+        message: `Aluno ${student.name} arquivado: ${result.canceledContractsCount ?? 0} contrato(s) cancelado(s), vínculo encerrado e aluno notificado. O histórico de treinos foi preservado.`,
       })
     }
   )

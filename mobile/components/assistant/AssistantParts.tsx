@@ -37,6 +37,10 @@ const EXECUTED_LABEL: Record<string, string> = {
     kinevo_generate_checkout_link: 'Link de cobrança gerado',
     kinevo_create_student: 'Aluno criado',
     kinevo_update_student: 'Aluno atualizado',
+    kinevo_archive_student: 'Aluno arquivado',
+    kinevo_correct_assessment: 'Avaliação corrigida',
+    kinevo_duplicate_program: 'Programa duplicado',
+    kinevo_send_message_batch: 'Mensagens enviadas',
 };
 
 function executedLabel(toolName: string): string {

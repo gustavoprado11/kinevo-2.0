@@ -5,13 +5,13 @@
  * do AI SDK DESCARTA as annotations do MCP (readOnlyHint/destructiveHint) — então
  * este arquivo, não as hints, decide o que pausa para HITL. Ver chat-first SPEC §1.
  *
- * Cobre as 57 tools do servidor MCP (`lib/mcp/tools/*`) + a action `generateProgram`
+ * Cobre as 62 tools do servidor MCP (`lib/mcp/tools/*`) + a action `generateProgram`
  * (roteamento de prescrição). Define também os pesos de crédito (§3.2 da SPEC) e os
  * subconjuntos de subsetting por intenção (corta 60–70% do input — §7.2).
  */
 
 // ----------------------------------------------------------------------------
-// Catálogo das 57 tools MCP
+// Catálogo das 62 tools MCP
 // ----------------------------------------------------------------------------
 export const ALL_MCP_TOOLS = [
     'kinevo_ping',
@@ -19,6 +19,7 @@ export const ALL_MCP_TOOLS = [
     'kinevo_get_student',
     'kinevo_create_student',
     'kinevo_update_student',
+    'kinevo_archive_student',
     'kinevo_list_programs',
     'kinevo_get_program',
     'kinevo_create_program',
@@ -27,8 +28,10 @@ export const ALL_MCP_TOOLS = [
     'kinevo_assign_program',
     'kinevo_expire_program',
     'kinevo_delete_program',
+    'kinevo_duplicate_program',
     'kinevo_list_training_methods',
     'kinevo_list_exercises',
+    'kinevo_find_exercise_substitutes',
     'kinevo_create_exercise',
     'kinevo_add_workout_session',
     'kinevo_add_exercise_to_session',
@@ -41,6 +44,7 @@ export const ALL_MCP_TOOLS = [
     'kinevo_get_form_responses',
     'kinevo_get_dashboard_summary',
     'kinevo_send_message',
+    'kinevo_send_message_batch',
     'kinevo_list_subscriptions',
     'kinevo_get_revenue_summary',
     'kinevo_list_plans',
@@ -66,6 +70,7 @@ export const ALL_MCP_TOOLS = [
     'kinevo_create_assessment_session',
     'kinevo_save_assessment_measurements',
     'kinevo_finalize_assessment',
+    'kinevo_correct_assessment',
     'kinevo_list_insights',
     'kinevo_get_workout_checkins',
     'kinevo_list_leads',
@@ -89,6 +94,7 @@ export const READ_TOOLS: ReadonlySet<string> = new Set<McpToolName>([
     'kinevo_get_program',
     'kinevo_list_training_methods',
     'kinevo_list_exercises',
+    'kinevo_find_exercise_substitutes',
     'kinevo_get_student_progress',
     'kinevo_get_form_responses',
     'kinevo_get_dashboard_summary',
@@ -131,9 +137,14 @@ export const CONFIRM_TOOLS: ReadonlySet<string> = new Set<McpToolName>([
     // W-EXTERNO / início de cobrança (auditoria 2026-06-22 — S1/S2/S3): saem para
     // o ALUNO (irreversíveis) ou iniciam uma cobrança.
     'kinevo_send_message',
+    'kinevo_send_message_batch',
     'kinevo_send_form',
     'kinevo_schedule_form',
     'kinevo_generate_checkout_link',
+    // Onda 5: offboarding (cancela contratos/Stripe + encerra vínculo) e correção
+    // de dados JÁ compartilhados com o aluno.
+    'kinevo_archive_student',
+    'kinevo_correct_assessment',
 ])
 
 /** Escrita = tudo que não é leitura. (CONFIRM ⊆ WRITE.) */
@@ -158,6 +169,7 @@ export type ActionClass = 'query' | 'write' | 'prescription' | 'bulk'
 export const BULK_TOOLS: ReadonlySet<string> = new Set<McpToolName>([
     'kinevo_send_form',
     'kinevo_schedule_form',
+    'kinevo_send_message_batch',
 ])
 export const BULK_MAX = 10
 
@@ -182,6 +194,7 @@ export const CREDIT_WEIGHTS: Record<string, number> = {
     kinevo_create_superset: 2,
     kinevo_assign_program: 2,
     kinevo_create_contract: 2,
+    kinevo_duplicate_program: 2, // cópia transacional da árvore (sem LLM de build)
 }
 
 const DEFAULT_WEIGHT = 1
@@ -261,6 +274,7 @@ export const TOOL_SUBSETS: Record<ToolIntent, readonly McpToolName[]> = {
         'kinevo_get_student',
         'kinevo_create_student',
         'kinevo_update_student',
+        'kinevo_archive_student',
         'kinevo_get_student_progress',
         'kinevo_list_insights',
         'kinevo_get_workout_checkins',
@@ -274,8 +288,10 @@ export const TOOL_SUBSETS: Record<ToolIntent, readonly McpToolName[]> = {
         'kinevo_assign_program',
         'kinevo_expire_program',
         'kinevo_delete_program',
+        'kinevo_duplicate_program',
         'kinevo_list_training_methods',
         'kinevo_list_exercises',
+        'kinevo_find_exercise_substitutes',
         'kinevo_create_exercise',
         'kinevo_add_workout_session',
         'kinevo_add_exercise_to_session',
@@ -317,11 +333,13 @@ export const TOOL_SUBSETS: Record<ToolIntent, readonly McpToolName[]> = {
         'kinevo_create_assessment_session',
         'kinevo_save_assessment_measurements',
         'kinevo_finalize_assessment',
+        'kinevo_correct_assessment',
     ],
     comunicacao: [
         'kinevo_list_conversations',
         'kinevo_get_conversation',
         'kinevo_send_message',
+        'kinevo_send_message_batch',
         'kinevo_list_insights',
     ],
     leads: [

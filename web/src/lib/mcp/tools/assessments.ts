@@ -184,4 +184,129 @@ export function registerAssessmentTools(server: McpServer, trainerId: string) {
       })
     }
   )
+
+  // --------------------------------------------------------------------------
+  // WRITE — corrigir uma avaliação JÁ finalizada (Onda 5)
+  // --------------------------------------------------------------------------
+  server.tool(
+    'kinevo_correct_assessment',
+    "Correct measurements of an assessment that was ALREADY finalized (status completed) — e.g. a typo in weight or a skinfold. Records each corrected value as a new SELECTED attempt (the original stays in history, unselected), recomputes the derived metrics (BMI, body-fat %, lean/fat mass, WHR) with the same engine as finalization, and updates the results already shared with the student (no new notification). For sessions still open use kinevo_save_assessment_measurements. Without confirm=true it returns a PREVIEW of the current vs corrected values.",
+    {
+      session_id: z.string().uuid().describe('The COMPLETED assessment session to correct (from kinevo_get_assessments).'),
+      measurements: z.array(measurementSchema).min(1)
+        .describe('The corrected measurements. Each replaces the currently selected value of the same metric_key (+side).'),
+      notes: z.string().max(1000).optional().describe('Optional note about the correction, appended to the session notes.'),
+      confirm: z.boolean().default(false)
+        .describe('Set true ONLY after the trainer explicitly confirmed the correction.'),
+    },
+    { title: 'Corrigir avaliação finalizada', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    async ({ session_id, measurements, notes, confirm }) => {
+      const supabaseAdmin = createAdminClient()
+
+      // Carrega a sessão pelo MESMO RPC das demais tools (valida posse).
+      const { data: sessionData, error: fetchErr } = await supabaseAdmin.rpc('get_assessment_session' as never, {
+        p_trainer_id: trainerId,
+        p_session_id: session_id,
+      } as never)
+      if (fetchErr) return mcpError(`Erro ao carregar avaliação: ${fetchErr.message}`)
+
+      const payload = sessionData as unknown as {
+        session?: { id?: string; status?: string; notes?: string | null; template_snapshot?: AssessmentTemplateSchema | null }
+        measurements?: Array<MeasurementInput & { side?: string | null; attempt_number?: number | null; is_selected?: boolean | null }>
+      } | null
+      if (!payload?.session?.id) return mcpError('Avaliação não encontrada ou não pertence a este treinador.')
+      if (payload.session.status !== 'completed') {
+        return mcpError(
+          `Esta sessão está "${payload.session.status}". kinevo_correct_assessment é só para sessões FINALIZADAS — para sessões abertas use kinevo_save_assessment_measurements.`,
+        )
+      }
+
+      const existing = payload.measurements ?? []
+      const selectedFor = (key: string, side: string | null | undefined) =>
+        existing.find(
+          (m) => m.metric_key === key && (m.side ?? null) === (side ?? null) && (m.is_selected ?? true),
+        )
+
+      if (!confirm) {
+        const changes = measurements.map((m) => {
+          const cur = selectedFor(m.metric_key, m.side)
+          return {
+            metric_key: m.metric_key,
+            side: m.side ?? null,
+            current_value: cur?.value_numeric ?? cur?.value_text ?? null,
+            corrected_value: m.value_numeric ?? m.value_text ?? null,
+          }
+        })
+        return mcpSuccess({
+          preview: true,
+          changes,
+          message: 'PRÉ-VISUALIZAÇÃO — nada foi alterado. Confira os valores atuais vs corrigidos com o treinador e repita com confirm=true.',
+        })
+      }
+
+      // Correção: desmarca a(s) tentativa(s) selecionada(s) da métrica e insere a
+      // corrigida como nova tentativa selecionada — preserva o histórico.
+      for (const m of measurements) {
+        let unselect = supabaseAdmin
+          .from('assessment_measurements')
+          .update({ is_selected: false })
+          .eq('session_id', session_id)
+          .eq('metric_key', m.metric_key)
+        unselect = m.side ? unselect.eq('side', m.side) : unselect.is('side', null)
+        const { error: unselErr } = await unselect
+        if (unselErr) return mcpError(`Erro ao corrigir ${m.metric_key}: ${unselErr.message}`)
+
+        const attempts = existing
+          .filter((e) => e.metric_key === m.metric_key && (e.side ?? null) === (m.side ?? null))
+          .map((e) => e.attempt_number ?? 1)
+        const nextAttempt = attempts.length > 0 ? Math.max(...attempts) + 1 : 1
+
+        const { error: insErr } = await supabaseAdmin.from('assessment_measurements').insert({
+          session_id,
+          metric_key: m.metric_key,
+          value_numeric: m.value_numeric ?? null,
+          value_text: m.value_text ?? null,
+          value_unit: m.value_unit ?? null,
+          side: m.side ?? null,
+          attempt_number: nextAttempt,
+          is_selected: true,
+        })
+        if (insErr) return mcpError(`Erro ao gravar correção de ${m.metric_key}: ${insErr.message}`)
+      }
+
+      // Recalcula as métricas derivadas com o estado FRESCO (mesmo motor do finalize).
+      const { data: freshData, error: freshErr } = await supabaseAdmin.rpc('get_assessment_session' as never, {
+        p_trainer_id: trainerId,
+        p_session_id: session_id,
+      } as never)
+      if (freshErr) return mcpError(`Correções gravadas, mas falhou ao recarregar: ${freshErr.message}`)
+      const fresh = freshData as unknown as {
+        session?: { template_snapshot?: AssessmentTemplateSchema | null }
+        measurements?: MeasurementInput[]
+      } | null
+      const computedMetrics = buildComputedMetricsFromSchema(
+        fresh?.session?.template_snapshot ?? null,
+        fresh?.measurements ?? [],
+      )
+
+      const newNotes = notes
+        ? `${payload.session.notes ? `${payload.session.notes}\n` : ''}[Correção] ${notes}`
+        : undefined
+      const { error: updErr } = await supabaseAdmin
+        .from('assessment_sessions')
+        .update({
+          computed_metrics: computedMetrics,
+          ...(newNotes !== undefined ? { notes: newNotes } : {}),
+        })
+        .eq('id', session_id)
+        .eq('trainer_id', trainerId)
+      if (updErr) return mcpError(`Correções gravadas, mas falhou ao atualizar métricas: ${updErr.message}`)
+
+      return mcpSuccess({
+        corrected: measurements.map((m) => m.metric_key),
+        computed_metrics: computedMetrics,
+        message: `Avaliação corrigida (${measurements.length} medida(s)) e métricas recalculadas. Os resultados compartilhados com o aluno já refletem a correção.`,
+      })
+    }
+  )
 }

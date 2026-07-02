@@ -169,6 +169,52 @@ export async function validateConfirmArgs(
                 return { ok: true, target: { label: `${prog.name} · rascunho de ${name}` } }
             }
 
+            case 'kinevo_archive_student': {
+                const studentId = str(args.student_id)
+                if (!studentId) return { ok: false, reason: 'Faltou indicar o aluno.' }
+                const name = await studentName(admin, trainerId, studentId)
+                if (!name) return { ok: false, reason: 'Aluno não encontrado ou não é seu.' }
+                return { ok: true, target: { label: `Arquivar ${name} (cancela contratos e encerra o vínculo)` } }
+            }
+
+            case 'kinevo_correct_assessment': {
+                const sessionId = str(args.session_id)
+                if (!sessionId) return { ok: false, reason: 'Faltou indicar a avaliação.' }
+                const { data: s } = await admin
+                    .from('assessment_sessions')
+                    .select('trainer_id, status, student_id')
+                    .eq('id', sessionId)
+                    .maybeSingle()
+                const sess = s as { trainer_id: string; status: string; student_id: string } | null
+                if (!sess || sess.trainer_id !== trainerId) {
+                    return { ok: false, reason: 'Avaliação não encontrada ou não é sua.' }
+                }
+                if (sess.status !== 'completed') {
+                    return { ok: false, reason: 'Esta avaliação ainda não foi finalizada — corrija pelo fluxo normal de medidas.' }
+                }
+                const name = (await studentName(admin, trainerId, sess.student_id)) ?? 'aluno'
+                const count = Array.isArray(args.measurements) ? args.measurements.length : 0
+                return { ok: true, target: { label: `Avaliação de ${name} · ${count} medida(s) corrigida(s)` } }
+            }
+
+            case 'kinevo_send_message_batch': {
+                const ids = Array.isArray(args.student_ids) ? (args.student_ids as unknown[]) : []
+                const count = ids.length
+                if (count === 0) return { ok: false, reason: 'Faltou indicar os alunos do lote.' }
+                // Posse agregada: qualquer id estranho bloqueia o lote inteiro.
+                const uuids = ids.filter((v): v is string => typeof v === 'string')
+                const { data: owned } = await admin
+                    .from('students')
+                    .select('id')
+                    .in('id', uuids)
+                    .eq('coach_id', trainerId)
+                const ownedCount = (owned ?? []).length
+                if (ownedCount !== new Set(uuids).size) {
+                    return { ok: false, reason: 'Um ou mais alunos do lote não pertencem a você — confira a lista.' }
+                }
+                return { ok: true, target: { label: `Mensagem para ${count} alunos` } }
+            }
+
             // Ações externas / início de cobrança (HITL desde a auditoria 2026-06-22):
             // best-effort — NUNCA bloqueiam (a própria tool checa posse na execução);
             // só montam um ALVO LEGÍVEL p/ o card (destinatário + prévia / contagem).

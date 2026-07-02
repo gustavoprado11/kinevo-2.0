@@ -631,4 +631,262 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
       })
     }
   )
+
+  server.tool(
+    'kinevo_duplicate_program',
+    "Duplicate an existing program in one call: copy an ASSIGNED program (any status — great for \"same program for another student\" or \"next cycle\") or a library TEMPLATE into a new STUDENT DRAFT (target='student_draft', requires student_id) or a new library TEMPLATE (target='template'). Copies sessions, schedules, exercises, supersets, per-set schemes, pre-configured substitutes and notes. The copy is created INERT (draft/template) — nothing changes for any student until the trainer activates it. Use kinevo_list_programs / kinevo_get_program to pick the source.",
+    {
+      source_program_id: z.string().uuid().describe('The program to copy.'),
+      source_type: z.enum(['assigned', 'template']).default('assigned').describe("Whether source_program_id is an assigned program or a library template."),
+      target: z.enum(['student_draft', 'template']).describe("What to create: a draft on a student's profile or a reusable library template."),
+      student_id: z.string().uuid().optional().describe("Required when target='student_draft': the student receiving the draft copy."),
+      new_name: z.string().min(2).optional().describe('Name for the copy. Defaults to "<source name> (cópia)".'),
+    },
+    { title: 'Duplicar programa', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    async ({ source_program_id, source_type, target, student_id, new_name }) => {
+      const supabaseAdmin = createAdminClient()
+
+      if (target === 'student_draft' && !student_id) {
+        return mcpError("target='student_draft' exige student_id.")
+      }
+
+      // ── Lê a árvore CRUA da origem (com posse) ──
+      interface RawSetRow {
+        set_number: number; set_type: string | null; reps: string | null; rest_seconds: number | null
+        weight_target_kg: number | null; weight_target_pct1rm: number | null
+        rir: number | null; tempo: string | null; notes: string | null; round_number: number | null
+      }
+      interface RawTreeItem {
+        id: string; parent_item_id: string | null; item_type: string; order_index: number
+        exercise_id: string | null; substitute_exercise_ids: string[] | null
+        sets: number | null; reps: string | null; rest_seconds: number | null
+        notes: string | null; item_config: unknown; method_key: string | null; rounds: number | null
+        exercise_function: string | null
+        exercise_name?: string | null; exercise_muscle_group?: string | null; exercise_equipment?: string | null
+        set_rows?: RawSetRow[]
+      }
+      interface RawTreeWorkout {
+        name: string; order_index: number
+        scheduled_days?: number[] | null; frequency?: string[] | null
+        items: RawTreeItem[]
+      }
+
+      let sourceName = ''
+      let sourceDescription: string | null = null
+      let sourceDuration: number | null = null
+      let workoutsRaw: RawTreeWorkout[] = []
+
+      if (source_type === 'assigned') {
+        const { data, error } = await supabaseAdmin
+          .from('assigned_programs')
+          .select(`
+            id, name, description, duration_weeks,
+            assigned_workouts(
+              name, order_index, scheduled_days,
+              assigned_workout_items(
+                id, parent_item_id, item_type, order_index, exercise_id,
+                substitute_exercise_ids, sets, reps, rest_seconds, notes,
+                item_config, method_key, rounds, exercise_function,
+                exercise_name, exercise_muscle_group, exercise_equipment,
+                assigned_workout_item_sets(
+                  set_number, set_type, reps, rest_seconds, weight_target_kg,
+                  weight_target_pct1rm, rir, tempo, notes, round_number
+                )
+              )
+            )
+          `)
+          .eq('id', source_program_id)
+          .eq('trainer_id', trainerId)
+          .single()
+        if (error || !data) return mcpError('Programa não encontrado ou não pertence a este treinador.')
+        sourceName = data.name
+        sourceDescription = data.description
+        sourceDuration = data.duration_weeks
+        workoutsRaw = ((data.assigned_workouts as unknown as Array<Record<string, unknown>>) ?? []).map((w) => ({
+          name: w.name as string,
+          order_index: w.order_index as number,
+          scheduled_days: (w.scheduled_days as number[] | null) ?? [],
+          items: ((w.assigned_workout_items as Array<Record<string, unknown>>) ?? []).map((i) => ({
+            ...(i as unknown as RawTreeItem),
+            set_rows: (i.assigned_workout_item_sets as RawSetRow[] | undefined) ?? [],
+          })),
+        }))
+      } else {
+        const { data, error } = await supabaseAdmin
+          .from('program_templates')
+          .select(`
+            id, name, description, duration_weeks,
+            workout_templates(
+              name, order_index, frequency,
+              workout_item_templates(
+                id, parent_item_id, item_type, order_index, exercise_id,
+                substitute_exercise_ids, sets, reps, rest_seconds, notes,
+                item_config, method_key, rounds, exercise_function,
+                workout_item_set_templates(
+                  set_number, set_type, reps, rest_seconds, weight_target_kg,
+                  weight_target_pct1rm, rir, tempo, notes, round_number
+                )
+              )
+            )
+          `)
+          .eq('id', source_program_id)
+          .eq('trainer_id', trainerId)
+          .single()
+        if (error || !data) return mcpError('Template não encontrado ou não pertence a este treinador.')
+        sourceName = data.name
+        sourceDescription = data.description
+        sourceDuration = data.duration_weeks
+        workoutsRaw = ((data.workout_templates as unknown as Array<Record<string, unknown>>) ?? []).map((w) => ({
+          name: w.name as string,
+          order_index: w.order_index as number,
+          frequency: (w.frequency as string[] | null) ?? [],
+          items: ((w.workout_item_templates as Array<Record<string, unknown>>) ?? []).map((i) => ({
+            ...(i as unknown as RawTreeItem),
+            set_rows: (i.workout_item_set_templates as RawSetRow[] | undefined) ?? [],
+          })),
+        }))
+      }
+
+      workoutsRaw.sort((a, b) => a.order_index - b.order_index)
+
+      // Snapshot denormalizado (nome/grupo/equipamento) para o alvo student_draft:
+      // a origem assigned já carrega; a origem template resolve do catálogo.
+      const needSnapshots = target === 'student_draft' && source_type === 'template'
+      const snapById = new Map<string, { name: string; muscle_group: string | null; equipment: string | null }>()
+      if (needSnapshots) {
+        const ids = new Set<string>()
+        for (const w of workoutsRaw) for (const i of w.items) if (i.exercise_id) ids.add(i.exercise_id)
+        if (ids.size > 0) {
+          const { data: found } = await supabaseAdmin
+            .from('exercises')
+            .select('id, name, equipment, exercise_muscle_groups(muscle_groups(name))')
+            .in('id', Array.from(ids))
+          for (const e of found ?? []) {
+            const emgs = e.exercise_muscle_groups as unknown as Array<{ muscle_groups: { name: string } | null }>
+            const mg = emgs?.map(x => x.muscle_groups?.name).find((n): n is string => !!n) ?? null
+            snapById.set(e.id, { name: e.name, muscle_group: mg, equipment: e.equipment ?? null })
+          }
+        }
+      }
+      const snapOf = (i: RawTreeItem) => {
+        if (source_type === 'assigned') {
+          return {
+            exercise_name: i.exercise_name ?? null,
+            exercise_muscle_group: i.exercise_muscle_group ?? null,
+            exercise_equipment: i.exercise_equipment ?? null,
+          }
+        }
+        const s = i.exercise_id ? snapById.get(i.exercise_id) : undefined
+        return {
+          exercise_name: s?.name ?? null,
+          exercise_muscle_group: s?.muscle_group ?? null,
+          exercise_equipment: s?.equipment ?? null,
+        }
+      }
+
+      // DAY_STR_TO_INT local (inverso do DAY_INT_TO_STR importado).
+      const dayStrToInt: Record<string, number> = {}
+      for (const [k, v] of Object.entries(DAY_INT_TO_STR)) dayStrToInt[v] = Number(k)
+
+      const mapItem = (i: RawTreeItem, orderIndex: number, children: RawTreeItem[]): Record<string, unknown> => ({
+        item_type: i.item_type,
+        order_index: orderIndex,
+        exercise_id: i.exercise_id,
+        substitute_exercise_ids: i.substitute_exercise_ids ?? [],
+        sets: i.sets,
+        reps: i.reps,
+        rest_seconds: i.rest_seconds,
+        notes: i.notes,
+        item_config: i.item_config ?? {},
+        method_key: i.method_key,
+        rounds: i.rounds ?? 1,
+        exercise_function: i.exercise_function,
+        set_rows: (i.set_rows ?? [])
+          .slice()
+          .sort((a, b) => (a.round_number ?? 1) - (b.round_number ?? 1) || a.set_number - b.set_number),
+        ...(target === 'student_draft' ? snapOf(i) : {}),
+        children: children
+          .slice()
+          .sort((a, b) => a.order_index - b.order_index)
+          .map((c, ci) => ({
+            item_type: c.item_type,
+            order_index: ci,
+            exercise_id: c.exercise_id,
+            substitute_exercise_ids: c.substitute_exercise_ids ?? [],
+            sets: c.sets,
+            reps: c.reps,
+            rest_seconds: c.rest_seconds,
+            notes: c.notes,
+            item_config: c.item_config ?? {},
+            exercise_function: c.exercise_function,
+            ...(target === 'student_draft' ? snapOf(c) : {}),
+          })),
+      })
+
+      const workouts = workoutsRaw.map((w, wi) => {
+        const top = w.items.filter((i) => !i.parent_item_id).sort((a, b) => a.order_index - b.order_index)
+        const days: number[] =
+          source_type === 'assigned'
+            ? (w.scheduled_days ?? [])
+            : ((w.frequency ?? []).map((d) => dayStrToInt[d]).filter((n): n is number => n !== undefined))
+        return {
+          name: w.name,
+          order_index: wi,
+          ...(target === 'student_draft'
+            ? { scheduled_days: days }
+            : { frequency: days.map((d) => DAY_INT_TO_STR[d]).filter(Boolean) }),
+          items: top.map((i, ii) => mapItem(i, ii, w.items.filter((c) => c.parent_item_id === i.id))),
+        }
+      })
+
+      const name = new_name ?? `${sourceName} (cópia)`
+      const rpcPayload = {
+        program: { name, description: sourceDescription, duration_weeks: sourceDuration },
+        workouts,
+      }
+
+      if (target === 'student_draft') {
+        // Posse do aluno-alvo (o RPC re-checa, mas o erro daqui é mais claro).
+        const { data: student } = await supabaseAdmin
+          .from('students')
+          .select('id, name')
+          .eq('id', student_id as string)
+          .eq('coach_id', trainerId)
+          .single()
+        if (!student) return mcpError('Aluno de destino não encontrado ou não pertence a este treinador.')
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await supabaseAdmin.rpc('create_assigned_program_tree' as any, {
+          p_trainer_id: trainerId,
+          p_student_id: student_id,
+          p_payload: rpcPayload,
+        })
+        if (error || !data) return mcpError(`Erro ao duplicar: ${error?.message ?? 'desconhecido'}`)
+        const result = data as { assigned_program_id: string; workout_count: number; item_count: number }
+        return mcpSuccess({
+          program: { id: result.assigned_program_id, name, type: 'assigned_draft', status: 'draft' },
+          student_id,
+          source: { id: source_program_id, name: sourceName, type: source_type },
+          workout_count: result.workout_count,
+          item_count: result.item_count,
+          message: `Cópia "${name}" criada como RASCUNHO no perfil de ${student.name} (${result.workout_count} sessões, ${result.item_count} itens). Não está ativa — o treinador revisa e ativa (ou kinevo_assign_program action 'activate_draft').`,
+        })
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await supabaseAdmin.rpc('create_program_template_tree' as any, {
+        p_trainer_id: trainerId,
+        p_payload: rpcPayload,
+      })
+      if (error || !data) return mcpError(`Erro ao duplicar: ${error?.message ?? 'desconhecido'}`)
+      const result = data as { program_template_id: string; workout_count: number; item_count: number }
+      return mcpSuccess({
+        program: { id: result.program_template_id, name, type: 'template' },
+        source: { id: source_program_id, name: sourceName, type: source_type },
+        workout_count: result.workout_count,
+        item_count: result.item_count,
+        message: `Cópia "${name}" criada na Biblioteca de Programas (${result.workout_count} sessões, ${result.item_count} itens).`,
+      })
+    }
+  )
 }

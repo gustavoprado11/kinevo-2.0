@@ -149,4 +149,128 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
       return mcpSuccess({ exercises, total: count ?? 0 })
     }
   )
+
+  server.tool(
+    'kinevo_find_exercise_substitutes',
+    "Find substitute candidates for an exercise (injury/pain, missing equipment, or preference). Returns the reference exercise plus catalog alternatives that share its movement pattern and/or muscle groups, and — when student_id is given — the student's medical restrictions. THE TOOL DOES NOT DO CLINICAL REASONING: from the candidates, YOU pick 2-3 options that avoid the limitation the trainer described (e.g. shoulder pain → prefer neutral-grip/machine variants, avoid overhead), explain why, and let the trainer choose. Then apply the swap with kinevo_update_workout_item if a program item was given.",
+    {
+      exercise_id: z.string().uuid().optional().describe('The exercise to substitute (preferred when known).'),
+      exercise_name: z.string().min(2).optional().describe('Alternative to exercise_id: resolve by name (partial match).'),
+      student_id: z.string().uuid().optional().describe("When set, includes the student's medical restrictions to inform the choice."),
+      limit: z.number().min(3).max(30).default(12).describe('Max candidates to return.'),
+    },
+    { title: 'Buscar substitutos de exercício', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    async ({ exercise_id, exercise_name, student_id, limit }) => {
+      if (!exercise_id && !exercise_name) {
+        return mcpError('Informe exercise_id ou exercise_name.')
+      }
+      const supabaseAdmin = createAdminClient()
+
+      // Resolve o exercício de referência.
+      let refQuery = supabaseAdmin
+        .from('exercises')
+        .select('id, name, equipment, movement_pattern, is_primary_movement, exercise_muscle_groups(muscle_group_id, muscle_groups(name))')
+        .eq('is_archived', false)
+        .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
+        .limit(5)
+      refQuery = exercise_id ? refQuery.eq('id', exercise_id) : refQuery.ilike('name', `%${exercise_name}%`)
+      const { data: refMatches, error: refErr } = await refQuery
+      if (refErr) return mcpError(`Erro ao buscar exercício: ${refErr.message}`)
+      if (!refMatches || refMatches.length === 0) {
+        return mcpError('Exercício não encontrado no catálogo.')
+      }
+      if (!exercise_id && refMatches.length > 1) {
+        return mcpSuccess({
+          ambiguous: true,
+          matches: refMatches.map((e) => ({ id: e.id, name: e.name, equipment: e.equipment })),
+          message: 'Mais de um exercício casa com esse nome — escolha um e chame de novo com exercise_id.',
+        })
+      }
+      const ref = refMatches[0]
+      const refMgs = (ref.exercise_muscle_groups as unknown as Array<{ muscle_group_id: string; muscle_groups: { name: string } | null }>) ?? []
+      const refMgIds = refMgs.map((x) => x.muscle_group_id)
+      const refMgNames = refMgs.map((x) => x.muscle_groups?.name).filter((n): n is string => !!n)
+
+      // Candidatos: mesmo padrão de movimento OU mesmo(s) grupo(s) muscular(es).
+      let candidateIds: string[] | null = null
+      if (refMgIds.length > 0) {
+        const { data: emg } = await supabaseAdmin
+          .from('exercise_muscle_groups')
+          .select('exercise_id')
+          .in('muscle_group_id', refMgIds)
+        candidateIds = Array.from(new Set((emg ?? []).map((e) => e.exercise_id))).filter((id) => id !== ref.id)
+      }
+
+      let candQuery = supabaseAdmin
+        .from('exercises')
+        .select('id, name, equipment, movement_pattern, is_primary_movement, session_position, owner_id, exercise_muscle_groups(muscle_groups(name))')
+        .eq('is_archived', false)
+        .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
+        .neq('id', ref.id)
+      if (ref.movement_pattern && candidateIds && candidateIds.length > 0) {
+        // padrão igual OU grupo muscular compartilhado
+        candQuery = candQuery.or(`movement_pattern.eq.${ref.movement_pattern},id.in.(${candidateIds.slice(0, 200).join(',')})`)
+      } else if (ref.movement_pattern) {
+        candQuery = candQuery.eq('movement_pattern', ref.movement_pattern)
+      } else if (candidateIds && candidateIds.length > 0) {
+        candQuery = candQuery.in('id', candidateIds.slice(0, 200))
+      } else {
+        return mcpError('Exercício de referência sem padrão de movimento nem grupos musculares — não há como sugerir substitutos pelo catálogo.')
+      }
+      const { data: cands, error: candErr } = await candQuery
+        .order('is_primary_movement', { ascending: false })
+        .order('name')
+        .limit(limit)
+      if (candErr) return mcpError(`Erro ao buscar candidatos: ${candErr.message}`)
+
+      // Restrições médicas do aluno (opcional).
+      let medicalRestrictions: string[] | null = null
+      let studentName: string | null = null
+      if (student_id) {
+        const { data: student } = await supabaseAdmin
+          .from('students')
+          .select('id, name')
+          .eq('id', student_id)
+          .eq('coach_id', trainerId)
+          .single()
+        if (!student) return mcpError('Aluno não encontrado ou não pertence a este treinador.')
+        studentName = student.name
+        const { data: profile } = await supabaseAdmin
+          .from('student_prescription_profiles')
+          .select('medical_restrictions')
+          .eq('student_id', student_id)
+          .eq('trainer_id', trainerId)
+          .maybeSingle()
+        medicalRestrictions = (profile?.medical_restrictions as string[] | null) ?? null
+      }
+
+      const candidates = (cands ?? []).map((e) => {
+        const emgs = e.exercise_muscle_groups as unknown as Array<{ muscle_groups: { name: string } | null }>
+        return {
+          id: e.id,
+          name: e.name,
+          equipment: e.equipment,
+          movement_pattern: e.movement_pattern,
+          muscle_groups: emgs?.map((x) => x.muscle_groups?.name).filter((n): n is string => !!n) ?? [],
+          is_primary_movement: e.is_primary_movement,
+          same_pattern: !!ref.movement_pattern && e.movement_pattern === ref.movement_pattern,
+          is_custom: e.owner_id === trainerId,
+        }
+      })
+
+      return mcpSuccess({
+        reference: {
+          id: ref.id,
+          name: ref.name,
+          equipment: ref.equipment,
+          movement_pattern: ref.movement_pattern,
+          muscle_groups: refMgNames,
+        },
+        candidates,
+        student: studentName ? { id: student_id, name: studentName } : null,
+        medical_restrictions: medicalRestrictions,
+        message: `${candidates.length} candidato(s) a substituto de ${ref.name}. Escolha os clinicamente adequados à limitação descrita e proponha ao treinador.`,
+      })
+    }
+  )
 }

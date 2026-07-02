@@ -180,7 +180,7 @@ const ROUTE_INTENTS: ReadonlyArray<readonly [string, ToolIntent[]]> = [
 // é barato (só ADICIONA um domínio de tools); falso negativo é falha silenciosa.
 const KEYWORD_INTENTS: ReadonlyArray<readonly [RegExp, ToolIntent]> = [
     [/pag|cobran|fatur|assinatur|plano|receita|mrr|inadimpl|contrat|checkout|pix|boleto|mensalidade|pre[çc]o|valor|reajust/i, 'financeiro'],
-    [/treino|programa|prescri|exerc|s[ée]rie|carga|superset|ficha|split|periodiz|divis[ãa]o|hipertrofia|m[ée]todo/i, 'prescricao'],
+    [/treino|programa|prescri|exerc|s[ée]rie|carga|superset|ficha|split|periodiz|divis[ãa]o|hipertrofia|m[ée]todo|substitu|duplic|c[óo]pia|copiar|les[ãa]o|machuc/i, 'prescricao'],
     [/agenda|sess[ãa]o|hor[áa]rio|reagend|marcar|consulta|compromisso|remarc|desmarc|atendimento/i, 'agenda'],
     [/formul[áa]rio|check-?in|question[áa]rio|anamnese|par-?q|pesquisa/i, 'forms'],
     [/avalia|medi[çc][ãa]o|dobra|circunfer|medida|bioimped|antropom|percentual|gordura|composi[çc][ãa]o corporal|imc/i, 'avaliacao'],
@@ -218,6 +218,7 @@ const DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
     'kinevo_delete_program',
     'kinevo_cancel_appointment_occurrence',
     'kinevo_cancel_appointment_series',
+    'kinevo_archive_student',
 ])
 
 const CONFIRM_TITLES: Record<string, string> = {
@@ -232,9 +233,12 @@ const CONFIRM_TITLES: Record<string, string> = {
     kinevo_cancel_appointment_occurrence: 'Cancelar esta sessão da agenda',
     kinevo_cancel_appointment_series: 'Cancelar a série de sessões',
     kinevo_send_message: 'Enviar mensagem ao aluno',
+    kinevo_send_message_batch: 'Enviar mensagem a vários alunos',
     kinevo_send_form: 'Enviar formulário ao(s) aluno(s)',
     kinevo_schedule_form: 'Agendar formulário recorrente',
     kinevo_generate_checkout_link: 'Gerar link de pagamento',
+    kinevo_archive_student: 'Arquivar aluno',
+    kinevo_correct_assessment: 'Corrigir avaliação finalizada',
 }
 
 function summarizeArgs(args: Record<string, unknown>): string {
@@ -254,6 +258,7 @@ function summarizeArgs(args: Record<string, unknown>): string {
  */
 const EDITABLE_FIELD: Record<string, { field: string; label: string }> = {
     kinevo_send_message: { field: 'content', label: 'Mensagem' },
+    kinevo_send_message_batch: { field: 'content', label: 'Mensagem' },
 }
 
 function buildConfirmation(
