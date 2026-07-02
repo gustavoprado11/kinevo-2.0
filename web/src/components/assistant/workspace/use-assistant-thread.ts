@@ -36,6 +36,10 @@ export function useAssistantThread({ initialSummary = null, initialConversations
     const [sending, setSending] = useState(false)
     const [liveSteps, setLiveSteps] = useState<string[]>([])
     const [liveText, setLiveText] = useState('') // U-STREAM: texto da resposta chegando token a token
+    // Sinal EXPLÍCITO de text_reset (fallback de modelo) p/ consumidores do stream
+    // (modo voz): inferir pelo encolhimento do liveText é ambíguo com a limpeza
+    // de fim de turno e causava fala duplicada.
+    const [textResetCount, setTextResetCount] = useState(0)
     const [focusedStudentId, setFocusedStudentId] = useState<string | null>(null)
     const [error, setError] = useState<AssistantBannerData | null>(null)
     const abortRef = useRef<AbortController | null>(null) // U-STOP: turno em andamento
@@ -82,9 +86,9 @@ export function useAssistantThread({ initialSummary = null, initialConversations
         } catch { /* otimista; já removida localmente */ }
     }, [activeId])
 
-    const send = useCallback(async (override?: string) => {
+    const send = useCallback(async (override?: string, opts?: { voice?: boolean }): Promise<AssistantMessage | null> => {
         const text = (override ?? input).trim()
-        if (!text || sending) return
+        if (!text || sending) return null
         if (!override) setInput('')
         setError(null)
         setSending(true)
@@ -107,7 +111,7 @@ export function useAssistantThread({ initialSummary = null, initialConversations
                     setError(bannerFromError(res.status, data))
                     if (!override) setInput(text) // devolve o texto p/ o usuário reenviar
                     setSending(false)
-                    return
+                    return null
                 }
                 const { conversation } = await res.json()
                 const sname = focusedStudentId ? students.find((s) => s.id === focusedStudentId)?.name ?? null : null
@@ -127,7 +131,8 @@ export function useAssistantThread({ initialSummary = null, initialConversations
 
             const res = await fetch(`/api/assistant/conversations/${convId}`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ input: text, clientMessageId }),
+                // Onda 6: voice=true → surface 'voice' no servidor (resposta falável).
+                body: JSON.stringify({ input: text, clientMessageId, ...(opts?.voice ? { voice: true } : {}) }),
                 signal: ac.signal,
             })
             // Erros de setup (gate/cota/rate/validação) vêm como JSON não-2xx.
@@ -136,7 +141,7 @@ export function useAssistantThread({ initialSummary = null, initialConversations
                 setMessages((prev) => prev.filter((m) => m.id !== optimistic.id))
                 setError(bannerFromError(res.status, data))
                 if (!override) setInput(text) // devolve o texto p/ o usuário reenviar
-                return
+                return null
             }
             // Stream NDJSON: {type:'progress'} + {type:'text', delta} (U-STREAM) ao
             // vivo + {type:'done'} no fim. text_reset = fallback de modelo (descarta
@@ -159,7 +164,7 @@ export function useAssistantThread({ initialSummary = null, initialConversations
                     try { ev = JSON.parse(line) } catch { continue }
                     if (ev.type === 'progress' && ev.label) setLiveSteps((s) => [...s, ev.label as string])
                     else if (ev.type === 'text' && typeof ev.delta === 'string') setLiveText((t) => t + (ev.delta as string))
-                    else if (ev.type === 'text_reset') setLiveText('')
+                    else if (ev.type === 'text_reset') { setLiveText(''); setTextResetCount((n) => n + 1) }
                     else if (ev.type === 'done') final = ev
                     else if (ev.type === 'error') streamError = true
                 }
@@ -169,7 +174,7 @@ export function useAssistantThread({ initialSummary = null, initialConversations
                 setMessages((prev) => prev.filter((m) => m.id !== optimistic.id))
                 setError(bannerFromError(500, {}))
                 if (!override) setInput(text)
-                return
+                return null
             }
             setMessages((prev) => {
                 const without = prev.filter((m) => m.id !== optimistic.id)
@@ -186,6 +191,7 @@ export function useAssistantThread({ initialSummary = null, initialConversations
                 if (updated.title === 'Nova conversa') updated.title = text.slice(0, 70)
                 return [updated, ...prev.filter((c) => c.id !== convId)]
             })
+            return final.message ?? null
         } catch (e) {
             // U-ERR: não engole a falha. Parar (AbortError) é intencional — mantém a msg
             // do usuário; a resposta, se concluiu no servidor, aparece ao reabrir a
@@ -195,10 +201,15 @@ export function useAssistantThread({ initialSummary = null, initialConversations
                 setError(bannerFromError(500, {}))
                 if (!override) setInput(text)
             }
+            return null
         } finally {
             setSending(false); setLiveSteps([]); setLiveText(''); abortRef.current = null
         }
     }, [input, sending, activeId, focusedStudentId, students])
+
+    // Onda 6: turno por voz (hands-free) — mesma thread, resposta curta/falável.
+    // Devolve a mensagem final para o cliente FALAR (TTS) e decidir o próximo passo.
+    const sendVoice = useCallback((text: string) => send(text, { voice: true }), [send])
 
     // U-STOP: interrompe o turno — o abort do fetch derruba a conexão e o servidor
     // aborta o LLM de verdade (request.signal → abortSignal do motor).
@@ -259,11 +270,11 @@ export function useAssistantThread({ initialSummary = null, initialConversations
         activeId, active,
         messages, loadingMessages,
         input, setInput,
-        sending, liveSteps, liveText,
+        sending, liveSteps, liveText, textResetCount,
         focusedStudentId, setFocusedStudentId,
         banner, dismissBanner,
         loadMessages, selectConversation, selectStudent, goHome, newConversation,
         deleteConversation, renameActive,
-        send, stop, starter, fillInput, recordConfirmation,
+        send, sendVoice, stop, starter, fillInput, recordConfirmation,
     }
 }

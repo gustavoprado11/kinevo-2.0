@@ -161,6 +161,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                 ? body.clientMessageId
                 : null
 
+        // Onda 6: turno iniciado por VOZ (hands-free) — mesma thread, mas o
+        // system-prompt responde curto/falável e o metering/trace marca 'voice'.
+        const isVoiceTurn = body?.voice === true
+
         // Rate-limit de turno (G6) — anti-amplificação de custo.
         const rl = await limitTurn(trainer.id)
         if (!rl.allowed) {
@@ -239,7 +243,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                         trainerId: trainer.id,
                         trainerName: trainer.name,
                         input,
-                        surface: 'workspace',
+                        surface: isVoiceTurn ? 'voice' : 'workspace',
                         periodType: gate.period,
                         tier: gate.tier,
                         history,

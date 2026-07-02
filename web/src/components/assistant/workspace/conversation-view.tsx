@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, Check, Send, Loader2, ArrowLeft, Pencil, Search, PenLine, ArrowUpRight, Square } from 'lucide-react'
+import { Sparkles, Check, Send, Loader2, ArrowLeft, Pencil, Search, PenLine, ArrowUpRight, Square, AudioLines, Volume2 } from 'lucide-react'
 import { CreditMeter } from '@/components/assistant/credit-meter'
 import { ToolConfirmationCard } from '@/components/assistant/tool-confirmation-card'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
@@ -32,6 +32,7 @@ import { avatarFor } from './ui-util'
 import { executedText } from '@/lib/assistant/tool-labels'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
 import { MicButton } from './mic-button'
+import { useVoiceMode, VOICE_MODE_ENABLED, type VoiceModeState } from './use-voice-mode'
 
 interface PickStudent { id: string; name: string }
 
@@ -44,6 +45,8 @@ interface Props {
     liveSteps: string[]
     /** U-STREAM: texto da resposta chegando token a token (substituído pelo `done`). */
     liveText: string
+    /** Incrementa a cada text_reset do stream — o modo voz corta a fala parcial. */
+    textResetCount: number
     input: string
     trainerName: string | null
     students: PickStudent[]
@@ -56,6 +59,9 @@ interface Props {
     onBackHome: () => void
     onRename: () => void
     onConfirmResolved: (toolName: string, confirmed: boolean, result?: unknown) => void
+    /** Onda 6: envia um turno por VOZ (surface 'voice') e devolve a mensagem
+     *  final para o TTS. Presente → o toggle de modo voz aparece. */
+    onVoiceTurn?: (text: string) => Promise<AssistantMessage | null>
 }
 
 // Quantos chips de aluno mostrar antes do "Buscar outro…".
@@ -94,12 +100,20 @@ function parseMcpPayload(result: unknown): Record<string, unknown> | null {
 }
 
 export function ConversationView({
-    active, summary, messages, loadingMessages, sending, liveSteps, liveText, input, students, banner,
-    onDismissBanner, onInput, onSend, onStop, onSendText, onBackHome, onRename, onConfirmResolved,
+    active, summary, messages, loadingMessages, sending, liveSteps, liveText, textResetCount, input, students, banner,
+    onDismissBanner, onInput, onSend, onStop, onSendText, onBackHome, onRename, onConfirmResolved, onVoiceTurn,
 }: Props) {
     const streamRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLTextAreaElement>(null)
     const av = avatarFor(active.studentName)
+
+    // ── Modo voz hands-free (Onda 6) ──
+    const voice = useVoiceMode({ onVoiceTurn: onVoiceTurn ?? (async () => null), liveText, textResetCount })
+    const voiceOn = voice.state !== 'off'
+    const resolveConfirmation = (toolName: string, confirmed: boolean, result?: unknown) => {
+        onConfirmResolved(toolName, confirmed, result)
+        voice.notifyConfirmationResolved()
+    }
 
     useEffect(() => {
         if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight
@@ -159,7 +173,7 @@ export function ConversationView({
                     )}
                     {messages.map((m, idx) => (
                         <MessageRow key={m.id} message={m} interactive={idx === messages.length - 1 && !sending}
-                            onConfirmResolved={onConfirmResolved} onSendText={onSendText} />
+                            onConfirmResolved={resolveConfirmation} onSendText={onSendText} />
                     ))}
                     {needsStudent && (
                         <StudentPicker students={students} onPick={(name) => onSendText(name)} onSearchOther={() => inputRef.current?.focus()} />
@@ -202,7 +216,13 @@ export function ConversationView({
                             <AssistantBanner data={banner} onDismiss={onDismissBanner} />
                         </div>
                     )}
-                    {showSuggestions && !banner && (
+                    {voiceOn && (
+                        <div className="mb-2.5">
+                            <VoiceStatusPill state={voice.state} interim={voice.interim}
+                                onInterrupt={voice.interrupt} onStop={voice.stop} />
+                        </div>
+                    )}
+                    {showSuggestions && !banner && !voiceOn && (
                         <div className="mb-2.5 flex flex-wrap items-center gap-2">
                             {suggestions.map((s) => (
                                 <button key={s} onClick={() => onSendText(s)} disabled={sending}
@@ -213,7 +233,23 @@ export function ConversationView({
                         </div>
                     )}
                     <div className="flex items-end gap-2 rounded-[22px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-2.5 py-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_3px_rgba(60,60,67,0.07)]">
-                        <MicButton disabled={sending} value={input} onChange={onInput} />
+                        {VOICE_MODE_ENABLED && onVoiceTurn && voice.supported && (
+                            <button
+                                type="button"
+                                onClick={() => (voiceOn ? voice.stop() : voice.start())}
+                                title={voiceOn ? 'Sair do modo voz' : 'Modo voz (mãos livres)'}
+                                aria-label={voiceOn ? 'Sair do modo voz' : 'Modo voz (mãos livres)'}
+                                aria-pressed={voiceOn}
+                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] border transition ${
+                                    voiceOn
+                                        ? 'border-[#7C3AED] bg-[#7C3AED] text-white'
+                                        : 'border-[#E8E8ED] dark:border-k-border-subtle text-[#6E6E73] dark:text-muted-foreground/80 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                                }`}
+                            >
+                                <AudioLines className="h-[17px] w-[17px]" strokeWidth={2} />
+                            </button>
+                        )}
+                        {!voiceOn && <MicButton disabled={sending} value={input} onChange={onInput} />}
                         <textarea
                             ref={inputRef}
                             value={input}
@@ -600,6 +636,66 @@ function ProposalCard({ request, onAnswer, interactive }: {
                 </button>
             </div>
         </div>
+    )
+}
+
+/**
+ * VoiceStatusPill — estado do modo voz acima do composer: Ouvindo (com a fala
+ * parcial ao vivo), Pensando, Falando (toque = interromper e falar por cima),
+ * pausado aguardando o card HITL, ou erro (toque = tentar de novo).
+ */
+function VoiceStatusPill({ state, interim, onInterrupt, onStop }: {
+    state: VoiceModeState
+    interim: string
+    onInterrupt: () => void
+    onStop: () => void
+}) {
+    const base = 'flex w-full items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-[13px]'
+    if (state === 'listening') {
+        return (
+            <div className={`${base} border-[#DDD6FE] bg-[#7C3AED]/[0.05] text-[#1D1D1F] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-foreground`}>
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C3AED] opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#7C3AED]" />
+                </span>
+                <span className="min-w-0 flex-1 truncate">
+                    {interim ? <em className="not-italic text-[#6E6E73] dark:text-muted-foreground">{interim}</em> : 'Ouvindo… pode falar.'}
+                </span>
+                <button onClick={onStop} className="shrink-0 text-[12px] font-semibold text-[#86868B] transition hover:text-[#1D1D1F] dark:text-muted-foreground dark:hover:text-foreground">Sair</button>
+            </div>
+        )
+    }
+    if (state === 'thinking') {
+        return (
+            <div className={`${base} border-[#EDEDF0] bg-[#F5F5F7] text-[#6E6E73] dark:border-k-border-subtle dark:bg-glass-bg dark:text-muted-foreground`}>
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#7C3AED] dark:text-violet-400" strokeWidth={2.2} />
+                <span className="flex-1">Pensando…</span>
+                <button onClick={onStop} className="shrink-0 text-[12px] font-semibold text-[#86868B] transition hover:text-[#1D1D1F] dark:text-muted-foreground dark:hover:text-foreground">Sair</button>
+            </div>
+        )
+    }
+    if (state === 'speaking') {
+        return (
+            <button onClick={onInterrupt} className={`${base} border-[#DDD6FE] bg-[#7C3AED]/[0.05] text-left text-[#1D1D1F] transition hover:bg-[#7C3AED]/[0.09] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-foreground`}>
+                <Volume2 className="h-4 w-4 shrink-0 animate-pulse text-[#7C3AED] dark:text-violet-400" strokeWidth={2} />
+                <span className="flex-1">Falando… toque para interromper e falar.</span>
+            </button>
+        )
+    }
+    if (state === 'paused_confirmation') {
+        return (
+            <div className={`${base} border-[#FDE68A] bg-[#FFFBEB] text-[#92400E] dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300`}>
+                <Check className="h-4 w-4 shrink-0" strokeWidth={2.4} />
+                <span className="flex-1">Confirme (ou cancele) a ação no card acima — depois eu volto a ouvir.</span>
+                <button onClick={onStop} className="shrink-0 text-[12px] font-semibold opacity-70 transition hover:opacity-100">Sair</button>
+            </div>
+        )
+    }
+    // error
+    return (
+        <button onClick={onInterrupt} className={`${base} border-[#F5C2C0] bg-[#FEF2F2] text-left text-[#BE123C] transition hover:bg-[#FEE2E2] dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300`}>
+            <span className="flex-1">O modo voz falhou. Toque para tentar de novo — ou verifique a permissão do microfone.</span>
+        </button>
     )
 }
 

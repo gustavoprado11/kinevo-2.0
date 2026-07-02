@@ -76,10 +76,10 @@ export function AssistantPanelContent() {
         activeId, active,
         messages, loadingMessages,
         input, setInput,
-        sending, liveSteps, liveText,
+        sending, liveSteps, liveText, textResetCount,
         banner, dismissBanner,
         selectConversation, selectStudent, goHome,
-        renameActive, send, stop, starter, recordConfirmation,
+        renameActive, send, sendVoice, stop, starter, recordConfirmation,
     } = thread
 
     // Hidratação ao abrir o painel: medidor de créditos + alunos/conversas.
@@ -153,6 +153,7 @@ export function AssistantPanelContent() {
                         sending={sending}
                         liveSteps={liveSteps}
                         liveText={liveText}
+                        textResetCount={textResetCount}
                         input={input}
                         trainerName={null}
                         students={students}
@@ -165,6 +166,7 @@ export function AssistantPanelContent() {
                         onBackHome={goHome}
                         onRename={renameActive}
                         onConfirmResolved={recordConfirmation}
+                        onVoiceTurn={sendVoice}
                     />
                 ) : (
                     <div className="flex flex-1 items-center justify-center">

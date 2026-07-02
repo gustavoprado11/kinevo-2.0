@@ -129,6 +129,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             conversationId: id,
             rawInput: body?.input,
             clientMessageId: body?.clientMessageId ?? null,
+            voice: body?.voice === true,
         })
         if (prep.kind === 'error') return NextResponse.json(prep.body, { status: prep.status })
         if (prep.kind === 'done') return streamDoneResponse(prep.body)

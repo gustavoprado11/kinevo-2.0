@@ -48,6 +48,8 @@ export interface MobileTurnContext {
     studentId?: string
     /** Programa em foco (Onda 2), derivado da conversa. */
     programFocus?: ProgramFocus | null
+    /** Onda 6: turno iniciado por voz — resposta curta/falável + surface 'voice'. */
+    voice?: boolean
     userMessage: AssistantMessage
     isFirstUserMessage: boolean
 }
@@ -63,6 +65,7 @@ export async function prepareMobileTurn(args: {
     conversationId: string
     rawInput: unknown
     clientMessageId?: unknown
+    voice?: boolean
 }): Promise<PrepareResult> {
     const { trainerId, trainerName, conversationId } = args
 
@@ -135,6 +138,7 @@ export async function prepareMobileTurn(args: {
             history,
             studentId: existing.conversation.student_id ?? undefined,
             programFocus,
+            voice: args.voice === true,
             userMessage,
             isFirstUserMessage,
         },
@@ -161,7 +165,7 @@ export async function finishMobileTurn(
         trainerId: ctx.trainerId,
         trainerName: ctx.trainerName,
         input: ctx.input,
-        surface: 'mobile',
+        surface: ctx.voice === true ? 'voice' : 'mobile',
         periodType: ctx.gate.period,
         tier: ctx.gate.tier,
         history: ctx.history,

@@ -47,12 +47,12 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
         activeId, active,
         messages, loadingMessages,
         input, setInput,
-        sending, liveSteps, liveText,
+        sending, liveSteps, liveText, textResetCount,
         focusedStudentId, setFocusedStudentId,
         banner, dismissBanner,
         selectConversation, selectStudent, goHome, newConversation,
         deleteConversation, renameActive,
-        send, stop, starter, fillInput, recordConfirmation,
+        send, sendVoice, stop, starter, fillInput, recordConfirmation,
     } = useAssistantThread({ initialSummary, initialConversations, students })
 
     // Alunos do rail: pinta de âmbar quem tem insight ativo (precisa de atenção).
@@ -136,6 +136,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     sending={sending}
                     liveSteps={liveSteps}
                     liveText={liveText}
+                    textResetCount={textResetCount}
                     input={input}
                     trainerName={trainerName}
                     students={students}
@@ -148,6 +149,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     onBackHome={goHome}
                     onRename={renameActive}
                     onConfirmResolved={recordConfirmation}
+                    onVoiceTurn={sendVoice}
                 />
             ) : (
                 <AssistantHome
