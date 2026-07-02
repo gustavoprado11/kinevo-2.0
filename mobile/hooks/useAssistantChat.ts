@@ -257,7 +257,7 @@ function closeConfirmation(
     return messages;
 }
 
-export function useAssistantChat(): UseAssistantChatReturn {
+export function useAssistantChat(opts?: { studentId?: string }): UseAssistantChatReturn {
     const [messages, setMessages] = useState<AssistantMessage[]>([]);
     const [isSending, setIsSending] = useState(false);
     const [progress, setProgress] = useState<string | null>(null);
@@ -265,6 +265,9 @@ export function useAssistantChat(): UseAssistantChatReturn {
     const [error, setError] = useState<AssistantError | null>(null);
     const [summary, setSummary] = useState<AiUsageSummary | null>(null);
     const convIdRef = useRef<string | null>(null);
+    // Escopo por aluno (Onda 3): a conversa nasce ligada ao aluno — o servidor
+    // monta o contexto clínico dele e trava o foco do turno.
+    const studentScopeRef = useRef<string | null>(opts?.studentId ?? null);
     const sendingRef = useRef(false);
     const abortRef = useRef<AbortController | null>(null);
 
@@ -406,12 +409,14 @@ export function useAssistantChat(): UseAssistantChatReturn {
         abortRef.current = controller;
 
         try {
-            // 1. Garante uma conversa (cria sob demanda).
+            // 1. Garante uma conversa (cria sob demanda; escopada ao aluno se houver).
             let convId = convIdRef.current;
             if (!convId) {
                 const cRes = await authedFetch('/api/trainer/assistant/conversations', {
                     method: 'POST',
-                    body: JSON.stringify({}),
+                    body: JSON.stringify(
+                        studentScopeRef.current ? { studentId: studentScopeRef.current } : {},
+                    ),
                 });
                 const cJson = await cRes.json().catch(() => null);
                 if (!cRes.ok) {

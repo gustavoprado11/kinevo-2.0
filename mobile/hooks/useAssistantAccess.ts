@@ -4,20 +4,37 @@
  * Consulta /api/trainer/assistant/access (Bearer). Cacheia em memória para não
  * re-buscar a cada navegação. Fail-closed: na dúvida (erro/sem rede), allowed=false.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://www.kinevoapp.com';
 
+/** Medidor de créditos do período (espelha AiUsageSummary do web). */
+export interface AssistantUsageSummary {
+    tier: string;
+    creditsUsed: number;
+    creditsTotal: number;
+    creditsRemaining: number;
+    periodStart: string;
+    periodEnd: string;
+    exhausted: boolean;
+}
+
 export interface AssistantAccess {
     allowed: boolean;
     tier: string;
+    /** Medidor do ciclo (Onda 3: exibido na home) — null se a rota não devolveu. */
+    summary: AssistantUsageSummary | null;
     loading: boolean;
+    /** Re-busca o medidor — os créditos mudam a cada turno de chat. */
+    refresh: () => Promise<void>;
 }
 
-let cached: { allowed: boolean; tier: string } | null = null;
+type AccessPayload = { allowed: boolean; tier: string; summary: AssistantUsageSummary | null };
 
-async function fetchAccess(): Promise<{ allowed: boolean; tier: string } | null> {
+let cached: AccessPayload | null = null;
+
+async function fetchAccess(): Promise<AccessPayload | null> {
     try {
         const { data } = await supabase.auth.getSession();
         const token = data.session?.access_token;
@@ -28,16 +45,35 @@ async function fetchAccess(): Promise<{ allowed: boolean; tier: string } | null>
         if (!res.ok) return null;
         const json = await res.json().catch(() => null);
         if (!json || typeof json.allowed !== 'boolean') return null;
-        return { allowed: json.allowed, tier: typeof json.tier === 'string' ? json.tier : 'free' };
+        return {
+            allowed: json.allowed,
+            tier: typeof json.tier === 'string' ? json.tier : 'free',
+            summary:
+                json.summary && typeof json.summary === 'object'
+                    ? (json.summary as AssistantUsageSummary)
+                    : null,
+        };
     } catch {
         return null;
     }
 }
 
 export function useAssistantAccess(): AssistantAccess {
-    const [state, setState] = useState<AssistantAccess>(
-        cached ? { ...cached, loading: false } : { allowed: false, tier: 'free', loading: true },
+    const [state, setState] = useState<AccessPayload & { loading: boolean }>(
+        cached
+            ? { ...cached, loading: false }
+            : { allowed: false, tier: 'free', summary: null, loading: true },
     );
+
+    const refresh = useCallback(async () => {
+        const r = await fetchAccess();
+        if (r) {
+            cached = r;
+            setState({ ...r, loading: false });
+        } else {
+            setState((s) => ({ ...s, loading: false }));
+        }
+    }, []);
 
     useEffect(() => {
         let active = true;
@@ -56,5 +92,5 @@ export function useAssistantAccess(): AssistantAccess {
         };
     }, []);
 
-    return state;
+    return { ...state, refresh };
 }

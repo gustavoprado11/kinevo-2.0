@@ -1,33 +1,46 @@
 /**
  * AssistantDashboard — Home no modo Assistente (Frame 1 do design).
  *
- * Reaproveita os dados do useTrainerDashboard (mesmas pendências/stats do
- * dashboard clássico), reapresentados no layout do Assistente: header com
- * saudação, toggle Clássico/Assistente, seção "Precisa da sua atenção",
- * "Esta semana" e uma barra de composição fixa que abre o chat.
- *
- * Phase 1: apresentacional. A composição abre /assistant (chat). Wiring de
- * backend (envio real, créditos) entra na Fase 2.
+ * "Precisa da sua atenção" combina os INSIGHTS de IA (assistant_insights — os
+ * mesmos da home web: Estagnado / Pronto p/ evoluir / Nota, que abrem o chat já
+ * ESCOPADO ao aluno com um prompt otimizado) com as pendências operacionais do
+ * dashboard (cobranças, programas vencendo). Header mostra o medidor de
+ * créditos; "Conversas recentes" reabre threads direto no chat.
  */
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Animated, { FadeIn, FadeInUp, Easing } from 'react-native-reanimated';
 import {
     AlertTriangle,
     CreditCard,
     CalendarClock,
     ChevronRight,
+    TrendingUp,
+    TrendingDown,
+    FileText,
+    MessagesSquare,
 } from 'lucide-react-native';
 import { v2 } from '@kinevo/shared/tokens';
 import { useV2Colors } from '../../hooks/useV2Colors';
 import { useRoleMode } from '../../contexts/RoleModeContext';
 import { useTrainerDashboard } from '../../hooks/useTrainerDashboard';
 import { useAssistantMode } from '../../hooks/useAssistantMode';
+import { useAssistantInsights } from '../../hooks/useAssistantInsights';
+import { useAssistantAccess } from '../../hooks/useAssistantAccess';
+import { useAssistantConversations } from '../../hooks/useAssistantConversations';
 import { AssistantModeToggle } from './AssistantModeToggle';
 import { AssistantComposer } from './AssistantComposer';
-import { HOME_SUGGESTIONS, optimizePrompt } from '../../lib/assistantPrompts';
+import { CreditMeter } from './CreditMeter';
+import {
+    HOME_SUGGESTIONS,
+    optimizePrompt,
+    attentionKind,
+    attentionPrompt,
+    ATTENTION_KIND_LABEL,
+    type AttentionKind,
+} from '../../lib/assistantPrompts';
 import { Avatar } from '../v2';
 
 const { spacing, radius, typography } = v2;
@@ -72,18 +85,64 @@ export function AssistantDashboard() {
     const { trainerProfile } = useRoleMode();
     const { stats, pendingActions, isRefreshing, refresh } = useTrainerDashboard();
     const { setMode } = useAssistantMode();
+    const { insights, refresh: refreshInsights } = useAssistantInsights();
+    const { summary, refresh: refreshAccess } = useAssistantAccess();
+    const { items: recentConversations, refresh: refreshConversations } = useAssistantConversations();
+
+    // Re-busca ao (re)ganhar foco — um turno de chat muda créditos, insights e
+    // conversas; sem isso a home volta stale do /assistant.
+    useFocusEffect(
+        useCallback(() => {
+            void refreshConversations();
+            void refreshInsights();
+            void refreshAccess();
+        }, [refreshConversations, refreshInsights, refreshAccess]),
+    );
 
     const firstName = trainerProfile?.name?.split(' ')[0] || 'Treinador';
 
-    const openChat = (initialMessage?: string) => {
+    const openChat = (
+        initialMessage?: string,
+        scope?: { studentId: string; studentName: string },
+    ) => {
         router.push({
             pathname: '/assistant',
-            params: initialMessage ? { q: initialMessage } : {},
+            params: {
+                ...(initialMessage ? { q: initialMessage } : {}),
+                ...(scope ? { studentId: scope.studentId, studentName: scope.studentName } : {}),
+            },
         } as never);
     };
 
-    // ── Monta os cards de atenção a partir das pendências reais ──
+    // ── Cards de atenção: INSIGHTS de IA primeiro (paridade com a home web),
+    //    depois as pendências operacionais do dashboard ──
     const attention: AttentionCardData[] = [];
+    const KIND_META: Record<AttentionKind, { icon: AttentionCardData['icon']; tint: string }> = {
+        estagnado: { icon: TrendingDown, tint: colors.semantic.warning.default },
+        pronto_para_evoluir: { icon: TrendingUp, tint: colors.semantic.success.default },
+        nota: { icon: FileText, tint: colors.purple[600] },
+    };
+    for (const ins of insights) {
+        const kind = attentionKind(ins);
+        const meta = KIND_META[kind];
+        attention.push({
+            key: `insight-${ins.id}`,
+            title: ins.studentName
+                ? `${ins.studentName} · ${ATTENTION_KIND_LABEL[kind]}`
+                : ins.title,
+            subtitle: ins.studentName ? ins.title : ins.body,
+            icon: meta.icon,
+            tint: meta.tint,
+            // Abre o chat JÁ ESCOPADO ao aluno, com o prompt otimizado do insight.
+            onPress: () =>
+                openChat(
+                    attentionPrompt(ins),
+                    ins.studentId && ins.studentName
+                        ? { studentId: ins.studentId, studentName: ins.studentName }
+                        : undefined,
+                ),
+        });
+    }
     if (pendingActions) {
         const { inactiveStudents, pendingFinancial, expiringPrograms } = pendingActions;
 
@@ -130,11 +189,20 @@ export function AssistantDashboard() {
             });
         }
     }
-    const attentionCount = pendingActions
-        ? pendingActions.inactiveStudents.length +
-          pendingActions.pendingFinancial.length +
-          pendingActions.expiringPrograms.length
-        : 0;
+    const attentionCount =
+        insights.length +
+        (pendingActions
+            ? pendingActions.inactiveStudents.length +
+              pendingActions.pendingFinancial.length +
+              pendingActions.expiringPrograms.length
+            : 0);
+
+    const onRefreshAll = () => {
+        refresh();
+        void refreshInsights();
+        void refreshConversations();
+        void refreshAccess();
+    };
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={['top']}>
@@ -175,6 +243,7 @@ export function AssistantDashboard() {
                         {getGreeting()}, {firstName}
                     </Text>
                 </View>
+                <CreditMeter summary={summary} />
                 <Avatar
                     name={trainerProfile?.name || 'Treinador'}
                     src={trainerProfile?.avatar_url ?? undefined}
@@ -193,7 +262,7 @@ export function AssistantDashboard() {
                 contentContainerStyle={{ paddingHorizontal: spacing[5], paddingBottom: spacing[4] }}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={colors.purple[600]} />
+                    <RefreshControl refreshing={isRefreshing} onRefresh={onRefreshAll} tintColor={colors.purple[600]} />
                 }
             >
                 {/* Precisa da sua atenção */}
@@ -288,6 +357,78 @@ export function AssistantDashboard() {
                                 }
                             />
                             <MiniStat label="Receita · mês" value={formatCurrency(stats.mrr)} valueColor={colors.text.primary} />
+                        </View>
+                    </Animated.View>
+                ) : null}
+
+                {/* Conversas recentes — reabrem direto no chat (param c) */}
+                {recentConversations.length > 0 ? (
+                    <Animated.View
+                        entering={FadeInUp.delay(140).duration(300).easing(Easing.out(Easing.cubic))}
+                        style={{ marginTop: spacing[5] }}
+                    >
+                        <Text
+                            style={{
+                                fontFamily: 'PlusJakartaSans_700Bold',
+                                fontSize: 11.5,
+                                letterSpacing: 1.2,
+                                textTransform: 'uppercase',
+                                color: colors.text.tertiary,
+                                marginBottom: spacing[3],
+                            }}
+                        >
+                            Conversas recentes
+                        </Text>
+                        <View style={{ gap: spacing[2] }}>
+                            {recentConversations.slice(0, 3).map((conv) => (
+                                <Pressable
+                                    key={conv.id}
+                                    onPress={() =>
+                                        // Reabre preservando o escopo visual (header/placeholder do aluno).
+                                        router.push({
+                                            pathname: '/assistant',
+                                            params: {
+                                                c: conv.id,
+                                                ...(conv.student_id && conv.studentName
+                                                    ? { studentId: conv.student_id, studentName: conv.studentName }
+                                                    : {}),
+                                            },
+                                        } as never)
+                                    }
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`Abrir conversa: ${conv.title}`}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: spacing[3],
+                                        backgroundColor: colors.surface.card,
+                                        borderRadius: radius.lg,
+                                        paddingVertical: spacing[3],
+                                        paddingHorizontal: spacing[4],
+                                        borderWidth: 1,
+                                        borderColor: colors.border.default,
+                                    }}
+                                >
+                                    <MessagesSquare size={16} color={colors.text.tertiary} strokeWidth={1.9} />
+                                    <View style={{ flex: 1, minWidth: 0 }}>
+                                        <Text
+                                            numberOfLines={1}
+                                            style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}
+                                        >
+                                            {conv.title}
+                                        </Text>
+                                        {conv.studentName ? (
+                                            <Text
+                                                numberOfLines={1}
+                                                style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11.5, color: colors.text.tertiary, marginTop: 1 }}
+                                            >
+                                                {conv.studentName}
+                                            </Text>
+                                        ) : null}
+                                    </View>
+                                    <ChevronRight size={16} color={colors.text.quaternary} strokeWidth={2} />
+                                </Pressable>
+                            ))}
                         </View>
                     </Animated.View>
                 ) : null}

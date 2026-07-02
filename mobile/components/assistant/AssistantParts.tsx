@@ -1,12 +1,11 @@
 /**
- * AssistantParts — renderiza os "parts" de uma mensagem do assistente (ações
- * executadas, perguntas clicáveis, confirmações e propostas).
- *
- * Fase 2:
- *  - executed: chip "concluído" com rótulo amigável.
+ * AssistantParts — renderiza os "parts" de uma mensagem do assistente:
+ *  - executed: chip "concluído" com rótulo amigável + deep-link p/ a tela nativa
+ *    quando há destino óbvio (aluno criado → perfil; rascunho → builder).
  *  - question: pergunta + opções clicáveis (responder = novo turno).
- *  - confirmation / proposal: card read-only (a ação em si — confirmar/aprovar —
- *    chega na Fase 3 com o execute-tool).
+ *  - confirmation: card HITL ACIONÁVEL (Confirmar/Cancelar, campo editável) via
+ *    execute-tool; resolvida vira nota (mensagem enviada ganha "Ver conversa").
+ *  - proposal: proposta editável (Aprovar/Cancelar).
  *
  * Tokens DS v2 + Plus Jakarta.
  */
@@ -65,10 +64,14 @@ interface AssistantPartsProps {
     onCancel?: (part: ConfirmationPart) => void;
     /** Abre um rascunho de programa no builder nativo (assignedProgramId). */
     onOpenDraft?: (programId: string) => void;
+    /** Abre o perfil nativo de um aluno (deep-link pós-ação). */
+    onOpenStudent?: (studentId: string) => void;
+    /** Abre a thread de mensagens com um aluno (deep-link pós-envio). */
+    onOpenMessages?: (studentId: string) => void;
     disabled?: boolean;
 }
 
-export function AssistantParts({ parts, onAnswer, onConfirm, onCancel, onOpenDraft, disabled }: AssistantPartsProps) {
+export function AssistantParts({ parts, onAnswer, onConfirm, onCancel, onOpenDraft, onOpenStudent, onOpenMessages, disabled }: AssistantPartsProps) {
     if (!parts || parts.length === 0) return null;
     return (
         <View style={{ gap: spacing[3] }}>
@@ -106,6 +109,22 @@ export function AssistantParts({ parts, onAnswer, onConfirm, onCancel, onOpenDra
                                 );
                             }
                         }
+                        // Aluno criado (auto-executado): chip + deep-link p/ o perfil nativo.
+                        if (part.toolName === 'kinevo_create_student' && onOpenStudent) {
+                            const payload = parseMcpPayload(part.result);
+                            const student = payload?.student as { id?: string; name?: string } | undefined;
+                            if (!payload?.error && student?.id) {
+                                const sid = student.id;
+                                return (
+                                    <ExecutedChip
+                                        key={idx}
+                                        toolName={part.toolName}
+                                        linkLabel="Abrir perfil"
+                                        onLink={() => onOpenStudent(sid)}
+                                    />
+                                );
+                            }
+                        }
                         return <ExecutedChip key={idx} toolName={part.toolName} />;
                     }
                     case 'question':
@@ -118,24 +137,40 @@ export function AssistantParts({ parts, onAnswer, onConfirm, onCancel, onOpenDra
                                 onAnswer={onAnswer}
                             />
                         );
-                    case 'confirmation':
-                        return part.status === 'pending' && onConfirm && onCancel ? (
-                            <ConfirmationCard
-                                key={idx}
-                                part={part}
-                                disabled={disabled}
-                                onConfirm={onConfirm}
-                                onCancel={onCancel}
-                            />
-                        ) : (
+                    case 'confirmation': {
+                        if (part.status === 'pending' && onConfirm && onCancel) {
+                            return (
+                                <ConfirmationCard
+                                    key={idx}
+                                    part={part}
+                                    disabled={disabled}
+                                    onConfirm={onConfirm}
+                                    onCancel={onCancel}
+                                />
+                            );
+                        }
+                        // Mensagem enviada (confirmada): deep-link p/ a thread do aluno.
+                        const msgStudentId =
+                            part.status === 'confirmed' &&
+                            part.request.toolName === 'kinevo_send_message' &&
+                            typeof part.request.args?.student_id === 'string'
+                                ? (part.request.args.student_id as string)
+                                : null;
+                        return (
                             <ConfirmationNote
                                 key={idx}
                                 title={part.request.title}
                                 summary={part.request.summary}
                                 destructive={part.request.destructive}
                                 status={part.status}
+                                link={
+                                    msgStudentId && onOpenMessages
+                                        ? { label: 'Ver conversa', onPress: () => onOpenMessages(msgStudentId) }
+                                        : undefined
+                                }
                             />
                         );
+                    }
                     case 'proposal':
                         return (
                             <ProposalCard
@@ -384,25 +419,53 @@ function GeneratedProgramCard({
     );
 }
 
-function ExecutedChip({ toolName }: { toolName: string }) {
+function ExecutedChip({ toolName, linkLabel, onLink }: { toolName: string; linkLabel?: string; onLink?: () => void }) {
     const colors = useV2Colors();
     return (
-        <View
-            style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: spacing[2],
-                alignSelf: 'flex-start',
-                backgroundColor: colors.semantic.success.bg,
-                borderRadius: 10,
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-            }}
-        >
-            <CheckCircle2 size={15} color={colors.semantic.success.fg} strokeWidth={2.2} />
-            <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: colors.semantic.success.fg }}>
-                {executedLabel(toolName)}
-            </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2], flexWrap: 'wrap' }}>
+            <View
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing[2],
+                    alignSelf: 'flex-start',
+                    backgroundColor: colors.semantic.success.bg,
+                    borderRadius: 10,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                }}
+            >
+                <CheckCircle2 size={15} color={colors.semantic.success.fg} strokeWidth={2.2} />
+                <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: colors.semantic.success.fg }}>
+                    {executedLabel(toolName)}
+                </Text>
+            </View>
+            {linkLabel && onLink ? (
+                <Pressable
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        onLink();
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={linkLabel}
+                    hitSlop={6}
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: colors.border.default,
+                        paddingVertical: 7,
+                        paddingHorizontal: 11,
+                    }}
+                >
+                    <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: colors.purple[600] }}>
+                        {linkLabel}
+                    </Text>
+                    <ArrowUpRight size={13} color={colors.purple[600]} strokeWidth={2.2} />
+                </Pressable>
+            ) : null}
         </View>
     );
 }
@@ -472,11 +535,14 @@ function ConfirmationNote({
     summary,
     destructive,
     status,
+    link,
 }: {
     title: string;
     summary: string;
     destructive: boolean;
     status: 'pending' | 'confirmed' | 'cancelled';
+    /** Deep-link pós-ação (ex.: mensagem enviada → "Ver conversa"). */
+    link?: { label: string; onPress: () => void };
 }) {
     const colors = useV2Colors();
     const tone = destructive ? colors.semantic.danger : colors.semantic.warning;
@@ -508,10 +574,22 @@ function ConfirmationNote({
                         {status === 'confirmed' ? 'Confirmado' : status === 'cancelled' ? 'Cancelado' : destructive ? 'Ação destrutiva' : 'Requer confirmação'}
                     </Text>
                 </View>
-                {!resolved ? (
-                    <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11, color: colors.text.quaternary }}>
-                        Confirme pelo app web por enquanto
-                    </Text>
+                {link ? (
+                    <Pressable
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            link.onPress();
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={link.label}
+                        hitSlop={6}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+                    >
+                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 11.5, color: colors.purple[600] }}>
+                            {link.label}
+                        </Text>
+                        <ArrowUpRight size={12} color={colors.purple[600]} strokeWidth={2.2} />
+                    </Pressable>
                 ) : null}
             </View>
         </View>

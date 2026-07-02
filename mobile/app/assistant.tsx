@@ -41,10 +41,16 @@ export default function AssistantChatScreen() {
     const colors = useV2Colors();
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const { q } = useLocalSearchParams<{ q?: string }>();
+    // q = prompt inicial · c = conversa a reabrir · studentId/studentName =
+    // escopo por aluno (Onda 3): a conversa nasce ligada ao aluno.
+    const params = useLocalSearchParams<{ q?: string; c?: string; studentId?: string; studentName?: string }>();
+    const q = typeof params.q === 'string' ? params.q : undefined;
+    const conversationParam = typeof params.c === 'string' ? params.c : undefined;
+    const scopedStudentId = typeof params.studentId === 'string' ? params.studentId : undefined;
+    const scopedStudentName = typeof params.studentName === 'string' ? params.studentName : undefined;
 
     const { messages, isSending, progress, streamingText, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError } =
-        useAssistantChat();
+        useAssistantChat({ studentId: scopedStudentId });
     const [input, setInput] = useState('');
     const [showConversations, setShowConversations] = useState(false);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -76,14 +82,23 @@ export default function AssistantChatScreen() {
         requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     };
 
-    // Prompt inicial (vindo da Home Assistente): pré-preenche o composer pro
-    // usuário revisar/editar antes de enviar — não envia sozinho.
+    // Init: reabre uma conversa (param c) OU pré-preenche o composer com o
+    // prompt inicial (param q) pro usuário revisar/editar — não envia sozinho.
     useEffect(() => {
         if (didInit.current) return;
         didInit.current = true;
+        if (conversationParam) void loadConversation(conversationParam);
         if (q && q.trim()) fillInput(q.trim());
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Auto-scroll: segue mensagens novas e o texto em streaming — mas NÃO rola
+    // quando o conteúdo muda por digitação num card editável (antes o
+    // onContentSizeChange puxava o scroll e tirava o campo de foco da vista).
+    useEffect(() => {
+        scrollToEnd();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [messages.length, isSending, streamingText, progress]);
 
     const submit = (raw?: string) => {
         const text = (raw ?? input).trim();
@@ -132,8 +147,8 @@ export default function AssistantChatScreen() {
                     <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: colors.text.primary }}>
                         Assistente
                     </Text>
-                    <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11, color: colors.text.tertiary }}>
-                        Contexto dos seus alunos
+                    <Text numberOfLines={1} style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11, color: colors.text.tertiary }}>
+                        {scopedStudentName ? `Sobre ${scopedStudentName}` : 'Contexto dos seus alunos'}
                     </Text>
                 </View>
                 <CreditMeter summary={summary} />
@@ -164,7 +179,6 @@ export default function AssistantChatScreen() {
                         style={{ flex: 1 }}
                         contentContainerStyle={{ padding: spacing[4], gap: spacing[5] }}
                         showsVerticalScrollIndicator={false}
-                        onContentSizeChange={scrollToEnd}
                         keyboardShouldPersistTaps="handled"
                     >
                         {messages.map((m) => (
@@ -177,6 +191,12 @@ export default function AssistantChatScreen() {
                                         onCancel={(part) => void cancelAction(part)}
                                         onOpenDraft={(programId) =>
                                             router.push(`/program-builder/edit/${programId}` as never)
+                                        }
+                                        onOpenStudent={(studentId) =>
+                                            router.push({ pathname: '/student/[id]', params: { id: studentId } } as never)
+                                        }
+                                        onOpenMessages={(studentId) =>
+                                            router.push({ pathname: '/messages/[studentId]', params: { studentId } } as never)
                                         }
                                         disabled={isSending}
                                     />
@@ -203,12 +223,13 @@ export default function AssistantChatScreen() {
                 >
                     <AssistantComposer
                         ref={composerRef}
-                        placeholder="Responder…"
+                        placeholder={scopedStudentName ? `O que fazer com ${scopedStudentName.split(' ')[0]}?` : 'Responder…'}
                         value={input}
                         onChangeText={setInput}
                         onSend={() => submit()}
                         onPressMic={voice.toggle}
                         listening={voice.isListening}
+                        micAvailable={voice.available}
                         sending={isSending}
                         onStop={stop}
                     />

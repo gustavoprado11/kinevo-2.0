@@ -15,6 +15,8 @@ export interface ConversationListItem {
     title: string;
     last_message_at: string;
     message_count: number;
+    /** Conversa escopada a um aluno (a API devolve student_id + studentName). */
+    student_id: string | null;
     studentName: string | null;
 }
 

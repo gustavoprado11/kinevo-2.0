@@ -33,6 +33,9 @@ export interface AssistantComposerProps {
     onPressMic?: () => void;
     /** Ditado ativo: pinta o mic em vermelho (gravando). */
     listening?: boolean;
+    /** false = módulo de voz indisponível no binário → esconde o mic (antes ficava
+     *  um botão morto silencioso). Default true. */
+    micAvailable?: boolean;
     /** Modo "tap to open": a pill inteira é um botão. */
     onPress?: () => void;
     /** Modo "input": TextInput controlado. */
@@ -56,6 +59,7 @@ export const AssistantComposer = forwardRef<AssistantComposerHandle, AssistantCo
             onSuggestionPress,
             onPressMic,
             listening,
+            micAvailable = true,
             onPress,
             value,
             onChangeText,
@@ -178,7 +182,7 @@ export const AssistantComposer = forwardRef<AssistantComposerHandle, AssistantCo
                     </Pressable>
                 )}
 
-                {canSend ? null : (
+                {canSend || !micAvailable ? null : (
                     <Pressable
                         onPress={() => {
                             Haptics.selectionAsync();
