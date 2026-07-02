@@ -1,15 +1,15 @@
 /**
  * System prompt do Assistente Kinevo — instruções ESTÁVEIS e versionadas.
  *
- * Fonte única da persona/regras comuns aos dois caminhos do assistente:
- *   - command-engine.ts (⌘K + workspace) — opera as 55 tools MCP;
- *   - api/assistant/chat/route.ts — chat streaming com 3 tools próprias.
+ * Fonte única da persona/regras do assistente, consumida pelo command-engine.ts
+ * (⌘K + workspace + dock + voz), que opera as tools MCP. O caminho legado
+ * (api/assistant/chat, 3 tools próprias) morreu na Onda 4 — o dock usa o mesmo
+ * motor; a variante de surface 'chat' segue aceita só por compat de tipos.
  *
  * Antes, cada caminho costurava regras em lugares diferentes (context-builder
  * `base` + ASSISTANT_INSTRUCTIONS + TOOL_INSTRUCTIONS), que divergiam — inclusive
  * referenciando a tool `analyzeStudentProgress`, que NÃO existe no caminho MCP.
- * Aqui ficam SÓ as regras comuns e agnósticas de tool. Cada caminho acrescenta o
- * seu bloco específico de tools (HITL/MCP no command-engine; TOOL_INSTRUCTIONS no chat).
+ * Aqui ficam SÓ as regras comuns e agnósticas de tool.
  *
  * Ao mudar este arquivo, bumpe PROMPT_VERSION e rode a suíte de eval
  * (web/src/lib/assistant/evals). PROMPT_VERSION deve ser logado no metering/trace

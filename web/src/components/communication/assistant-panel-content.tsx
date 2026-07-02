@@ -1,14 +1,30 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, useId, type FormEvent, type ChangeEvent } from 'react'
-import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport, type UIMessage } from 'ai'
-import { Sparkles, Send, User, ExternalLink } from 'lucide-react'
-import Link from 'next/link'
-import { useCommunicationStore } from '@/stores/communication-store'
-import { AssistantBanner, bannerFromError, type AssistantBannerData } from '@/components/assistant/workspace/assistant-banner'
+/**
+ * AssistantPanelContent — aba Assistente do dock lateral (UnifiedCommunicationPanel).
+ *
+ * Onda 4: o dock usa o MESMO motor da página /assistente (useAssistantThread →
+ * /api/assistant/conversations: 57 tools MCP, HITL, streaming NDJSON, threads
+ * persistidas). O legado /api/assistant/chat (3 tools, sem HITL, sem memória)
+ * morreu. Começar aqui e continuar full-screen é a mesma conversa — o link
+ * "Abrir no Assistente" leva a /assistente?c=<id>.
+ *
+ * Escopo: quem abre o dock a partir de um aluno/insight (communication-store)
+ * já entra com a conversa escopada; o insight vira um cartão de contexto +
+ * chips de ação rápida (paridade com o comportamento antigo).
+ */
 
-// ── Quick action chips based on insight category ──
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Sparkles, Send, ExternalLink, MessagesSquare, Loader2 } from 'lucide-react'
+import { useCommunicationStore } from '@/stores/communication-store'
+import { AssistantBanner } from '@/components/assistant/workspace/assistant-banner'
+import { ConversationView } from '@/components/assistant/workspace/conversation-view'
+import { useAssistantThread, type ThreadStudent } from '@/components/assistant/workspace/use-assistant-thread'
+import { fetchAiAccess } from '@/components/assistant/command-bar/command-bar'
+import type { ConversationListItem } from '@/lib/assistant/conversations'
+
+// ── Chips de ação rápida por categoria do insight (paridade com o dock antigo) ──
 
 const INSIGHT_CHIPS: Record<string, string[]> = {
     gap_alert: ['Sugerir mensagem de follow-up', 'Analisar histórico do aluno'],
@@ -26,305 +42,231 @@ function getChipsForInsight(insightId: string | null): string[] {
     return []
 }
 
-// ── Simple markdown rendering ──
-// SECURITY: The LLM response can contain attacker-controlled content
-// (student names, anamnese answers are echoed by the model). We MUST:
-//   1. Escape all HTML entities BEFORE applying markdown transforms, so any
-//      `<script>`, `<img onerror>`, `<iframe>` in the raw text is neutralized.
-//   2. Validate URL schemes in [label](url) links — block `javascript:`,
-//      `data:`, `vbscript:`, `file:`, etc. Allow only http(s), relative paths,
-//      mailto, tel, and anchors.
+const GENERAL_CHIPS = ['Quem precisa de atenção?', 'Alunos sem treino ativo', 'Resumo de adesão da semana']
 
-function escapeHtml(s: string): string {
-    return s
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
+function chipsForScope(insightId: string | null, studentName: string | null): string[] {
+    const fromInsight = getChipsForInsight(insightId)
+    if (fromInsight.length > 0) return fromInsight
+    if (studentName) {
+        const first = studentName.split(' ')[0]
+        return [`Como está a evolução de ${first}?`, `Gerar um treino para ${first}`, `Enviar uma mensagem para ${first}`]
+    }
+    return GENERAL_CHIPS
 }
-
-const SAFE_URL_RE = /^(?:https?:\/\/|mailto:|tel:|\/|#)/i
-
-function safeUrl(rawUrl: string): string {
-    const trimmed = rawUrl.trim()
-    if (SAFE_URL_RE.test(trimmed)) return trimmed
-    return '#'
-}
-
-function renderMarkdown(text: string): string {
-    // Escape first — the only HTML in the output past this point is what we
-    // explicitly insert (strong/em/a/li/ul/br). Characters like `*`, `[`, `(`
-    // are not escaped so the markdown substitutions still match.
-    const escaped = escapeHtml(text)
-    return escaped
-        .replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+?)\*/g, '<em>$1</em>')
-        .replace(
-            /\[([^\]]+)\]\(([^)]+)\)/g,
-            (_m, label: string, url: string) =>
-                `<a href="${escapeHtml(safeUrl(url))}" class="text-violet-500 underline underline-offset-2 hover:text-violet-400" target="_blank" rel="noopener noreferrer">${label}</a>`,
-        )
-        .replace(/^- (.+)$/gm, '<li>$1</li>')
-        .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="list-disc pl-4 space-y-0.5">$&</ul>')
-        .replace(/\n/g, '<br/>')
-}
-
-/** Extract review links from message content for rendering as buttons.
- *  Constrained to `/students/...review=...` (relative paths) so the extracted
- *  URL is safe to pass to next/Link. */
-function extractReviewLink(content: string): { url: string; label: string } | null {
-    const match = content.match(/\[([^\]]+)\]\((\/students\/[^)]+review=[^)]+)\)/)
-    if (match) return { label: match[1], url: match[2] }
-    const rawMatch = content.match(/(\/students\/\S*review=\S+)/)
-    if (rawMatch) return { label: 'Revisar programa', url: rawMatch[1] }
-    return null
-}
-
-// Texto de uma UIMessage (v5): junta os parts de texto (não há mais `content`).
-function messageText(m: { parts?: Array<{ type: string; text?: string }> }): string {
-    return (m.parts ?? []).filter(p => p.type === 'text').map(p => p.text ?? '').join('')
-}
-
-// ── Component ──
 
 export function AssistantPanelContent() {
+    const router = useRouter()
     const { studentId, studentName, insightId, initialMessage, closePanel } = useCommunicationStore()
-    const messagesEndRef = useRef<HTMLDivElement>(null)
+    const [railStudents, setRailStudents] = useState<ThreadStudent[]>([])
     const inputRef = useRef<HTMLInputElement>(null)
-    const reactId = useId()
 
-    const initialMessages: UIMessage[] = useMemo(() => {
-        if (!initialMessage) return []
-        return [{ id: 'initial-0', role: 'assistant', parts: [{ type: 'text', text: initialMessage }] }]
-    }, [initialMessage])
-
-    const [input, setInput] = useState('')
-    const [banner, setBanner] = useState<AssistantBannerData | null>(null)
-    const transport = useMemo(
-        () =>
-            new DefaultChatTransport({
-                api: '/api/assistant/chat',
-                body: { studentId, insightId },
-                // O dock ENGOLIA 402/403/429 (front D): o treinador free batia no muro
-                // e não via nada. Interceptamos a resposta de erro e mostramos o banner
-                // de upsell, cujo CTA leva à tabela de planos (/settings#planos, Pro em
-                // destaque).
-                fetch: (async (reqInput: RequestInfo | URL, init?: RequestInit) => {
-                    setBanner(null)
-                    const res = await fetch(reqInput, init)
-                    if (!res.ok) {
-                        const body = await res.clone().json().catch(() => null)
-                        setBanner(bannerFromError(res.status, body))
-                    }
-                    return res
-                }) as typeof fetch,
-            }),
-        [studentId, insightId],
-    )
-    const { messages, sendMessage, status } = useChat({
-        id: `chat-${studentId || 'general'}-${reactId}`,
-        transport,
-        messages: initialMessages,
-    })
-    const isLoading = status === 'submitted' || status === 'streaming'
-    const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => setInput(e.target.value)
-    const handleSubmit = (e: FormEvent) => {
-        e.preventDefault()
-        const text = input.trim()
-        if (!text || isLoading) return
-        sendMessage({ text })
-        setInput('')
-    }
-
-    const chips = getChipsForInsight(insightId)
-
-    // Extended loading state (tool execution takes longer)
-    const [loadingSeconds, setLoadingSeconds] = useState(0)
-    useEffect(() => {
-        if (!isLoading) { setLoadingSeconds(0); return }
-        const interval = setInterval(() => setLoadingSeconds(s => s + 1), 1000)
-        return () => clearInterval(interval)
-    }, [isLoading])
-
-    const loadingText = loadingSeconds >= 5 ? 'Gerando programa...' : loadingSeconds >= 3 ? 'Analisando dados...' : null
-
-    // Scroll to bottom on new messages
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages])
-
-    // Muro da 2ª geração de programa no Free: a tool generateProgram devolve
-    // { code: 'free_trial_used' } como RESULTADO (200, não 402) → o interceptor de
-    // erro não pega. Detectamos o marcador no output da tool e mostramos o mesmo
-    // banner de upsell (CTA → tabela de planos). Roda só com o turno concluído.
-    useEffect(() => {
-        if (isLoading) return
-        const last = messages[messages.length - 1]
-        if (!last || last.role !== 'assistant') return
-        for (const part of (last.parts ?? []) as Array<{ type?: string; output?: unknown; result?: unknown }>) {
-            if (!part.type?.startsWith('tool-')) continue
-            const out = (part.output ?? part.result) as { code?: string; error?: string } | undefined
-            if (out?.code === 'free_trial_used') {
-                // Seguro: as deps do efeito (messages/isLoading) não mudam por este
-                // setState, então não há cascata de renders.
-                // eslint-disable-next-line react-hooks/set-state-in-effect
-                setBanner(bannerFromError(402, { error: 'free_trial_used', tier: 'free', message: out.error }))
-                return
-            }
+    // O aluno do escopo entra na lista mesmo antes do rail-data responder — é ele
+    // que nomeia a conversa otimista criada no primeiro envio.
+    const students = useMemo<ThreadStudent[]>(() => {
+        if (studentId && studentName && !railStudents.some((s) => s.id === studentId)) {
+            return [{ id: studentId, name: studentName }, ...railStudents]
         }
-    }, [messages, isLoading])
+        return railStudents
+    }, [studentId, studentName, railStudents])
 
-    // Focus input on mount
+    const thread = useAssistantThread({ students })
+    const {
+        summary, setSummary,
+        conversations, setConversations,
+        activeId, active,
+        messages, loadingMessages,
+        input, setInput,
+        sending, liveSteps, liveText,
+        banner, dismissBanner,
+        selectConversation, selectStudent, goHome,
+        renameActive, send, stop, starter, recordConfirmation,
+    } = thread
+
+    // Hidratação ao abrir o painel: medidor de créditos + alunos/conversas.
     useEffect(() => {
-        setTimeout(() => inputRef.current?.focus(), 300)
+        let on = true
+        void fetchAiAccess().then((a) => { if (on && a?.summary) setSummary(a.summary) })
+        void fetch('/api/assistant/rail-data')
+            .then(async (res) => {
+                if (!res.ok || !on) return
+                const data = await res.json().catch(() => null) as { students?: Array<{ id: string; name: string }>; conversations?: ConversationListItem[] } | null
+                if (!data || !on) return
+                if (Array.isArray(data.students)) setRailStudents(data.students.map((s) => ({ id: s.id, name: s.name })))
+                if (Array.isArray(data.conversations)) setConversations(data.conversations)
+            })
+            .catch(() => { /* painel segue funcional; a lista fica vazia */ })
+        return () => { on = false }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    const handleChipClick = (chipText: string) => {
-        if (isLoading) return
-        sendMessage({ text: chipText })
+    // Escopo vindo de quem abriu o dock (perfil do aluno, card de insight, busca).
+    useEffect(() => {
+        if (studentId) selectStudent(studentId)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [studentId])
+
+    useEffect(() => {
+        const t = setTimeout(() => inputRef.current?.focus(), 300)
+        return () => clearTimeout(t)
+    }, [])
+
+    const openFull = () => {
+        closePanel()
+        router.push(activeId ? `/assistente?c=${activeId}` : '/assistente')
     }
 
-    const subtitle = studentName ? `Sobre: ${studentName}` : 'Todos os alunos'
+    const chips = chipsForScope(insightId, studentName)
+    const recents = conversations.slice(0, 4)
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault()
+        void send()
+    }
 
     return (
-        <div className="flex flex-col h-full">
-            {/* Context subtitle */}
-            <div className="px-4 py-2 border-b border-border">
-                <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-violet-500/10 flex items-center justify-center flex-shrink-0">
-                        <Sparkles className="w-3 h-3 text-violet-500" />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-tight truncate">{subtitle}</p>
+        <div className="flex h-full flex-col">
+            {/* Contexto + continuidade full-screen */}
+            <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-500/10">
+                    <Sparkles className="h-3 w-3 text-violet-500" />
                 </div>
+                <p className="min-w-0 flex-1 truncate text-[11px] leading-tight text-muted-foreground">
+                    {studentName ? `Sobre: ${studentName}` : 'Todos os alunos'}
+                </p>
+                <button
+                    onClick={openFull}
+                    className="flex flex-shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400"
+                    title="Continuar esta conversa em tela cheia"
+                >
+                    <ExternalLink className="h-3 w-3" />
+                    Abrir no Assistente
+                </button>
             </div>
 
-            {/* Messages area */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-                {messages.length === 0 && !isLoading && (
-                    <div className="flex flex-col items-center justify-center h-full text-center px-6 gap-3">
-                        <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center">
-                            <Sparkles className="w-6 h-6 text-violet-500" />
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                            {studentName
-                                ? `Pergunte sobre o progresso de ${studentName}`
-                                : 'Pergunte sobre seus alunos, programas ou treinos'
-                            }
-                        </p>
-                    </div>
-                )}
-
-                {messages.map((message) => (
-                    <div key={message.id} className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        {message.role === 'assistant' && (
-                            <div className="w-6 h-6 rounded-full bg-violet-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <Sparkles className="w-3 h-3 text-violet-500" />
-                            </div>
-                        )}
-                        <div className={`max-w-[85%] ${message.role === 'user'
-                            ? 'bg-violet-600 text-white rounded-2xl rounded-br-md px-3.5 py-2.5'
-                            : 'bg-muted text-foreground rounded-2xl rounded-bl-md px-3.5 py-2.5'
-                        }`}>
-                            {message.role === 'assistant' ? (
-                                <>
-                                    <div
-                                        className="text-sm leading-relaxed [&_strong]:font-semibold [&_ul]:mt-1 [&_ul]:mb-1 [&_li]:text-sm [&_br+br]:hidden [&_a]:text-violet-500 [&_a]:underline"
-                                        dangerouslySetInnerHTML={{ __html: renderMarkdown(messageText(message)) }}
-                                    />
-                                    {(() => {
-                                        const reviewLink = extractReviewLink(messageText(message))
-                                        if (!reviewLink) return null
-                                        return (
-                                            <Link
-                                                href={reviewLink.url}
-                                                className="mt-2 flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500 transition-colors"
-                                                onClick={() => closePanel()}
-                                            >
-                                                <ExternalLink className="w-3 h-3" />
-                                                {reviewLink.label}
-                                            </Link>
-                                        )
-                                    })()}
-                                </>
-                            ) : (
-                                <p className="text-sm leading-relaxed">{messageText(message)}</p>
-                            )}
-                        </div>
-                        {message.role === 'user' && (
-                            <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <User className="w-3 h-3 text-white" />
-                            </div>
-                        )}
-                    </div>
-                ))}
-
-                {/* Loading indicator */}
-                {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                    <div className="flex gap-2 justify-start">
-                        <div className="w-6 h-6 rounded-full bg-violet-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <Sparkles className="w-3 h-3 text-violet-500" />
-                        </div>
-                        <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
-                            {loadingText ? (
-                                <p className="text-xs text-muted-foreground animate-pulse">{loadingText}</p>
-                            ) : (
-                                <div className="flex gap-1">
-                                    <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]" />
-                                    <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]" />
-                                    <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]" />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                <div ref={messagesEndRef} />
-            </div>
-
-            {/* Quick action chips */}
-            {chips.length > 0 && messages.length <= 1 && (
-                <div className="px-4 pb-2 flex flex-wrap gap-1.5">
-                    {chips.map((chip) => (
-                        <button
-                            key={chip}
-                            onClick={() => handleChipClick(chip)}
-                            disabled={isLoading}
-                            className="text-xs px-3 py-1.5 rounded-full border border-violet-200 dark:border-violet-500/30 text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-colors disabled:opacity-50"
-                        >
-                            {chip}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {/* Muro de cota/tier (402/403) — antes era engolido em silêncio. */}
-            {banner && (
-                <div className="px-4 pb-1">
-                    <AssistantBanner data={banner} onDismiss={() => setBanner(null)} />
-                </div>
-            )}
-
-            {/* Input area */}
-            <div className="border-t border-border px-4 py-3">
-                <form onSubmit={handleSubmit} className="flex items-center gap-2">
-                    <input
-                        ref={inputRef}
-                        value={input}
-                        onChange={handleInputChange}
-                        placeholder="Pergunte sobre seus alunos..."
-                        disabled={isLoading}
-                        className="flex-1 px-4 py-2.5 text-sm bg-muted border border-border rounded-full outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-colors placeholder:text-muted-foreground disabled:opacity-50"
+            {active ? (
+                summary ? (
+                    <ConversationView
+                        active={active}
+                        summary={summary}
+                        messages={messages}
+                        loadingMessages={loadingMessages}
+                        sending={sending}
+                        liveSteps={liveSteps}
+                        liveText={liveText}
+                        input={input}
+                        trainerName={null}
+                        students={students}
+                        banner={banner}
+                        onDismissBanner={dismissBanner}
+                        onInput={setInput}
+                        onSend={() => send()}
+                        onStop={stop}
+                        onSendText={starter}
+                        onBackHome={goHome}
+                        onRename={renameActive}
+                        onConfirmResolved={recordConfirmation}
                     />
-                    <button
-                        type="submit"
-                        disabled={isLoading || !input.trim()}
-                        className="w-9 h-9 flex items-center justify-center rounded-full bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-40 disabled:hover:bg-violet-600 flex-shrink-0"
-                    >
-                        <Send className="w-4 h-4" />
-                    </button>
-                </form>
-            </div>
+                ) : (
+                    <div className="flex flex-1 items-center justify-center">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/60" />
+                    </div>
+                )
+            ) : (
+                <>
+                    {/* Home compacta do dock */}
+                    <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+                        {initialMessage ? (
+                            // Contexto do insight que abriu o dock (voz do assistente) —
+                            // cartão visual, não mensagem persistida.
+                            <div className="flex gap-2">
+                                <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-500/10">
+                                    <Sparkles className="h-3 w-3 text-violet-500" />
+                                </div>
+                                <div className="rounded-2xl rounded-bl-md bg-muted px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
+                                    {initialMessage}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/10">
+                                    <Sparkles className="h-6 w-6 text-violet-500" />
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    {studentName
+                                        ? `Pergunte ou peça algo sobre ${studentName}`
+                                        : 'Peça qualquer coisa: analisar alunos, gerar treinos, enviar mensagens…'}
+                                </p>
+                                {recents.length > 0 && (
+                                    <div className="mt-2 w-full">
+                                        <p className="mb-2 text-left text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted-foreground/70">
+                                            Conversas recentes
+                                        </p>
+                                        <div className="space-y-1.5">
+                                            {recents.map((c) => (
+                                                <button
+                                                    key={c.id}
+                                                    onClick={() => selectConversation(c.id)}
+                                                    className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted"
+                                                >
+                                                    <MessagesSquare className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block truncate text-[13px] font-medium text-foreground">{c.title}</span>
+                                                        {c.studentName && (
+                                                            <span className="block truncate text-[11px] text-muted-foreground">{c.studentName}</span>
+                                                        )}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Chips de ação rápida (enviam na hora, como no dock antigo) */}
+                    <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+                        {chips.map((chip) => (
+                            <button
+                                key={chip}
+                                onClick={() => { if (!sending) starter(chip) }}
+                                disabled={sending}
+                                className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs text-violet-700 transition-colors hover:bg-violet-100 disabled:opacity-50 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
+                            >
+                                {chip}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Muro de cota/tier (402/403) — nunca engolir em silêncio. */}
+                    {banner && (
+                        <div className="px-4 pb-1">
+                            <AssistantBanner data={banner} onDismiss={dismissBanner} />
+                        </div>
+                    )}
+
+                    {/* Composer */}
+                    <div className="border-t border-border px-4 py-3">
+                        <form onSubmit={submit} className="flex items-center gap-2">
+                            <input
+                                ref={inputRef}
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder={studentName ? `O que fazer com ${studentName.split(' ')[0]}?` : 'Pergunte ou peça algo…'}
+                                disabled={sending}
+                                className="flex-1 rounded-full border border-border bg-muted px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 disabled:opacity-50"
+                            />
+                            <button
+                                type="submit"
+                                disabled={sending || !input.trim()}
+                                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-violet-600 text-white transition-colors hover:bg-violet-500 disabled:opacity-40 disabled:hover:bg-violet-600"
+                            >
+                                <Send className="h-4 w-4" />
+                            </button>
+                        </form>
+                    </div>
+                </>
+            )}
         </div>
     )
 }

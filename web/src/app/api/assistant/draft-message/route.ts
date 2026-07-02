@@ -5,7 +5,7 @@
 // na voz do treinador e devolve { draft, cost_usd }. NÃO envia — o envio é uma
 // ação separada após o treinador editar/aprovar.
 //
-// Espelha o padrão de auth + rate-limit de /api/assistant/chat.
+// Mesmo padrão de auth + rate-limit das demais rotas do assistente.
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'

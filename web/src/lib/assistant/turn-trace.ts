@@ -2,9 +2,8 @@
  * Writer do trace por turno (tabela assistant_turn_traces — migr 211).
  *
  * Best-effort: NUNCA lança. Um trace que falha jamais pode derrubar a resposta do
- * assistente (mesma filosofia do metering em onFinish). É chamado em 3 pontos:
- *   - command-engine.runAssistantTurn   → kind 'turn' (⌘K / workspace / voz / proativo)
- *   - api/assistant/chat (onFinish)      → kind 'turn' (chat streaming)
+ * assistente (mesma filosofia do metering em onFinish). É chamado em 2 pontos:
+ *   - command-engine.runAssistantTurn   → kind 'turn' (⌘K / workspace / dock / voz / proativo)
  *   - api/assistant/execute-tool         → kind 'confirmed_action' (ação sensível confirmada)
  *
  * A tabela é nova e ainda não está nos tipos gerados (Database), por isso o `admin`
