@@ -8,6 +8,7 @@ interface OAuthConsentFormProps {
   trainerName: string
   trainerEmail: string
   clientId: string
+  clientName: string | null
   redirectUri: string
   codeChallenge: string
   codeChallengeMethod: string
@@ -19,12 +20,23 @@ export function OAuthConsentForm({
   trainerName,
   trainerEmail,
   clientId,
+  clientName,
   redirectUri,
   codeChallenge,
   codeChallengeMethod,
   state,
   scope,
 }: OAuthConsentFormProps) {
+  // Host do destino para onde o código de autorização será enviado. Mostrar isto
+  // (e o nome do cliente) deixa o treinador reconhecer um app falso — o registro
+  // de clientes é aberto, então qualquer um pode registrar "Claude" com um
+  // redirect_uri próprio. React escapa o texto automaticamente (sem risco de XSS).
+  let redirectHost = redirectUri
+  try {
+    redirectHost = new URL(redirectUri).host
+  } catch {
+    // mantém o valor bruto se não for uma URL válida
+  }
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -86,12 +98,24 @@ export function OAuthConsentForm({
         Autorizar acesso ao Kinevo
       </h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
-        Um aplicativo externo quer acessar sua conta Kinevo.
+        <span className="font-semibold text-gray-900 dark:text-white">{clientName || 'Um aplicativo externo'}</span>{' '}
+        quer acessar sua conta Kinevo.
       </p>
 
-      <div className="rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 mb-6">
+      <div className="rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 mb-4">
         <p className="text-sm font-semibold text-gray-900 dark:text-white">{trainerName}</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">{trainerEmail}</p>
+      </div>
+
+      <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4 mb-6">
+        <p className="text-xs text-gray-600 dark:text-gray-300">
+          Após autorizar, o Kinevo vai enviar o acesso para:
+        </p>
+        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-white break-all">{redirectHost}</p>
+        <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+          Só continue se você reconhece este aplicativo e este destino. Autorizar dá
+          acesso à sua conta (alunos, mensagens e financeiro).
+        </p>
       </div>
 
       <div className="space-y-3 mb-6">

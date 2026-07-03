@@ -41,7 +41,7 @@ export default async function OAuthAuthorizePage({ searchParams }: PageProps) {
   const supabaseAdmin = createAdminClient()
   const { data: oauthClient } = await supabaseAdmin
     .from('mcp_oauth_clients')
-    .select('client_id, redirect_uris')
+    .select('client_id, client_name, redirect_uris')
     .eq('client_id', client_id)
     .single()
 
@@ -75,6 +75,7 @@ export default async function OAuthAuthorizePage({ searchParams }: PageProps) {
         trainerName={trainer.name}
         trainerEmail={trainer.email}
         clientId={client_id}
+        clientName={oauthClient.client_name ?? null}
         redirectUri={redirect_uri}
         codeChallenge={code_challenge}
         codeChallengeMethod={code_challenge_method ?? 'S256'}

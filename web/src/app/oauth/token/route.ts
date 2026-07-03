@@ -98,11 +98,21 @@ async function handleAuthorizationCode(
     return Response.json({ error: 'invalid_grant', error_description: 'PKCE verification failed' }, { status: 400 })
   }
 
-  // Mark code as used
-  await supabaseAdmin
+  // Marca o code como usado ATOMICAMENTE (single-use). O guard extra
+  // `.is('used_at', null)` + checagem de linhas afetadas fecha a corrida de
+  // double-spend: duas trocas concorrentes do mesmo code passam o SELECT acima,
+  // mas o row-lock do UPDATE garante que só UMA consiga virar o campo — a outra
+  // afeta 0 linhas e é rejeitada (senão um code renderia dois pares de tokens).
+  const { data: consumed, error: consumeErr } = await supabaseAdmin
     .from('mcp_oauth_codes')
     .update({ used_at: new Date().toISOString() })
     .eq('id', authCode.id)
+    .is('used_at', null)
+    .select('id')
+
+  if (consumeErr || !consumed || consumed.length === 0) {
+    return Response.json({ error: 'invalid_grant', error_description: 'Code already used' }, { status: 400 })
+  }
 
   // Generate tokens
   const accessToken = generateToken('kinevo_at')
