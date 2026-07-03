@@ -17,6 +17,7 @@ const h = vi.hoisted(() => ({
     },
     getPayment: vi.fn(),
     getKey: vi.fn(),
+    syncWallet: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase-admin', () => ({
@@ -39,6 +40,9 @@ vi.mock('@/lib/asaas', async () => {
 // A credencial da subconta (re-fetch) — mockada pra não decriptar nada real.
 vi.mock('@/lib/asaas/wallet-service', () => ({
     getDecryptedApiKey: h.getKey,
+    // Anti-forja em ACCOUNT_STATUS: o handler re-verifica o status contra o
+    // Asaas via syncWalletStatus em vez de confiar no payload. Mockado.
+    syncWalletStatus: h.syncWallet,
 }))
 
 vi.mock('@/lib/financial/notify', () => ({
@@ -657,43 +661,58 @@ describe('POST /api/webhooks/asaas', () => {
             return { id: 'evt_acc', event, dateCreated: 'x', account }
         }
 
-        it('APPROVED sets activated_at and notifies the trainer', async () => {
+        // Anti-forja: o handler NUNCA grava o status vindo do payload. Ele
+        // resolve o dono da conta e re-verifica o status via syncWalletStatus
+        // (fonte autoritativa: getSubaccount/myAccount/info). Notifica com base
+        // no status re-verificado.
+        it('APPROVED (re-verificado) notifica o treinador sem gravar do payload', async () => {
             resolveByAccountMock.mockResolvedValue(TRAINER_ID)
+            h.syncWallet.mockResolvedValue({ status: 'approved', rejectionReason: null })
             const res = await POST(makeRequest(accountEvent('ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED', {
                 id: 'acc_1', accountStatus: 'APPROVED',
             })))
             expect(res.status).toBe(200)
-
-            const update = stub.calls('trainer_payment_accounts', 'update')[0]
-            expect(update.payload).toMatchObject({ status: 'approved', rejection_reason: null })
-            expect((update.payload as Record<string, unknown>).activated_at).toBeTruthy()
-            expect(hasFilter(update, 'eq', 'asaas_account_id', 'acc_1')).toBe(true)
+            expect(h.syncWallet).toHaveBeenCalledWith(TRAINER_ID)
+            // Não grava direto em trainer_payment_accounts — quem grava é o
+            // syncWalletStatus (mockado aqui).
+            expect(stub.calls('trainer_payment_accounts', 'update').length).toBe(0)
             expect(notifyMock).toHaveBeenCalledWith(expect.objectContaining({
                 event: 'kyc_alert',
                 title: 'Sua Carteira foi liberada',
             }))
         })
 
-        it('REJECTED stores the rejection reason and notifies', async () => {
+        it('REJECTED usa o status/motivo autoritativos e notifica', async () => {
             resolveByAccountMock.mockResolvedValue(TRAINER_ID)
+            h.syncWallet.mockResolvedValue({ status: 'rejected', rejectionReason: 'Documento ilegível' })
             await POST(makeRequest(accountEvent('ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED', {
                 id: 'acc_2', accountStatus: 'REJECTED', rejectReason: 'Documento ilegível',
             })))
-
-            const update = stub.calls('trainer_payment_accounts', 'update')[0]
-            expect(update.payload).toEqual({ status: 'rejected', rejection_reason: 'Documento ilegível' })
+            expect(h.syncWallet).toHaveBeenCalledWith(TRAINER_ID)
             expect(notifyMock).toHaveBeenCalledWith(expect.objectContaining({
                 event: 'kyc_alert',
                 body: 'Documento ilegível',
             }))
         })
 
-        it('AWAITING updates the status without notifying', async () => {
+        it('status forjado é ignorado: payload diz APPROVED mas autoritativo=awaiting → não notifica', async () => {
+            resolveByAccountMock.mockResolvedValue(TRAINER_ID)
+            h.syncWallet.mockResolvedValue({ status: 'awaiting', rejectionReason: null })
             const res = await POST(makeRequest(accountEvent('ACCOUNT_STATUS_UPDATED', {
-                id: 'acc_3', accountStatus: 'AWAITING',
+                id: 'acc_3', accountStatus: 'APPROVED', // payload MENTE
             })))
             expect(res.status).toBe(200)
-            expect(stub.calls('trainer_payment_accounts', 'update')[0].payload).toMatchObject({ status: 'awaiting' })
+            expect(h.syncWallet).toHaveBeenCalledWith(TRAINER_ID)
+            expect(notifyMock).not.toHaveBeenCalled()
+        })
+
+        it('conta não resolvida → no-op (não re-verifica nem notifica)', async () => {
+            resolveByAccountMock.mockResolvedValue(null)
+            const res = await POST(makeRequest(accountEvent('ACCOUNT_STATUS_UPDATED', {
+                id: 'acc_unknown', accountStatus: 'APPROVED',
+            })))
+            expect(res.status).toBe(200)
+            expect(h.syncWallet).not.toHaveBeenCalled()
             expect(notifyMock).not.toHaveBeenCalled()
         })
     })

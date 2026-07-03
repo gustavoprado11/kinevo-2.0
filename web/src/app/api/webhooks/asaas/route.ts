@@ -23,7 +23,7 @@ import {
     type AsaasWebhookEvent,
     type AsaasPayment,
 } from '@/lib/asaas'
-import { getDecryptedApiKey } from '@/lib/asaas/wallet-service'
+import { getDecryptedApiKey, syncWalletStatus } from '@/lib/asaas/wallet-service'
 import {
     notifyFinancial,
     resolveTrainerByAsaasAccount,
@@ -328,9 +328,7 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
             if (!tx?.coach_id) return
             authPayment = await fetchVerifiedPayment(tx.coach_id as string, payment.id)
         }
-        // Sobrescreve só os VALORES monetários/forjáveis pelos autoritativos.
-        // IDs/identificadores (customer, subscription, paymentLink) ficam do
-        // payload — não são vetor de forja de valor e são usados como referência.
+        // Sobrescreve os VALORES monetários/forjáveis pelos autoritativos.
         payment.value = authPayment.value
         payment.netValue = authPayment.netValue
         payment.billingType = authPayment.billingType
@@ -338,6 +336,16 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
         payment.estimatedCreditDate = authPayment.estimatedCreditDate
         payment.creditDate = authPayment.creditDate
         payment.description = authPayment.description
+        // Anti-forja (crítico): externalReference e paymentLink são as CHAVES de
+        // WHERE das estratégias de ativação (externalReference→student_contracts.id,
+        // paymentLink→asaas_payment_link_id). Um evento pode passar a verificação
+        // amarrando-se a um contrato PRÓPRIO via payment.id, mas trazer
+        // externalReference/paymentLink de OUTRO contrato e, pela Estratégia 2/3,
+        // ativá-lo. Fixamos nos valores autoritativos do pagamento re-buscado —
+        // para eventos legítimos são idênticos ao payload; com isso as estratégias
+        // só podem tocar o contrato que ESTE pagamento realmente fecha.
+        payment.externalReference = authPayment.externalReference
+        payment.paymentLink = authPayment.paymentLink
     }
 
     // Resolve qual contrato esse pagamento está fechando. Três estratégias,
@@ -736,35 +744,39 @@ async function handleAccountStatusUpdated(event: AsaasWebhookEvent, scopedTraine
     const account = event.account
     if (!account?.id) return
 
-    const localStatus = mapAsaasStatusToLocal(account.accountStatus ?? 'PENDING')
-    const updates: Record<string, unknown> = {
-        status: localStatus,
-        rejection_reason: account.rejectReason ?? null,
+    // Anti-forja (crítico): NUNCA confiar no accountStatus do payload. No caminho
+    // do token global (que não escopa por treinador) um evento forjado poderia
+    // aprovar (burla de KYC — habilita cobrar/sacar) ou bloquear/reprovar (DoS)
+    // a carteira de qualquer treinador cujo asaas_account_id o atacante conheça.
+    // Resolvemos o dono e re-sincronizamos o status AUTORITATIVAMENTE contra o
+    // Asaas (mesmo caminho do botão "Sincronizar": getSubaccount p/ subconta,
+    // myAccount/info p/ conta vinculada). O evento serve só de gatilho.
+    const trainerId = await resolveTrainerByAsaasAccount(account.id)
+    if (!trainerId) return
+    if (scopedTrainerId && scopedTrainerId !== trainerId) {
+        throw new PermanentWebhookError(
+            `account ${account.id} scoped to trainer ${scopedTrainerId} but owned by ${trainerId}`,
+        )
     }
-    if (localStatus === 'approved') {
-        updates.activated_at = new Date().toISOString()
-    }
-    let q = supabaseAdmin
-        .from('trainer_payment_accounts')
-        .update(updates)
-        .eq('asaas_account_id', account.id)
-    if (scopedTrainerId) q = q.eq('trainer_id', scopedTrainerId)
-    await q
 
-    // Notifica o trainer de mudanças significativas no KYC. Aprovação é
-    // notícia boa, rejeição/bloqueio é crítico.
-    if (localStatus === 'approved' || localStatus === 'rejected' || localStatus === 'blocked') {
-        const trainerId = await resolveTrainerByAsaasAccount(account.id)
-        if (trainerId) {
-            const isGood = localStatus === 'approved'
+    // syncWalletStatus atualiza o banco a partir da fonte autoritativa. Se o
+    // Asaas estiver indisponível, propaga → o catch do POST solta a idempotência
+    // e devolve 500 pra reentregar (não perde a mudança de status).
+    const summary = await syncWalletStatus(trainerId)
+
+    // Notifica o trainer de mudanças significativas no KYC, com base no status
+    // AUTORITATIVO (não no payload). Aprovação é notícia boa; rejeição/bloqueio é crítico.
+    if (summary.status === 'approved' || summary.status === 'rejected' || summary.status === 'blocked') {
+        {
+            const isGood = summary.status === 'approved'
             await notifyFinancial({
                 trainerId,
                 event: 'kyc_alert',
-                title: isGood ? 'Sua Carteira foi liberada' : `Carteira ${localStatus === 'rejected' ? 'reprovada' : 'bloqueada'}`,
+                title: isGood ? 'Sua Carteira foi liberada' : `Carteira ${summary.status === 'rejected' ? 'reprovada' : 'bloqueada'}`,
                 body: isGood
                     ? 'Já pode cobrar seus alunos e sacar via PIX.'
-                    : (account.rejectReason ?? 'Confira os detalhes no app pra entender o motivo.'),
-                data: { route: '/financial/wallet', status: localStatus },
+                    : (summary.rejectionReason ?? account.rejectReason ?? 'Confira os detalhes no app pra entender o motivo.'),
+                data: { route: '/financial/wallet', status: summary.status },
             })
         }
     }
@@ -780,15 +792,5 @@ async function studentNameById(studentId?: string | null): Promise<string> {
         .eq('id', studentId)
         .maybeSingle()
     return (data?.name as string) ?? 'Um aluno'
-}
-
-function mapAsaasStatusToLocal(asaasStatus: string): 'pending' | 'awaiting' | 'approved' | 'rejected' | 'blocked' {
-    switch (asaasStatus.toUpperCase()) {
-        case 'AWAITING': return 'awaiting'
-        case 'APPROVED': return 'approved'
-        case 'REJECTED': return 'rejected'
-        case 'BLOCKED': return 'blocked'
-        default: return 'pending'
-    }
 }
 
