@@ -1,7 +1,6 @@
 // Fase 16 (pre-impl) — Strava OAuth token exchange (authorization_code grant).
 // Strava NÃO suporta PKCE; client_secret precisa ficar server-side.
 // O client_secret é configurado via `supabase secrets set STRAVA_CLIENT_SECRET`.
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const STRAVA_CLIENT_ID = Deno.env.get("STRAVA_CLIENT_ID");
@@ -16,7 +15,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
