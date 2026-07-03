@@ -12,6 +12,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gateAssistant } from '@/lib/assistant/command-engine'
+import { limitTurn } from '@/lib/assistant/rate-limits'
 import { runCanvasTurn } from '@/lib/programs/ai-canvas/run-canvas-turn'
 import { recordAiUsage, turnCostMicros, type TokenUsage } from '@/lib/ai-usage/metering'
 import { getQuotaForTier } from '@/lib/ai-usage/quota'
@@ -59,6 +60,14 @@ export async function POST(req: Request) {
         .eq('coach_id', trainer.id)
         .single()
     if (!student) return Response.json({ error: 'student_not_found' }, { status: 404 })
+
+    // Rate-limit de turno — anti-amplificação de custo. O gate de cota acima
+    // limita por PERÍODO (crédito), mas sem teto por minuto um treinador podia
+    // disparar vários streams LLM de 120s em paralelo. Paridade com ⌘K/chat.
+    const rl = await limitTurn(trainer.id)
+    if (!rl.allowed) {
+        return Response.json({ error: 'rate_limited', message: rl.error }, { status: 429 })
+    }
 
     const encoder = new TextEncoder()
     const stream = new ReadableStream<Uint8Array>({
