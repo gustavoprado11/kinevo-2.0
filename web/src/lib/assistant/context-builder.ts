@@ -50,6 +50,22 @@ interface GeneralSnapshot {
 // ── Student context ──
 
 async function buildStudentSnapshot(trainerId: string, studentId: string): Promise<StudentSnapshot> {
+    // Segurança (IDOR): o studentId pode chegar do corpo da requisição (⌘K / voz),
+    // onde só é validado como UUID. As queries abaixo rodam no client admin
+    // (bypassa RLS) e várias filtram APENAS por student_id — sem esta checagem
+    // um treinador poderia ler o perfil (inclusive medical_restrictions) e o
+    // histórico do aluno de OUTRO treinador. Confirma a posse antes de qualquer
+    // leitura; se o aluno não é deste treinador, aborta (o handler já trata o erro).
+    const { data: owned } = await supabaseAdmin
+        .from('students')
+        .select('id')
+        .eq('id', studentId)
+        .eq('coach_id', trainerId)
+        .maybeSingle()
+    if (!owned) {
+        throw new Error(`buildStudentSnapshot: student ${studentId} not owned by trainer ${trainerId}`)
+    }
+
     const [enriched, profileResult, programResult, checkinsResult, insightsResult] = await Promise.all([
         enrichStudentContext(supabaseAdmin as any, studentId),
 
