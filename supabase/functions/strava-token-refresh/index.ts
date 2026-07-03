@@ -2,9 +2,12 @@
 // Tokens Strava expiram em ~6h. Mobile chama este endpoint pra renovar
 // usando o refresh_token persistido. Client secret server-side.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const STRAVA_CLIENT_ID = Deno.env.get("STRAVA_CLIENT_ID");
 const STRAVA_CLIENT_SECRET = Deno.env.get("STRAVA_CLIENT_SECRET");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +30,27 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    // Auth: exige um usuário Kinevo autenticado (evita open-proxy do
+    // client_secret via anon key pública). O mobile chama via
+    // supabase.functions.invoke, que envia o JWT da sessão.
+    const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !jwt) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    });
+    const { data: userRes, error: userErr } = await admin.auth.getUser(jwt);
+    if (userErr || !userRes?.user) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { refresh_token } = await req.json();
@@ -59,11 +83,9 @@ serve(async (req) => {
     const data = await stravaResponse.json();
 
     if (!stravaResponse.ok) {
+      console.error("[strava-token-refresh] Strava error:", stravaResponse.status, JSON.stringify(data));
       return new Response(
-        JSON.stringify({
-          error: "Strava token refresh failed",
-          details: data,
-        }),
+        JSON.stringify({ error: "Strava token refresh failed" }),
         {
           status: stravaResponse.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -2,9 +2,12 @@
 // Strava NÃO suporta PKCE; client_secret precisa ficar server-side.
 // O client_secret é configurado via `supabase secrets set STRAVA_CLIENT_SECRET`.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const STRAVA_CLIENT_ID = Deno.env.get("STRAVA_CLIENT_ID");
 const STRAVA_CLIENT_SECRET = Deno.env.get("STRAVA_CLIENT_SECRET");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +30,28 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    // Auth: exige um usuário Kinevo autenticado. Sem isto, qualquer um com a
+    // anon key (pública) usa o client_secret do app pra trocar authorization
+    // codes — open-proxy / confused-deputy contra o app Strava do Kinevo.
+    // O mobile já chama via supabase.functions.invoke (envia o JWT da sessão).
+    const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !jwt) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    });
+    const { data: userRes, error: userErr } = await admin.auth.getUser(jwt);
+    if (userErr || !userRes?.user) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { code } = await req.json();
@@ -57,11 +82,11 @@ serve(async (req) => {
     const data = await stravaResponse.json();
 
     if (!stravaResponse.ok) {
+      // Não ecoar o payload do Strava (`details: data`) — pode vazar detalhes
+      // do app/credenciais. Loga server-side; devolve erro genérico.
+      console.error("[strava-token-exchange] Strava error:", stravaResponse.status, JSON.stringify(data));
       return new Response(
-        JSON.stringify({
-          error: "Strava token exchange failed",
-          details: data,
-        }),
+        JSON.stringify({ error: "Strava token exchange failed" }),
         {
           status: stravaResponse.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
