@@ -514,8 +514,10 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
             if (saveError) throw saveError
 
-            // Save form triggers (if source template exists)
-            if (sourceTemplateId && (formTriggers.preWorkout || formTriggers.postWorkout)) {
+            // Save form triggers (if source template exists). SEM gate de
+            // (pre || post): a action deleta quando recebe null — desmarcar
+            // AMBOS os check-ins precisa persistir a remoção (achado M2).
+            if (sourceTemplateId) {
                 await saveProgramFormTriggers({
                     programTemplateId: sourceTemplateId,
                     preWorkout: formTriggers.preWorkout,
@@ -602,6 +604,12 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 if (workoutError) throw workoutError
 
                 for (const item of workout.items) {
+                    // Prescrição avançada preservada (A5): agregados derivados
+                    // do scheme + method_key/rounds + linhas materializadas —
+                    // mesmo fluxo do saveAsTemplate do builder de criação.
+                    // Antes, drop-set/pirâmide viravam agregados simples.
+                    const aggs = aggregatesFromItem(item)
+                    const itemRounds = effectiveRoundsForItem(item)
                     const { data: savedItem, error: itemError } = await supabase
                         .from('workout_item_templates')
                         .insert({
@@ -611,16 +619,30 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             parent_item_id: null,
                             exercise_id: item.exercise_id,
                             substitute_exercise_ids: item.substitute_exercise_ids || [],
-                            sets: item.sets,
-                            reps: item.reps,
-                            rest_seconds: item.rest_seconds,
+                            sets: aggs.sets,
+                            reps: aggs.reps,
+                            rest_seconds: aggs.rest_seconds,
                             notes: item.notes,
+                            exercise_function: item.exercise_function || null,
                             item_config: item.item_config || {},
+                            method_key: effectiveMethodKey(item),
+                            rounds: itemRounds,
                         })
                         .select('id')
                         .single()
 
                     if (itemError) throw itemError
+
+                    const schemeRows = buildSetSchemeRows(item.set_scheme, itemRounds).map(r => ({
+                        workout_item_template_id: savedItem.id,
+                        ...r,
+                    }))
+                    if (schemeRows.length > 0) {
+                        const { error: setsError } = await supabase
+                            .from('workout_item_set_templates')
+                            .insert(schemeRows)
+                        if (setsError) throw setsError
+                    }
 
                     if (item.children) {
                         for (const child of item.children) {
@@ -637,6 +659,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                     reps: child.reps,
                                     rest_seconds: child.rest_seconds,
                                     notes: child.notes,
+                                    exercise_function: child.exercise_function || null,
                                     item_config: child.item_config || {},
                                 })
                             if (childError) throw childError

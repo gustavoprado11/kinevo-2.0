@@ -895,8 +895,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 }
             }
 
-            // Save form triggers (secondary — failure shows warning, doesn't revert program)
-            if (programId && (formTriggers.preWorkout || formTriggers.postWorkout)) {
+            // Save form triggers (secondary — failure shows warning, doesn't
+            // revert program). SEM gate de (pre || post): a action deleta
+            // quando recebe null — desmarcar AMBOS precisa persistir (M2).
+            if (programId) {
                 const triggerResult = await saveProgramFormTriggers({
                     programTemplateId: programId,
                     preWorkout: formTriggers.preWorkout,

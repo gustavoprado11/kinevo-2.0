@@ -503,6 +503,26 @@ export function reorderItemIn(
 
 // — Supersets —
 
+/** Normaliza um exercício ao virar FILHO de superset (V1: filho não carrega
+ *  prescrição avançada). Colapsa o set_scheme nos agregados — o que o aluno
+ *  executaria — e limpa scheme/method/rounds. Sem isso, o scheme antigo ficava
+ *  no draft (e as linhas materializadas ficavam órfãs no banco, com precedência
+ *  na hidratação do aluno — "prescrição fantasma", achado A1 da auditoria). */
+function toSimpleChild(item: WorkoutItem, supersetId: string, orderIndex: number): WorkoutItem {
+    const aggs = aggregatesFromItem(item)
+    return {
+        ...item,
+        parent_item_id: supersetId,
+        order_index: orderIndex,
+        sets: aggs.sets,
+        reps: aggs.reps,
+        rest_seconds: aggs.rest_seconds,
+        set_scheme: null,
+        method_key: null,
+        rounds: 1,
+    }
+}
+
 /** Descanso "agregado" do superset = descanso do ÚLTIMO filho (o tempo após
  *  completar a rodada). Cada filho guarda seu próprio descanso; este derivado
  *  existe só pros consumidores que leem o descanso no item-pai (timer do mobile
@@ -526,8 +546,8 @@ export function createSupersetWithNextIn(workouts: Workout[], workoutId: string,
 
         const supersetId = tempId()
         const children: WorkoutItem[] = [
-            { ...currentItem, parent_item_id: supersetId, order_index: 0 },
-            { ...nextItem, parent_item_id: supersetId, order_index: 1 },
+            toSimpleChild(currentItem, supersetId, 0),
+            toSimpleChild(nextItem, supersetId, 1),
         ]
         const superset: WorkoutItem = {
             id: supersetId,
@@ -563,7 +583,7 @@ export function addToExistingSupersetIn(
 
         const newChildren = [
             ...(superset.children || []),
-            { ...item, parent_item_id: supersetId, order_index: superset.children?.length || 0 },
+            toSimpleChild(item, supersetId, superset.children?.length || 0),
         ].map((c, i) => ({ ...c, order_index: i }))
 
         return {

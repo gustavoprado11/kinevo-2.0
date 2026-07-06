@@ -356,12 +356,17 @@ export function ExerciseItemCard({
                          *  uma representação legível da prescrição. */}
                         {!isMinimized && (
                             <>
-                                {/* Modo avançado: tabela editável de séries */}
-                                <ExerciseAdvancedSection
-                                    item={item}
-                                    readonly={readonly}
-                                    onUpdate={onUpdate}
-                                />
+                                {/* Modo avançado: tabela editável de séries.
+                                 *  Nunca em filho de superset (V1 não persiste
+                                 *  scheme de filho — edições aqui seriam
+                                 *  descartadas em silêncio no save). */}
+                                {item.parent_item_id === null && (
+                                    <ExerciseAdvancedSection
+                                        item={item}
+                                        readonly={readonly}
+                                        onUpdate={onUpdate}
+                                    />
+                                )}
 
                                 {/* Nota técnica */}
                                 <TechnicalNote

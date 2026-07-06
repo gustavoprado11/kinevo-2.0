@@ -127,6 +127,45 @@ describe('createSupersetWithNextIn', () => {
         expect(createSupersetWithNextIn([w], 'w1', 'a')[0]).toBe(w)
         expect(createSupersetWithNextIn([w], 'w1', 'c')[0]).toBe(w)
     })
+
+    it('agrupar exercício com set_scheme colapsa nos agregados e limpa o scheme (A1)', () => {
+        // Bug "prescrição fantasma": o filho carregava o scheme no draft, o
+        // payload de filho não envia set_rows e as linhas materializadas
+        // ficavam órfãs no banco — com precedência na hidratação do aluno.
+        const scheme: WorkoutSet[] = [
+            { set_number: 1, set_type: 'normal', reps: '12', rest_seconds: 60, weight_target_kg: null, weight_target_pct1rm: null, rir: null, tempo: null, notes: null },
+            { set_number: 2, set_type: 'normal', reps: '9', rest_seconds: 60, weight_target_kg: null, weight_target_pct1rm: null, rir: null, tempo: null, notes: null },
+            { set_number: 3, set_type: 'normal', reps: '6', rest_seconds: 60, weight_target_kg: null, weight_target_pct1rm: null, rir: null, tempo: null, notes: null },
+        ]
+        const a = exercise('a', { set_scheme: scheme, method_key: 'piramide' as WorkoutItem['method_key'], rounds: 1 })
+        const w = workout('w1', [a, exercise('b')])
+        const [result] = createSupersetWithNextIn([w], 'w1', 'a')
+
+        const child = result.items[0].children![0]
+        expect(child.set_scheme).toBeNull()
+        expect(child.method_key).toBeNull()
+        expect(child.rounds).toBe(1)
+        // Agregados refletem o que o scheme prescrevia (via aggregatesFromItem)
+        expect(child.sets).toBe(3)
+        expect(child.reps).toBe('12-9-6')
+    })
+
+    it('addToExistingSupersetIn também normaliza o novo filho (A1)', () => {
+        const scheme: WorkoutSet[] = [
+            { set_number: 1, set_type: 'normal', reps: '10', rest_seconds: 45, weight_target_kg: null, weight_target_pct1rm: null, rir: null, tempo: null, notes: null },
+            { set_number: 2, set_type: 'normal', reps: '10', rest_seconds: 45, weight_target_kg: null, weight_target_pct1rm: null, rir: null, tempo: null, notes: null },
+        ]
+        const w = workout('w1', [exercise('a'), exercise('b'), exercise('c', { set_scheme: scheme })])
+        const [grouped] = createSupersetWithNextIn([w], 'w1', 'a')
+        const supersetId = grouped.items[0].id
+        const [result] = addToExistingSupersetIn([grouped], 'w1', 'c', supersetId)
+
+        const newChild = result.items[0].children![2]
+        expect(newChild.id).toBe('c')
+        expect(newChild.set_scheme).toBeNull()
+        expect(newChild.sets).toBe(2)
+        expect(newChild.reps).toBe('10')
+    })
 })
 
 describe('addToExistingSupersetIn', () => {
