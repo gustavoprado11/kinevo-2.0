@@ -3350,12 +3350,13 @@ export type Database = {
       }
       set_logs: {
         Row: {
-          assigned_workout_item_id: string
+          assigned_workout_item_id: string | null
           completed_at: string | null
           created_at: string
           device_id: string | null
           executed_exercise_id: string | null
           exercise_id: string | null
+          exercise_name: string | null
           id: string
           is_completed: boolean
           local_id: string | null
@@ -3372,12 +3373,13 @@ export type Database = {
           workout_session_id: string
         }
         Insert: {
-          assigned_workout_item_id: string
+          assigned_workout_item_id?: string | null
           completed_at?: string | null
           created_at?: string
           device_id?: string | null
           executed_exercise_id?: string | null
           exercise_id?: string | null
+          exercise_name?: string | null
           id?: string
           is_completed?: boolean
           local_id?: string | null
@@ -3394,12 +3396,13 @@ export type Database = {
           workout_session_id: string
         }
         Update: {
-          assigned_workout_item_id?: string
+          assigned_workout_item_id?: string | null
           completed_at?: string | null
           created_at?: string
           device_id?: string | null
           executed_exercise_id?: string | null
           exercise_id?: string | null
+          exercise_name?: string | null
           id?: string
           is_completed?: boolean
           local_id?: string | null
@@ -4818,8 +4821,8 @@ export type Database = {
       }
       workout_sessions: {
         Row: {
-          assigned_program_id: string
-          assigned_workout_id: string
+          assigned_program_id: string | null
+          assigned_workout_id: string | null
           completed_at: string | null
           created_at: string
           device_id: string | null
@@ -4838,10 +4841,11 @@ export type Database = {
           sync_status: string
           trainer_id: string
           updated_at: string
+          workout_name: string | null
         }
         Insert: {
-          assigned_program_id: string
-          assigned_workout_id: string
+          assigned_program_id?: string | null
+          assigned_workout_id?: string | null
           completed_at?: string | null
           created_at?: string
           device_id?: string | null
@@ -4860,10 +4864,11 @@ export type Database = {
           sync_status?: string
           trainer_id: string
           updated_at?: string
+          workout_name?: string | null
         }
         Update: {
-          assigned_program_id?: string
-          assigned_workout_id?: string
+          assigned_program_id?: string | null
+          assigned_workout_id?: string | null
           completed_at?: string | null
           created_at?: string
           device_id?: string | null

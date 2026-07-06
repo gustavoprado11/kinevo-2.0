@@ -537,7 +537,8 @@ async function detectReadyToProgress(trainerId: string, today: string): Promise<
     if (setLogsError || !setLogs) return []
 
     // Fetch prescribed reps from assigned_workout_items
-    const itemIds = [...new Set(setLogs.map(s => s.assigned_workout_item_id))]
+    // (assigned_workout_item_id é nullable desde a 227 — item removido da prescrição)
+    const itemIds = [...new Set(setLogs.map(s => s.assigned_workout_item_id).filter((id): id is string => id !== null))]
     if (itemIds.length === 0) return []
 
     const { data: items, error: itemsError } = await supabaseAdmin
@@ -580,7 +581,8 @@ async function detectReadyToProgress(trainerId: string, today: string): Promise<
         const progressKey = `${studentId}:${exerciseId}`
 
         // Check if all sets hit the top of prescribed range
-        const maxReps = itemRepsMap.get(sets[0].assigned_workout_item_id)
+        const firstItemId = sets[0].assigned_workout_item_id
+        const maxReps = firstItemId ? itemRepsMap.get(firstItemId) : undefined
         if (!maxReps || sets.length === 0) continue
 
         const allAtTop = sets.every(s => s.reps_completed !== null && s.reps_completed >= maxReps)

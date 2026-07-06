@@ -250,6 +250,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
     const sessionCountsByProgram = new Map<string, number>()
     for (const s of sessionCountsResult.data || []) {
+        if (!s.assigned_program_id) continue
         sessionCountsByProgram.set(s.assigned_program_id, (sessionCountsByProgram.get(s.assigned_program_id) || 0) + 1)
     }
     const completedPrograms = (completedProgramsRaw || []).map(program => ({

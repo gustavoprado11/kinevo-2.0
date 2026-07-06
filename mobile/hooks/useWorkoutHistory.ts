@@ -101,6 +101,7 @@ export function useWorkoutHistory() {
                     status,
                     pre_workout_submission_id,
                     post_workout_submission_id,
+                    workout_name,
                     assigned_workout:assigned_workouts(
                         name,
                         items:assigned_workout_items(
@@ -113,6 +114,7 @@ export function useWorkoutHistory() {
                         assigned_workout_item_id,
                         executed_exercise_id,
                         exercise_id,
+                        exercise_name,
                         weight,
                         reps_completed,
                         is_completed,
@@ -158,6 +160,7 @@ export function useWorkoutHistory() {
                     const exerciseName =
                         log.executed_exercise?.name ||
                         log.legacy_exercise?.name ||
+                        log.exercise_name ||
                         'Exercício';
                     const exerciseId = log.executed_exercise_id || log.exercise_id || 'unknown';
 
@@ -212,7 +215,7 @@ export function useWorkoutHistory() {
                     started_at: session.started_at,
                     completed_at: session.completed_at,
                     duration_seconds: session.duration_seconds ?? null,
-                    workout_name: session.assigned_workout?.name || 'Treino Sem Nome',
+                    workout_name: session.assigned_workout?.name || session.workout_name || 'Treino Sem Nome',
                     volume_load: sessionVol,
                     is_intense: sessionVol > 8000,
                     exercises: Array.from(exerciseMap.values()),

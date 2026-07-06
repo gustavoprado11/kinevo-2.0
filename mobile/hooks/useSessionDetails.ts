@@ -142,6 +142,7 @@ export function useSessionDetails() {
                     rpe,
                     feedback,
                     assigned_workout_id,
+                    workout_name,
                     assigned_workouts ( name )
                 `)
                 .eq('id', sessionId)
@@ -161,6 +162,7 @@ export function useSessionDetails() {
                     reps_completed,
                     rpe,
                     notes,
+                    exercise_name,
                     executed_exercise_id,
                     exercise_id,
                     executed_exercise:exercises!set_logs_executed_exercise_id_fkey ( name ),
@@ -242,6 +244,45 @@ export function useSessionDetails() {
 
                     items.push(sessionItem);
                 }
+
+                // Logs órfãos: exercício removido da prescrição depois da execução
+                // (FK SET NULL — migration 227). Sem isso, séries executadas
+                // sumiriam da tela mesmo preservadas no banco.
+                const knownItemIds = new Set((workoutItems || []).map((i: any) => i.id));
+                const orphanGroups = new Map<string, { name: string; logs: any[] }>();
+                for (const log of (logs || [])) {
+                    const itemId = log.assigned_workout_item_id;
+                    if (itemId && knownItemIds.has(itemId)) continue;
+                    const key = itemId || log.executed_exercise_id || log.exercise_id || log.exercise_name || 'desconhecido';
+                    const name = log.exercise_name
+                        || log.executed_exercise?.name
+                        || log.legacy_exercise?.name
+                        || 'Exercício removido';
+                    if (!orphanGroups.has(key)) orphanGroups.set(key, { name, logs: [] });
+                    orphanGroups.get(key)!.logs.push(log);
+                }
+                for (const [key, group] of orphanGroups) {
+                    const setLogs = group.logs
+                        .map((log: any) => ({
+                            setNumber: log.set_number,
+                            weight: log.weight || 0,
+                            weightUnit: log.weight_unit || 'kg',
+                            reps: log.reps_completed || 0,
+                            rpe: log.rpe || null,
+                        }))
+                        .sort((a: SessionSetLog, b: SessionSetLog) => a.setNumber - b.setNumber);
+                    items.push({
+                        id: key,
+                        itemType: 'exercise',
+                        orderIndex: items.length,
+                        exerciseName: `${group.name} (removido do treino)`,
+                        setLogs,
+                        cardioResult: null,
+                    });
+                    stats.exerciseCount++;
+                    stats.completedSets += setLogs.length;
+                    stats.totalTonnage += setLogs.reduce((acc: number, s: SessionSetLog) => acc + s.weight * s.reps, 0);
+                }
             }
 
             // Fallback: build from set_logs alone
@@ -249,9 +290,9 @@ export function useSessionDetails() {
                 const exercisesMap = new Map<string, { id: string; name: string; sets: SessionSetLog[] }>();
 
                 for (const log of (logs || [])) {
-                    const exerciseId = log.executed_exercise_id || log.exercise_id;
+                    const exerciseId = log.executed_exercise_id || log.exercise_id || log.assigned_workout_item_id;
                     if (!exerciseId) continue;
-                    const exName = log.executed_exercise?.name || log.legacy_exercise?.name || 'Exercício';
+                    const exName = log.exercise_name || log.executed_exercise?.name || log.legacy_exercise?.name || 'Exercício';
 
                     if (!exercisesMap.has(exerciseId)) {
                         exercisesMap.set(exerciseId, { id: exerciseId, name: exName, sets: [] });
@@ -290,7 +331,7 @@ export function useSessionDetails() {
                 duration_seconds: session.duration_seconds,
                 rpe: session.rpe,
                 feedback: session.feedback,
-                workoutName: session.assigned_workouts?.name || 'Treino',
+                workoutName: session.assigned_workouts?.name || session.workout_name || 'Treino',
                 items,
                 stats,
             });

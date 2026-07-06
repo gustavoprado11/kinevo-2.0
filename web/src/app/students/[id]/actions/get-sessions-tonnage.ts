@@ -53,7 +53,8 @@ export async function getSessionsTonnage(
         for (const session of sessions) {
             const tonnage = await getSessionTonnage(supabase, session.id)
 
-            const { data: prevSessions } = await supabase
+            // Treino removido da prescrição (FK SET NULL, 227): sem comparação com anterior
+            const prevSessions = session.assigned_workout_id ? (await supabase
                 .from('workout_sessions')
                 .select('id')
                 .eq('assigned_program_id', programId)
@@ -61,7 +62,7 @@ export async function getSessionsTonnage(
                 .eq('status', 'completed')
                 .lt('completed_at', session.completed_at)
                 .order('completed_at', { ascending: false })
-                .limit(1)
+                .limit(1)).data : null
 
             let previousTonnage: number | null = null
             let percentChange: number | null = null

@@ -53,6 +53,7 @@ export async function getWorkoutTonnageHistory(
 
         const sessionsByWorkout = new Map<string, { id: string; completed_at: string | null }[]>()
         for (const s of allSessions ?? []) {
+            if (!s.assigned_workout_id) continue
             const list = sessionsByWorkout.get(s.assigned_workout_id) ?? []
             if (list.length < 8) {
                 list.push({ id: s.id, completed_at: s.completed_at })
@@ -64,16 +65,19 @@ export async function getWorkoutTonnageHistory(
         const selectedSessionIds = Array.from(sessionsByWorkout.values()).flat().map(s => s.id)
         const logsBySession = new Map<string, { weight: number | null; reps_completed: number | null; exerciseName: string }[]>()
         if (selectedSessionIds.length > 0) {
+            // Join LEFT (não !inner): logs de exercícios removidos da prescrição
+            // (FK SET NULL, migration 227) continuam contando na tonelagem, com
+            // nome vindo do snapshot exercise_name do próprio log.
             const { data: allLogs } = await supabase
                 .from('set_logs')
-                .select('workout_session_id, weight, reps_completed, assigned_workout_items!inner(exercise_name)')
+                .select('workout_session_id, weight, reps_completed, exercise_name, assigned_workout_items(exercise_name)')
                 .in('workout_session_id', selectedSessionIds)
             for (const log of allLogs ?? []) {
                 const list = logsBySession.get(log.workout_session_id) ?? []
                 list.push({
                     weight: log.weight,
                     reps_completed: log.reps_completed,
-                    exerciseName: (log.assigned_workout_items as any)?.exercise_name || 'Sem nome',
+                    exerciseName: (log.assigned_workout_items as any)?.exercise_name || log.exercise_name || 'Sem nome',
                 })
                 logsBySession.set(log.workout_session_id, list)
             }
