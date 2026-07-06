@@ -12,6 +12,7 @@ import {
     createSupersetWithNextIn,
     deleteItemIn,
     deleteWorkoutIn,
+    deriveAssignmentType,
     dissolveSupersetIn,
     duplicateItemIn,
     duplicateWorkoutIn,
@@ -24,6 +25,7 @@ import {
     makeNoteItem,
     makeWarmupItem,
     moveItemIn,
+    normalizeDurationWeeks,
     parseSetsCount,
     removeFromSupersetIn,
     reorderItemIn,
@@ -518,5 +520,33 @@ describe('per-set helpers', () => {
         expect(makeCardioItem().item_config).toEqual({ mode: 'continuous', objective: 'time' })
         expect(makeCardioItem('zona 2').item_config).toEqual({ mode: 'continuous', objective: 'time', notes: 'zona 2' })
         expect(makeNoteItem('atenção').notes).toBe('atenção')
+    })
+})
+
+describe('normalizeDurationWeeks / deriveAssignmentType (R1/R2 rodada 2)', () => {
+    it("normalizeDurationWeeks: '0' e vazios viram null (não 0 — 0 literal expira o programa via cron)", () => {
+        expect(normalizeDurationWeeks('0')).toBeNull()
+        expect(normalizeDurationWeeks('')).toBeNull()
+        expect(normalizeDurationWeeks(null)).toBeNull()
+        expect(normalizeDurationWeeks(undefined)).toBeNull()
+        expect(normalizeDurationWeeks('abc')).toBeNull()
+        expect(normalizeDurationWeeks('-2')).toBeNull()
+    })
+
+    it('normalizeDurationWeeks: inteiros positivos passam', () => {
+        expect(normalizeDurationWeeks('1')).toBe(1)
+        expect(normalizeDurationWeeks('8')).toBe(8)
+        expect(normalizeDurationWeeks('12')).toBe(12)
+    })
+
+    it('deriveAssignmentType: deriva do status, não de scheduled_start_date', () => {
+        // Programa agendado→ativado pelo cron mantém scheduled_start_date
+        // preenchido; o modo tem que vir do status para o save não regredir
+        // o programa para 'scheduled' (R2).
+        expect(deriveAssignmentType('active')).toBe('immediate')
+        expect(deriveAssignmentType('scheduled')).toBe('scheduled')
+        expect(deriveAssignmentType('draft')).toBe('immediate')
+        expect(deriveAssignmentType('expired')).toBe('immediate')
+        expect(deriveAssignmentType('completed')).toBe('immediate')
     })
 })

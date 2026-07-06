@@ -73,6 +73,21 @@ export function parseSetsCount(setsPref: string): number {
     return Number.isFinite(n) && n > 0 ? n : 3
 }
 
+/** Duração em semanas para persistência: inteiro positivo ou null (sem prazo).
+ *  '0'/''/inválido viram null — 0 semanas gravado literal faz a RPC calcular
+ *  expires_at = started_at (passado) e o cron expirar o programa (R1). */
+export function normalizeDurationWeeks(weeksStr: string | null | undefined): number | null {
+    const n = parseInt(weeksStr ?? '', 10)
+    return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** Modo de atribuição do editor a partir do STATUS atual do programa.
+ *  Derivar da presença de scheduled_start_date regride programa já ativado
+ *  para 'scheduled' no save (a ativação não limpa a coluna) — R2. */
+export function deriveAssignmentType(status: string | null | undefined): 'scheduled' | 'immediate' {
+    return status === 'scheduled' ? 'scheduled' : 'immediate'
+}
+
 /** Gera o nome de um workout novo respeitando a convenção do treinador.
  *  - 'letter': "Treino A", "Treino B", ...
  *  - 'free':   "Treino 1", "Treino 2", ... */

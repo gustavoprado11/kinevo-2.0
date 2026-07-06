@@ -42,10 +42,12 @@ const ExerciseLibraryPanel = dynamic(
 import {
     aggregatesFromItem,
     buildSetSchemeRows,
+    deriveAssignmentType,
     effectiveMethodKey,
     effectiveRoundsForItem,
     hydrateSetScheme,
     makeCardioItem,
+    normalizeDurationWeeks,
     makeExerciseItem,
     makeNoteItem,
     makeWarmupItem,
@@ -139,13 +141,21 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         preWorkout: initialFormTriggers?.preWorkout?.formTemplateId ?? null,
         postWorkout: initialFormTriggers?.postWorkout?.formTemplateId ?? null,
     })
+    // R3: check-ins vivem no TEMPLATE compartilhado (migration 078) — persistir
+    // o estado carregado de volta sem o usuário ter mexido apaga/altera os
+    // check-ins de TODOS os alunos do modelo (ex.: load SSR falhou e o estado
+    // iniciou {null,null}). Só salvamos se houve interação nesta sessão.
+    const [formTriggersDirty, setFormTriggersDirty] = useState(false)
     const formTriggerCount = (formTriggers.preWorkout ? 1 : 0) + (formTriggers.postWorkout ? 1 : 0)
 
     const [templateName, setTemplateName] = useState('')
     const [savingTemplate, setSavingTemplate] = useState(false)
     const [frequencyWarning, setFrequencyWarning] = useState<{ workoutNames: string[], onConfirm: () => void } | null>(null)
-    // Preserve the program's original activation mode
-    const assignmentType = program.scheduled_start_date ? 'scheduled' : 'immediate' as const
+    // Preserve the program's original activation mode. Deriva do STATUS: a
+    // ativação (cron/núcleo) não limpa scheduled_start_date, então um programa
+    // agendado→ativo ainda tem a coluna preenchida — derivar dela regredia o
+    // programa para 'scheduled' (some do app do aluno) em qualquer save (R2).
+    const assignmentType = deriveAssignmentType(program.status)
 
     // Início ↔ semanas ↔ fim (sync bidirecional) — hook compartilhado.
     const {
@@ -339,8 +349,17 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         setDescription(d.description)
         setWorkouts(d.workouts)
         setFormTriggers(d.formTriggers)
+        // Rascunho com triggers diferentes do servidor = edição feita na sessão
+        // anterior → conta como interação (senão o save divergiria da tela).
+        // Rascunho igual ao servidor não marca dirty.
+        if (
+            d.formTriggers.preWorkout !== (initialFormTriggers?.preWorkout?.formTemplateId ?? null) ||
+            d.formTriggers.postWorkout !== (initialFormTriggers?.postWorkout?.formTemplateId ?? null)
+        ) {
+            setFormTriggersDirty(true)
+        }
         dismissPending()
-    }, [pendingDraft, setWorkouts, dismissPending])
+    }, [pendingDraft, setWorkouts, dismissPending, initialFormTriggers])
     // Se o treinador começa a editar sem restaurar, o banner some (as novas
     // edições passam a ser o rascunho) — evita oferecer restauração obsoleta.
     useEffect(() => {
@@ -450,7 +469,9 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             const base = {
                 name: name.trim(),
                 description: description.trim() || null,
-                duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
+                // '0' (programa sem prazo hidrata assim) precisa virar null:
+                // 0 literal faria a RPC gravar expires_at no passado (R1).
+                duration_weeks: normalizeDurationWeeks(durationWeeks),
             }
             // Rascunho (ex.: assistente via MCP) PERMANECE rascunho ao ser editado
             // — ativá-lo é ação explícita ("Ativar"). Sem isso, salvar forçaria
@@ -517,12 +538,20 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
             // Save form triggers (if source template exists). SEM gate de
             // (pre || post): a action deleta quando recebe null — desmarcar
             // AMBOS os check-ins precisa persistir a remoção (achado M2).
-            if (sourceTemplateId) {
-                await saveProgramFormTriggers({
+            // COM gate de interação (R3): o trigger é do template compartilhado,
+            // então gravar sem o usuário ter mexido propaga estado possivelmente
+            // stale para todos os alunos do modelo.
+            if (sourceTemplateId && formTriggersDirty) {
+                const triggerResult = await saveProgramFormTriggers({
                     programTemplateId: sourceTemplateId,
                     preWorkout: formTriggers.preWorkout,
                     postWorkout: formTriggers.postWorkout,
                 })
+                if (triggerResult.success) {
+                    setFormTriggersDirty(false)
+                } else {
+                    toast({ message: 'Programa salvo, mas o check-in não foi atualizado. Tente novamente.', type: 'error' })
+                }
             }
 
             // Success feedback
@@ -581,7 +610,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 .insert({
                     name: templateName.trim(),
                     description: description.trim() || null,
-                    duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
+                    duration_weeks: normalizeDurationWeeks(durationWeeks),
                     is_template: true,
                 } as import('@kinevo/shared/types/database').Database['public']['Tables']['program_templates']['Insert'])
                 .select('id')
@@ -895,14 +924,21 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
                 {/* Check-in expanded content panel */}
                 {formTriggerTemplates.length > 0 && builderViewMode !== 'compare' && (
-                    <ProgramFormTriggers
-                        initialTriggers={initialFormTriggers ?? { preWorkout: null, postWorkout: null }}
-                        availableTemplates={formTriggerTemplates}
-                        onChange={setFormTriggers}
-                        expanded={checkinExpanded}
-                        onToggle={() => setCheckinExpanded(!checkinExpanded)}
-                        renderContentOnly
-                    />
+                    <>
+                        <ProgramFormTriggers
+                            initialTriggers={initialFormTriggers ?? { preWorkout: null, postWorkout: null }}
+                            availableTemplates={formTriggerTemplates}
+                            onChange={t => { setFormTriggers(t); setFormTriggersDirty(true) }}
+                            expanded={checkinExpanded}
+                            onToggle={() => setCheckinExpanded(!checkinExpanded)}
+                            renderContentOnly
+                        />
+                        {checkinExpanded && (
+                            <p className="mt-1.5 text-xs text-[#6E6E73] dark:text-k-text-quaternary">
+                                Os check-ins pertencem ao modelo de origem deste programa e valem para todos os alunos que treinam com ele.
+                            </p>
+                        )}
+                    </>
                 )}
 
                 {/* Workspace (Layout Columns) */}

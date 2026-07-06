@@ -180,6 +180,7 @@ import {
     makeExerciseItem,
     makeNoteItem,
     makeWarmupItem,
+    normalizeDurationWeeks,
     parseSetsCount,
     tempId,
     type BuilderViewMode,
@@ -568,6 +569,12 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         preWorkout: initialFormTriggers?.preWorkout?.formTemplateId ?? null,
         postWorkout: initialFormTriggers?.postWorkout?.formTemplateId ?? null,
     })
+    // R3: só persistir check-ins se houve interação nesta sessão. Ao editar
+    // template existente, gravar o estado carregado de volta apagaria os
+    // triggers do template (afeta todos os alunos derivados) quando o load
+    // SSR falhou e o estado iniciou {null,null}. Criação sem interação
+    // também não precisa da chamada (não há trigger para criar).
+    const [formTriggersDirty, setFormTriggersDirty] = useState(false)
     const [checkinExpanded, setCheckinExpanded] = useState(false)
     const formTriggerCount = (formTriggers.preWorkout ? 1 : 0) + (formTriggers.postWorkout ? 1 : 0)
 
@@ -650,9 +657,17 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         setWorkouts(d.workouts)
         setActiveWorkoutId(d.activeWorkoutId ?? d.workouts[0]?.id ?? null)
         setFormTriggers(d.formTriggers)
+        // Rascunho com triggers diferentes do servidor = edição da sessão
+        // anterior → conta como interação (R3).
+        if (
+            d.formTriggers.preWorkout !== (initialFormTriggers?.preWorkout?.formTemplateId ?? null) ||
+            d.formTriggers.postWorkout !== (initialFormTriggers?.postWorkout?.formTemplateId ?? null)
+        ) {
+            setFormTriggersDirty(true)
+        }
         markPristine(d)
         dismissPending()
-    }, [pendingDraft, streamAnimate, markPristine, dismissPending, setDurationWeeks, setWorkouts, setActiveWorkoutId])
+    }, [pendingDraft, streamAnimate, markPristine, dismissPending, setDurationWeeks, setWorkouts, setActiveWorkoutId, initialFormTriggers])
     // Sensors for tab drag-and-drop (distance constraint allows click without triggering drag)
     const tabSensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -791,7 +806,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     .update({
                         name: name.trim(),
                         description: description.trim() || null,
-                        duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
+                        duration_weeks: normalizeDurationWeeks(durationWeeks),
                     })
                     .eq('id', programId)
 
@@ -813,7 +828,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     .insert({
                         name: name.trim(),
                         description: description.trim() || null,
-                        duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
+                        duration_weeks: normalizeDurationWeeks(durationWeeks),
                         is_template: isTemplate,
                     } as ProgramTemplateInsert)
                     .select('id')
@@ -898,14 +913,19 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             // Save form triggers (secondary — failure shows warning, doesn't
             // revert program). SEM gate de (pre || post): a action deleta
             // quando recebe null — desmarcar AMBOS precisa persistir (M2).
-            if (programId) {
+            // COM gate de interação (R3): gravar sem o usuário ter mexido
+            // propagaria estado possivelmente stale (load falho) ao template.
+            if (programId && formTriggersDirty) {
                 const triggerResult = await saveProgramFormTriggers({
                     programTemplateId: programId,
                     preWorkout: formTriggers.preWorkout,
                     postWorkout: formTriggers.postWorkout,
                 })
-                if (!triggerResult.success) {
+                if (triggerResult.success) {
+                    setFormTriggersDirty(false)
+                } else {
                     console.error('Form triggers save error:', triggerResult.error)
+                    toast({ message: 'Programa salvo, mas o check-in não foi atualizado. Tente novamente.', type: 'error' })
                 }
             }
 
@@ -998,7 +1018,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 .insert({
                     name: templateName.trim(),
                     description: description.trim() || null,
-                    duration_weeks: durationWeeks ? parseInt(durationWeeks) : null,
+                    duration_weeks: normalizeDurationWeeks(durationWeeks),
                     is_template: true,
                 } as ProgramTemplateInsert)
                 .select('id')
@@ -1392,7 +1412,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     <ProgramFormTriggers
                         initialTriggers={initialFormTriggers ?? { preWorkout: null, postWorkout: null }}
                         availableTemplates={formTriggerTemplates}
-                        onChange={setFormTriggers}
+                        onChange={t => { setFormTriggers(t); setFormTriggersDirty(true) }}
                         expanded={checkinExpanded}
                         onToggle={() => setCheckinExpanded(!checkinExpanded)}
                         renderContentOnly
