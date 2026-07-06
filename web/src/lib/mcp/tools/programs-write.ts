@@ -7,7 +7,11 @@ import {
   setSchemaZod,
   buildSetScheme,
   materializeScheme,
+  validateRoundsForMethod,
 } from './workouts-write'
+import { activateAssignedProgram } from '@/lib/programs/activate-assigned-program'
+import { insertStudentNotification } from '@/lib/student-notifications'
+import { sendStudentPush } from '@/lib/push-notifications'
 
 export function registerProgramWriteTools(server: McpServer, trainerId: string) {
   server.tool(
@@ -107,9 +111,10 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             exercise_id: z.string().uuid().describe('Exercise ID from the catalog'),
             sets: z.number().min(1).max(20).describe('Number of rounds/sets for this exercise'),
             reps: z.string().describe("Reps prescription (e.g., '10', '8-12')"),
+            rest_seconds: z.number().min(0).max(600).optional().describe('Rest after THIS exercise within the round. Default: 0 for intermediates, the item rest_seconds for the last one.'),
             exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional(),
             notes: z.string().optional(),
-          })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds applies after each round.'),
+          })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds is the rest after each round (carried by the LAST exercise — execution uses per-exercise rest).'),
         })).describe('Ordered list of exercises/supersets in this session.'),
       })).min(1).describe('Ordered list of workout sessions in the template.'),
     },
@@ -153,14 +158,18 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           const it = s.items[ii]
 
           if (it.superset) {
-            // Superset container + children (children carry no set_scheme in V1).
+            // Superset container + children (children carry no set_scheme in
+            // V1). R7: rest por FILHO — intermediários 0, o último carrega o
+            // descanso da rodada; o container espelha o último filho.
+            const childRest = (c: { rest_seconds?: number }, ci: number) =>
+              c.rest_seconds ?? (ci === it.superset!.length - 1 ? (it.rest_seconds ?? 60) : 0)
             items.push({
               item_type: 'superset',
               order_index: ii,
               exercise_id: null,
               sets: null,
               reps: null,
-              rest_seconds: it.rest_seconds ?? 60,
+              rest_seconds: childRest(it.superset[it.superset.length - 1], it.superset.length - 1),
               method_key: null,
               rounds: 1,
               children: it.superset.map((c, ci) => ({
@@ -169,7 +178,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
                 exercise_id: c.exercise_id,
                 sets: c.sets,
                 reps: c.reps,
-                rest_seconds: 0,
+                rest_seconds: childRest(c, ci),
                 notes: c.notes ?? null,
                 exercise_function: c.exercise_function ?? 'main',
               })),
@@ -187,6 +196,8 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           let effectiveRounds = 1
 
           if (it.set_scheme && it.set_scheme.length > 0) {
+            const roundsError = validateRoundsForMethod(it.rounds, it.method_key)
+            if (roundsError) return mcpError(`Sessão "${s.name}": ${roundsError}`)
             const built = buildSetScheme(it.set_scheme)
             if ('error' in built) return mcpError(`Sessão "${s.name}": ${built.error}`)
             const m = materializeScheme(built.scheme, it.rounds)
@@ -280,8 +291,9 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             exercise_id: z.string().uuid().describe('Exercise ID from the catalog'),
             sets: z.number().min(1).max(20).describe('Number of rounds/sets for this exercise'),
             reps: z.string().describe("Reps prescription (e.g., '10', '8-12')"),
+            rest_seconds: z.number().min(0).max(600).optional().describe('Rest after THIS exercise within the round. Default: 0 for intermediates, the item rest_seconds for the last one.'),
             notes: z.string().optional(),
-          })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds applies after each round.'),
+          })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds is the rest after each round (carried by the LAST exercise — execution uses per-exercise rest).'),
         })).describe('Ordered list of exercises/supersets in this session.'),
       })).min(1).describe('Ordered list of workout sessions in the program.'),
     },
@@ -350,13 +362,17 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           const it = s.items[ii]
 
           if (it.superset) {
+            // R7: rest por FILHO — intermediários 0, o último carrega o
+            // descanso da rodada; o container espelha o último filho.
+            const childRest = (c: { rest_seconds?: number }, ci: number) =>
+              c.rest_seconds ?? (ci === it.superset!.length - 1 ? (it.rest_seconds ?? 60) : 0)
             items.push({
               item_type: 'superset',
               order_index: ii,
               exercise_id: null,
               sets: null,
               reps: null,
-              rest_seconds: it.rest_seconds ?? 60,
+              rest_seconds: childRest(it.superset[it.superset.length - 1], it.superset.length - 1),
               method_key: null,
               rounds: 1,
               children: it.superset.map((c, ci) => ({
@@ -365,7 +381,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
                 exercise_id: c.exercise_id,
                 sets: c.sets,
                 reps: c.reps,
-                rest_seconds: 0,
+                rest_seconds: childRest(c, ci),
                 notes: c.notes ?? null,
                 ...snap(c.exercise_id),
               })),
@@ -383,6 +399,8 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           let effectiveRounds = 1
 
           if (it.set_scheme && it.set_scheme.length > 0) {
+            const roundsError = validateRoundsForMethod(it.rounds, it.method_key)
+            if (roundsError) return mcpError(`Sessão "${s.name}": ${roundsError}`)
             const built = buildSetScheme(it.set_scheme)
             if ('error' in built) return mcpError(`Sessão "${s.name}": ${built.error}`)
             const m = materializeScheme(built.scheme, it.rounds)
@@ -459,12 +477,14 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
     {
       program_id: z.string().uuid().describe('The program template ID (to copy) or assigned program ID (to activate)'),
       student_id: z.string().uuid().optional().describe('Required when assigning a template. The student to assign to.'),
-      start_date: z.string().optional().describe('Start date in YYYY-MM-DD format. Defaults to today.'),
+      start_date: z.string().optional().describe('YYYY-MM-DD. Omitted/today/past = activates immediately (starts now). FUTURE date = schedules the program (status scheduled; auto-activated on that day).'),
       action: z.enum(['assign_template', 'activate_draft']).describe("'assign_template' copies a template to a student, 'activate_draft' activates an existing draft program"),
     },
     { title: 'Atribuir programa', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ program_id, student_id, start_date, action }) => {
       const supabaseAdmin = createAdminClient()
+      const todayStr = new Date().toISOString().split('T')[0]
+      const isScheduled = !!start_date && start_date > todayStr
 
       if (action === 'assign_template') {
         if (!student_id) {
@@ -494,21 +514,23 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           return mcpError('Aluno não encontrado ou não pertence a este treinador.')
         }
 
-        // Call existing RPC
-        const startDateValue = start_date
-          ? new Date(start_date).toISOString()
-          : new Date().toISOString()
-
+        // R4: usa a RPC transacional COMPLETA (migration 184) — a mesma do
+        // web. Copia séries por fase (set templates), method_key/rounds,
+        // frequency→scheduled_days, seta expires_at e COMPLETA o programa
+        // vigente. A RPC legada (203) não copiava nada disso e deixava o
+        // vigente 'paused' para sempre. service_role passa direto no check
+        // interno da 184; ownership de aluno/template revalidado lá dentro.
         const { data: assignedProgramId, error: rpcError } = await supabaseAdmin.rpc(
-          'assign_program_to_student',
+          'assign_program_from_template',
           {
-            // Overload com p_trainer_id (migration 203): o MCP escreve com
-            // service-role, então current_trainer_id() é NULL na versão antiga.
             p_trainer_id: trainerId,
-            p_template_id: program_id,
             p_student_id: student_id,
-            p_start_date: startDateValue,
-          } as never
+            p_template_id: program_id,
+            p_is_scheduled: isScheduled,
+            p_scheduled_start_date: isScheduled ? start_date : undefined,
+            p_workout_schedule: null,
+            p_prescription_generation_id: undefined,
+          }
         )
 
         if (rpcError) {
@@ -517,40 +539,95 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
 
         const { data: program } = await supabaseAdmin
           .from('assigned_programs')
-          .select('id, name, status, started_at')
-          .eq('id', assignedProgramId)
+          .select('id, name, status, started_at, scheduled_start_date, expires_at')
+          .eq('id', assignedProgramId as string)
           .single()
 
         if (!program) {
           return mcpError('Programa atribuído mas não encontrado ao buscar detalhes.')
         }
 
+        const programName = program.name ?? 'Novo programa'
+
+        // Notificação ao aluno fora da RPC (fire-and-forget) — paridade com a
+        // server action do web. Agendado notifica na ativação (via cron).
+        if (!isScheduled) {
+          insertStudentNotification({
+            studentId: student_id,
+            trainerId,
+            type: 'program_assigned',
+            title: 'Novo programa de treino!',
+            subtitle: `${programName} está disponível no seu app.`,
+            payload: { program_id: program.id, program_name: programName },
+          }).then((inboxItemId) => {
+            sendStudentPush({
+              studentId: student_id!,
+              title: 'Novo programa de treino!',
+              body: `${programName} está disponível no seu app.`,
+              inboxItemId: inboxItemId ?? undefined,
+              data: { type: 'program_assigned', program_id: program.id },
+            })
+          }).catch(() => {})
+        }
+
         return mcpSuccess({
           assigned_program: program,
-          message: `Programa "${program.name}" atribuído ao aluno com início em ${program.started_at?.slice(0, 10)}.`,
+          message: isScheduled
+            ? `Programa "${programName}" agendado para ${start_date} — será ativado automaticamente nesse dia. Prescrição completa (séries por fase, métodos) e agenda semanal copiadas do modelo.`
+            : `Programa "${programName}" atribuído e ATIVO — aluno notificado. Prescrição completa e agenda semanal copiadas do modelo; programa vigente anterior (se havia) foi concluído.`,
         })
       }
 
-      // activate_draft
-      const { data, error } = await supabaseAdmin
+      // activate_draft — R8: usa o núcleo compartilhado de ativação (o mesmo
+      // do web e do cron): valida agenda dos treinos, COMPLETA o programa
+      // vigente (sem estourar o índice de 1-ativo-por-aluno), seta expires_at
+      // e notifica o aluno. O UPDATE cru anterior não fazia nada disso.
+      if (isScheduled) {
+        // Data futura → agenda em vez de ativar; o cron ativa no dia.
+        const { data: scheduled, error: schedError } = await supabaseAdmin
+          .from('assigned_programs')
+          .update({ status: 'scheduled', scheduled_start_date: start_date, started_at: null })
+          .eq('id', program_id)
+          .eq('trainer_id', trainerId)
+          .eq('status', 'draft')
+          .select('id, name, status, scheduled_start_date')
+          .single()
+        if (schedError || !scheduled) {
+          return mcpError('Programa rascunho não encontrado ou não pertence a este treinador.')
+        }
+        return mcpSuccess({
+          assigned_program: scheduled,
+          message: `Programa "${scheduled.name}" agendado para ${start_date} — será ativado automaticamente nesse dia.`,
+        })
+      }
+
+      const result = await activateAssignedProgram({
+        assignedProgramId: program_id,
+        trainerId,
+        source: 'manual',
+      })
+
+      if (!result.success) {
+        if (result.reason === 'missing_scheduled_days') {
+          return mcpError(`O programa tem treinos sem dias da semana agendados (${(result.workoutNames ?? []).join(', ')}). Defina scheduled_days nesses treinos via kinevo_update_workout_session antes de ativar.`)
+        }
+        if (result.reason === 'not_found') {
+          return mcpError('Programa não encontrado ou não pertence a este treinador.')
+        }
+        return mcpError(`Erro ao ativar programa: ${result.error ?? result.reason ?? 'desconhecido'}`)
+      }
+
+      const { data } = await supabaseAdmin
         .from('assigned_programs')
-        .update({
-          status: 'active',
-          started_at: start_date ? new Date(start_date).toISOString() : new Date().toISOString(),
-        })
+        .select('id, name, status, started_at, expires_at')
         .eq('id', program_id)
-        .eq('trainer_id', trainerId)
-        .eq('status', 'draft')
-        .select('id, name, status, started_at')
         .single()
-
-      if (error || !data) {
-        return mcpError('Programa rascunho não encontrado ou não pertence a este treinador.')
-      }
 
       return mcpSuccess({
         assigned_program: data,
-        message: `Programa "${data.name}" ativado com início em ${data.started_at?.slice(0, 10)}.`,
+        message: result.activated
+          ? `Programa "${result.programName}" ativado — aluno notificado; programa vigente anterior (se havia) foi concluído.`
+          : `Programa "${result.programName}" já estava ativo.`,
       })
     }
   )

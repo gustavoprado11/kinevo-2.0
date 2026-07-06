@@ -3,13 +3,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mcpSuccess, mcpError } from '../types'
-import type { WorkoutSet } from '@kinevo/shared/types/prescription'
+import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription'
 import {
   summarizeSetScheme,
   summarizeWithRounds,
   expandSchemeByRounds,
   validateSetScheme,
 } from '@kinevo/shared/lib/prescription/set-scheme'
+import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
 
 type WorkoutType = 'template' | 'assigned'
 
@@ -79,6 +80,20 @@ export function materializeScheme(scheme: WorkoutSet[], rounds: number | undefin
     round_number: useRounds ? (s.round_number ?? null) : null,
   }))
   return { aggregates, rows, rounds: safeRounds }
+}
+
+/** R5: rounds>1 só é válido em método composto (drop_set/cluster). O editor
+ *  web força rounds=1 para métodos lineares no próximo save
+ *  (effectiveRoundsForItem) — uma "pirâmide com 3 rodadas" gravada aqui
+ *  encolheria de 9 para 3 séries sem aviso quando o treinador salvasse. */
+export function validateRoundsForMethod(
+  rounds: number | undefined,
+  methodKey: string | null | undefined,
+): string | null {
+  if ((rounds ?? 1) > 1 && !isCompoundMethod((methodKey ?? null) as MethodKey | null)) {
+    return "rounds > 1 é permitido apenas para métodos compostos (drop_set, cluster). Para pirâmide/5x5/top_backoff ou séries sem método, envie TODAS as séries expandidas em set_scheme e omita rounds."
+  }
+  return null
 }
 
 /** Turn the MCP `set_scheme` input (no set_number) into a validated
@@ -294,6 +309,8 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       let effectiveRounds = 1
 
       if (set_scheme && set_scheme.length > 0) {
+        const roundsError = validateRoundsForMethod(rounds, method_key)
+        if (roundsError) return mcpError(roundsError)
         const built = buildSetScheme(set_scheme)
         if ('error' in built) return mcpError(built.error)
         const m = materializeScheme(built.scheme, rounds)
@@ -520,6 +537,38 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         return mcpError('Exercício não encontrado ou não pertence a este treinador.')
       }
 
+      const itemTable = workout_type === 'template' ? 'workout_item_templates' : 'assigned_workout_items'
+
+      // Contexto do item para os guards de superset/tipo (R6), validação de
+      // rounds (R5) e re-derivação do descanso do pai (R7).
+      const { data: itemCtxRow } = await supabaseAdmin
+        .from(itemTable)
+        .select('parent_item_id, item_type, method_key')
+        .eq('id', item_id)
+        .single()
+      if (!itemCtxRow) {
+        return mcpError('Exercício não encontrado ou não pertence a este treinador.')
+      }
+      const itemCtx = itemCtxRow as { parent_item_id: string | null; item_type: string | null; method_key: string | null }
+
+      const wantsAdvanced =
+        (set_scheme !== undefined && set_scheme.length > 0) ||
+        (method_key !== undefined && method_key !== null && method_key !== 'standard') ||
+        (rounds ?? 1) > 1
+
+      // R6: filho de superset não carrega prescrição avançada (regra V1). O
+      // player do aluno daria precedência às rows enquanto o builder web não
+      // as exibe, e o próximo save do editor as apaga em silêncio (fix 228).
+      if (itemCtx.parent_item_id && wantsAdvanced) {
+        return mcpError('Este exercício está dentro de um superset: filhos de superset não aceitam set_scheme/method_key/rounds (regra V1 — o editor web e o app do aluno não suportam método em filho). Edite sets/reps/rest_seconds simples, ou remova o exercício do superset antes.')
+      }
+
+      // R6: só item do tipo 'exercise' recebe prescrição de séries ou troca de
+      // exercício (container de superset, cardio, aquecimento e nota não).
+      if (itemCtx.item_type !== 'exercise' && (wantsAdvanced || set_scheme !== undefined || sets !== undefined || reps !== undefined || exercise_id !== undefined)) {
+        return mcpError(`Item do tipo '${itemCtx.item_type}' não aceita prescrição de séries nem troca de exercício. Campos válidos aqui: rest_seconds, notes, order_index.`)
+      }
+
       const updateData: Record<string, unknown> = {}
       if (rest_seconds !== undefined) updateData.rest_seconds = rest_seconds
       if (notes !== undefined) updateData.notes = notes
@@ -537,6 +586,11 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
           updateData.rounds = 1
           if (method_key === undefined) updateData.method_key = null
         } else {
+          // R5: valida rounds contra o método EFETIVO (o passado agora ou o
+          // já gravado no item).
+          const effectiveMethod = method_key !== undefined ? method_key : itemCtx.method_key
+          const roundsError = validateRoundsForMethod(rounds, effectiveMethod)
+          if (roundsError) return mcpError(roundsError)
           const built = buildSetScheme(set_scheme)
           if ('error' in built) return mcpError(built.error)
           const m = materializeScheme(built.scheme, rounds)
@@ -551,12 +605,15 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         if (reps !== undefined) updateData.reps = reps
       }
 
-      // Swapping the exercise: validate catalog and refresh snapshots for assigned items
+      // Swapping the exercise: validate catalog and refresh snapshots for
+      // assigned items. Escopo por owner (R17): só exercícios do sistema ou do
+      // próprio treinador — mesmo filtro dos demais caminhos de escrita.
       if (exercise_id !== undefined) {
         const { data: exercise } = await supabaseAdmin
           .from('exercises')
           .select('id, name, equipment')
           .eq('id', exercise_id)
+          .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
           .single()
 
         if (!exercise) {
@@ -573,8 +630,6 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       if (Object.keys(updateData).length === 0 && !schemeRows && !clearScheme) {
         return mcpError('Informe ao menos um campo para atualizar.')
       }
-
-      const itemTable = workout_type === 'template' ? 'workout_item_templates' : 'assigned_workout_items'
 
       const { data, error } = await supabaseAdmin
         .from(itemTable)
@@ -595,6 +650,33 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         }
       }
 
+      // R7: convenção do descanso de superset (desde b504cd7) — a execução usa
+      // o rest POR FILHO e o container espelha o último filho. Mantém o
+      // invariante quando o rest editado é do último filho ou do container.
+      if (rest_seconds !== undefined) {
+        if (itemCtx.parent_item_id) {
+          const { data: siblings } = await supabaseAdmin
+            .from(itemTable)
+            .select('id')
+            .eq('parent_item_id', itemCtx.parent_item_id)
+            .order('order_index', { ascending: true })
+          const lastSibling = siblings?.[siblings.length - 1]
+          if (lastSibling?.id === item_id) {
+            await supabaseAdmin.from(itemTable).update({ rest_seconds }).eq('id', itemCtx.parent_item_id)
+          }
+        } else if (itemCtx.item_type === 'superset') {
+          const { data: children } = await supabaseAdmin
+            .from(itemTable)
+            .select('id')
+            .eq('parent_item_id', item_id)
+            .order('order_index', { ascending: true })
+          const lastChild = children?.[children.length - 1]
+          if (lastChild) {
+            await supabaseAdmin.from(itemTable).update({ rest_seconds }).eq('id', lastChild.id)
+          }
+        }
+      }
+
       return mcpSuccess({
         workout_item: data,
         message: schemeRows
@@ -610,12 +692,13 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
     {
       workout_id: z.string().uuid().describe('The workout session ID to add the superset to'),
       workout_type: z.enum(['template', 'assigned']).default('assigned'),
-      rest_seconds: z.number().min(0).max(600).optional().default(60).describe('Rest in seconds after each round of the superset'),
+      rest_seconds: z.number().min(0).max(600).optional().default(60).describe('Rest in seconds after each round of the superset (applied to the LAST exercise of the round — execution uses per-exercise rest)'),
       order_index: z.number().min(0).optional().describe('Position of the superset in the session. If omitted, appends at the end.'),
       exercises: z.array(z.object({
         exercise_id: z.string().uuid().describe('Exercise ID from the catalog'),
         sets: z.number().min(1).max(20).describe('Number of rounds/sets for this exercise'),
         reps: z.string().describe("Reps prescription (e.g., '10', '8-12')"),
+        rest_seconds: z.number().min(0).max(600).optional().describe('Rest after THIS exercise within the round. Default: 0 for intermediate exercises (back-to-back), the group rest_seconds for the last one.'),
         exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional().default('main'),
         notes: z.string().optional().describe('Special instructions for this exercise'),
       })).min(2).describe('The exercises in the superset, in order. At least 2.'),
@@ -664,6 +747,13 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         parentOrderIndex = last ? last.order_index + 1 : 0
       }
 
+      // R7: convenção por-filho (b504cd7) — a execução usa o rest de CADA
+      // filho; intermediários 0 (passa direto), o último carrega o descanso da
+      // rodada; o container espelha o último filho (o web re-deriva assim).
+      const childRestOf = (e: typeof exercises[number], i: number) =>
+        e.rest_seconds ?? (i === exercises.length - 1 ? (rest_seconds ?? 60) : 0)
+      const lastChildRest = childRestOf(exercises[exercises.length - 1], exercises.length - 1)
+
       // 1. Insert the superset container (item_type 'superset', no exercise).
       const parentInsert = {
         item_type: 'superset',
@@ -671,7 +761,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         exercise_id: null,
         sets: null,
         reps: null,
-        rest_seconds: rest_seconds ?? 60,
+        rest_seconds: lastChildRest,
         order_index: parentOrderIndex,
         method_key: null,
         rounds: 1,
@@ -700,7 +790,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         exercise_id: e.exercise_id,
         sets: e.sets,
         reps: e.reps,
-        rest_seconds: 0,
+        rest_seconds: childRestOf(e, i),
         notes: e.notes ?? null,
         exercise_function: e.exercise_function ?? 'main',
         order_index: i,
@@ -734,10 +824,10 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         superset: {
           id: parent.id,
           order_index: parent.order_index,
-          rest_seconds: rest_seconds ?? 60,
-          exercises: exercises.map(e => ({ exercise_id: e.exercise_id, name: catalog.get(e.exercise_id)!.name })),
+          rest_seconds: lastChildRest,
+          exercises: exercises.map((e, i) => ({ exercise_id: e.exercise_id, name: catalog.get(e.exercise_id)!.name, rest_seconds: childRestOf(e, i) })),
         },
-        message: `Superset com ${exercises.length} exercícios criado, descanso ${rest_seconds ?? 60}s após cada rodada.`,
+        message: `Superset com ${exercises.length} exercícios criado, descanso ${lastChildRest}s após cada rodada.`,
       })
     }
   )
