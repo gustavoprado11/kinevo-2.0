@@ -4,8 +4,8 @@
  * Pattern V2: color strip lateral 3pt verde, borderRadius 16, shadow sutil,
  * tipografia escalonada (label 10pt + preview 14pt 600). Ícone squircle 10pt.
  *
- * Preview: "Esteira · 20min" quando modality + target + objective populados;
- * "Bike · 5km" quando objective === 'distance'; fallback "Cardio livre".
+ * Preview: "Esteira · 20min · Zona 2" (schema canônico, com fallback pro
+ * legado mobile e resumo de protocolo intervalado) — ver cardio-config.ts.
  *
  * Drag: long-press em qualquer área do card via PressableScale (delay 150ms).
  */
@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import { PressableScale } from "../../shared/PressableScale";
 import { useV2Colors } from "@/hooks/useV2Colors";
 import type { WorkoutItem } from "@/stores/program-builder-store";
+import { formatCardioPreview } from "./cardio-config";
 
 const ACCENT = "#22C55E";
 const ACCENT_TINT = "rgba(34,197,94,0.10)";
@@ -27,26 +28,6 @@ export interface CardioItemRowProps {
     onDelete: () => void;
     /** Long-press handler vindo do DraggableFlatList (RenderItemParams). */
     drag?: () => void;
-}
-
-export function formatCardioPreview(cfg: Record<string, unknown>): string {
-    const modality = typeof cfg?.modality === "string" ? cfg.modality.trim() : "";
-    const objective = cfg?.objective;
-    const target =
-        typeof cfg?.target === "number" && Number.isFinite(cfg.target)
-            ? cfg.target
-            : null;
-
-    if (!modality && target === null) return "Cardio livre";
-
-    const parts: string[] = [];
-    if (modality) parts.push(modality);
-    if (target !== null) {
-        if (objective === "distance") parts.push(`${target}km`);
-        else parts.push(`${target}min`);
-    }
-
-    return parts.length > 0 ? parts.join(" · ") : "Cardio livre";
 }
 
 export function CardioItemRow({ item, onEdit, onDelete, drag }: CardioItemRowProps) {

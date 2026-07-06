@@ -170,11 +170,13 @@ export function WorkoutItemRow({
      *   Default mais comum — ajuste rápido sem entrar nas fases.
      * - Modo avançado: abre o SetSchemeEditor (preserva fluxo legado, já
      *   que o trainer está em prescrição por fases).
+     * - Filho de superset: QuickEdit liberado (a execução usa o rest POR
+     *   FILHO — sem isso, um filho com rest errado era inconsertável no app,
+     *   achado A4). Modo avançado segue bloqueado (V1 sem scheme em filho).
      * - Botões filhos (drag, "...", pills) consomem o evento primeiro. */
     const handleCardPress = () => {
-        if (inSuperset) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
-        if (advancedActive && onEditSets) {
+        if (!inSuperset && advancedActive && onEditSets) {
             onEditSets();
             return;
         }
@@ -544,7 +546,9 @@ export function WorkoutItemRow({
                     {item.item_type === 'exercise' && (onEditSets || onQuickEdit) && (
                         <TouchableOpacity
                             onPress={() => {
-                                if (inSuperset) return;
+                                // Filho de superset: QuickEdit liberado (A4);
+                                // fluxo avançado nunca se aplica (scheme null).
+                                if (inSuperset && advancedActive) return;
                                 if (advancedActive && onExitAdvanced) {
                                     Alert.alert(
                                         'Voltar para modo simples',
@@ -567,10 +571,10 @@ export function WorkoutItemRow({
                                 if (onQuickEdit) onQuickEdit();
                                 else onEditSets?.();
                             }}
-                            disabled={inSuperset}
+                            disabled={inSuperset && advancedActive}
                             accessibilityRole="button"
                             accessibilityLabel={advancedActive ? 'Voltar para modo simples' : 'Editar séries, reps e descanso'}
-                            style={{ paddingVertical: 4, paddingHorizontal: 6, opacity: inSuperset ? 0.4 : 1 }}
+                            style={{ paddingVertical: 4, paddingHorizontal: 6, opacity: inSuperset && advancedActive ? 0.4 : 1 }}
                         >
                             <Text
                                 style={{

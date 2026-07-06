@@ -9,6 +9,10 @@ import type {
 import type { BuilderProgramData } from '@kinevo/shared/lib/prescription/builder-mapper';
 import { collapseExpandedScheme } from '@kinevo/shared/lib/prescription/set-scheme';
 import { extractFrequencyFromName } from '@kinevo/shared/lib/prescription/extract-frequency';
+import {
+    removeItemDissolvingSuperset,
+    sortItemsHierarchically,
+} from '@/components/trainer/program-builder/item-helpers';
 
 // ---------------------------------------------------------------------------
 // Storage Adapter — MMKV with in-memory fallback for Expo Go
@@ -440,9 +444,9 @@ function scheduledDaysToFrequency(days: number[] | null | undefined): string[] {
 function workoutsFromAssignedProgram(rows: AssignedWorkoutRow[]): Workout[] {
     const sortedWorkouts = [...rows].sort((a, b) => a.order_index - b.order_index);
     return sortedWorkouts.map((w) => {
-        const itemsRaw = [...(w.assigned_workout_items ?? [])].sort(
-            (a, b) => a.order_index - b.order_index,
-        );
+        // Hierárquico, não sort plano: filhos de superset têm order_index
+        // por-pai (web/RPC) que empata com raízes e embaralhava a lista.
+        const itemsRaw = sortItemsHierarchically(w.assigned_workout_items ?? []);
         const items: WorkoutItem[] = itemsRaw.map((it) => {
             const setRows = it.assigned_workout_item_sets ?? [];
             const collapsed = setRows.length > 0
@@ -494,9 +498,8 @@ function workoutsFromAssignedProgram(rows: AssignedWorkoutRow[]): Workout[] {
 function workoutsFromTemplate(rows: TemplateWorkoutRow[]): Workout[] {
     const sortedWorkouts = [...rows].sort((a, b) => a.order_index - b.order_index);
     return sortedWorkouts.map((w) => {
-        const itemsRaw = [...(w.workout_item_templates ?? [])].sort(
-            (a, b) => a.order_index - b.order_index,
-        );
+        // Hierárquico, não sort plano (mesma razão de workoutsFromAssignedProgram).
+        const itemsRaw = sortItemsHierarchically(w.workout_item_templates ?? []);
         const items: WorkoutItem[] = itemsRaw.map((it) => {
             const setRows = it.workout_item_set_templates ?? [];
             const collapsed = setRows.length > 0
@@ -643,6 +646,11 @@ function itemsFromParsedExercises(
             });
 
             groupExercises.forEach((gex, childIdx) => {
+                // Convenção nova (b504cd7/3f7e44c): a execução usa o rest POR
+                // FILHO e ignora o pai. Intermediários = 0 (sem descanso dentro
+                // da rodada); o ÚLTIMO carrega o descanso da rodada — antes
+                // todos nasciam 0 e o aluno treinava sem timer (achado A4).
+                const isLast = childIdx === groupExercises.length - 1;
                 items.push({
                     id: Crypto.randomUUID(),
                     item_type: 'exercise',
@@ -654,7 +662,7 @@ function itemsFromParsedExercises(
                     exercise_muscle_groups: [],
                     sets: gex.sets,
                     reps: gex.reps,
-                    rest_seconds: 0,
+                    rest_seconds: isLast ? (gex.rest_seconds ?? restBetweenRounds) : 0,
                     notes: gex.notes ?? null,
                     exercise_function: null,
                     item_config: {},
@@ -768,6 +776,10 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
 
                             // Create child exercise items
                             groupExercises.forEach((gex, childIdx) => {
+                                // Execução usa o rest POR FILHO (b504cd7): o
+                                // último carrega o descanso da rodada; antes
+                                // todos nasciam 0 → sem timer (achado A4).
+                                const isLast = childIdx === groupExercises.length - 1;
                                 items.push({
                                     id: Crypto.randomUUID(),
                                     item_type: 'exercise',
@@ -779,7 +791,7 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                     exercise_muscle_groups: [],
                                     sets: gex.sets,
                                     reps: gex.reps,
-                                    rest_seconds: 0, // No rest between exercises within superset
+                                    rest_seconds: isLast ? (gex.rest_seconds ?? restBetweenRounds) : 0,
                                     notes: gex.notes ?? null,
                                     exercise_function: null,
                                     item_config: {},
@@ -1311,16 +1323,30 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
             updateItem: (workoutId, itemId, updates) => set((state) => ({
                 draft: {
                     ...state.draft,
-                    workouts: state.draft.workouts.map(w =>
-                        w.id === workoutId
-                            ? {
-                                ...w,
-                                items: w.items.map(item =>
-                                    item.id === itemId ? { ...item, ...updates } : item
-                                ),
+                    workouts: state.draft.workouts.map(w => {
+                        if (w.id !== workoutId) return w;
+                        let items = w.items.map(item =>
+                            item.id === itemId ? { ...item, ...updates } : item
+                        );
+                        // Convenção do superset (paridade web): o rest do PAI é
+                        // derivado do ÚLTIMO filho (tempo após a rodada). Se o
+                        // rest de um último-filho mudou, sincroniza o pai.
+                        if (updates.rest_seconds !== undefined) {
+                            const edited = items.find(i => i.id === itemId);
+                            if (edited?.parent_item_id) {
+                                const siblings = items.filter(i => i.parent_item_id === edited.parent_item_id);
+                                const last = siblings[siblings.length - 1];
+                                if (last?.id === itemId) {
+                                    items = items.map(i =>
+                                        i.id === edited.parent_item_id
+                                            ? { ...i, rest_seconds: updates.rest_seconds! }
+                                            : i
+                                    );
+                                }
                             }
-                            : w
-                    ),
+                        }
+                        return { ...w, items };
+                    }),
                 },
                 isDirty: true,
             })),
@@ -1351,9 +1377,9 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                         w.id === workoutId
                             ? {
                                 ...w,
-                                items: w.items
-                                    .filter(item => item.id !== itemId)
-                                    .map((item, i) => ({ ...item, order_index: i })),
+                                // Superset: dissolve (filhos viram raízes) em vez de
+                                // órfã-los — o save deletaria os filhos via CASCADE.
+                                items: removeItemDissolvingSuperset(w.items, itemId),
                             }
                             : w
                     ),

@@ -463,6 +463,18 @@ export function useProgramBuilder() {
                         .map((it) => it.id)
                         .filter((id) => originalItemIds.has(id));
                     if (liveItemIds.length > 0) {
+                        // Espelho da migration 215: solta os filhos MANTIDOS antes
+                        // do delete — senão o CASCADE de parent_item_id arrasta
+                        // filhos vivos junto com um pai de superset removido.
+                        // O parent correto é re-setado no upsert (3c).
+                        const { error: unparentError } = await (supabase as any)
+                            .from("assigned_workout_items")
+                            .update({ parent_item_id: null })
+                            .eq("assigned_workout_id", workoutDbId)
+                            .not("parent_item_id", "is", null)
+                            .in("id", liveItemIds);
+                        if (unparentError) throw unparentError;
+
                         const { error: delItemsError } = await (supabase as any)
                             .from("assigned_workout_items")
                             .delete()
@@ -715,6 +727,16 @@ export function useProgramBuilder() {
                         .map((it) => it.id)
                         .filter((id) => originalItemIds.has(id));
                     if (liveItemIds.length > 0) {
+                        // Espelho da migration 215: solta os filhos MANTIDOS antes
+                        // do delete (CASCADE de parent_item_id); re-setado no 3c.
+                        const { error: unparentError } = await (supabase as any)
+                            .from("workout_item_templates")
+                            .update({ parent_item_id: null })
+                            .eq("workout_template_id", workoutDbId)
+                            .not("parent_item_id", "is", null)
+                            .in("id", liveItemIds);
+                        if (unparentError) throw unparentError;
+
                         const { error: delItemsError } = await (supabase as any)
                             .from("workout_item_templates")
                             .delete()

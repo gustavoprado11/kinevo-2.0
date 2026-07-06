@@ -1,14 +1,13 @@
 /**
  * EditCardioSheet — modal pra editar um bloco de cardio.
  *
- * V1: só mode 'continuous' (sem dropdown). Campos editáveis:
- *  - modality (string custom: "Esteira", "Bike", "Elíptico"…)
- *  - objective: 'time' | 'distance' (chips toggle)
- *  - target: number (label muda baseado no objective)
- *  - notes: optional multiline
+ * Grava o schema CANÔNICO de shared/types/workout-items.ts (o mesmo do web e
+ * do player do aluno): equipment (enum), objective time/distance →
+ * duration_minutes/distance_km, intensity e notes. Lê também o legado mobile
+ * (modality/target) e o migra no save (helpers em cardio-config.ts).
  *
- * Save dispara onSave(cfg) com:
- *   { mode: 'continuous', modality, objective, target, notes }
+ * Protocolo INTERVALADO (criado no web) não é editável aqui: o sheet mostra o
+ * resumo e preserva mode/intervals no merge — edita só equipment/intensity/notes.
  */
 import React, { useEffect, useState } from "react";
 import {
@@ -24,36 +23,26 @@ import {
     View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Heart, X } from "lucide-react-native";
+import { Heart, X, Zap } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useV2Colors } from "@/hooks/useV2Colors";
+import {
+    CARDIO_EQUIPMENT_LABELS,
+    CARDIO_EQUIPMENT_OPTIONS,
+    type CardioEquipment,
+    type CardioObjective,
+} from "@kinevo/shared/types/workout-items";
+import { buildCardioConfig, parseCardioConfig } from "./cardio-config";
 
 const ACCENT = "#22C55E";
 
-export type CardioObjective = "time" | "distance";
-
-export interface CardioConfig {
-    mode: "continuous";
-    modality: string;
-    objective: CardioObjective;
-    target: number | null;
-    notes: string;
-}
-
 export interface EditCardioSheetProps {
     visible: boolean;
-    initialConfig: Partial<CardioConfig>;
-    onSave: (cfg: CardioConfig) => void;
+    /** item_config cru do item (canônico ou legado mobile). */
+    initialConfig: Record<string, unknown>;
+    /** Recebe o item_config completo já mesclado/migrado, pronto pro updateItem. */
+    onSave: (cfg: Record<string, unknown>) => void;
     onClose: () => void;
-}
-
-function coerceObjective(raw: unknown): CardioObjective {
-    return raw === "distance" ? "distance" : "time";
-}
-
-function coerceTarget(raw: unknown): string {
-    if (typeof raw === "number" && Number.isFinite(raw)) return String(raw);
-    return "";
 }
 
 export function EditCardioSheet({
@@ -63,44 +52,63 @@ export function EditCardioSheet({
     onClose,
 }: EditCardioSheetProps) {
     const colors = useV2Colors();
-    const [modality, setModality] = useState(
-        typeof initialConfig.modality === "string" ? initialConfig.modality : "",
-    );
-    const [objective, setObjective] = useState<CardioObjective>(
-        coerceObjective(initialConfig.objective),
-    );
-    const [targetText, setTargetText] = useState(coerceTarget(initialConfig.target));
-    const [notes, setNotes] = useState(
-        typeof initialConfig.notes === "string" ? initialConfig.notes : "",
-    );
+    const parsed = parseCardioConfig(initialConfig);
+    const [equipment, setEquipment] = useState<CardioEquipment | null>(parsed.equipment);
+    const [objective, setObjective] = useState<CardioObjective>(parsed.objective);
+    const [targetText, setTargetText] = useState(parsed.target !== null ? String(parsed.target) : "");
+    const [intensity, setIntensity] = useState(parsed.intensity);
+    const [notes, setNotes] = useState(parsed.notes);
+    const isInterval = parsed.isInterval;
 
     useEffect(() => {
         if (visible) {
-            setModality(typeof initialConfig.modality === "string" ? initialConfig.modality : "");
-            setObjective(coerceObjective(initialConfig.objective));
-            setTargetText(coerceTarget(initialConfig.target));
-            setNotes(typeof initialConfig.notes === "string" ? initialConfig.notes : "");
+            const p = parseCardioConfig(initialConfig);
+            setEquipment(p.equipment);
+            setObjective(p.objective);
+            setTargetText(p.target !== null ? String(p.target) : "");
+            setIntensity(p.intensity);
+            setNotes(p.notes);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible]);
 
     const handleSave = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
-        const parsed = parseFloat(targetText.replace(",", "."));
-        const targetNum = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-        onSave({
-            mode: "continuous",
-            modality: modality.trim(),
+        const parsedTarget = parseFloat(targetText.replace(",", "."));
+        const targetNum = Number.isFinite(parsedTarget) && parsedTarget > 0 ? parsedTarget : null;
+        onSave(buildCardioConfig(initialConfig, {
+            equipment,
             objective,
             target: targetNum,
-            notes: notes.trim(),
-        });
+            intensity,
+            notes,
+        }));
     };
 
     const targetLabel = objective === "distance" ? "Distância (km)" : "Duração (min)";
     const targetPlaceholder = objective === "distance" ? "Ex: 5" : "Ex: 20";
 
-    const renderChip = (label: string, value: CardioObjective) => {
+    const fieldLabelStyle = {
+        fontSize: 11,
+        fontWeight: "700" as const,
+        color: colors.text.secondary,
+        textTransform: "uppercase" as const,
+        letterSpacing: 0.8,
+        marginBottom: 6,
+    };
+
+    const inputStyle = {
+        backgroundColor: colors.surface.card,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border.default,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        fontSize: 15,
+        color: colors.text.primary,
+    };
+
+    const renderObjectiveChip = (label: string, value: CardioObjective) => {
         const active = objective === value;
         return (
             <TouchableOpacity
@@ -132,6 +140,44 @@ export function EditCardioSheet({
                     }}
                 >
                     {label}
+                </Text>
+            </TouchableOpacity>
+        );
+    };
+
+    const renderEquipmentChip = (value: CardioEquipment) => {
+        const active = equipment === value;
+        return (
+            <TouchableOpacity
+                key={value}
+                onPress={() => {
+                    Haptics.selectionAsync().catch(() => { });
+                    setEquipment(active ? null : value);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Equipamento: ${CARDIO_EQUIPMENT_LABELS[value]}`}
+                accessibilityState={{ selected: active }}
+                activeOpacity={0.85}
+                style={{
+                    height: 36,
+                    paddingHorizontal: 12,
+                    borderRadius: 18,
+                    borderWidth: 1,
+                    borderColor: active ? ACCENT : colors.border.default,
+                    backgroundColor: active ? "rgba(34,197,94,0.10)" : colors.surface.card,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 8,
+                }}
+            >
+                <Text
+                    style={{
+                        fontSize: 13,
+                        fontWeight: active ? "700" : "500",
+                        color: active ? ACCENT : colors.text.secondary,
+                    }}
+                >
+                    {CARDIO_EQUIPMENT_LABELS[value]}
                 </Text>
             </TouchableOpacity>
         );
@@ -227,123 +273,102 @@ export function EditCardioSheet({
                                 showsVerticalScrollIndicator={false}
                                 style={{ marginTop: 8 }}
                             >
-                                {/* Modalidade */}
+                                {/* Equipamento */}
                                 <View style={{ marginBottom: 14 }}>
-                                    <Text
-                                        style={{
-                                            fontSize: 11,
-                                            fontWeight: "700",
-                                            color: colors.text.secondary,
-                                            textTransform: "uppercase",
-                                            letterSpacing: 0.8,
-                                            marginBottom: 6,
-                                        }}
+                                    <Text style={fieldLabelStyle}>Equipamento</Text>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        keyboardShouldPersistTaps="handled"
                                     >
-                                        Modalidade
-                                    </Text>
-                                    <TextInput
-                                        value={modality}
-                                        onChangeText={setModality}
-                                        autoFocus
-                                        placeholder="Ex: Esteira, Bike, Elíptico"
-                                        placeholderTextColor={colors.text.tertiary}
-                                        style={{
-                                            backgroundColor: colors.surface.card,
-                                            borderRadius: 12,
-                                            borderWidth: 1,
-                                            borderColor: colors.border.default,
-                                            paddingHorizontal: 12,
-                                            paddingVertical: 12,
-                                            fontSize: 15,
-                                            color: colors.text.primary,
-                                        }}
-                                    />
+                                        <View style={{ flexDirection: "row" }}>
+                                            {CARDIO_EQUIPMENT_OPTIONS.map(renderEquipmentChip)}
+                                        </View>
+                                    </ScrollView>
                                 </View>
 
-                                {/* Objetivo */}
-                                <View style={{ marginBottom: 14 }}>
-                                    <Text
+                                {isInterval ? (
+                                    /* Protocolo intervalado (web): preservado, não editável aqui */
+                                    <View
                                         style={{
-                                            fontSize: 11,
-                                            fontWeight: "700",
-                                            color: colors.text.secondary,
-                                            textTransform: "uppercase",
-                                            letterSpacing: 0.8,
-                                            marginBottom: 6,
-                                        }}
-                                    >
-                                        Objetivo
-                                    </Text>
-                                    <View style={{ flexDirection: "row", gap: 8 }}>
-                                        {renderChip("Tempo", "time")}
-                                        {renderChip("Distância", "distance")}
-                                    </View>
-                                </View>
-
-                                {/* Target */}
-                                <View style={{ marginBottom: 14 }}>
-                                    <Text
-                                        style={{
-                                            fontSize: 11,
-                                            fontWeight: "700",
-                                            color: colors.text.secondary,
-                                            textTransform: "uppercase",
-                                            letterSpacing: 0.8,
-                                            marginBottom: 6,
-                                        }}
-                                    >
-                                        {targetLabel}
-                                    </Text>
-                                    <TextInput
-                                        value={targetText}
-                                        onChangeText={setTargetText}
-                                        placeholder={targetPlaceholder}
-                                        placeholderTextColor={colors.text.tertiary}
-                                        keyboardType="decimal-pad"
-                                        style={{
-                                            backgroundColor: colors.surface.card,
-                                            borderRadius: 12,
-                                            borderWidth: 1,
-                                            borderColor: colors.border.default,
-                                            paddingHorizontal: 12,
-                                            paddingVertical: 12,
-                                            fontSize: 15,
-                                            color: colors.text.primary,
-                                        }}
-                                    />
-                                </View>
-
-                                {/* Notes */}
-                                <View style={{ marginBottom: 16 }}>
-                                    <Text
-                                        style={{
-                                            fontSize: 11,
-                                            fontWeight: "700",
-                                            color: colors.text.secondary,
-                                            textTransform: "uppercase",
-                                            letterSpacing: 0.8,
-                                            marginBottom: 6,
-                                        }}
-                                    >
-                                        Observações (opcional)
-                                    </Text>
-                                    <TextInput
-                                        value={notes}
-                                        onChangeText={setNotes}
-                                        multiline
-                                        placeholder="Ex: Inclinação 5%, FC alvo 130-150bpm"
-                                        placeholderTextColor={colors.text.tertiary}
-                                        textAlignVertical="top"
-                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            gap: 8,
                                             backgroundColor: colors.surface.card,
                                             borderRadius: 12,
                                             borderWidth: 1,
                                             borderColor: colors.border.default,
                                             padding: 12,
+                                            marginBottom: 14,
+                                        }}
+                                    >
+                                        <Zap size={16} color={ACCENT} strokeWidth={2.2} />
+                                        <Text
+                                            style={{
+                                                flex: 1,
+                                                fontSize: 13,
+                                                lineHeight: 18,
+                                                color: colors.text.secondary,
+                                            }}
+                                        >
+                                            Protocolo intervalado definido no painel web — os
+                                            intervalos são preservados. Aqui você edita
+                                            equipamento, intensidade e observações.
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <>
+                                        {/* Objetivo */}
+                                        <View style={{ marginBottom: 14 }}>
+                                            <Text style={fieldLabelStyle}>Objetivo</Text>
+                                            <View style={{ flexDirection: "row", gap: 8 }}>
+                                                {renderObjectiveChip("Tempo", "time")}
+                                                {renderObjectiveChip("Distância", "distance")}
+                                            </View>
+                                        </View>
+
+                                        {/* Target */}
+                                        <View style={{ marginBottom: 14 }}>
+                                            <Text style={fieldLabelStyle}>{targetLabel}</Text>
+                                            <TextInput
+                                                value={targetText}
+                                                onChangeText={setTargetText}
+                                                placeholder={targetPlaceholder}
+                                                placeholderTextColor={colors.text.tertiary}
+                                                keyboardType="decimal-pad"
+                                                style={inputStyle}
+                                            />
+                                        </View>
+                                    </>
+                                )}
+
+                                {/* Intensidade */}
+                                <View style={{ marginBottom: 14 }}>
+                                    <Text style={fieldLabelStyle}>Intensidade (opcional)</Text>
+                                    <TextInput
+                                        value={intensity}
+                                        onChangeText={setIntensity}
+                                        placeholder="Ex: Zona 2, RPE 6, 130-150bpm"
+                                        placeholderTextColor={colors.text.tertiary}
+                                        style={inputStyle}
+                                    />
+                                </View>
+
+                                {/* Notes */}
+                                <View style={{ marginBottom: 16 }}>
+                                    <Text style={fieldLabelStyle}>Observações (opcional)</Text>
+                                    <TextInput
+                                        value={notes}
+                                        onChangeText={setNotes}
+                                        multiline
+                                        placeholder="Ex: Inclinação 5%, aquecer 3min antes"
+                                        placeholderTextColor={colors.text.tertiary}
+                                        textAlignVertical="top"
+                                        style={{
+                                            ...inputStyle,
+                                            padding: 12,
                                             minHeight: 70,
-                                            fontSize: 15,
                                             lineHeight: 20,
-                                            color: colors.text.primary,
                                         }}
                                     />
                                 </View>

@@ -29,7 +29,7 @@ import { QuickEditSheet } from "@/components/trainer/program-builder/QuickEditSh
 import { AddBlockSheet } from "@/components/trainer/program-builder/AddBlockSheet";
 import { EditNoteSheet } from "@/components/trainer/program-builder/EditNoteSheet";
 import { EditWarmupSheet } from "@/components/trainer/program-builder/EditWarmupSheet";
-import { EditCardioSheet, type CardioObjective } from "@/components/trainer/program-builder/EditCardioSheet";
+import { EditCardioSheet } from "@/components/trainer/program-builder/EditCardioSheet";
 import { ExercisePanel } from "@/components/trainer/program-builder/ExercisePanel";
 import type { WorkoutItem } from "@/stores/program-builder-store";
 import type { Exercise } from "@/hooks/useExerciseLibrary";
@@ -800,9 +800,15 @@ export default function ProgramBuilderScreen() {
                                 initialDescription={initialDescription}
                                 onSave={(description) => {
                                     if (editingItem) {
+                                        // Merge, não replace: preserva warmup_type e
+                                        // duration_minutes de um warmup criado no web.
+                                        const cfg = editingItem.item_config ?? {};
                                         updateItem(currentWorkout.id, editingItem.id, {
                                             item_config: {
-                                                warmup_type: "free",
+                                                ...cfg,
+                                                warmup_type: typeof cfg.warmup_type === "string"
+                                                    ? cfg.warmup_type
+                                                    : "free",
                                                 description,
                                             },
                                         });
@@ -814,38 +820,21 @@ export default function ProgramBuilderScreen() {
                         );
                     })()}
 
-                    {/* Edit Cardio Sheet */}
+                    {/* Edit Cardio Sheet — recebe o item_config cru; o sheet
+                     *  devolve o config canônico mesclado (preserva protocolo
+                     *  intervalado do web, migra o legado mobile). */}
                     {!isTablet && currentWorkout && (() => {
                         const editingItem = editingCardioItemId
                             ? currentWorkout.items.find((it) => it.id === editingCardioItemId)
                             : null;
-                        const cfg = editingItem?.item_config ?? {};
-                        const initialConfig = {
-                            modality: typeof cfg.modality === "string" ? cfg.modality : "",
-                            objective:
-                                cfg.objective === "distance"
-                                    ? ("distance" as CardioObjective)
-                                    : ("time" as CardioObjective),
-                            target:
-                                typeof cfg.target === "number" && Number.isFinite(cfg.target)
-                                    ? (cfg.target as number)
-                                    : null,
-                            notes: typeof cfg.notes === "string" ? cfg.notes : "",
-                        };
                         return (
                             <EditCardioSheet
                                 visible={!!editingItem}
-                                initialConfig={initialConfig}
+                                initialConfig={editingItem?.item_config ?? {}}
                                 onSave={(next) => {
                                     if (editingItem) {
                                         updateItem(currentWorkout.id, editingItem.id, {
-                                            item_config: {
-                                                mode: next.mode,
-                                                modality: next.modality,
-                                                objective: next.objective,
-                                                ...(next.target !== null ? { target: next.target } : {}),
-                                                ...(next.notes ? { notes: next.notes } : {}),
-                                            },
+                                            item_config: next,
                                         });
                                     }
                                     setEditingCardioItemId(null);
@@ -885,60 +874,68 @@ export default function ProgramBuilderScreen() {
                             router.back();
                         }}
                     />
-                    {editingItem && (
-                        <SetSchemeEditor
-                            visible={!!setSchemeEditingItemId}
-                            initialScheme={editingItem.set_scheme ?? null}
-                            initialMethodKey={editingItem.method_key ?? null}
-                            initialRounds={editingItem.rounds ?? 1}
-                            fallbackAggregates={{
-                                sets: editingItem.sets,
-                                reps: editingItem.reps,
-                                rest_seconds: editingItem.rest_seconds,
-                            }}
-                            exerciseName={editingItem.exercise_name}
-                            onSave={handleSchemeSave}
-                            onClose={() => setSetSchemeEditingItemId(null)}
-                        />
-                    )}
-
-                    {/* Quick-edit (séries/reps/descanso) — default ao tocar no
-                     *  card e via "..." > "Editar". */}
-                    {quickEditingItem && currentWorkout && (
-                        <QuickEditSheet
-                            visible={!!quickEditingItemId}
-                            exerciseName={quickEditingItem.exercise_name}
-                            initial={{
-                                sets: quickEditingItem.sets ?? 3,
-                                reps: quickEditingItem.reps ?? '10',
-                                rest_seconds: quickEditingItem.rest_seconds ?? 60,
-                            }}
-                            onClose={() => setQuickEditingItemId(null)}
-                            onSave={(next) => {
-                                updateItem(currentWorkout.id, quickEditingItem.id, next);
-                            }}
-                            onOpenAdvanced={() => {
-                                setSetSchemeEditingItemId(quickEditingItem.id);
-                            }}
-                        />
-                    )}
-
-                    {/* Trocar exercício — reusa o ExercisePickerModal: ao
-                     *  selecionar, dispara swapExercise mantendo prescrição. */}
-                    {!isTablet && (
-                        <ExercisePickerModal
-                            visible={!!swapTargetItemId}
-                            onClose={() => setSwapTargetItemId(null)}
-                            onSelect={(exercise) => {
-                                if (!currentWorkout || !swapTargetItemId) return;
-                                swapExercise(currentWorkout.id, swapTargetItemId, exercise);
-                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
-                                setSwapTargetItemId(null);
-                            }}
-                        />
-                    )}
                 </>
               )}
+
+              {/* Sheets de edição de item — NÃO dependem de aluno: precisam
+               *  renderizar também nos fluxos de modelo (criar/editar template,
+               *  sem studentId na rota). Dentro do gate acima, todo exercício
+               *  de template ficava travado em 3×10/60s (achado A3). */}
+              {editingItem && (
+                  <SetSchemeEditor
+                      visible={!!setSchemeEditingItemId}
+                      initialScheme={editingItem.set_scheme ?? null}
+                      initialMethodKey={editingItem.method_key ?? null}
+                      initialRounds={editingItem.rounds ?? 1}
+                      fallbackAggregates={{
+                          sets: editingItem.sets,
+                          reps: editingItem.reps,
+                          rest_seconds: editingItem.rest_seconds,
+                      }}
+                      exerciseName={editingItem.exercise_name}
+                      onSave={handleSchemeSave}
+                      onClose={() => setSetSchemeEditingItemId(null)}
+                  />
+              )}
+
+              {/* Quick-edit (séries/reps/descanso) — default ao tocar no
+               *  card e via "..." > "Editar". */}
+              {quickEditingItem && currentWorkout && (
+                  <QuickEditSheet
+                      visible={!!quickEditingItemId}
+                      exerciseName={quickEditingItem.exercise_name}
+                      initial={{
+                          sets: quickEditingItem.sets ?? 3,
+                          reps: quickEditingItem.reps ?? '10',
+                          rest_seconds: quickEditingItem.rest_seconds ?? 60,
+                      }}
+                      onClose={() => setQuickEditingItemId(null)}
+                      onSave={(next) => {
+                          updateItem(currentWorkout.id, quickEditingItem.id, next);
+                      }}
+                      // Filho de superset NÃO oferece edição avançada: o save
+                      // nunca persiste scheme de filho (V1) — o editor seria
+                      // uma armadilha de edição descartada (classe A2).
+                      onOpenAdvanced={quickEditingItem.parent_item_id ? undefined : () => {
+                          setSetSchemeEditingItemId(quickEditingItem.id);
+                      }}
+                  />
+              )}
+
+              {/* Trocar exercício — reusa o ExercisePickerModal: ao
+               *  selecionar, dispara swapExercise mantendo prescrição.
+               *  Também no tablet: o painel lateral só ADICIONA; sem este
+               *  modal a troca ficava morta lá (achado da auditoria). */}
+              <ExercisePickerModal
+                  visible={!!swapTargetItemId}
+                  onClose={() => setSwapTargetItemId(null)}
+                  onSelect={(exercise) => {
+                      if (!currentWorkout || !swapTargetItemId) return;
+                      swapExercise(currentWorkout.id, swapTargetItemId, exercise);
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
+                      setSwapTargetItemId(null);
+                  }}
+              />
             </KeyboardAvoidingView>
         </GestureHandlerRootView>
     );
