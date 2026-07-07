@@ -92,6 +92,44 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // F3 (analise-saude-aluno-2026-07-07): persiste os tokens renovados TAMBÉM no
+    // servidor — é assim que conexões ANTIGAS (tokens só no SecureStore) ganham
+    // token server-side no primeiro refresh após este deploy, sem update do app.
+    // Best-effort: falha aqui não pode quebrar o refresh do app.
+    try {
+      const { data: student } = await admin
+        .from("students").select("id")
+        .eq("auth_user_id", userRes.user.id).maybeSingle();
+      const studentId = (student as { id?: string } | null)?.id;
+      if (studentId) {
+        await admin.from("wearable_oauth_tokens").upsert(
+          {
+            student_id: studentId,
+            source: "strava",
+            access_token: data.access_token,
+            refresh_token: data.refresh_token ?? null,
+            expires_at: data.expires_at ? new Date(data.expires_at * 1000).toISOString() : null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "student_id,source" },
+        );
+        // external_user_id (id do atleta) não vem no refresh — se a conexão do
+        // app já o conhece, copia p/ o token (o webhook mapeia por ele).
+        const { data: conn } = await admin
+          .from("wearable_connections").select("external_user_id")
+          .eq("student_id", studentId).eq("source", "strava").maybeSingle();
+        const athleteId = (conn as { external_user_id?: string | null } | null)?.external_user_id;
+        if (athleteId) {
+          await admin.from("wearable_oauth_tokens")
+            .update({ external_user_id: athleteId })
+            .eq("student_id", studentId).eq("source", "strava")
+            .is("external_user_id", null);
+        }
+      }
+    } catch (persistErr) {
+      console.error("[strava-token-refresh] persistência server-side falhou (best-effort):", persistErr);
+    }
+
     return new Response(
       JSON.stringify({
         access_token: data.access_token,

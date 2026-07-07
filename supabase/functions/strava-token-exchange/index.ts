@@ -93,6 +93,34 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // F3 (analise-saude-aluno-2026-07-07): persiste os tokens TAMBÉM no servidor
+    // (wearable_oauth_tokens) — habilita strava-webhook e wearable-reconcile a
+    // buscar atividades sem o app aberto. Best-effort: falha aqui não pode
+    // quebrar a conexão do app (que segue com os tokens no SecureStore).
+    try {
+      const { data: student } = await admin
+        .from("students").select("id")
+        .eq("auth_user_id", userRes.user.id).maybeSingle();
+      const studentId = (student as { id?: string } | null)?.id;
+      if (studentId) {
+        await admin.from("wearable_oauth_tokens").upsert(
+          {
+            student_id: studentId,
+            source: "strava",
+            access_token: data.access_token,
+            refresh_token: data.refresh_token ?? null,
+            expires_at: data.expires_at ? new Date(data.expires_at * 1000).toISOString() : null,
+            scope: data.scope ?? null,
+            external_user_id: data.athlete?.id != null ? String(data.athlete.id) : null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "student_id,source" },
+        );
+      }
+    } catch (persistErr) {
+      console.error("[strava-token-exchange] persistência server-side falhou (best-effort):", persistErr);
+    }
+
     // Retorna apenas campos necessários — não vazar payload completo
     return new Response(
       JSON.stringify({
