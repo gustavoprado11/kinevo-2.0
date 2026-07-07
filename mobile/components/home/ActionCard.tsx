@@ -1,7 +1,7 @@
 // LEGACY — ainda usado em app/(tabs)/home.tsx (modo aluno). Migrar quando refatorar área student (futura fase).
 import React, { useState } from "react";
 import { View, Text, Pressable } from "react-native";
-import { Dumbbell, ChevronRight, ChevronDown, Coffee, Check, Play, AlertCircle, PartyPopper, RotateCcw } from "lucide-react-native";
+import { Dumbbell, ChevronRight, ChevronDown, Coffee, Check, Play, AlertCircle, PartyPopper, RotateCcw, ShieldCheck } from "lucide-react-native";
 import Animated, {
     FadeIn,
     useSharedValue,
@@ -80,6 +80,8 @@ interface ActionCardProps {
     weeklyProgress?: WeeklyProgress | null;
     /** Programa: nome, semana atual (1-indexed) e duração total — painel expandido */
     programName?: string | null;
+    /** Carimbo de validação da Consultoria IA (ex.: "Validado por Ana · CREF 012345-G/SP"). */
+    validationStamp?: string | null;
     programWeek?: number | null;
     programDurationWeeks?: number | null;
     /** Callbacks */
@@ -105,6 +107,7 @@ export function ActionCard({
     todaySession,
     weeklyProgress,
     programName,
+    validationStamp,
     programWeek,
     programDurationWeeks,
     onStartWorkout,
@@ -336,7 +339,18 @@ export function ActionCard({
                             <Animated.View entering={FadeIn.duration(180)} style={styles.heroPanel}>
                                 <Text style={styles.panelEyebrow}>Programa atual</Text>
                                 {programName ? (
-                                    <Text style={styles.panelTitle} numberOfLines={1}>{programName}</Text>
+                                    <Text
+                                        style={[styles.panelTitle, validationStamp ? { marginBottom: 4 } : null]}
+                                        numberOfLines={1}
+                                    >
+                                        {programName}
+                                    </Text>
+                                ) : null}
+                                {validationStamp ? (
+                                    <View style={styles.validationRow}>
+                                        <ShieldCheck size={11} color="rgba(255,255,255,0.55)" />
+                                        <Text style={styles.validationText} numberOfLines={1}>{validationStamp}</Text>
+                                    </View>
                                 ) : null}
                                 {programWeek != null && (
                                     <>
@@ -739,6 +753,19 @@ function makeStyles(colors: V2Palette) {
             color: '#FFFFFF',
             letterSpacing: -0.3,
             marginBottom: 12,
+        },
+        // Carimbo CREF da Consultoria IA — prova de responsabilidade técnica.
+        validationRow: {
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
+            gap: 5,
+            marginBottom: 12,
+        },
+        validationText: {
+            fontSize: 11,
+            fontWeight: '600' as const,
+            color: 'rgba(255,255,255,0.55)',
+            flexShrink: 1,
         },
         weekRow: {
             flexDirection: 'row' as const,

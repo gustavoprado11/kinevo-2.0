@@ -6,7 +6,7 @@
 
 import {
     LayoutDashboard, Users, Megaphone, CalendarDays, FileText, Wallet,
-    Calendar, Dumbbell,
+    Calendar, Dumbbell, Stethoscope,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -21,6 +21,7 @@ export interface NavItem {
 export const MAIN_NAV: NavItem[] = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, onboardingId: 'sidebar-dashboard' },
     { name: 'Alunos', href: '/students', icon: Users, onboardingId: 'sidebar-students' },
+    { name: 'Consultoria IA', href: '/consultoria', icon: Stethoscope },
     { name: 'Marketing', href: '/marketing', icon: Megaphone, onboardingId: 'sidebar-marketing', extraActivePrefixes: ['/leads', '/landing'] },
     { name: 'Agenda', href: '/schedule', icon: CalendarDays, onboardingId: 'sidebar-schedule' },
     { name: 'Formulários e Avaliações', href: '/forms', icon: FileText, onboardingId: 'sidebar-forms', extraActivePrefixes: ['/avaliacoes'] },

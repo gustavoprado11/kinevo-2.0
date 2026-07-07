@@ -654,6 +654,9 @@ export type Database = {
           student_id: string
           trainer_id: string
           updated_at: string
+          validated_at: string | null
+          validated_by_name: string | null
+          validator_cref: string | null
         }
         Insert: {
           ai_generated?: boolean
@@ -674,6 +677,9 @@ export type Database = {
           student_id: string
           trainer_id: string
           updated_at?: string
+          validated_at?: string | null
+          validated_by_name?: string | null
+          validator_cref?: string | null
         }
         Update: {
           ai_generated?: boolean
@@ -694,6 +700,9 @@ export type Database = {
           student_id?: string
           trainer_id?: string
           updated_at?: string
+          validated_at?: string | null
+          validated_by_name?: string | null
+          validator_cref?: string | null
         }
         Relationships: [
           {
@@ -1178,6 +1187,99 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "concierge_requests_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consultoria_requests: {
+        Row: {
+          anamnese_submission_id: string | null
+          created_at: string
+          error_message: string | null
+          generation_id: string | null
+          id: string
+          program_id: string | null
+          rejection_reason: string | null
+          review_started_at: string | null
+          status: string
+          student_id: string
+          trainer_id: string
+          triage_flags: Json
+          triage_level: string | null
+          updated_at: string
+          validated_at: string | null
+          validator_cref: string | null
+        }
+        Insert: {
+          anamnese_submission_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          generation_id?: string | null
+          id?: string
+          program_id?: string | null
+          rejection_reason?: string | null
+          review_started_at?: string | null
+          status?: string
+          student_id: string
+          trainer_id: string
+          triage_flags?: Json
+          triage_level?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validator_cref?: string | null
+        }
+        Update: {
+          anamnese_submission_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          generation_id?: string | null
+          id?: string
+          program_id?: string | null
+          rejection_reason?: string | null
+          review_started_at?: string | null
+          status?: string
+          student_id?: string
+          trainer_id?: string
+          triage_flags?: Json
+          triage_level?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validator_cref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultoria_requests_anamnese_submission_id_fkey"
+            columns: ["anamnese_submission_id"]
+            isOneToOne: false
+            referencedRelation: "form_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultoria_requests_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "prescription_generations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultoria_requests_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "assigned_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultoria_requests_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultoria_requests_trainer_id_fkey"
             columns: ["trainer_id"]
             isOneToOne: false
             referencedRelation: "trainers"
@@ -4887,6 +4989,7 @@ export type Database = {
           sync_status?: string
           trainer_id?: string
           updated_at?: string
+          workout_name?: string | null
         }
         Relationships: [
           {

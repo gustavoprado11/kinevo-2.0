@@ -8,8 +8,7 @@ import { motion } from 'framer-motion'
 import {
     ChevronLeft, Mail, Calendar, CalendarPlus, Pencil, Key, Trash2,
     MoreHorizontal, Copy, Check, Loader2, MapPin, Wifi,
-    Flame, Dumbbell, Activity, TrendingUp, TrendingDown,
-    Target, Tag, Compass,
+    Target, Compass, Stethoscope,
 } from 'lucide-react'
 import { resetStudentPassword } from '@/app/students/[id]/actions/reset-student-password'
 
@@ -42,6 +41,8 @@ interface StudentHeaderProps {
     onDelete: () => void
     onSchedule?: () => void
     onStartTour?: () => void
+    /** Inicia o fluxo de Consultoria IA (anamnese → rascunho IA → validação CREF). */
+    onConsultoria?: () => void
     quickStats?: QuickStat[]
     children?: React.ReactNode
 }
@@ -79,7 +80,7 @@ const STAT_COLORS = {
 
 // ── Component ──
 
-export function StudentHeader({ student, onEdit, onDelete, onSchedule, onStartTour, quickStats, children }: StudentHeaderProps) {
+export function StudentHeader({ student, onEdit, onDelete, onSchedule, onStartTour, onConsultoria, quickStats, children }: StudentHeaderProps) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showResetConfirm, setShowResetConfirm] = useState(false)
     const [isResetting, setIsResetting] = useState(false)
@@ -310,6 +311,21 @@ export function StudentHeader({ student, onEdit, onDelete, onSchedule, onStartTo
                                                     >
                                                         <Compass className="w-3.5 h-3.5 text-violet-500" />
                                                         Tour rápido
+                                                    </button>
+                                                    <div className="h-px bg-[#E8E8ED] dark:bg-k-border-subtle mx-2" />
+                                                </>
+                                            )}
+                                            {onConsultoria && (
+                                                <>
+                                                    <button
+                                                        onClick={() => {
+                                                            setShowActions(false)
+                                                            onConsultoria()
+                                                        }}
+                                                        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
+                                                    >
+                                                        <Stethoscope className="w-3.5 h-3.5 text-violet-500" />
+                                                        Consultoria IA
                                                     </button>
                                                     <div className="h-px bg-[#E8E8ED] dark:bg-k-border-subtle mx-2" />
                                                 </>

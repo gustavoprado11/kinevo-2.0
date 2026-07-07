@@ -88,11 +88,20 @@ export async function updateTrainerProfile(formData: FormData): Promise<UpdateTr
             avatarUrl = publicData.publicUrl
         }
 
+        // CREF é opcional e aditivo: formulários que não enviam o campo não tocam
+        // na coluna (landing_cref também alimenta o carimbo da Consultoria IA).
+        const rawCref = formData.get('cref')
+        const crefUpdate =
+            typeof rawCref === 'string'
+                ? { landing_cref: rawCref.trim().slice(0, 40) || null }
+                : {}
+
         const { error: updateError } = await supabase
             .from('trainers')
             .update({
                 name,
                 avatar_url: avatarUrl,
+                ...crefUpdate,
             })
             .eq('id', trainer.id)
 

@@ -11,6 +11,7 @@ import {
 } from '@/components/students'
 import { completeProgram } from './actions/complete-program'
 import { extendProgram } from './actions/extend-program'
+import { startConsultoria } from '@/actions/consultoria/start-consultoria'
 import { deleteStudent } from './actions/student-actions'
 import { activateProgram } from './actions/activate-program'
 import { deleteProgram } from './actions/delete-program'
@@ -243,6 +244,26 @@ export function StudentDetailClient({
         openPanel('messages')
         openConversation(initialStudent.id)
     }, [openPanel, openConversation, initialStudent.id])
+
+    /**
+     * Inicia a Consultoria IA para este aluno: com anamnese recente o pedido
+     * já nasce triado; senão a Avaliação Inicial é enviada ao app do aluno.
+     * O acompanhamento (gerar rascunho → validar) acontece em /consultoria.
+     */
+    const handleStartConsultoria = useCallback(async () => {
+        const result = await startConsultoria(initialStudent.id)
+        if (result.success) {
+            toast({
+                message: result.status === 'awaiting_anamnese'
+                    ? 'Anamnese enviada ao aluno! Acompanhe em Consultoria IA.'
+                    : 'Consultoria criada com a anamnese recente do aluno.',
+                type: 'success',
+            })
+            router.push('/consultoria')
+        } else {
+            toast({ message: result.error ?? 'Erro ao iniciar a consultoria.', type: 'error' })
+        }
+    }, [initialStudent.id, router, toast])
 
     const [student, setStudent] = useState<Student>(initialStudent)
 
@@ -594,6 +615,7 @@ export function StudentDetailClient({
                     onDelete={handleDeleteStudent}
                     onSchedule={student.is_trainer_profile ? undefined : () => setIsScheduleModalOpen(true)}
                     onStartTour={student.is_trainer_profile ? undefined : () => useOnboardingStore.getState().startTour('student_detail')}
+                    onConsultoria={student.is_trainer_profile ? undefined : handleStartConsultoria}
                 >
                     <StudentStatusBar
                         historySummary={historySummary}

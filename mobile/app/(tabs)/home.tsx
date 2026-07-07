@@ -31,8 +31,10 @@ import { useLatestUnreadReport } from "../../hooks/useLatestUnreadReport";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import { useBrand, useBrandStore } from "../../stores/brandStore";
 import { v2 } from "@kinevo/shared/tokens";
-import { Flame, Dumbbell, Star, Award, ChevronRight } from "lucide-react-native";
+import { Flame, Dumbbell, Star, Award, ChevronRight, CreditCard } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 import { AchievementCard } from "../../components/achievements/AchievementCard";
+import { useStudentPendingCharge } from "../../hooks/useStudentPendingCharge";
 
 // ─── Entering animation shorthand ───
 const ENTER = ANIM.enter;
@@ -60,6 +62,7 @@ export default function HomeScreen() {
     const { user } = useAuth();
     const { profile, refreshProfile } = useStudentProfile();
     const { allowed, reason, isLoading: accessLoading, refresh: refreshAccess } = useStudentAccess();
+    const pendingCharge = useStudentPendingCharge();
     const { item: unreadReport, markOpened: markReportOpened } = useLatestUnreadReport();
     const { days: stravaDays, reload: reloadStravaDays } = useStravaDays(35);
 
@@ -75,6 +78,7 @@ export default function HomeScreen() {
         studentName,
         programStartedAt,
         programDurationWeeks,
+        programValidationStamp,
         isLoading,
         error,
         refetch,
@@ -86,7 +90,8 @@ export default function HomeScreen() {
             refreshProfile();
             refreshAccess();
             refetch();
-        }, [refreshProfile, refreshAccess, refetch])
+            pendingCharge.refresh();
+        }, [refreshProfile, refreshAccess, refetch, pendingCharge.refresh])
     );
 
     // Aplica a marca do estúdio (white-label leve) a partir do coach do aluno.
@@ -524,6 +529,44 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                 </Animated.View>
 
+                {/* ── Banner de cobrança pendente (P13): antes disto o aluno só
+                     descobria a cobrança pelo WhatsApp do treinador — ou quando
+                     era bloqueado. Toque → /payment (paga in-app). ── */}
+                {pendingCharge.hasPending && (
+                    <TouchableOpacity
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            router.push("/payment");
+                        }}
+                        activeOpacity={0.85}
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 12,
+                            backgroundColor: colors.semantic.warning.bg,
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: colors.border.default,
+                            paddingHorizontal: 16,
+                            paddingVertical: 14,
+                            marginBottom: 16,
+                        }}
+                    >
+                        <CreditCard size={20} color={colors.semantic.warning.fg} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text.primary }}>
+                                {pendingCharge.status === "past_due" ? "Pagamento atrasado" : "Você tem uma cobrança"}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 1 }}>
+                                {pendingCharge.amount != null
+                                    ? `${pendingCharge.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — toque para pagar pelo app`
+                                    : "Toque para pagar pelo app"}
+                            </Text>
+                        </View>
+                        <ChevronRight size={18} color={colors.text.tertiary} />
+                    </TouchableOpacity>
+                )}
+
                 {/* ── Report Ready Card: só renderiza se há relatório não lido ── */}
                 {unreadReport && (
                     <ReportReadyCard
@@ -566,6 +609,7 @@ export default function HomeScreen() {
                                 todaySession={selectedWorkoutData.timeContext === 'today' ? selectedWorkoutData.todaySession : undefined}
                                 weeklyProgress={weeklyProgressFull}
                                 programName={programName}
+                                validationStamp={programValidationStamp}
                                 programWeek={programStartedAt ? getProgramWeek(new Date(), programStartedAt, programDurationWeeks) : null}
                                 programDurationWeeks={programDurationWeeks}
                                 onStartWorkout={(id) => router.push(`/workout/${id}`)}

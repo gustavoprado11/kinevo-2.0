@@ -12,6 +12,7 @@ type TrainerProfile = {
     name: string
     email: string
     avatar_url?: string | null
+    landing_cref?: string | null
 }
 
 interface ProfileFormProps {
@@ -169,6 +170,24 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                             />
                             <p className="mt-1 text-[11px] text-k-text-quaternary">
                                 O e-mail de acesso não pode ser alterado por aqui.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label htmlFor="cref" className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-k-text-tertiary">
+                                CREF
+                            </label>
+                            <input
+                                id="cref"
+                                name="cref"
+                                type="text"
+                                defaultValue={trainer.landing_cref ?? ''}
+                                maxLength={40}
+                                className="w-full rounded-lg border border-k-border-subtle bg-glass-bg px-3 py-2 text-sm text-k-text-primary placeholder:text-k-text-quaternary transition-all focus:border-violet-500/50 focus:outline-none"
+                                placeholder="Ex: 012345-G/SP"
+                            />
+                            <p className="mt-1 text-[11px] text-k-text-quaternary">
+                                Obrigatório para validar prescrições da Consultoria IA — vira o carimbo legal do programa.
                             </p>
                         </div>
                     </div>
