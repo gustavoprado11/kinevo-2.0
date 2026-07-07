@@ -61,8 +61,72 @@ pré-existentes de `student-cap.test.ts`, sem relação com o builder).
 >     trees gravam intermediários 0 + último filho com o rest da rodada + pai espelho; zod
 >     aceita rest por filho; update re-deriva o espelho (último filho→pai e pai→último filho).
 >   · R17 (bônus, mesma função): swap de exercício agora com escopo de tenant (filtro owner).
-> - Código no working tree (sem commit, workflow padrão); 3 testes de regressão novos no
->   `builder-model.test.ts` (41/41).
+> - **R1-R8+R17 PUSHADOS em prod 06/jul** (commits 0b08d74 + 00c09a5 + d076c67, deploy Vercel
+>   READY em www.kinevoapp.com; guards R5/R6 PROVADOS ao vivo via tools MCP em prod — chamadas
+>   rejeitadas com as mensagens novas, zero writes).
+> - **R9-R11 CORRIGIDOS (mobile, working tree)**:
+>   · R9: fluxo de revisão da IA bloqueia prescrição avançada em vez de descartá-la em
+>     silêncio — gate na ABERTURA do editor de séries (Alert explicativo) + cinto-e-suspensório
+>     no save (ADVANCED_SCHEME_BLOCKED, espelho do bloqueio de superset) com auto-fix "Remover
+>     métodos" (novo clearAllAdvancedSchemes no store, re-deriva agregados) e "Salvar como
+>     programa novo" (caminho legado PERSISTE schemes; descarta o vínculo da geração). Suporte
+>     pleno a scheme no snapshot fica como feature (tipo shared + RPC assign_program_from_snapshot).
+>   · R10: menu "…" → "Editar" em item avançado roteia para o editor de séries (mesmo
+>     roteamento do tap no card) — antes o QuickEdit gravava agregados que o save descartava.
+>   · R11: ExercisePickerModal + AddBlockSheet + EditNote/Warmup/Cardio sem gate !isTablet —
+>     no iPad eram botões mortos (mesmo fix do swap picker da rodada 1).
+> - **R12 CORRIGIDO**: nova RPC transacional `duplicate_program_template` (migration 231,
+>   APLICADA EM PROD) — copia método/rounds/séries por fase/filhos (normalizados V1)/check-ins;
+>   action web reescrita para 1 chamada. PROVADO 2x por SQL transacional com rollback (template
+>   real 2w/14 itens/4 rows/1 método idêntico; template com 17 filhos → 0 órfãos, 0 filho com
+>   método).
+> - **R13 CORRIGIDO**: os 3 feeds diários não somem mais sessões de treino deletado —
+>   get-daily-activity.ts e get-dashboard-data.ts trocam !inner por embed LEFT + fallback
+>   `workout_name`; RPC get_trainer_daily_activity redefinida com LEFT JOIN + COALESCE
+>   (migration 232, APLICADA EM PROD e provada com sessão órfã sintética em rollback).
+> - **R14 CORRIGIDO**: histórico expandido do aluno (useWorkoutHistory) anexa pseudo-itens
+>   com as séries órfãs (agrupadas por exercício executado) — não somem mais da lista.
+> - **R15 CORRIGIDO**: fila de FINISH do Watch não envenena mais — treino deletado (PGRST116)
+>   completa a sessão via sessionId canônico (ou dropa permanente se build antiga, em vez de
+>   retry infinito); FK 23503 no batch de set_logs filtra as séries do item morto e regrava o
+>   resto (preserva o máximo do treino).
+> - **MÉDIOS CORRIGIDOS (06/jul, madrugada)**:
+>   · R16: migration 233 EM PROD — trigger fill_set_log_snapshot prefere o exercício EXECUTADO
+>     (swap não mostra mais o exercício errado no histórico) + re-backfill cirúrgico dos rows
+>     com swap real. Provada por INSERT com swap em rollback (snapshot = nome do executado).
+>   · R18: migration 234 EM PROD — create_assigned_program_tree persiste exercise_function
+>     (duplicar via MCP não zera mais warmup/main). Provada em rollback.
+>   · R25 (+resíduo M6 r1): migration 235 EM PROD — save_assigned_program_tree persiste
+>     exercise_function com contrato de PRESENÇA DE CHAVE (ausente preserva, null limpa —
+>     desarma "omitiu=apaga" p/ esta coluna); provada (grava/preserva). Client: page seleciona,
+>     hidratação mapeia (raiz+filho), payload envia — edição da função persiste e "Salvar
+>     Modelo" para de gravar NULL.
+>   · **R2-MOBILE (achado novo durante o fix)**: o loader mobile tinha o MESMO bug do R2
+>     (assignment_type derivado de scheduled_start_date) — corrigido p/ derivar do status.
+>   · R21: save mobile de edição recalcula expires_at (convenção 229/230: started+semanas,
+>     ≤0/sem started = NULL) e normaliza duração 0→NULL (paridade R1).
+>   · R22/R23: novo helper puro normalizeSupersetsAfterChange (dissolve superset degenerado
+>     com herança de rest + pai espelha o último filho) aplicado em removeItem e reorderItems
+>     — remover/reordenar filho não deixa mais rodada com 0s silencioso; 4 testes novos.
+>   · R26: já havia sido fechado junto com o R3 (toast de erro nos dois builders).
+>   · R27: UI de check-in oculta em programa sem source_template_id (save era no-op).
+>   · R28: modelo mobile nasce is_template=false e o flag só vira true com a árvore completa
+>     — falha parcial não deixa mais template truncado visível na biblioteca.
+>   · R29: isSaving cobre o invoke da Edge Function no create+assign legado (double-tap
+>     não dispara mais assign concorrente).
+>   · R30: QuickEdit no container de superset aplica só o descanso e espelha no último filho
+>     (fim do reps='0' e das edições no-op); Edição avançada/Trocar exercício bloqueados no
+>     container com explicação.
+>   · R31: builder de criação não auto-restaura rascunho por cima de programa semeado por
+>     geração de IA (deep-link/refresh) — servidor vence; aprovação de geração não pode mais
+>     carregar conteúdo divergente.
+>   · R32: tools MCP gravam exercise_muscle_group no add/create_superset e ATUALIZAM no swap
+>     (analytics de volume por músculo não degrada mais).
+> - **DEFERIDOS (design/produto)**: R19 (lost-update multi-superfície — exige versionamento/
+>   etag no RPC e nas superfícies), R20 (semântica de editar programa expirado — produto),
+>   R24 (fix real = portar o save mobile para o RPC transacional — projeto próprio).
+> - Web R12/R13/R16-R32 + mobile R9-R11/R14-R15/R21-R23/R28-R30 no working tree (sem commit);
+>   testes: builder-model 41/41, item-helpers +4 (mobile 374/374).
 
 ## CRÍTICOS
 
@@ -166,26 +230,26 @@ vigente → estoura o índice único com o erro ENGANOSO "Programa rascunho não
 (3) sem validação de `scheduled_days`; (4) sem push ao aluno.
 Fix: rotear para `activateAssignedProgram` (núcleo compartilhado).
 
-### R9. Mobile, caminho IA: save descarta set_scheme/method_key/rounds silenciosamente ⚠️ verificado manualmente
+### R9. Mobile, caminho IA: save descarta set_scheme/method_key/rounds silenciosamente ⚠️ verificado manualmente — **CORRIGIDO (bloqueio explícito + auto-fix)**
 `useProgramBuilder.ts:226-263` — o mapeamento `draftLike` para `buildSnapshotFromDraft` omite os
 3 campos (e `GeneratedWorkoutItem` em `shared/types/prescription.ts:174-199` nem os tem).
 Cenário: trainer gera programa com IA, abre o SetSchemeEditor (nada bloqueia), monta drop-set
 com cargas/RIR, salva → o aluno recebe "4×10" simples; zero aviso (diferente do caso superset,
 que tem Alert dedicado). Mesma classe do A2 da rodada 1, em outra superfície.
 
-### R10. Mobile: menu "…" → "Editar (séries, reps, descanso)" em item avançado — edição 100% descartada
+### R10. Mobile: menu "…" → "Editar (séries, reps, descanso)" em item avançado — edição 100% descartada — **CORRIGIDO (roteamento)**
 `index.tsx:486-487` abre QuickEdit sem checar `advancedActive` (card-tap e swipe roteiam certo;
 só o menu vaza); `useProgramBuilder.ts:32-40` — `aggregatesFromItem` recomputa agregados DO
 scheme no save, ignorando a edição. Trainer muda 3×10→4×12, haptic de sucesso, nada persiste.
 Fix: rotear o menu igual ao card-tap quando há scheme.
 
-### R11. iPad: 5 sheets nunca montam — adicionar bloco/nota/aquecimento/cardio mortos
+### R11. iPad: 5 sheets nunca montam — adicionar bloco/nota/aquecimento/cardio mortos — **CORRIGIDO (gates removidos)**
 `index.tsx:742-845` — `AddBlockSheet`, `EditNoteSheet`, `EditWarmupSheet`, `EditCardioSheet`
 dentro de `{!isTablet && ...}` (mesmo padrão do swap, que foi corrigido movendo pra fora do gate
 — os outros ficaram dentro). No iPad: empty-state "Adicionar bloco" não faz nada; impossível
 adicionar/editar aquecimento/cardio/nota. `ExercisePanel` do tablet só adiciona exercício.
 
-### R12. Duplicar programa na BIBLIOTECA web perde método/rounds/séries/check-ins
+### R12. Duplicar programa na BIBLIOTECA web perde método/rounds/séries/check-ins — **CORRIGIDO (RPC 231, provada)**
 `programs/actions/duplicate-program.ts:73-115` — INSERTs sem `method_key`/`rounds`, nenhuma cópia
 de `workout_item_set_templates` nem `program_form_triggers`; erros parciais engolidos. A cópia
 fica com agregados órfãos (reps literal "3× 10/10/10"). Contraste: o `kinevo_duplicate_program`
@@ -195,7 +259,7 @@ do MCP copia tudo — o caminho web é o quebrado.
 
 ## MÉDIOS
 
-### R13. Feeds diários usam INNER JOIN — sessões de treino deletado somem (blast-radius da 227)
+### R13. Feeds diários usam INNER JOIN — sessões de treino deletado somem (blast-radius da 227) — **CORRIGIDO (LEFT + snapshot; migration 232 provada)**
 - `actions/dashboard/get-daily-activity.ts:52` e `lib/dashboard/get-dashboard-data.ts:297` —
   embed `assigned_workouts!inner` (únicos 2 `!inner` remanescentes no monorepo).
 - RPC `get_trainer_daily_activity` (`049:293`, INNER JOIN; consumida por
@@ -203,13 +267,13 @@ do MCP copia tudo — o caminho web é o quebrado.
 Aluno treinou hoje + treinador editou o programa removendo o treino → a sessão некуда some do feed
 (é exatamente o dado que a 227 quis preservar). Fix: LEFT + fallback `ws.workout_name`.
 
-### R14. Histórico expandido do aluno (mobile) esconde séries de exercício removido
+### R14. Histórico expandido do aluno (mobile) esconde séries de exercício removido — **CORRIGIDO (pseudo-itens órfãos)**
 `useWorkoutHistory.ts:195-208` + `logs.tsx:579-582` — detalhe expandido renderiza só itens ATUAIS
 da prescrição (`logsByItem` só indexa `if (itemId)`); fallback `session.exercises` (que inclui
 órfãos) só quando o treino inteiro foi deletado. Séries órfãs contam no volume/PR mas ficam
 invisíveis na lista. Web e `useSessionDetails` foram adaptados; este hook não.
 
-### R15. Fila do Watch: poison-pill sem TTL — treino deletado antes do FINISH drenar → retry infinito
+### R15. Fila do Watch: poison-pill sem TTL — treino deletado antes do FINISH drenar → retry infinito — **CORRIGIDO (erros permanentes tratados; treino preservado)**
 `finishWorkoutFromWatch.ts:187-195, 403-441` — treino/item deletado → PGRST116/FK 23503 tratados
 como transientes → refila para sempre (fila em SecureStore SEM TTL, ao contrário da
 `pendingSetLogQueue`, 24h). A 227 tornou "deletar prescrição com histórico" fluxo legítimo →
@@ -347,6 +411,13 @@ exercício ANTIGO (Supino→Agachamento continua "Peito"). Afeta `get-program-mu
   unicidade entre superfícies concorrentes.
 - **cardio-config**: legado `objective:'distance'` sem teste; edits de duração num cardio
   intervalado silenciosamente descartados (documentado, mas depende do sheet ocultar os campos).
+
+- **(achados do QA, 06/jul)**: web — o botão "Salvar Modelo" do editor de atribuído só
+  renderiza em viewport `min-[1700px]` sem fallback (`edit-assigned-program-client.tsx:849`):
+  a feature é INALCANÇÁVEL em telas ≤1440px CSS (a maioria dos laptops). Mobile — filhos de
+  superset não têm NENHUMA affordance de exclusão no builder (Swipeable desabilitado
+  `WorkoutItemRow.tsx:597-598` + menu "…" gated `:347`); remover um filho só é possível pelo
+  builder web.
 
 ## Conhecidos re-encontrados (rodada 1, ainda abertos — anotações novas)
 
