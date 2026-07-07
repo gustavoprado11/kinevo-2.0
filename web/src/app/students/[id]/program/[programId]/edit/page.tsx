@@ -65,6 +65,7 @@ export default async function EditProgramPage({ params }: PageProps) {
                         item_config,
                         method_key,
                         rounds,
+                        exercise_function,
                         assigned_workout_item_sets (
                             set_number,
                             set_type,

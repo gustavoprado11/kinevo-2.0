@@ -293,8 +293,8 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         supabase
             .from('workout_sessions')
             .select(`
-                id, completed_at, duration_seconds, rpe, feedback,
-                assigned_workouts:assigned_workout_id!inner(name, assigned_program_id),
+                id, completed_at, duration_seconds, rpe, feedback, workout_name,
+                assigned_workouts:assigned_workout_id(name, assigned_program_id),
                 students:student_id!inner(id, name)
             `)
             .eq('status', 'completed')
@@ -507,7 +507,8 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         sessionId: session.id,
         studentName: session.students.name,
         studentId: session.students.id,
-        workoutName: session.assigned_workouts.name,
+        // Treino deletado da prescrição (FK SET NULL, 227): cai no snapshot
+        workoutName: session.assigned_workouts?.name ?? session.workout_name ?? 'Treino',
         completedAt: session.completed_at,
         duration: formatDuration(session.duration_seconds),
         rpe: session.rpe,

@@ -17,106 +17,25 @@ export async function duplicateProgram(templateId: string) {
             .single()
         if (!trainer) return { success: false, error: 'Trainer not found' }
 
-        // Fetch original template — only if owned by this trainer
-        const { data: original } = await supabase
-            .from('program_templates')
-            .select('*')
-            .eq('id', templateId)
-            .eq('trainer_id', trainer.id)
-            .single()
-        if (!original) return { success: false, error: 'Template not found' }
+        // Cópia transacional no banco (migration 231): programa + treinos +
+        // itens (com method_key/rounds) + séries por fase + filhos de superset
+        // + check-ins. A versão N+1 antiga perdia prescrição avançada e
+        // check-ins, e engolia erros parciais (R12, rodada 2).
+        // Cast do nome até `npm run gen:types` incluir o RPC (mesma convenção
+        // de create_assigned_program_tree / save_assigned_program_tree).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: newId, error } = await (supabase.rpc as any)('duplicate_program_template', {
+            p_trainer_id: trainer.id,
+            p_template_id: templateId,
+        })
 
-        // Create copy
-        const { data: newTemplate, error: err } = await supabase
-            .from('program_templates')
-            .insert({
-                trainer_id: trainer.id,
-                name: `${original.name} (Cópia)`,
-                description: original.description,
-                duration_weeks: original.duration_weeks,
-                is_template: true,
-            })
-            .select('id')
-            .single()
-        if (err || !newTemplate) return { success: false, error: 'Failed to create copy' }
-
-        // Fetch and copy workouts
-        const { data: workouts } = await supabase
-            .from('workout_templates')
-            .select('*')
-            .eq('program_template_id', templateId)
-            .order('order_index')
-
-        for (const workout of workouts || []) {
-            const { data: newWorkout } = await supabase
-                .from('workout_templates')
-                .insert({
-                    program_template_id: newTemplate.id,
-                    name: workout.name,
-                    order_index: workout.order_index,
-                    frequency: workout.frequency,
-                })
-                .select('id')
-                .single()
-            if (!newWorkout) continue
-
-            // Fetch and copy items
-            const { data: items } = await supabase
-                .from('workout_item_templates')
-                .select('*')
-                .eq('workout_template_id', workout.id)
-                .order('order_index')
-
-            const parentMap = new Map<string, string>()
-
-            // Root items first
-            for (const item of (items || []).filter(i => !i.parent_item_id)) {
-                const { data: newItem } = await supabase
-                    .from('workout_item_templates')
-                    .insert({
-                        workout_template_id: newWorkout.id,
-                        item_type: item.item_type,
-                        order_index: item.order_index,
-                        exercise_id: item.exercise_id,
-                        substitute_exercise_ids: item.substitute_exercise_ids || [],
-                        sets: item.sets,
-                        reps: item.reps,
-                        rest_seconds: item.rest_seconds,
-                        notes: item.notes,
-                        exercise_function: item.exercise_function || null,
-                        item_config: item.item_config || {},
-                    })
-                    .select('id')
-                    .single()
-                if (newItem) parentMap.set(item.id, newItem.id)
-            }
-
-            // Child items (inside supersets)
-            for (const item of (items || []).filter(i => i.parent_item_id)) {
-                const newParentId = parentMap.get(item.parent_item_id!)
-                if (!newParentId) continue
-
-                await supabase
-                    .from('workout_item_templates')
-                    .insert({
-                        workout_template_id: newWorkout.id,
-                        parent_item_id: newParentId,
-                        item_type: item.item_type,
-                        order_index: item.order_index,
-                        exercise_id: item.exercise_id,
-                        substitute_exercise_ids: item.substitute_exercise_ids || [],
-                        sets: item.sets,
-                        reps: item.reps,
-                        rest_seconds: item.rest_seconds,
-                        notes: item.notes,
-                        exercise_function: item.exercise_function || null,
-                        item_config: item.item_config || {},
-                    })
-            }
+        if (error || !newId) {
+            console.error('Error duplicating program:', error)
+            return { success: false, error: 'Failed to duplicate' }
         }
 
         revalidatePath('/programs')
-        return { success: true, newId: newTemplate.id }
+        return { success: true, newId: newId as string }
     } catch (error) {
         console.error('Error duplicating program:', error)
         return { success: false, error: 'Failed to duplicate' }

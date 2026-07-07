@@ -96,6 +96,14 @@ export function validateRoundsForMethod(
   return null
 }
 
+/** R32: primeiro grupo muscular do embed exercise_muscle_groups — mesma
+ *  convenção do snapshot dos tree-tools (programs-write). */
+export function firstMuscleGroup(row: unknown): string | null {
+  const emgs = (row as { exercise_muscle_groups?: Array<{ muscle_groups: { name: string } | null }> })
+    ?.exercise_muscle_groups
+  return emgs?.map((x) => x.muscle_groups?.name).find((n): n is string => !!n) ?? null
+}
+
 /** Turn the MCP `set_scheme` input (no set_number) into a validated
  *  `WorkoutSet[]` with contiguous set_number. Returns an error string when the
  *  scheme is incoherent. */
@@ -329,7 +337,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       // privado de OUTRO treinador (vazaria nome/equipamento).
       const { data: exercise } = await supabaseAdmin
         .from('exercises')
-        .select('id, name, equipment')
+        .select('id, name, equipment, exercise_muscle_groups(muscle_groups(name))')
         .eq('id', exercise_id)
         .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
         .single()
@@ -382,6 +390,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
               ...baseItem,
               assigned_workout_id: workout_id,
               exercise_name: exercise.name,
+              exercise_muscle_group: firstMuscleGroup(exercise),
               exercise_equipment: exercise.equipment,
             })
             .select('id, order_index, sets, reps, rest_seconds')
@@ -611,7 +620,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       if (exercise_id !== undefined) {
         const { data: exercise } = await supabaseAdmin
           .from('exercises')
-          .select('id, name, equipment')
+          .select('id, name, equipment, exercise_muscle_groups(muscle_groups(name))')
           .eq('id', exercise_id)
           .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
           .single()
@@ -623,6 +632,8 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         updateData.exercise_id = exercise_id
         if (workout_type === 'assigned') {
           updateData.exercise_name = exercise.name
+          // R32: grupo muscular acompanhava o exercício ANTIGO após o swap
+          updateData.exercise_muscle_group = firstMuscleGroup(exercise)
           updateData.exercise_equipment = exercise.equipment
         }
       }
@@ -715,15 +726,15 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       // Validate every exercise against the catalog up front (gather snapshots).
       // Escopo por owner: só sistema (owner_id null) ou do próprio treinador —
       // exercício de outro treinador cai como "não encontrado" abaixo.
-      const catalog = new Map<string, { name: string; equipment: string | null }>()
+      const catalog = new Map<string, { name: string; equipment: string | null; muscle_group: string | null }>()
       const { data: exerciseRows } = await supabaseAdmin
         .from('exercises')
-        .select('id, name, equipment')
+        .select('id, name, equipment, exercise_muscle_groups(muscle_groups(name))')
         .in('id', exercises.map(e => e.exercise_id))
         .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
 
       for (const row of exerciseRows ?? []) {
-        catalog.set(row.id, { name: row.name, equipment: row.equipment })
+        catalog.set(row.id, { name: row.name, equipment: row.equipment, muscle_group: firstMuscleGroup(row) })
       }
       const missing = exercises.find(e => !catalog.has(e.exercise_id))
       if (missing) {
@@ -810,6 +821,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
                 ...childBase(e, i),
                 assigned_workout_id: workout_id,
                 exercise_name: snap.name,
+                exercise_muscle_group: snap.muscle_group,
                 exercise_equipment: snap.equipment,
               }
             }),

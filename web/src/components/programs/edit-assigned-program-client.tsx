@@ -243,6 +243,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             rest_seconds: item.rest_seconds,
                             notes: item.notes,
                             item_config: (item as any).item_config || {},
+                            exercise_function: ((item as any).exercise_function as WorkoutItem['exercise_function']) ?? null,
                             set_scheme: parentHydrated.scheme,
                             method_key: ((item as any).method_key as WorkoutItem['method_key']) ?? null,
                             rounds: parentHydrated.rounds,
@@ -266,6 +267,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                         reps: child.reps,
                                         rest_seconds: child.rest_seconds,
                                         notes: child.notes,
+                                        exercise_function: ((child as any).exercise_function as WorkoutItem['exercise_function']) ?? null,
                                         set_scheme: childHydrated.scheme,
                                         method_key: ((child as any).method_key as WorkoutItem['method_key']) ?? null,
                                         rounds: childHydrated.rounds,
@@ -505,6 +507,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         item_config: item.item_config || {},
                         method_key: effectiveMethodKey(item),
                         rounds: itemRounds,
+                        exercise_function: item.exercise_function ?? null,
                         exercise_name: item.exercise?.name ?? null,
                         exercise_muscle_group: muscleGroupOf(item.exercise),
                         exercise_equipment: item.exercise?.equipment ?? null,
@@ -520,6 +523,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             rest_seconds: child.rest_seconds,
                             notes: child.notes ?? null,
                             item_config: child.item_config || {},
+                            exercise_function: child.exercise_function ?? null,
                             exercise_name: child.exercise?.name ?? null,
                             exercise_muscle_group: muscleGroupOf(child.exercise),
                             exercise_equipment: child.exercise?.equipment ?? null,
@@ -789,7 +793,9 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
                     {/* View mode icons — Check-in · Preview · Compare */}
                     <div className="flex items-center gap-1 ml-auto flex-shrink-0 mr-3">
-                        {formTriggerTemplates.length > 0 && (
+                        {/* R27: sem template de origem o save de check-in seria
+                            no-op silencioso (triggers vivem no template) — UI oculta. */}
+                        {formTriggerTemplates.length > 0 && !!sourceTemplateId && (
                             <button
                                 onClick={() => setCheckinExpanded(!checkinExpanded)}
                                 className={`relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
@@ -923,7 +929,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
 
                 {/* Check-in expanded content panel */}
-                {formTriggerTemplates.length > 0 && builderViewMode !== 'compare' && (
+                {formTriggerTemplates.length > 0 && !!sourceTemplateId && builderViewMode !== 'compare' && (
                     <>
                         <ProgramFormTriggers
                             initialTriggers={initialFormTriggers ?? { preWorkout: null, postWorkout: null }}

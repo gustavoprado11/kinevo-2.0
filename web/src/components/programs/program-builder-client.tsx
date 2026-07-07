@@ -648,6 +648,11 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     useEffect(() => {
         if (autoRestoredRef.current) return
         if (streamAnimate) return
+        // R31: builder semeado por geração de IA (deep-link/refresh, sem a flag
+        // de animação) — restaurar um rascunho velho por cima substituiria o
+        // conteúdo da geração MANTENDO prescriptionGenerationId (salvar
+        // aprovaria a geração com conteúdo que não é dela). Servidor vence.
+        if (prescriptionGenerationId) return
         if (!pendingDraft) return
         autoRestoredRef.current = true
         const d = pendingDraft.data
@@ -667,7 +672,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         }
         markPristine(d)
         dismissPending()
-    }, [pendingDraft, streamAnimate, markPristine, dismissPending, setDurationWeeks, setWorkouts, setActiveWorkoutId, initialFormTriggers])
+    }, [pendingDraft, streamAnimate, prescriptionGenerationId, markPristine, dismissPending, setDurationWeeks, setWorkouts, setActiveWorkoutId, initialFormTriggers])
     // Sensors for tab drag-and-drop (distance constraint allows click without triggering drag)
     const tabSensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
