@@ -36,21 +36,14 @@ export function useVoiceInput(onText: (text: string) => void): UseVoiceInputRetu
     const [available, setAvailable] = useState(false);
     const onTextRef = useRef(onText);
     onTextRef.current = onText;
+    // Espelho do isListening p/ o cleanup de unmount (efeito com deps [] lê stale).
+    const listeningRef = useRef(false);
+    listeningRef.current = isListening;
 
     useEffect(() => {
         if (!Voice) return;
         let mounted = true;
         try {
-            Voice.onSpeechResults = (e: SpeechResultsEvent) => {
-                const t = e.value?.[0];
-                if (t) onTextRef.current(t);
-            };
-            Voice.onSpeechPartialResults = (e: SpeechResultsEvent) => {
-                const t = e.value?.[0];
-                if (t) onTextRef.current(t);
-            };
-            Voice.onSpeechEnd = () => setIsListening(false);
-            Voice.onSpeechError = (_e: SpeechErrorEvent) => setIsListening(false);
             Voice.isAvailable()
                 .then((v) => {
                     if (mounted) setAvailable(!!v);
@@ -63,6 +56,11 @@ export function useVoiceInput(onText: (text: string) => void): UseVoiceInputRetu
         }
         return () => {
             mounted = false;
+            // MULTI-INSTÂNCIA (dashboard + chat coexistem no stack): só destrói o
+            // módulo se ESTA instância estiver ditando. Antes o unmount de qualquer
+            // instância rodava removeAllListeners e emudecia a sobrevivente (voltar
+            // do chat matava o ditado do dashboard, que fica montado por baixo).
+            if (!listeningRef.current) return;
             try {
                 void Voice?.destroy().then(() => Voice?.removeAllListeners());
             } catch {
@@ -74,6 +72,19 @@ export function useVoiceInput(onText: (text: string) => void): UseVoiceInputRetu
     const start = useCallback(async () => {
         if (!Voice) return;
         try {
+            // Handlers globais do módulo registrados AQUI (não no mount): quem
+            // inicia o ditado passa a possuí-los — com dashboard e chat montados
+            // ao mesmo tempo, o transcript vai pro composer certo.
+            Voice.onSpeechResults = (e: SpeechResultsEvent) => {
+                const t = e.value?.[0];
+                if (t) onTextRef.current(t);
+            };
+            Voice.onSpeechPartialResults = (e: SpeechResultsEvent) => {
+                const t = e.value?.[0];
+                if (t) onTextRef.current(t);
+            };
+            Voice.onSpeechEnd = () => setIsListening(false);
+            Voice.onSpeechError = (_e: SpeechErrorEvent) => setIsListening(false);
             await Voice.start('pt-BR');
             setIsListening(true);
         } catch {

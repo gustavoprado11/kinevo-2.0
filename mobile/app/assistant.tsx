@@ -41,10 +41,12 @@ export default function AssistantChatScreen() {
     const colors = useV2Colors();
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    // q = prompt inicial · c = conversa a reabrir · studentId/studentName =
-    // escopo por aluno (Onda 3): a conversa nasce ligada ao aluno.
-    const params = useLocalSearchParams<{ q?: string; c?: string; studentId?: string; studentName?: string }>();
+    // q = prompt inicial · send=1 = envia o q na chegada (composer real do
+    // dashboard) · c = conversa a reabrir · studentId/studentName = escopo por
+    // aluno (Onda 3): a conversa nasce ligada ao aluno.
+    const params = useLocalSearchParams<{ q?: string; send?: string; c?: string; studentId?: string; studentName?: string }>();
     const q = typeof params.q === 'string' ? params.q : undefined;
+    const autoSend = params.send === '1';
     const conversationParam = typeof params.c === 'string' ? params.c : undefined;
     const scopedStudentId = typeof params.studentId === 'string' ? params.studentId : undefined;
     const scopedStudentName = typeof params.studentName === 'string' ? params.studentName : undefined;
@@ -82,13 +84,22 @@ export default function AssistantChatScreen() {
         requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     };
 
-    // Init: reabre uma conversa (param c) OU pré-preenche o composer com o
-    // prompt inicial (param q) pro usuário revisar/editar — não envia sozinho.
+    // Init: reabre uma conversa (param c) OU trata o prompt inicial (param q):
+    //   - send=1 → ENVIA direto (o treinador já digitou e apertou enviar no
+    //     composer do dashboard; pedir um segundo envio quebraria a promessa);
+    //   - sem o flag → só pré-preenche pro usuário revisar/editar (chips).
     useEffect(() => {
         if (didInit.current) return;
         didInit.current = true;
         if (conversationParam) void loadConversation(conversationParam);
-        if (q && q.trim()) fillInput(q.trim());
+        if (q && q.trim()) {
+            if (autoSend) {
+                void send(q.trim());
+                scrollToEnd();
+            } else {
+                fillInput(q.trim());
+            }
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

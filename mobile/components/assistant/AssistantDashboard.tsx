@@ -7,8 +7,8 @@
  * dashboard (cobranças, programas vencendo). Header mostra o medidor de
  * créditos; "Conversas recentes" reabre threads direto no chat.
  */
-import React, { useCallback } from 'react';
-import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, RefreshControl, Pressable, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Animated, { FadeIn, FadeInUp, Easing } from 'react-native-reanimated';
@@ -30,6 +30,7 @@ import { useAssistantMode } from '../../hooks/useAssistantMode';
 import { useAssistantInsights } from '../../hooks/useAssistantInsights';
 import { useAssistantAccess } from '../../hooks/useAssistantAccess';
 import { useAssistantConversations } from '../../hooks/useAssistantConversations';
+import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { AssistantModeToggle } from './AssistantModeToggle';
 import { AssistantComposer } from './AssistantComposer';
 import { CreditMeter } from './CreditMeter';
@@ -104,15 +105,49 @@ export function AssistantDashboard() {
     const openChat = (
         initialMessage?: string,
         scope?: { studentId: string; studentName: string },
+        opts?: { autoSend?: boolean },
     ) => {
         router.push({
             pathname: '/assistant',
             params: {
                 ...(initialMessage ? { q: initialMessage } : {}),
+                // send=1 → o chat ENVIA o q na chegada (composer real do dashboard:
+                // quem digitou e apertou enviar não deve ter que enviar de novo).
+                // Sem o flag, q só pré-preenche (chips de sugestão — usuário revisa).
+                ...(opts?.autoSend ? { send: '1' } : {}),
                 ...(scope ? { studentId: scope.studentId, studentName: scope.studentName } : {}),
             },
         } as never);
     };
+
+    // Composer REAL na home (antes era um Pressable que só navegava — o campo
+    // prometia digitação e entregava um botão). Digita-se aqui; o envio navega
+    // pro chat com o turno já disparado. Rascunho sobrevive a idas e vindas.
+    const [draft, setDraft] = useState('');
+    // Ditado in-place (mesmo padrão do chat): transcript parcial/final vira draft.
+    const voice = useVoiceInput((t) => setDraft(t));
+    const sendDraft = () => {
+        const text = draft.trim();
+        if (!text) return;
+        if (voice.isListening) voice.toggle();
+        setDraft('');
+        Keyboard.dismiss();
+        openChat(text, undefined, { autoSend: true });
+    };
+
+    // Teclado aberto → colapsa a folga da BottomNav (ela fica atrás do teclado;
+    // sem isso o composer flutua com um vão gigante). Mesmo padrão do assistant.tsx.
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+    useEffect(() => {
+        const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+        const s = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
+        const h = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
+        return () => {
+            s.remove();
+            h.remove();
+        };
+    }, []);
 
     // ── Cards de atenção: INSIGHTS de IA primeiro (paridade com a home web),
     //    depois as pendências operacionais do dashboard ──
@@ -256,6 +291,11 @@ export function AssistantDashboard() {
                 <AssistantModeToggle mode="assistant" onChange={setMode} />
             </View>
 
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={0}
+            >
             {/* Scrollable content */}
             <ScrollView
                 style={{ flex: 1 }}
@@ -434,21 +474,26 @@ export function AssistantDashboard() {
                 ) : null}
             </ScrollView>
 
-            {/* Composer fixo acima da BottomNav */}
+            {/* Composer fixo acima da BottomNav (real: digita aqui, envia → chat) */}
             <View
                 style={{
                     paddingHorizontal: spacing[4],
                     paddingTop: spacing[2],
-                    paddingBottom: insets.bottom + NAV_CLEARANCE,
+                    paddingBottom: keyboardVisible ? spacing[2] : insets.bottom + NAV_CLEARANCE,
                 }}
             >
                 <AssistantComposer
                     suggestions={SUGGESTION_LABELS}
                     onSuggestionPress={(label) => openChat(optimizePrompt(label))}
-                    onPress={() => openChat()}
-                    onPressMic={() => openChat()}
+                    value={draft}
+                    onChangeText={setDraft}
+                    onSend={sendDraft}
+                    onPressMic={voice.toggle}
+                    listening={voice.isListening}
+                    micAvailable={voice.available}
                 />
             </View>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
