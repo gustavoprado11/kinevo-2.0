@@ -8,24 +8,18 @@
 //   401 por token errado, prod fora do ar, timeout). Resultado: dinheiro
 //   cai no Asaas mas nosso DB fica preso em `pending_payment`.
 //
-// O que faz:
-//   1. Carrega contrato + valida ownership
-//   2. Lista os payments do paymentLink na Asaas
-//   3. Se achar pelo menos um RECEIVED/CONFIRMED → executa a mesma lógica
-//      do webhook handler (insere financial_transactions + marca contrato
-//      active + backfilla asaas_payment_id)
-//   4. Idempotente: se já estiver active, retorna alreadySynced=true
+// A lógica de reconciliação vive em lib/asaas/charge-reconcile.ts (núcleo
+// compartilhado com o cron /api/cron/reconcile-asaas-charges). Esta rota é o
+// wrapper de auth/ownership pro botão "Sincronizar" da UI.
 //
 // Retorno: { synced: boolean, status: 'active' | 'pending_payment' }
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { AsaasApiError, listPaymentsByLink } from '@/lib/asaas'
+import { AsaasApiError } from '@/lib/asaas'
 import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
-import { logContractEvent } from '@/lib/contract-events'
-
-const PAID_STATUSES = new Set(['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'])
+import { reconcilePaymentLinkContract } from '@/lib/asaas/charge-reconcile'
 
 export async function POST(
     request: NextRequest,
@@ -39,10 +33,11 @@ export async function POST(
     try {
         const trainer = await requireTrainer(request)
 
-        // 1. Carrega contrato + valida ownership
+        // Ownership primeiro (mensagens de erro específicas pra UI); o núcleo
+        // re-checa tudo de novo por construção.
         const { data: contract, error: loadErr } = await supabaseAdmin
             .from('student_contracts')
-            .select('id, trainer_id, student_id, status, asaas_payment_link_id, amount')
+            .select('id, trainer_id, status, asaas_payment_link_id')
             .eq('id', contractId)
             .maybeSingle()
         if (loadErr || !contract) {
@@ -63,17 +58,16 @@ export async function POST(
                 { status: 409 },
             )
         }
-        // NOTA: a gente NÃO short-circuita quando status='active'. O usuário
-        // pode ter ficado num estado parcial (contrato active mas linha em
-        // financial_transactions faltando — bug histórico de UNIQUE constraint
-        // ausente). Deixando rodar, o upsert idempotente reconcilia.
 
-        // 2. Polla a Asaas
         const apiKey = await getDecryptedApiKey(trainer.id)
-        const payments = await listPaymentsByLink(apiKey, contract.asaas_payment_link_id, 5)
+        const outcome = await reconcilePaymentLinkContract({
+            contractId,
+            trainerId: trainer.id,
+            apiKey,
+            via: 'sync',
+        })
 
-        const paid = payments.find(p => PAID_STATUSES.has(p.status))
-        if (!paid) {
+        if (!outcome.synced) {
             return NextResponse.json({
                 synced: false,
                 status: contract.status,
@@ -81,69 +75,12 @@ export async function POST(
             })
         }
 
-        // 3. Marca contrato como active + backfilla payment/customer ids
-        //    (no-op se já estiver active)
-        const { error: updErr } = await supabaseAdmin
-            .from('student_contracts')
-            .update({
-                status: 'active',
-                asaas_payment_id: paid.id,
-                asaas_customer_id: paid.customer,
-            })
-            .eq('id', contract.id)
-            .in('status', ['pending_payment', 'past_due', 'active'])
-        if (updErr) {
-            console.error('[wallet/charges/sync] contract update failed', updErr)
-            return NextResponse.json({ error: 'Falha ao atualizar contrato' }, { status: 500 })
-        }
-
-        // 4. Upsert financial_transactions (mesma lógica do webhook)
-        const { error: txErr } = await supabaseAdmin
-            .from('financial_transactions')
-            .upsert({
-                coach_id: trainer.id,
-                student_id: contract.student_id,
-                provider: 'asaas',
-                asaas_payment_id: paid.id,
-                amount_gross: paid.value,
-                amount_net: paid.netValue,
-                currency: 'brl',
-                type: 'charge',
-                status: 'completed',
-                processed_at: new Date().toISOString(),
-                description: paid.billingType,
-            }, { onConflict: 'asaas_payment_id' })
-        if (txErr) {
-            console.error('[wallet/charges/sync] upsert tx failed', txErr)
-        }
-
-        // 5. Desbloqueia acesso se o aluno estava bloqueado
-        if (contract.student_id) {
-            const { error: unblockErr } = await supabaseAdmin.rpc('unblock_student_access', {
-                p_student_id: contract.student_id,
-            })
-            if (unblockErr) {
-                console.error('[wallet/charges/sync] unblock failed', unblockErr)
-            }
-        }
-
-        // 6. Histórico do contrato (idempotência tratada no backfill/leitura)
-        if (contract.student_id) {
-            await logContractEvent({
-                studentId: contract.student_id,
-                trainerId: trainer.id,
-                contractId: contract.id,
-                eventType: 'payment_received',
-                metadata: { provider: 'asaas', amount: paid.value, paymentId: paid.id, via: 'sync', method: paid.billingType },
-            })
-        }
-
         return NextResponse.json({
             synced: true,
             status: 'active',
-            paymentId: paid.id,
-            value: paid.value,
-            netValue: paid.netValue,
+            paymentId: outcome.paymentId,
+            value: outcome.value,
+            netValue: outcome.netValue,
         })
     } catch (err) {
         if (err instanceof WalletAuthError) {

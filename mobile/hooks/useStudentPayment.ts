@@ -23,8 +23,9 @@ export function useStudentPayment() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // isLoading só no PRIMEIRO load (default true): re-fetches (pull-to-refresh,
+    // poll do checkout) não podem trocar a tela inteira pelo loader.
     const fetchPayment = useCallback(async () => {
-        setIsLoading(true);
         try {
             const res = await walletFetch<StudentPayment>("/api/student/payment");
             setData(res);

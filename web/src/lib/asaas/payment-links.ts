@@ -100,11 +100,7 @@ export async function deactivatePaymentLink(
  *
  * Retorna até `limit` payments ordenados por dateCreated desc.
  */
-export async function listPaymentsByLink(
-    subaccountApiKey: string,
-    paymentLinkId: string,
-    limit = 10,
-): Promise<Array<{
+export interface PaymentLinkPayment {
     id: string
     status: string
     value: number
@@ -116,20 +112,20 @@ export async function listPaymentsByLink(
     clientPaymentDate?: string | null
     externalReference?: string | null
     paymentLink?: string | null
-}>> {
-    const raw = await asaasRequest<{ data: Array<{
-        id: string
-        status: string
-        value: number
-        netValue: number
-        billingType: string
-        customer: string
-        dueDate: string
-        paymentDate?: string | null
-        clientPaymentDate?: string | null
-        externalReference?: string | null
-        paymentLink?: string | null
-    }>; totalCount: number }>({
+    /** Assinatura Asaas que gerou o pagamento (links RECURRENT, ciclo 1+). */
+    subscription?: string | null
+    installmentNumber?: number | null
+    description?: string | null
+    estimatedCreditDate?: string | null
+    creditDate?: string | null
+}
+
+export async function listPaymentsByLink(
+    subaccountApiKey: string,
+    paymentLinkId: string,
+    limit = 10,
+): Promise<PaymentLinkPayment[]> {
+    const raw = await asaasRequest<{ data: PaymentLinkPayment[]; totalCount: number }>({
         apiKey: subaccountApiKey,
         path: '/payments',
         query: { paymentLink: paymentLinkId, limit },

@@ -22,9 +22,16 @@ const KINEVO_WEBHOOK_EVENTS = [
     'PAYMENT_UPDATED',
     'PAYMENT_CONFIRMED',
     'PAYMENT_RECEIVED',
+    'PAYMENT_RECEIVED_IN_CASH',
     'PAYMENT_OVERDUE',
     'PAYMENT_REFUNDED',
     'PAYMENT_DELETED',
+    // Chargeback: sem estes eventos assinados, o handler + push "responda pelo
+    // painel Asaas" nunca disparam pra pagamentos de subconta — o treinador
+    // perde a janela (curta) de disputa sem nem saber que ela abriu.
+    'PAYMENT_CHARGEBACK_REQUESTED',
+    'PAYMENT_CHARGEBACK_DISPUTE',
+    'PAYMENT_AWAITING_CHARGEBACK_REVERSAL',
     'TRANSFER_CREATED',
     'TRANSFER_PENDING',
     'TRANSFER_IN_BANK_PROCESSING',

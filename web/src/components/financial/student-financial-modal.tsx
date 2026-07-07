@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
-    X, Loader2, AlertCircle, CheckCircle, XCircle, Shield, ShieldOff,
-    Clock, CreditCard, HandCoins, Heart, MessageCircle, Copy, Check,
+    X, Loader2, AlertCircle, CheckCircle, XCircle, Clock, CreditCard, MessageCircle, Copy, Check,
     UserPlus, ArrowRightLeft, Ban, DollarSign, Lock, Unlock,
     ExternalLink, AlertTriangle, FolderArchive
 } from 'lucide-react'
@@ -32,7 +30,6 @@ interface StudentFinancialModalProps {
     onSuccess: () => void
     student: FinancialStudent | null
     plans: Plan[]
-    hasStripeConnect: boolean
     onOpenNewSubscription?: (studentId: string) => void
     onMigrate?: (student: FinancialStudent) => void
     onArchive?: (studentId: string) => void
@@ -95,12 +92,10 @@ export function StudentFinancialModal({
     onSuccess,
     student,
     plans,
-    hasStripeConnect,
     onOpenNewSubscription,
     onMigrate,
     onArchive,
 }: StudentFinancialModalProps) {
-    const router = useRouter()
     const [activeTab, setActiveTab] = useState<'current' | 'history'>('current')
     const [events, setEvents] = useState<ContractEvent[]>([])
     const [eventsLoading, setEventsLoading] = useState(false)
@@ -202,11 +197,22 @@ export function StudentFinancialModal({
     }
 
     const handleResendLink = async () => {
-        // Find matching plan to generate a new checkout session
-        const plan = plans.find(p => p.title === s.plan_title)
-        if (!plan) return
         setActionLoading(true)
         try {
+            // Contrato Asaas: busca a URL viva do Payment Link já criado — o
+            // caminho Stripe abaixo falharia ("Conta Stripe não conectada").
+            if (s.contract_id && s.billing_type?.startsWith('asaas')) {
+                const res = await fetch(`/api/wallet/charges/${s.contract_id}`)
+                const data = await res.json().catch(() => ({}))
+                if (res.ok && data.url) {
+                    setCheckoutUrl(data.url)
+                }
+                return
+            }
+
+            // Find matching plan to generate a new checkout session
+            const plan = plans.find(p => p.title === s.plan_title)
+            if (!plan) return
             const result = await generateCheckoutLink({
                 studentId: s.student_id,
                 planId: plan.id,
@@ -518,7 +524,7 @@ export function StudentFinancialModal({
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
-                                        {s.billing_type !== 'stripe_auto' && (
+                                        {s.billing_type !== 'stripe_auto' && s.billing_type !== 'asaas_auto_recurring' && (
                                             <button
                                                 onClick={handleMarkPaid}
                                                 disabled={actionLoading}
@@ -543,7 +549,7 @@ export function StudentFinancialModal({
                                 </div>
                             )}
 
-                            {s.display_status === 'active' && s.billing_type !== 'stripe_auto' && (
+                            {s.display_status === 'active' && s.billing_type !== 'stripe_auto' && s.billing_type !== 'asaas_auto_recurring' && (
                                 <div className="flex gap-2">
                                     <button
                                         onClick={handleMarkPaid}

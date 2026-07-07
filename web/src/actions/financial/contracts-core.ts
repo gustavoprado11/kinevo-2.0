@@ -17,6 +17,11 @@ import type { Database } from '@kinevo/shared/types/database'
 import { stripe } from '@/lib/stripe'
 import { logContractEvent } from '@/lib/contract-events'
 import { cancelAsaasRecurring } from '@/lib/asaas/cancel-recurring'
+// Imports diretos (não o barrel @/lib/asaas): o barrel puxa webhook-setup →
+// supabase-admin, que explode fora do runtime server (ex.: vitest sem env).
+import { AsaasApiError } from '@/lib/asaas/client'
+import { deactivatePaymentLink } from '@/lib/asaas/payment-links'
+import { getDecryptedApiKey } from '@/lib/asaas/wallet-service'
 
 type DBClient = SupabaseClient<Database>
 
@@ -173,6 +178,16 @@ export async function markAsPaidCore(
     if (!contract) return { error: 'Contrato não encontrado' }
     if (contract.trainer_id !== trainerId) return { error: 'Sem permissão' }
 
+    // Débito automático Asaas: marcar pago aqui só registra receita local —
+    // NÃO pausa a cobrança do cartão na Asaas → o aluno seria cobrado em dobro.
+    if (contract.billing_type === 'asaas_auto_recurring') {
+        return {
+            error:
+                'Este contrato tem débito automático na Asaas — registrar pagamento manual não pausa a cobrança do cartão e o aluno seria cobrado em dobro. ' +
+                'Cancele a assinatura Asaas (ou migre para cobrança manual) antes de registrar pagamentos por fora.',
+        }
+    }
+
     // one_off NÃO renova período; qualquer outro tipo manual (recurring) renova.
     const isRecurring = contract.billing_type !== 'manual_one_off'
 
@@ -260,6 +275,17 @@ export async function cancelContractCore(
     if (!contract) return { error: 'Contrato não encontrado' }
     if (contract.trainer_id !== trainerId) return { error: 'Sem permissão' }
 
+    // "Ao fim do período" só existe no Stripe. Para Asaas o cancelamento é
+    // IMEDIATO — aceitar o flag e ignorar (comportamento antigo) fazia o
+    // chamador prometer "mantém acesso até lá" e o aluno perder acesso agora.
+    if (cancelAtPeriodEnd && contract.billing_type?.startsWith('asaas')) {
+        return {
+            error:
+                'Cancelamento ao fim do período não está disponível para cobranças Asaas — o cancelamento é imediato. ' +
+                'Chame novamente sem agendar (ou aguarde o fim do ciclo para cancelar).',
+        }
+    }
+
     try {
         if (contract.billing_type === 'stripe_auto' && contract.stripe_subscription_id) {
             const { data: settings } = await supabaseAdmin
@@ -313,6 +339,32 @@ export async function cancelContractCore(
             } catch (err) {
                 console.error('[cancelContractCore] Asaas cancel failed:', err)
                 return { error: 'Não foi possível cancelar a assinatura na Asaas. Tente novamente.' }
+            }
+        }
+
+        // Payment Link vivo de contrato Asaas: desativa na Asaas. Sem isto, um
+        // link RECURRENT ainda não pago sobrevive ao cancelamento — se o aluno
+        // pagar depois, a Asaas cria uma assinatura órfã que cobra todo mês
+        // contra um contrato cancelado (e nenhuma superfície a cancela).
+        if (contract.billing_type?.startsWith('asaas') && contract.asaas_payment_link_id) {
+            try {
+                const apiKey = await getDecryptedApiKey(trainerId)
+                await deactivatePaymentLink(apiKey, contract.asaas_payment_link_id)
+            } catch (err) {
+                if (err instanceof AsaasApiError && err.status === 404) {
+                    // link já removido/desativado — nada a fazer
+                } else if (
+                    contract.billing_type === 'asaas_auto_recurring' &&
+                    !contract.asaas_subscription_id
+                ) {
+                    // Caso perigoso: recorrente AINDA sem assinatura (link é o único
+                    // ponto de cobrança futuro). Não cancela local sem matar o link.
+                    console.error('[cancelContractCore] deactivate link failed:', err)
+                    return { error: 'Não foi possível desativar o link de pagamento na Asaas. Tente novamente.' }
+                } else {
+                    // One-off / recorrente já assinado: best-effort, não trava o cancel.
+                    console.error('[cancelContractCore] deactivate link failed (best-effort):', err)
+                }
             }
         }
 

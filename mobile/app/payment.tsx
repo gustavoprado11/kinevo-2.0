@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
 import { WebView } from "react-native-webview";
 import * as Haptics from "expo-haptics";
 import { ChevronLeft, X, CheckCircle2, CreditCard, RefreshCw, Clock } from "lucide-react-native";
-import { useStudentPayment } from "../hooks/useStudentPayment";
+import { useStudentPayment, type StudentPayment } from "../hooks/useStudentPayment";
+import { walletFetch } from "../lib/wallet-api";
 import { useV2Colors } from "../hooks/useV2Colors";
 import { formatBRL } from "@/lib/currency";
 
@@ -15,14 +16,40 @@ export default function StudentPaymentScreen() {
     const { data, isLoading, error, refresh } = useStudentPayment();
     const [checkoutVisible, setCheckoutVisible] = useState(false);
     const [webLoading, setWebLoading] = useState(true);
+    const [webError, setWebError] = useState(false);
+    const [pullRefreshing, setPullRefreshing] = useState(false);
+    const [justPaid, setJustPaid] = useState(false);
 
     const hasPending = !!data?.hasPending;
     const invoiceUrl = data?.invoiceUrl ?? null;
+
+    // Detecção de sucesso: enquanto o checkout está aberto, polla o endpoint a
+    // cada 8s. Quando o webhook confirmar (pending some), fecha o modal sozinho
+    // e celebra — sem isto o aluno pagava e continuava vendo a cobrança até
+    // apertar "Já paguei?" manualmente.
+    useEffect(() => {
+        if (!checkoutVisible) return;
+        const interval = setInterval(async () => {
+            try {
+                const res = await walletFetch<StudentPayment>("/api/student/payment");
+                if (!res.hasPending) {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    setJustPaid(true);
+                    setCheckoutVisible(false);
+                    refresh();
+                }
+            } catch {
+                // silencioso — o próximo tick tenta de novo
+            }
+        }, 8000);
+        return () => clearInterval(interval);
+    }, [checkoutVisible, refresh]);
 
     const openCheckout = () => {
         if (!invoiceUrl) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setWebLoading(true);
+        setWebError(false);
         setCheckoutVisible(true);
     };
 
@@ -30,6 +57,12 @@ export default function StudentPaymentScreen() {
         setCheckoutVisible(false);
         // Após o checkout, atualiza o status (webhook pode levar alguns segundos)
         refresh();
+    };
+
+    const onPullRefresh = async () => {
+        setPullRefreshing(true);
+        await refresh();
+        setPullRefreshing(false);
     };
 
     return (
@@ -52,7 +85,7 @@ export default function StudentPaymentScreen() {
                     <ScrollView
                         style={{ flex: 1 }}
                         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 60 }}
-                        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor={colors.purple[600]} />}
+                        refreshControl={<RefreshControl refreshing={pullRefreshing} onRefresh={onPullRefresh} tintColor={colors.purple[600]} />}
                     >
                         {error ? (
                             <View style={{ backgroundColor: colors.semantic.danger.bg, borderRadius: 16, padding: 16 }}>
@@ -63,9 +96,13 @@ export default function StudentPaymentScreen() {
                                 <View style={{ width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center", backgroundColor: colors.semantic.success.bg, marginBottom: 16 }}>
                                     <CheckCircle2 size={32} color={colors.semantic.success.fg} />
                                 </View>
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary }}>Tudo em dia</Text>
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text.primary }}>
+                                    {justPaid ? "Pagamento confirmado" : "Tudo em dia"}
+                                </Text>
                                 <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 4, textAlign: "center" }}>
-                                    Você não tem nenhuma cobrança pendente no momento.
+                                    {justPaid
+                                        ? "Recebemos a confirmação do seu pagamento. Seu acesso está liberado."
+                                        : "Você não tem nenhuma cobrança pendente no momento."}
                                 </Text>
                             </View>
                         ) : (
@@ -125,14 +162,41 @@ export default function StudentPaymentScreen() {
                         <View style={{ width: 24 }} />
                     </View>
                     <View style={{ flex: 1 }}>
-                        {invoiceUrl ? (
+                        {invoiceUrl && !webError ? (
                             <WebView
                                 source={{ uri: invoiceUrl }}
                                 onLoadEnd={() => setWebLoading(false)}
+                                onError={() => {
+                                    setWebLoading(false);
+                                    setWebError(true);
+                                }}
+                                onHttpError={(e) => {
+                                    if (e.nativeEvent.statusCode >= 400) {
+                                        setWebLoading(false);
+                                        setWebError(true);
+                                    }
+                                }}
                                 startInLoadingState
                             />
                         ) : null}
-                        {webLoading ? (
+                        {webError ? (
+                            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
+                                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text.primary, textAlign: "center" }}>
+                                    Não foi possível carregar o pagamento
+                                </Text>
+                                <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 6, textAlign: "center", lineHeight: 18 }}>
+                                    O link pode ter expirado. Feche e tente novamente — se persistir, fale com seu treinador.
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={closeCheckout}
+                                    activeOpacity={0.85}
+                                    style={{ marginTop: 20, backgroundColor: colors.purple[600], borderRadius: 14, paddingVertical: 12, paddingHorizontal: 28 }}
+                                >
+                                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#ffffff" }}>Fechar</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : null}
+                        {webLoading && !webError ? (
                             <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface.canvas }}>
                                 <ActivityIndicator color={colors.purple[600]} size="large" />
                             </View>

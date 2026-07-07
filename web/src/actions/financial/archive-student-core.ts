@@ -20,6 +20,7 @@ import {
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { logContractEvent } from '@/lib/contract-events'
+import { cancelAsaasRecurring } from '@/lib/asaas/cancel-recurring'
 import { sendStudentPush } from '@/lib/push-notifications'
 import { cancelRecurringCore } from '@/actions/appointments/core'
 
@@ -103,7 +104,7 @@ export async function archiveStudentCore({
         // 1. Cancel all active/pending/past_due contracts for this student
         const { data: activeContracts } = await supabaseAdmin
             .from('student_contracts')
-            .select('id, billing_type, stripe_subscription_id, status')
+            .select('id, billing_type, stripe_subscription_id, asaas_subscription_id, status')
             .eq('student_id', studentId)
             .eq('trainer_id', trainerId)
             .in('status', ['active', 'pending', 'past_due'])
@@ -130,6 +131,21 @@ export async function archiveStudentCore({
                         )
                     } catch (stripeErr) {
                         console.error('[archive-student-core] Stripe cancel error:', stripeErr)
+                    }
+                }
+
+                // Recorrência Asaas: sem este cancelamento o ex-aluno continua
+                // sendo cobrado todo ciclo (o update abaixo só muda o banco).
+                // Best-effort como o Stripe acima — falha loga e não trava o archive.
+                if (contract.billing_type === 'asaas_auto_recurring') {
+                    try {
+                        await cancelAsaasRecurring({
+                            trainerId,
+                            billingType: contract.billing_type,
+                            subscriptionId: contract.asaas_subscription_id,
+                        })
+                    } catch (asaasErr) {
+                        console.error('[archive-student-core] Asaas cancel error:', asaasErr)
                     }
                 }
 

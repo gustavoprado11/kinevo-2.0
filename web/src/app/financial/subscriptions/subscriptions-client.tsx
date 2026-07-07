@@ -106,7 +106,7 @@ const statusConfig: Record<DisplayStatus, { label: string; className: string }> 
 
 const statusTooltips: Partial<Record<DisplayStatus, string>> = {
     courtesy: 'Acesso gratuito. O aluno treina normalmente sem cobrança configurada.',
-    awaiting_payment: 'Link de pagamento Stripe enviado. Aguardando o aluno completar o pagamento.',
+    awaiting_payment: 'Link de pagamento enviado. Aguardando o aluno completar o pagamento.',
     grace_period: 'O pagamento manual venceu, mas está dentro do período de graça de 3 dias. Após esse período, o status muda para Inadimplente.',
     canceling: 'O aluno cancelou a assinatura pelo app. O acesso continua garantido até a data indicada. Após, volta para cortesia.',
     overdue: 'Pagamento atrasado há mais de 3 dias. Se o bloqueio de acesso estiver ativado, o aluno não consegue ver os treinos no app.',
@@ -127,6 +127,8 @@ const intervalLabels: Record<string, string> = {
 function billingTypeLabel(bt: string | null): string {
     if (!bt) return 'Cortesia'
     if (bt === 'stripe_auto') return 'Stripe'
+    if (bt === 'asaas_auto') return 'Cobrança Asaas'
+    if (bt === 'asaas_auto_recurring') return 'Cartão automático'
     if (bt.startsWith('manual')) return 'Manual'
     if (bt === 'courtesy') return 'Cortesia'
     return bt
@@ -211,6 +213,8 @@ export function SubscriptionsClient({
         const result = await markAsPaid({ contractId })
         if (result.success) {
             router.refresh()
+        } else if (result.error) {
+            toast({ message: result.error, type: 'error' })
         }
         setActionLoading(null)
     }
@@ -235,11 +239,28 @@ export function SubscriptionsClient({
     const handleCopyLink = async (student: FinancialStudent, e: React.MouseEvent) => {
         e.stopPropagation()
 
-        const plan = plans.find(p => p.title === student.plan_title)
-        if (!plan) return
-
         setActionLoading(student.student_id)
         try {
+            // Contrato Asaas pendente: a URL viva vem do Payment Link já criado
+            // — o caminho Stripe abaixo falharia ("Conta Stripe não conectada").
+            if (student.contract_id && student.billing_type?.startsWith('asaas')) {
+                const res = await fetch(`/api/wallet/charges/${student.contract_id}`)
+                const data = await res.json().catch(() => ({}))
+                if (res.ok && data.url) {
+                    await navigator.clipboard.writeText(data.url)
+                    toast({ message: 'Link de pagamento copiado!', type: 'success' })
+                } else {
+                    toast({
+                        message: data.error ?? 'Link não está mais ativo — gere uma nova cobrança.',
+                        type: 'error',
+                    })
+                }
+                return
+            }
+
+            const plan = plans.find(p => p.title === student.plan_title)
+            if (!plan) return
+
             const result = await generateCheckoutLink({
                 studentId: student.student_id,
                 planId: plan.id,
@@ -749,9 +770,12 @@ export function SubscriptionsClient({
                                                                     </button>
                                                                 )}
 
-                                                                {/* Active manual / grace_period / overdue manual: Mark paid */}
+                                                                {/* Active manual / grace_period / overdue manual: Mark paid.
+                                                                    asaas_auto_recurring fica de fora: marcar pago não pausa o
+                                                                    débito automático do cartão → dupla cobrança. */}
                                                                 {s.contract_id && s.billing_type !== 'stripe_auto' &&
                                                                     s.billing_type !== 'courtesy' &&
+                                                                    s.billing_type !== 'asaas_auto_recurring' &&
                                                                     ['active', 'grace_period', 'overdue'].includes(s.display_status) && (
                                                                     <button
                                                                         onClick={(e) => handleMarkAsPaid(s.contract_id!, e)}
@@ -794,9 +818,9 @@ export function SubscriptionsClient({
                 onClose={() => setConfigModalState({ isOpen: false, mode: 'new', student: null })}
                 onSuccess={handleSuccess}
                 student={configModalState.student}
+                hasStripeConnect={hasStripeConnect}
                 allStudents={modalStudents}
                 plans={modalPlans}
-                hasStripeConnect={hasStripeConnect}
                 mode={configModalState.mode}
             />
 
@@ -832,7 +856,6 @@ export function SubscriptionsClient({
                 onSuccess={handleSuccess}
                 student={selectedStudent}
                 plans={modalPlans}
-                hasStripeConnect={hasStripeConnect}
                 onOpenNewSubscription={(studentId) => {
                     setDetailModalOpen(false)
                     setSelectedStudent(null)

@@ -28,7 +28,7 @@ function resolveProjectId(): string | undefined {
 
 function getCategoryFromType(type: string): string {
     if (['form_request', 'feedback', 'form_submission'].includes(type)) return 'forms';
-    if (['payment_received', 'payment_failed', 'payment_overdue', 'subscription_canceled', 'cancellation_alert'].includes(type)) return 'payments';
+    if (['payment_received', 'payment_failed', 'payment_overdue', 'subscription_canceled', 'cancellation_alert', 'charge_created'].includes(type)) return 'payments';
     if (['program_assigned', 'program_expired'].includes(type)) return 'programs';
     return 'students';
 }
@@ -238,6 +238,10 @@ export function usePushNotifications(role: "trainer" | "student" | null) {
                     } else {
                         router.push("/financial");
                     }
+                    break;
+                case "charge_created":
+                    // Push do ALUNO: nova cobrança do treinador → paga in-app.
+                    router.push("/payment");
                     break;
                 default:
                     // Fallback: legacy routing by field presence

@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState , useCallback } from "react";
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Stack } from "expo-router";
+import { useRouter, Stack , useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import {
     ChevronLeft,
@@ -51,7 +51,7 @@ const NON_APPROVED_COPY: Record<Exclude<KinevoWalletStatus, "approved">, { label
 export default function FinancialDashboardScreen() {
     const colors = useV2Colors();
     const router = useRouter();
-    const { data, attentionStudents, pendingCharges, awaitingPayouts, isLoading, isRefreshing, refresh } = useFinancialDashboard();
+    const { data, attentionStudents, pendingCharges, awaitingPayouts, isLoading, isRefreshing, error, refresh } = useFinancialDashboard();
     const { status: stripeStatus, isLoading: stripeLoading } = useStripeStatus();
     const { activePlans, refresh: refreshPlans } = useTrainerPlans();
     const { summary: wallet, refresh: refreshWallet } = useWallet();
@@ -85,6 +85,14 @@ export default function FinancialDashboardScreen() {
         refreshWallet();
         if (walletApproved) balance.refresh();
     };
+
+    // P17: mutações acontecem em telas filhas (detalhe/cobrar/sacar) — sem
+    // refetch on focus, voltar pra cá mostrava lista/saldo velhos até pull.
+    useFocusEffect(
+        useCallback(() => {
+            refresh();
+        }, [refresh])
+    );
 
     const openCharge = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -120,6 +128,29 @@ export default function FinancialDashboardScreen() {
                         showsVerticalScrollIndicator={false}
                         refreshControl={<RefreshControl refreshing={isRefreshing || balance.isRefreshing} onRefresh={onRefresh} tintColor={colors.purple[600]} />}
                     >
+                        {/* P16: erro visível — números zerados por falha de rede
+                             não podem passar por dado real. */}
+                        {error ? (
+                            <TouchableOpacity
+                                onPress={onRefresh}
+                                activeOpacity={0.8}
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    gap: 10,
+                                    backgroundColor: colors.semantic.danger.bg,
+                                    borderRadius: 14,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 12,
+                                    marginBottom: 16,
+                                }}
+                            >
+                                <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: colors.semantic.danger.fg }}>
+                                    {error} Os números abaixo podem estar desatualizados — toque para tentar de novo.
+                                </Text>
+                            </TouchableOpacity>
+                        ) : null}
+
                         {/* Subtítulo */}
                         <Text style={{ fontSize: 13, color: colors.text.tertiary, marginBottom: 16 }}>
                             Receba, cobre e controle tudo num lugar só.

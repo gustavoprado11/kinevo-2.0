@@ -25,13 +25,23 @@ export function useProgramTemplateActions() {
         }
     }, []);
 
-    /** Server-side deep copy via RPC. Returns the new template id. */
+    /** Server-side deep copy via RPC (overload 2-arg da migration 231 —
+     *  transacional, copia métodos/séries por item/check-ins; a 1-arg antiga
+     *  da 152 não copia). Returns the new template id. */
     const duplicateTemplate = useCallback(async (templateId: string): Promise<string> => {
         setIsWorking(true);
         try {
+            const { data: auth } = await supabase.auth.getUser();
+            if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
+            const { data: trainer, error: trainerError } = await supabase
+                .from("trainers")
+                .select("id")
+                .eq("auth_user_id", auth.user.id)
+                .single();
+            if (trainerError || !trainer) throw new Error("Treinador não encontrado.");
             const { data, error } = await supabase.rpc(
                 "duplicate_program_template" as any,
-                { p_template_id: templateId } as any,
+                { p_trainer_id: trainer.id, p_template_id: templateId } as any,
             );
             if (error) throw new Error(error.message);
             return data as unknown as string;

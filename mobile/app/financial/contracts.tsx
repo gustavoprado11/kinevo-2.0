@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState , useCallback } from "react";
 import * as Haptics from "expo-haptics";
 import {
     View,
@@ -10,7 +10,7 @@ import {
     ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Stack } from "expo-router";
+import { useRouter, Stack , useFocusEffect } from "expo-router";
 import { ChevronLeft, Search, FileText } from "lucide-react-native";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { useTrainerContracts, ContractFilter } from "../../hooks/useTrainerContracts";
@@ -49,6 +49,13 @@ export default function ContractsScreen() {
     const [selectedStudent, setSelectedStudent] = useState<FinancialStudent | null>(null);
 
     const walletApproved = wallet?.status === "approved";
+
+    // P17: cancelar/marcar-pago no detalhe não refletia aqui até pull-to-refresh.
+    useFocusEffect(
+        useCallback(() => {
+            refresh();
+        }, [refresh])
+    );
 
     const handleStudentPress = (item: FinancialStudent) => {
         if (item.contract_id) {

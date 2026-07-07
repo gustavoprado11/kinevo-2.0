@@ -40,7 +40,7 @@ export function useStudentSubscription(): StudentSubscriptionResult {
                 .from("student_contracts" as any)
                 .select("*, plan:trainer_plans!plan_id(title, price, interval)")
                 .eq("student_id", profile.id)
-                .in("status", ["active", "past_due"])
+                .in("status", ["active", "past_due", "pending_payment"])
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();

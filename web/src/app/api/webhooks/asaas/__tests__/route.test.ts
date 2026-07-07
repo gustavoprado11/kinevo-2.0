@@ -380,7 +380,9 @@ describe('POST /api/webhooks/asaas', () => {
         })
 
         it('backfills asaas_subscription_id only when still null', async () => {
-            h.getPayment.mockResolvedValue(paid({ value: 50 }))
+            // subscription precisa vir do pagamento AUTORITATIVO: o pin anti-
+            // forja sobrescreve o payload (subscription virou chave de WHERE).
+            h.getPayment.mockResolvedValue(paid({ value: 50, subscription: 'asaas-sub-1' }))
             stub.onQuery(withOwner({ ...OWNER, asaas_payment_id: 'pay_sub' }, (q) => {
                 if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'asaas_payment_id', 'pay_sub')) {
                     return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
@@ -397,6 +399,51 @@ describe('POST /api/webhooks/asaas', () => {
                 .find((q) => (q.payload as Record<string, unknown>)?.asaas_subscription_id === 'asaas-sub-1')
             expect(subUpdate).toBeDefined()
             expect(hasFilter(subUpdate!, 'is', 'asaas_subscription_id', null)).toBe(true)
+        })
+
+        it('activates past_due via asaas_subscription_id (estratégia 2b) and advances current_period_end', async () => {
+            // Ciclo de assinatura: payment.id novo (não backfillado), sem
+            // paymentLink — só o subscription id amarra ao contrato.
+            h.getPayment.mockResolvedValue(paid({
+                id: 'pay_cycle2',
+                value: 90,
+                subscription: 'sub_x',
+                dueDate: '2026-07-10',
+                externalReference: null,
+                paymentLink: null,
+            }))
+            stub.onQuery(withOwner(
+                {
+                    ...OWNER,
+                    asaas_subscription_id: 'sub_x',
+                    billing_type: 'asaas_auto_recurring',
+                    trainer_plans: { interval: 'month' },
+                },
+                (q) => {
+                    if (q.table === 'student_contracts' && q.op === 'update' && hasFilter(q, 'eq', 'asaas_subscription_id', 'sub_x')) {
+                        return { data: [{ id: CONTRACT_ID, student_id: STUDENT_ID }] }
+                    }
+                    return undefined
+                },
+            ))
+
+            const res = await POST(makeRequest(paymentEvent('PAYMENT_RECEIVED', { id: 'pay_cycle2', value: 90 })))
+            expect(res.status).toBe(200)
+
+            // Ativou pelo subscription id (estratégias 1/2 não casaram).
+            const activation = stub
+                .calls('student_contracts', 'update')
+                .find((q) => hasFilter(q, 'eq', 'asaas_subscription_id', 'sub_x'))
+            expect(activation).toBeDefined()
+            expect((activation!.payload as Record<string, unknown>).status).toBe('active')
+
+            // P8: período local avançou (dueDate autoritativa + 1 mês).
+            const periodUpdate = stub
+                .calls('student_contracts', 'update')
+                .find((q) => (q.payload as Record<string, unknown>)?.current_period_end !== undefined)
+            expect(periodUpdate).toBeDefined()
+            expect((periodUpdate!.payload as Record<string, unknown>).current_period_end)
+                .toBe(new Date('2026-08-10T00:00:00.000Z').toISOString())
         })
 
         it('routes PAYMENT_RECEIVED_IN_CASH through the same received handler', async () => {

@@ -20,13 +20,16 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
     AsaasApiError,
     createPaymentLink,
+    deactivatePaymentLink,
     getKinevoWalletId,
+    getPaymentLink,
     type AsaasBillingType,
     type AsaasSplit,
     type AsaasSubscriptionCycle,
 } from '@/lib/asaas'
 import { getDecryptedApiKey, requireTrainer, WalletAuthError } from '@/lib/asaas/wallet-service'
 import { logContractEvent } from '@/lib/contract-events'
+import { sendStudentPush } from '@/lib/push-notifications'
 
 interface SubBody {
     studentId?: string
@@ -102,10 +105,75 @@ export async function POST(request: NextRequest) {
         // 4. Split (take rate Kinevo)
         const kinevoWalletId = getKinevoWalletId()
         const takeRatePct = Number(process.env.KINEVO_TAKE_RATE_PCT ?? '0')
+        if (!(takeRatePct > 0) && process.env.NODE_ENV === 'production') {
+            // Env ausente/inválida zeraria a taxa da plataforma em silêncio.
+            console.error('[wallet/subscriptions] KINEVO_TAKE_RATE_PCT ausente ou inválida — assinatura criada SEM split Kinevo')
+        }
+        if (takeRatePct > 0 && !kinevoWalletId) {
+            // Pct configurado mas ASAAS_KINEVO_WALLET_ID ausente: o split cai
+            // SEM nenhum log — pior que taxa zero, porque parece ligada.
+            console.error('[wallet/subscriptions] KINEVO_TAKE_RATE_PCT setado mas ASAAS_KINEVO_WALLET_ID ausente — split descartado')
+        }
         const split: AsaasSplit[] | undefined =
             kinevoWalletId && takeRatePct > 0
                 ? [{ walletId: kinevoWalletId, percentualValue: takeRatePct }]
                 : undefined
+
+        // 4b. Anti-duplicidade (P10): só faz sentido UMA assinatura pendente
+        // por aluno. Mesmo plano → devolve o link existente (duplo-submit);
+        // plano diferente → desativa o link antigo e aposenta o contrato
+        // pendente antes de criar o novo (dois links RECURRENT pagáveis =
+        // aluno pode assinar o plano errado/os dois).
+        {
+            const { data: dup } = await supabaseAdmin
+                .from('student_contracts')
+                .select('id, plan_id, asaas_payment_link_id')
+                .eq('student_id', student.id)
+                .eq('trainer_id', trainer.id)
+                .eq('billing_type', 'asaas_auto_recurring')
+                .eq('status', 'pending_payment')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+
+            if (dup) {
+                if (dup.plan_id === plan.id && dup.asaas_payment_link_id) {
+                    try {
+                        const existing = await getPaymentLink(apiKey, dup.asaas_payment_link_id)
+                        if (existing.active !== false && !existing.deleted) {
+                            return NextResponse.json({
+                                contractId: dup.id,
+                                paymentLinkId: existing.id,
+                                url: existing.url,
+                                invoiceUrl: existing.url,
+                                cycle,
+                                value: existing.value,
+                                billingType: existing.billingType,
+                                reused: true,
+                            }, { status: 200 })
+                        }
+                    } catch (err) {
+                        if (!(err instanceof AsaasApiError && err.status === 404)) throw err
+                    }
+                }
+                // Plano diferente ou link morto: desativa o link antigo (best-
+                // effort) e aposenta o contrato pendente.
+                if (dup.asaas_payment_link_id) {
+                    try {
+                        await deactivatePaymentLink(apiKey, dup.asaas_payment_link_id)
+                    } catch (err) {
+                        if (!(err instanceof AsaasApiError && err.status === 404)) {
+                            console.error('[wallet/subscriptions] deactivate old link failed:', err)
+                        }
+                    }
+                }
+                await supabaseAdmin
+                    .from('student_contracts')
+                    .update({ status: 'canceled', canceled_by: 'trainer', canceled_at: new Date().toISOString() })
+                    .eq('id', dup.id)
+                    .eq('status', 'pending_payment')
+            }
+        }
 
         // 5. Cria contrato local (status=pending_payment)
         const { data: contract, error: contractErr } = await supabaseAdmin
@@ -165,6 +233,14 @@ export async function POST(request: NextRequest) {
             contractId: contract.id,
             eventType: 'contract_created',
             metadata: { provider: 'asaas', amount: Number(plan.price), billingType, cycle, kind: 'recurring' },
+        })
+
+        // 9. Avisa o ALUNO in-app (P13) — best-effort; type roteia p/ /payment.
+        await sendStudentPush({
+            studentId: student.id,
+            title: 'Nova assinatura para ativar',
+            body: `${plan.title} — ${Number(plan.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}. Toque para pagar pelo app.`,
+            data: { type: 'charge_created' },
         })
 
         return NextResponse.json({

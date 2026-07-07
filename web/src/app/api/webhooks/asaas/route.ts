@@ -257,21 +257,30 @@ interface OwnerContractRef {
     trainer_id: string
     asaas_payment_id: string | null
     asaas_payment_link_id: string | null
+    asaas_subscription_id: string | null
 }
 
 /** Resolve o contrato dono deste pagamento (qualquer status), pra derivar o
  *  trainer e verificar antes de mutar. Precedência igual às estratégias de
- *  registro: asaas_payment_id, asaas_payment_link_id, externalReference (= id). */
+ *  registro: asaas_payment_id, asaas_payment_link_id, subscription,
+ *  externalReference (= id). */
 async function resolveOwnerContract(
     payment: NonNullable<AsaasWebhookEvent['payment']>,
 ): Promise<OwnerContractRef | null> {
-    const sel = 'id, trainer_id, asaas_payment_id, asaas_payment_link_id'
+    const sel = 'id, trainer_id, asaas_payment_id, asaas_payment_link_id, asaas_subscription_id'
     if (payment.id) {
         const { data } = await supabaseAdmin.from('student_contracts').select(sel).eq('asaas_payment_id', payment.id).maybeSingle()
         if (data) return data as OwnerContractRef
     }
     if (payment.paymentLink) {
         const { data } = await supabaseAdmin.from('student_contracts').select(sel).eq('asaas_payment_link_id', payment.paymentLink).maybeSingle()
+        if (data) return data as OwnerContractRef
+    }
+    // Ciclos de assinatura: hoje eles carregam paymentLink (verificado em prod),
+    // mas isso é comportamento da Asaas, não contrato — o id da subscription é
+    // a chave redundante que segura renovações se o paymentLink sumir.
+    if (payment.subscription) {
+        const { data } = await supabaseAdmin.from('student_contracts').select(sel).eq('asaas_subscription_id', payment.subscription).maybeSingle()
         if (data) return data as OwnerContractRef
     }
     if (payment.externalReference) {
@@ -284,6 +293,23 @@ async function resolveOwnerContract(
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
+
+/** Próximo vencimento a partir do ciclo pago (P8 — período local do recorrente). */
+function addPlanInterval(date: Date, interval: string): Date {
+    const result = new Date(date)
+    switch (interval) {
+        case 'quarter':
+            result.setMonth(result.getMonth() + 3)
+            break
+        case 'year':
+            result.setFullYear(result.getFullYear() + 1)
+            break
+        case 'month':
+        default:
+            result.setMonth(result.getMonth() + 1)
+    }
+    return result
+}
 
 async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: string | null) {
     const payment = event.payment
@@ -308,6 +334,7 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
             const tiesToContract =
                 authPayment.externalReference === ownerContract.id ||
                 (!!authPayment.paymentLink && authPayment.paymentLink === ownerContract.asaas_payment_link_id) ||
+                (!!authPayment.subscription && authPayment.subscription === ownerContract.asaas_subscription_id) ||
                 authPayment.id === ownerContract.asaas_payment_id
             if (!tiesToContract) {
                 // Pagamento real, mas de OUTRO contrato → tentativa de ativar o
@@ -346,6 +373,10 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
         // só podem tocar o contrato que ESTE pagamento realmente fecha.
         payment.externalReference = authPayment.externalReference
         payment.paymentLink = authPayment.paymentLink
+        // subscription também é chave de WHERE (estratégia de renovação) e
+        // dueDate alimenta o cálculo do período local — mesmos motivos acima.
+        payment.subscription = authPayment.subscription
+        payment.dueDate = authPayment.dueDate
     }
 
     // Resolve qual contrato esse pagamento está fechando. Três estratégias,
@@ -382,6 +413,27 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
                 asaas_customer_id: payment.customer,
             })
             .eq('asaas_payment_link_id', payment.paymentLink)
+            .in('status', ['pending_payment', 'past_due'])
+            .select('id, student_id')
+        if (rows) for (const r of rows) {
+            matchedContracts.add(r.id as string)
+            if (r.student_id) studentIdsToUnblock.add(r.student_id as string)
+        }
+    }
+
+    // --- Estratégia 2b: asaas_subscription_id (ciclos de assinatura) ---
+    // Redundância pro paymentLink: ciclos 2+ chegam com payment.id NOVO; se o
+    // OVERDUE que backfilla o id se perdeu E o paymentLink não vier, esta é a
+    // chave que reativa o contrato past_due na regularização.
+    if (payment.subscription && matchedContracts.size === 0) {
+        const { data: rows } = await supabaseAdmin
+            .from('student_contracts')
+            .update({
+                status: 'active',
+                asaas_payment_id: payment.id,
+                asaas_customer_id: payment.customer,
+            })
+            .eq('asaas_subscription_id', payment.subscription)
             .in('status', ['pending_payment', 'past_due'])
             .select('id, student_id')
         if (rows) for (const r of rows) {
@@ -435,6 +487,18 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
             if (row.student_id) studentIdsToUnblock.add(row.student_id as string)
         }
     }
+    if (!recordContractId && payment.subscription) {
+        const { data } = await supabaseAdmin
+            .from('student_contracts')
+            .select('id, student_id')
+            .eq('asaas_subscription_id', payment.subscription)
+            .limit(1)
+        const row = data?.[0]
+        if (row) {
+            recordContractId = row.id as string
+            if (row.student_id) studentIdsToUnblock.add(row.student_id as string)
+        }
+    }
 
     // Persiste a transação. UPSERT pra cobrir tanto o caso onde
     // /api/wallet/charges já inseriu uma linha pending (fluxo antigo) quanto
@@ -443,7 +507,7 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
         const contractId = recordContractId
         const { data: contract } = await supabaseAdmin
             .from('student_contracts')
-            .select('trainer_id, student_id, installment_count')
+            .select('trainer_id, student_id, installment_count, billing_type, trainer_plans:plan_id(interval)')
             .eq('id', contractId)
             .maybeSingle()
         if (contract) {
@@ -483,6 +547,21 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
                     .update({ asaas_subscription_id: payment.subscription })
                     .eq('id', contractId)
                     .is('asaas_subscription_id', null)
+            }
+            // P8: período local do recorrente. Cada ciclo pago avança o
+            // vencimento pra dueDate (autoritativa, pinada no anti-forja) +
+            // intervalo do plano. Sem isto, "Vencimento" fica "—" pra sempre
+            // e nenhuma lógica de expiração/carência enxerga contratos Asaas.
+            if (contract.billing_type === 'asaas_auto_recurring') {
+                const rel = contract.trainer_plans as { interval: string } | { interval: string }[] | null
+                const interval = (Array.isArray(rel) ? rel[0]?.interval : rel?.interval) ?? 'month'
+                const base = payment.dueDate ? new Date(payment.dueDate) : new Date()
+                if (!Number.isNaN(base.getTime())) {
+                    await supabaseAdmin
+                        .from('student_contracts')
+                        .update({ current_period_end: addPlanInterval(base, interval).toISOString() })
+                        .eq('id', contractId)
+                }
             }
             // Registra no histórico do contrato (timeline do detalhe do aluno).
             // Dedupe por paymentId: RECEIVED e CONFIRMED chegam como eventos

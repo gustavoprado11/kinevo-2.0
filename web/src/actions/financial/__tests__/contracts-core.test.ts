@@ -4,8 +4,11 @@ import { createSupabaseAdminStub, type SupabaseAdminStub } from '@/test/supabase
 vi.mock('@/lib/contract-events', () => ({ logContractEvent: vi.fn() }))
 // contracts-core importa stripe/asaas no topo (usados por create/cancel, não por
 // markAsPaidCore). lib/stripe lança no load sem STRIPE_SECRET_KEY → mockamos.
+// wallet-service importa supabase-admin no load (lança sem env) → mock também.
 vi.mock('@/lib/stripe', () => ({ stripe: {} }))
 vi.mock('@/lib/asaas/cancel-recurring', () => ({ cancelAsaasRecurring: vi.fn() }))
+vi.mock('@/lib/asaas/wallet-service', () => ({ getDecryptedApiKey: vi.fn() }))
+vi.mock('@/lib/asaas/payment-links', () => ({ deactivatePaymentLink: vi.fn() }))
 
 import { markAsPaidCore } from '../contracts-core'
 
@@ -94,6 +97,20 @@ describe('markAsPaidCore — idempotência', () => {
             .toBe(`manual_${CONTRACT}_oneoff`)
         // Update só marca active — sem current_period_end.
         expect(stub.calls('student_contracts', 'update')[0].payload).toEqual({ status: 'active' })
+    })
+
+    it('asaas_auto_recurring: rejected with double-billing warning, nothing written', async () => {
+        stub.onQuery((q) => {
+            if (q.table === 'student_contracts' && q.op === 'select') {
+                return { data: contractRow({ billing_type: 'asaas_auto_recurring' }) }
+            }
+            return undefined
+        })
+
+        const res = await markAsPaidCore(db(), TRAINER, { contractId: CONTRACT })
+        expect(res.error).toMatch(/débito automático/i)
+        expect(stub.calls('financial_transactions', 'insert').length).toBe(0)
+        expect(stub.calls('student_contracts', 'update').length).toBe(0)
     })
 
     it('rejects (and writes nothing) when the contract belongs to another trainer', async () => {

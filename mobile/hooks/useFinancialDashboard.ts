@@ -30,6 +30,7 @@ export function useFinancialDashboard() {
     const [awaitingPayouts, setAwaitingPayouts] = useState<AwaitingPayout[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchData = useCallback(async (refreshing = false) => {
         if (!trainerId) return;
@@ -104,8 +105,12 @@ export function useFinancialDashboard() {
             setAttentionStudents(attention);
             setPendingCharges(pending);
             setAwaitingPayouts(payouts);
+            setError(null);
         } catch (err) {
             if (__DEV__) console.error("[useFinancialDashboard] error:", err);
+            // P16: sem isto, falha de rede/RPC renderizava "R$ 0,00 / 0 alunos"
+            // como se fosse dado real — na tela onde o treinador gere o negócio.
+            setError("Não foi possível carregar os dados financeiros.");
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
@@ -118,5 +123,5 @@ export function useFinancialDashboard() {
 
     const refresh = useCallback(() => fetchData(true), [fetchData]);
 
-    return { data, attentionStudents, pendingCharges, awaitingPayouts, isLoading, isRefreshing, refresh };
+    return { data, attentionStudents, pendingCharges, awaitingPayouts, isLoading, isRefreshing, error, refresh };
 }

@@ -28,6 +28,7 @@ const intervalLabels: Record<string, string> = {
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
     active: { label: "Ativo", color: "#34d399", bg: "rgba(52,211,153,0.1)" },
     past_due: { label: "Pendente", color: "#fbbf24", bg: "rgba(251,191,36,0.1)" },
+    pending_payment: { label: "Aguardando pagamento", color: "#fbbf24", bg: "rgba(251,191,36,0.1)" },
     canceled: { label: "Cancelado", color: "#f87171", bg: "rgba(239,68,68,0.1)" },
 };
 
@@ -36,6 +37,8 @@ const billingTypeLabels: Record<string, string> = {
     manual_recurring: "Manual",
     manual_one_off: "Avulso",
     courtesy: "Cortesia",
+    asaas_auto: "Cobrança (Asaas)",
+    asaas_auto_recurring: "Automático (cartão)",
 };
 
 function formatDate(dateStr: string): string {
@@ -362,6 +365,29 @@ export default function SubscriptionScreen() {
                         </>
                     )}
                 </View>
+
+                {/* Pagar agora (P13): contrato aguardando pagamento/atrasado
+                     tem caminho direto pro checkout in-app — antes esta tela
+                     nem mostrava contratos pending_payment. */}
+                {(contract.status === "pending_payment" || contract.status === "past_due") && (
+                    <TouchableOpacity
+                        onPress={() => router.push("/payment")}
+                        activeOpacity={0.85}
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 8,
+                            backgroundColor: colors.purple[600],
+                            borderRadius: 16,
+                            paddingVertical: 16,
+                            marginBottom: 20,
+                        }}
+                    >
+                        <CreditCard size={18} color="#ffffff" strokeWidth={2} />
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff" }}>Pagar agora</Text>
+                    </TouchableOpacity>
+                )}
 
                 {/* Payment History Link */}
                 <TouchableOpacity

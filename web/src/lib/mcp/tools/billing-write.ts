@@ -259,6 +259,16 @@ export function registerBillingWriteTools(server: McpServer, trainerId: string) 
 
       const studentName = (contract.students as unknown as { name: string } | null)?.name ?? 'aluno'
 
+      // "Ao fim do período" só existe no Stripe. Para Asaas o cancelamento é
+      // imediato — sem este guard, o preview prometia "mantém acesso até lá"
+      // e a execução revogava o acesso na hora.
+      if (cancel_at_period_end && contract.billing_type?.startsWith('asaas')) {
+        return mcpError(
+          'Cancelamento ao fim do período não está disponível para cobranças Asaas — o cancelamento é imediato. ' +
+          'Explique isso ao treinador e, se ele concordar, chame novamente com cancel_at_period_end=false.',
+        )
+      }
+
       if (!confirm) {
         return mcpSuccess({
           preview: true,

@@ -4,6 +4,8 @@ import { stripe } from '@/lib/stripe'
 import { logContractEvent } from '@/lib/contract-events'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { cancelAsaasRecurring } from '@/lib/asaas/cancel-recurring'
+import { AsaasApiError, deactivatePaymentLink } from '@/lib/asaas'
+import { getDecryptedApiKey } from '@/lib/asaas/wallet-service'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -67,6 +69,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
     }
 
+    // "Ao fim do período" só existe no Stripe — para Asaas o cancelamento é
+    // imediato; aceitar o flag e ignorar enganaria o treinador/aluno.
+    if (cancelAtPeriodEnd && contract.billing_type?.startsWith('asaas')) {
+        return NextResponse.json(
+            { error: 'Cancelamento ao fim do período não está disponível para cobranças Asaas — cancele sem agendar (imediato).' },
+            { status: 400 },
+        )
+    }
+
     try {
         // Stripe subscription: cancel via Stripe API
         if (contract.billing_type === 'stripe_auto' && contract.stripe_subscription_id) {
@@ -128,6 +139,31 @@ export async function POST(request: NextRequest) {
                     { error: 'Não foi possível cancelar a assinatura na Asaas. Tente novamente em instantes.' },
                     { status: 502 },
                 )
+            }
+        }
+
+        // Payment Link vivo de contrato Asaas: desativa na Asaas (espelho do
+        // cancelContractCore). Um link RECURRENT não pago que sobrevive ao
+        // cancelamento vira assinatura órfã se o aluno pagar depois.
+        if (contract.billing_type?.startsWith('asaas') && contract.asaas_payment_link_id) {
+            try {
+                const apiKey = await getDecryptedApiKey(trainer.id)
+                await deactivatePaymentLink(apiKey, contract.asaas_payment_link_id)
+            } catch (err) {
+                if (err instanceof AsaasApiError && err.status === 404) {
+                    // link já removido/desativado — ok
+                } else if (
+                    contract.billing_type === 'asaas_auto_recurring' &&
+                    !contract.asaas_subscription_id
+                ) {
+                    console.error('[cancel-contract] deactivate link failed:', err)
+                    return NextResponse.json(
+                        { error: 'Não foi possível desativar o link de pagamento na Asaas. Tente novamente.' },
+                        { status: 502 },
+                    )
+                } else {
+                    console.error('[cancel-contract] deactivate link failed (best-effort):', err)
+                }
             }
         }
 
