@@ -1,7 +1,8 @@
 // Fase 14d — Hook que avalia regras heurísticas e expõe top 3 insights.
-// Cache MMKV (TTL 6h + dia UTC). Pull-to-refresh → refresh() ignora cache.
+// Cache MMKV (TTL 6h + dia LOCAL). Pull-to-refresh/focus → refresh() ignora cache.
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { toLocalDateISO } from './useHealthDashboard';
 import { evaluateInsights } from '../lib/healthInsights/evaluate';
 import { prioritize } from '../lib/healthInsights/prioritize';
 import { hrvMetricFromSource } from '../lib/hrv';
@@ -24,7 +25,7 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 interface InsightsCacheEntry {
   insights: HealthInsight[];
   generatedAt: number;
-  forDate: string; // YYYY-MM-DD UTC
+  forDate: string; // YYYY-MM-DD LOCAL (fix C9: era UTC → virava o dia na hora errada)
 }
 
 let cacheGet: (key: string) => InsightsCacheEntry | null;
@@ -52,12 +53,12 @@ try {
   };
 }
 
-function todayUtcString(): string {
-  return new Date().toISOString().slice(0, 10);
+function todayLocalString(): string {
+  return toLocalDateISO(new Date());
 }
 
 function isCacheFresh(entry: InsightsCacheEntry): boolean {
-  if (entry.forDate !== todayUtcString()) return false;
+  if (entry.forDate !== todayLocalString()) return false;
   if (Date.now() - entry.generatedAt > CACHE_TTL_MS) return false;
   return true;
 }
@@ -195,7 +196,7 @@ export function useHealthInsights(): UseHealthInsightsResult {
       cacheSet(cacheKey, {
         insights: top3,
         generatedAt: Date.now(),
-        forDate: todayUtcString(),
+        forDate: todayLocalString(),
       });
     } catch (e: any) {
       if (__DEV__) console.warn('[useHealthInsights] load failed:', e?.message);

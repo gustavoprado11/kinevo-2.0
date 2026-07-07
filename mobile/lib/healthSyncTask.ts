@@ -46,7 +46,35 @@ function backoffDelayMs(failures: number): number {
   return 4 * 60 * 60 * 1000;
 }
 
-async function runIncrementalSync(): Promise<{ ok: boolean; skipped?: boolean }> {
+// Fix C10 (analise-saude-aluno-2026-07-07): em 2º plano o timer de auto-refresh
+// do supabase-js fica PAUSADO, então o access_token pode acordar expirado. Isso
+// derruba silenciosamente (a) as escritas nas tabelas (RLS 401) e (b) o refresh
+// de token do Strava, que chama uma edge function com `admin.auth.getUser(jwt)`.
+// Garantimos um token fresco ANTES do sync; só faz round-trip quando perto de
+// expirar (minimiza corrida com o cliente do foreground). Sem sessão → skip.
+async function ensureFreshSession(): Promise<boolean> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+    const expiresAtMs = (session.expires_at ?? 0) * 1000;
+    if (expiresAtMs - Date.now() < 5 * 60 * 1000) {
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        if (__DEV__) console.warn('[healthSyncTask] refreshSession falhou:', error.message);
+        return false;
+      }
+    }
+    return true;
+  } catch (e: any) {
+    if (__DEV__) console.warn('[healthSyncTask] ensureFreshSession threw:', e?.message);
+    return false;
+  }
+}
+
+// Exportado também p/ o one-shot de cold-start (_layout): sem isso o app só
+// sincronizava no focus da aba Saúde ou no background fetch de 12h (fix C2
+// parcial — analise-saude-aluno-2026-07-07). Respeita o mesmo backoff.
+export async function runIncrementalSync(): Promise<{ ok: boolean; skipped?: boolean }> {
   const now = Date.now();
   const state = getRetry();
 
@@ -60,6 +88,13 @@ async function runIncrementalSync(): Promise<{ ok: boolean; skipped?: boolean }>
     setRetry({ failures: 0, nextAttemptAt: 0 });
   } else if (state.nextAttemptAt > now) {
     if (__DEV__) console.log(`[healthSyncTask] skipped (backoff, next attempt in ${Math.round((state.nextAttemptAt - now) / 60000)}min)`);
+    return { ok: false, skipped: true };
+  }
+
+  // Sem sessão válida (deslogado) → skip limpo, sem contar como falha (não é
+  // erro de sync, e um backoff aqui atrasaria o sync legítimo pós-login).
+  if (!(await ensureFreshSession())) {
+    if (__DEV__) console.log('[healthSyncTask] skipped (sem sessão válida)');
     return { ok: false, skipped: true };
   }
 

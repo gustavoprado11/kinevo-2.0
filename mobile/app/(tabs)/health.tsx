@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Moon, Heart, Footprints, Activity, Zap } from 'lucide-react-native';
+import { Moon, Heart, Footprints, Activity, Zap, AlertTriangle } from 'lucide-react-native';
+import * as BackgroundFetch from 'expo-background-fetch';
 import { HealthMetricCard } from '../../components/health/HealthMetricCard';
 import { SleepWeekChart } from '../../components/health/SleepWeekChart';
-import { useHealthDashboard } from '../../hooks/useHealthDashboard';
+import { useHealthDashboard, toLocalDateISO } from '../../hooks/useHealthDashboard';
 import { useHealthKitSync } from '../../hooks/useHealthKitSync';
 import { useHealthConnectSync } from '../../hooks/useHealthConnectSync';
 import { useHealthInsights } from '../../hooks/useHealthInsights';
@@ -47,6 +48,25 @@ function formatRelativeTime(iso: string | null): string | null {
   const d = Math.floor(h / 24);
   return `há ${d}d`;
 }
+
+// Rótulo temporal do registro exibido (fix C7): hoje → sem sufixo; ontem →
+// "ontem"; mais velho → dd/mm. Deixa explícito quando o card mostra dado que
+// não é de hoje, em vez de "–" ou de um número sem contexto.
+function dayLabel(date: string | null | undefined): string | null {
+  if (!date) return null;
+  const now = new Date();
+  if (date === toLocalDateISO(now)) return null;
+  if (date === toLocalDateISO(new Date(now.getTime() - 24 * 60 * 60 * 1000))) return 'ontem';
+  const [, m, d] = date.split('-');
+  return `${d}/${m}`;
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  healthkit: 'Apple Saúde',
+  health_connect: 'Health Connect',
+  oura: 'Oura Ring',
+  strava: 'Strava',
+};
 
 // Padding lateral do ScrollView (scroll.paddingHorizontal) e gap entre os
 // dois cards da gridRow. Calculados aqui pra derivar a largura do card.
@@ -96,13 +116,15 @@ export default function HealthScreen() {
     }
   }, [syncIncremental, refresh, refreshInsights]);
 
-  // Fix discrepância #4: sincroniza ao focar a aba (debounce 5min) pra reduzir
-  // a defasagem vs o background sync de 12h. Silencioso — sem toast de erro.
+  // Fix discrepância #4: sincroniza ao focar a aba pra reduzir a defasagem vs
+  // o background sync de 12h. Silencioso — sem toast de erro. Debounce curto
+  // (90s, era 5min — fix C12): reabrir a aba é a intenção mais clara de
+  // "quero ver dado atual" que o aluno tem.
   const lastFocusSyncRef = useRef(0);
   useFocusEffect(
     useCallback(() => {
       const now = Date.now();
-      if (now - lastFocusSyncRef.current < 5 * 60 * 1000) return;
+      if (now - lastFocusSyncRef.current < 90 * 1000) return;
       lastFocusSyncRef.current = now;
       void (async () => {
         try {
@@ -123,23 +145,54 @@ export default function HealthScreen() {
     }, [syncIncremental, refresh, refreshInsights])
   );
 
+  // Fix C3: Atualização em 2º plano desligada = zero sync com o app fechado,
+  // silenciosamente. A aba avisa (o registro do task já detecta e desiste).
+  const [bgRefreshOff, setBgRefreshOff] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    BackgroundFetch.getStatusAsync()
+      .then((s) => {
+        if (!mounted) return;
+        setBgRefreshOff(
+          s === BackgroundFetch.BackgroundFetchStatus.Denied ||
+          s === BackgroundFetch.BackgroundFetchStatus.Restricted,
+        );
+      })
+      .catch(() => { /* melhor não avisar do que avisar errado */ });
+    return () => { mounted = false; };
+  }, []);
+
   const hasAnyConnection = (data?.connections.length ?? 0) > 0;
   const hasAnyData =
-    !!data?.sleepYesterday ||
-    data?.hrRestingToday != null ||
-    data?.stepsToday != null ||
-    data?.hrvToday != null;
-  // Fix BUG 1 — max(last_sync_at) entre as conexões ativas. Quando existe,
-  // significa que primeira sync já completou (mesmo que vazia). Caso
-  // contrário, ainda estamos esperando o primeiro upload chegar.
-  const lastSyncAt: string | null = (() => {
+    !!data?.sleepLatest ||
+    data?.hrRestingLatest != null ||
+    data?.stepsLatest != null ||
+    data?.hrvLatest != null;
+  // Fix C5/C6 — frescor honesto: prioriza lastDataAt (quando DADO chegou de
+  // fato) e, no fallback, só considera conexões ATIVAS (uma conexão em erro
+  // com tentativa recente mascarava dado velho no max()).
+  const lastActiveSyncAt: string | null = (() => {
     const syncs = (data?.connections ?? [])
+      .filter((c) => c.status === 'active')
       .map((c) => c.last_sync_at)
       .filter((s): s is string => !!s);
     if (syncs.length === 0) return null;
     return syncs.sort((a, b) => (a < b ? 1 : -1))[0];
   })();
-  const isFirstSyncPending = hasAnyConnection && !hasAnyData && !lastSyncAt;
+  const freshnessAt = data?.lastDataAt ?? lastActiveSyncAt;
+  const anySyncAttempt = (data?.connections ?? []).some((c) => !!c.last_sync_at);
+  const isFirstSyncPending = hasAnyConnection && !hasAnyData && !anySyncAttempt;
+
+  // Banner de fonte com problema (fix C4/C8 — visibilidade): hoje esses estados
+  // só aparecem em Perfil→Conexões, onde o aluno não vai. Prioridade:
+  // erro (com CTA) > 2º plano desligado > dado velho (>24h).
+  const problemConnections = (data?.connections ?? []).filter(
+    (c) => c.status === 'error' || c.status === 'revoked',
+  );
+  const staleHours = freshnessAt
+    ? Math.floor((Date.now() - new Date(freshnessAt).getTime()) / 3_600_000)
+    : null;
+  const showStaleBanner = hasAnyData && staleHours != null && staleHours >= 24;
 
   // Estado vazio: zero conexões
   if (!isLoading && !hasAnyConnection) {
@@ -193,14 +246,23 @@ export default function HealthScreen() {
   // alunos sem histórico): cai pro dashboard normal abaixo — HealthMetricCard
   // renderiza "–" graciosamente quando value é null.
 
-  // Estado normal
-  const sleepDur = data?.sleepYesterday?.duration_minutes;
-  const sleepEff = data?.sleepYesterday?.efficiency_pct;
-  const hrToday = data?.hrRestingToday ?? null;
+  // Estado normal — registros mais recentes + rótulo temporal (fix C7).
+  const sleepDur = data?.sleepLatest?.duration_minutes;
+  const sleepEff = data?.sleepLatest?.efficiency_pct;
+  const hrToday = data?.hrRestingLatest?.bpm ?? null;
   const hrBaseline = data?.hrBaseline30d ?? null;
-  const steps = data?.stepsToday ?? null;
-  const hrv = data?.hrvToday != null ? Math.round(Number(data.hrvToday)) : null;
+  const steps = data?.stepsLatest?.steps ?? null;
+  const hrv = data?.hrvLatest != null ? Math.round(Number(data.hrvLatest.value_ms)) : null;
   const hrvBase = data?.hrvBaseline30d ?? null;
+  // Sono: registrado sob a data da noite — hoje OU ontem significam "última
+  // noite"; mais velho que isso ganha a data explícita.
+  const sleepDay = (() => {
+    const l = dayLabel(data?.sleepLatest?.date);
+    return l === null ? 'ontem' : l;
+  })();
+  const hrDay = dayLabel(data?.hrRestingLatest?.date);
+  const stepsDay = dayLabel(data?.stepsLatest?.date);
+  const hrvDay = dayLabel(data?.hrvLatest?.date);
   // Rótulo da métrica (SDNN no iOS / RMSSD no Android) — não são comparáveis.
   const hrvLabelSuffix = data?.hrvMetric ? ` ${hrvMetricLabel(data.hrvMetric)}` : '';
 
@@ -227,10 +289,49 @@ export default function HealthScreen() {
           <Text style={styles.headerTitle}>Sua saúde</Text>
           {(refreshing || isSyncing) ? (
             <Text style={styles.headerSync}>Atualizando…</Text>
-          ) : lastSyncAt ? (
-            <Text style={styles.headerSync}>Atualizado {formatRelativeTime(lastSyncAt)}</Text>
+          ) : freshnessAt ? (
+            <Text style={styles.headerSync}>Dados de {formatRelativeTime(freshnessAt)}</Text>
           ) : null}
         </View>
+
+        {/* Estado das fontes (fix C3/C4): erro com CTA > 2º plano off > dado velho */}
+        {problemConnections.length > 0 ? (
+          <Pressable
+            onPress={() => router.push('/profile/connections')}
+            accessibilityRole="button"
+            accessibilityLabel="Fonte de saúde com problema — abrir conexões"
+            style={styles.alertCard}
+          >
+            <AlertTriangle size={16} color="#B45309" strokeWidth={2.2} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.alertTitle}>
+                {problemConnections
+                  .map((c) => SOURCE_LABEL[c.source] ?? c.source)
+                  .join(' e ')}{' '}
+                com problema na sincronização
+              </Text>
+              <Text style={styles.alertBody}>Toque para verificar e reconectar.</Text>
+            </View>
+          </Pressable>
+        ) : bgRefreshOff ? (
+          <View style={styles.alertCard}>
+            <AlertTriangle size={16} color="#B45309" strokeWidth={2.2} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.alertTitle}>Atualização em 2º plano desativada</Text>
+              <Text style={styles.alertBody}>
+                Seus dados só atualizam com o app aberto. Ative em Ajustes → Geral → Atualização em 2º Plano.
+              </Text>
+            </View>
+          </View>
+        ) : showStaleBanner ? (
+          <View style={styles.alertCard}>
+            <AlertTriangle size={16} color="#B45309" strokeWidth={2.2} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.alertTitle}>Sem dados novos {formatRelativeTime(freshnessAt)}</Text>
+              <Text style={styles.alertBody}>Puxe para atualizar. Se persistir, verifique as permissões em Conexões.</Text>
+            </View>
+          </View>
+        ) : null}
 
         {/* Fase 14d — Insights heurísticos no topo (até 3 por sessão) */}
         <InsightsCard insights={insights} />
@@ -239,7 +340,7 @@ export default function HealthScreen() {
           <View style={styles.gridRow}>
             <HealthMetricCard
               icon={Moon}
-              label="Sono · ontem"
+              label={`Sono · ${sleepDay}`}
               value={formatDurationHM(sleepDur ?? null) ?? null}
               sub={sleepEff != null ? `${sleepEff}% eficiência` : null}
               color="#6366F1"
@@ -248,7 +349,7 @@ export default function HealthScreen() {
             />
             <HealthMetricCard
               icon={Heart}
-              label="HR repouso"
+              label={`HR repouso${hrDay ? ` · ${hrDay}` : ''}`}
               value={hrToday}
               unit="bpm"
               sub={hrBaseline != null ? `Média 30d: ${hrBaseline}` : null}
@@ -261,7 +362,7 @@ export default function HealthScreen() {
           <View style={styles.gridRow}>
             <HealthMetricCard
               icon={Footprints}
-              label="Passos hoje"
+              label={stepsDay ? `Passos · ${stepsDay}` : 'Passos hoje'}
               value={steps != null ? steps.toLocaleString('pt-BR') : null}
               sub={stepsProgress != null ? `${stepsProgress}% da meta 8k` : null}
               color="#22C55E"
@@ -270,7 +371,7 @@ export default function HealthScreen() {
             />
             <HealthMetricCard
               icon={Zap}
-              label={`HRV${hrvLabelSuffix}`}
+              label={`HRV${hrvLabelSuffix}${hrvDay ? ` · ${hrvDay}` : ''}`}
               value={hrv}
               unit="ms"
               sub={hrvBase != null ? `Baseline: ${hrvBase}` : 'Sem Apple Watch'}
@@ -344,6 +445,26 @@ function createStyles(c: V2Palette) {
     fontSize: 12,
     color: c.text.tertiary,
     marginTop: 6,
+  },
+  alertCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  alertTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: c.text.primary,
+  },
+  alertBody: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: c.text.secondary,
+    marginTop: 2,
   },
   partialNote: {
     fontSize: 11,

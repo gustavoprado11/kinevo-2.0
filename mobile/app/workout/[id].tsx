@@ -1194,8 +1194,8 @@ export default function WorkoutPlayerScreen() {
                 <PreWorkoutReadinessSheet
                     visible={readinessSheetVisible}
                     readiness={readinessData}
-                    hrToday={healthDashboard?.hrRestingToday}
-                    hrv={healthDashboard?.hrvToday}
+                    hrToday={healthDashboard?.hrRestingLatest?.bpm}
+                    hrv={healthDashboard?.hrvLatest?.value_ms}
                     onProceed={handleReadinessProceed}
                     onReschedule={handleReadinessReschedule}
                     onDismiss={handleReadinessProceed}

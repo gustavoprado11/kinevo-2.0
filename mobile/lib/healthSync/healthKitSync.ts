@@ -321,7 +321,13 @@ export async function syncHealthKit(
       counts.hrv += 1;
     }
   } catch (e: any) {
+    // Fix item 7 (analise-saude-aluno-2026-07-07): antes a exceção do HRV era
+    // engolida sem tocar lastError → uma falha REAL de query ficava invisível e
+    // a conexão seguia 'active'. Sem Apple Watch o HealthKit retorna VAZIO (não
+    // lança), então chegar aqui é erro genuíno — registra como as outras
+    // categorias (self-healing: limpa no próximo sync com sucesso).
     if (__DEV__) console.warn('[syncHealthKit] hrv failed:', e?.message);
+    lastError = e?.message ?? lastError;
   }
 
   // Não passa granted_categories aqui — preserva valor anterior persistido

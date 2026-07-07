@@ -536,6 +536,21 @@ function GlobalOverlays() {
                 if (__DEV__) console.warn(`[GlobalOverlays] Health sync task register failed: ${e?.message}`);
             }
         })();
+        // Fix C2 (parcial, analise-saude-aluno-2026-07-07) — one-shot de sync no
+        // cold-start: antes, quem não abria a aba Saúde ficava refém do background
+        // fetch de 12h. Atrasado p/ não competir com o boot; sem aluno/permissão o
+        // sync é no-op e o backoff do task é respeitado (runIncrementalSync).
+        const coldStartSync = setTimeout(() => {
+            (async () => {
+                try {
+                    const { runIncrementalSync } = require('../lib/healthSyncTask');
+                    await runIncrementalSync();
+                } catch (e: any) {
+                    if (__DEV__) console.warn(`[GlobalOverlays] cold-start health sync failed: ${e?.message}`);
+                }
+            })();
+        }, 10_000);
+        return () => clearTimeout(coldStartSync);
     }, []);
 
     // A4 — Drena a fila offline de set_logs no boot e quando a conexão volta.
