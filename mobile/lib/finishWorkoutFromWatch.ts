@@ -183,20 +183,38 @@ export async function finishWorkoutFromWatch(
   if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 3: Student ${student.id}`);
 
   // 4. Workout metadata
-  const { data: workout, error: workoutError }: { data: any; error: any } = await supabase
-    .from('assigned_workouts' as any)
-    .select('assigned_program_id, name')
-    .eq('id', workoutId)
-    .single();
+  let workout: { assigned_program_id: string | null; name: string };
+  {
+    const { data, error: workoutError }: { data: any; error: any } = await supabase
+      .from('assigned_workouts' as any)
+      .select('assigned_program_id, name')
+      .eq('id', workoutId)
+      .single();
 
-  if (workoutError) {
-    console.error('[finishWorkoutFromWatch] Step 4 ERROR (queuing for retry):', workoutError?.message, workoutError?.details);
-    await savePendingWorkout(payload);
-    return 'pending';
-  }
-  if (!workout) {
-    if (__DEV__) console.error('[finishWorkoutFromWatch] Step 4 FAILED: Workout not found (permanent)');
-    return null;
+    if (workoutError) {
+      if (workoutError.code === 'PGRST116') {
+        // R15: treino DELETADO da prescrição (pós-227 a sessão sobrevive com
+        // FK NULL + snapshots). `.single()` sem linhas NÃO é transiente —
+        // re-enfileirar envenenava a fila (retry infinito, sem TTL). Com o
+        // sessionId canônico dá para completar a sessão mesmo assim.
+        if (payload.sessionId) {
+          console.warn('[finishWorkoutFromWatch] Step 4: workout deleted — proceeding via canonical session id');
+          workout = { assigned_program_id: null, name: 'Treino' };
+        } else {
+          console.error('[finishWorkoutFromWatch] Step 4 FAILED: workout deleted and no canonical session id (permanent)');
+          return null;
+        }
+      } else {
+        console.error('[finishWorkoutFromWatch] Step 4 ERROR (queuing for retry):', workoutError?.message, workoutError?.details);
+        await savePendingWorkout(payload);
+        return 'pending';
+      }
+    } else if (!data) {
+      if (__DEV__) console.error('[finishWorkoutFromWatch] Step 4 FAILED: Workout not found (permanent)');
+      return null;
+    } else {
+      workout = data;
+    }
   }
 
   if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 4: Workout "${workout.name}"`);
@@ -419,11 +437,37 @@ export async function finishWorkoutFromWatch(
       const completedCount = setLogs.filter(s => s.is_completed).length;
       if (__DEV__) console.log(`[finishWorkoutFromWatch] Step 7b: Upserting ${setLogs.length} set_logs (${completedCount} completed, ${setLogs.length - completedCount} incomplete)`);
 
-      const { error: logsError } = await supabase
+      let { error: logsError } = await supabase
         .from('set_logs' as any)
         .upsert(setLogs, {
           onConflict: 'workout_session_id,assigned_workout_item_id,set_number',
         });
+
+      // R15: item deletado da prescrição → FK 23503 no upsert. Re-enfileirar
+      // envenenava a fila (retry infinito). Filtra as séries do(s) item(ns)
+      // mortos e tenta 1x com o resto — preserva o máximo do treino (semântica
+      // da 227). Só filtra se a checagem de vivos não errou (senão mantém o
+      // erro original e cai no caminho de retry transiente).
+      if (logsError && (logsError as { code?: string }).code === '23503') {
+        const itemIds = Array.from(new Set(setLogs.map((l) => l.assigned_workout_item_id)));
+        const { data: aliveRows, error: aliveError }: { data: any; error: any } = await supabase
+          .from('assigned_workout_items' as any)
+          .select('id')
+          .in('id', itemIds);
+        if (!aliveError) {
+          const alive = new Set((aliveRows ?? []).map((r: any) => r.id));
+          const filtered = setLogs.filter((l) => alive.has(l.assigned_workout_item_id));
+          console.warn(`[finishWorkoutFromWatch] Step 7b: dropping ${setLogs.length - filtered.length}/${setLogs.length} set(s) of deleted item(s)`);
+          if (filtered.length === 0) {
+            logsError = null; // nada válido a gravar — sessão completa com o que houver
+          } else {
+            const retry = await supabase
+              .from('set_logs' as any)
+              .upsert(filtered, { onConflict: 'workout_session_id,assigned_workout_item_id,set_number' });
+            logsError = retry.error;
+          }
+        }
+      }
 
       if (logsError) {
         // A3: NÃO engolir — a sessão já está completed neste ponto; sem isto o

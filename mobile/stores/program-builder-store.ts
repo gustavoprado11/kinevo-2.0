@@ -7,9 +7,11 @@ import type {
     WorkoutSet,
 } from '@kinevo/shared/types/prescription';
 import type { BuilderProgramData } from '@kinevo/shared/lib/prescription/builder-mapper';
-import { collapseExpandedScheme } from '@kinevo/shared/lib/prescription/set-scheme';
+import { collapseExpandedScheme, summarizeSetScheme, summarizeWithRounds } from '@kinevo/shared/lib/prescription/set-scheme';
+import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets';
 import { extractFrequencyFromName } from '@kinevo/shared/lib/prescription/extract-frequency';
 import {
+    normalizeSupersetsAfterChange,
     removeItemDissolvingSuperset,
     sortItemsHierarchically,
 } from '@/components/trainer/program-builder/item-helpers';
@@ -377,6 +379,10 @@ interface ProgramBuilderState {
     /** Desfaz todos os supersets do programa (zera superset_group de todos os itens).
      *  Usado quando o snapshot de IA não suporta supersets adicionados manualmente. */
     clearSupersets: () => void;
+    /** Remove prescrição avançada (set_scheme/method/rounds) de TODOS os itens,
+     *  re-derivando os agregados — usado pelo fluxo de revisão da IA, cujo
+     *  snapshot não transporta métodos (R9). */
+    clearAllAdvancedSchemes: () => void;
 
     // Persistence
     setSaving: (saving: boolean) => void;
@@ -957,12 +963,13 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                         originalItemIds.push(it.id);
                     }
                 }
-                // Mirror the web edit flow: a row with `scheduled_start_date`
-                // is a future/scheduled program; otherwise it activates
-                // immediately and the start lives in `started_at`. The single
-                // editable start date prefers the field that matches the mode.
+                // R2 (rodada 2, paridade com o fix web): deriva do STATUS. A
+                // ativação (cron/núcleo) não limpa scheduled_start_date, então
+                // um programa agendado→ativo ainda tem a coluna preenchida —
+                // derivar dela regredia o programa para 'scheduled' no save
+                // (some do app do aluno até o cron do dia seguinte).
                 const assignment_type: 'immediate' | 'scheduled' =
-                    program.scheduled_start_date ? 'scheduled' : 'immediate';
+                    program.status === 'scheduled' ? 'scheduled' : 'immediate';
                 const rawStart = program.started_at || program.scheduled_start_date || null;
                 const start_date = rawStart ? rawStart.split('T')[0] : null;
                 const original_started_at = program.started_at ?? null; // M11
@@ -1379,7 +1386,11 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                                 ...w,
                                 // Superset: dissolve (filhos viram raízes) em vez de
                                 // órfã-los — o save deletaria os filhos via CASCADE.
-                                items: removeItemDissolvingSuperset(w.items, itemId),
+                                // R22: remover um FILHO re-deriva o rest do pai
+                                // (último filho) e dissolve superset com ≤1 filho.
+                                items: normalizeSupersetsAfterChange(
+                                    removeItemDissolvingSuperset(w.items, itemId),
+                                ),
                             }
                             : w
                     ),
@@ -1408,6 +1419,40 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                             .map((it, i) => ({ ...it, order_index: i }));
                         return { ...w, items: flattened };
                     }),
+                },
+                isDirty: true,
+            })),
+
+            clearAllAdvancedSchemes: () => set((state) => ({
+                draft: {
+                    ...state.draft,
+                    workouts: state.draft.workouts.map(w => ({
+                        ...w,
+                        items: w.items.map(it => {
+                            if (!it.set_scheme || it.set_scheme.length === 0) {
+                                if (!it.method_key && (it.rounds ?? 1) === 1) return it;
+                                return { ...it, method_key: null, rounds: 1 };
+                            }
+                            // Mesma lógica do "Modo simples" do card (onExitAdvanced):
+                            // agregados re-derivados do scheme antes de descartá-lo.
+                            const compound = isCompoundMethod(it.method_key ?? null);
+                            const effectiveRounds = compound
+                                ? Math.max(1, Math.min(20, Math.floor(it.rounds ?? 1)))
+                                : 1;
+                            const summary = effectiveRounds > 1
+                                ? summarizeWithRounds(it.set_scheme, effectiveRounds)
+                                : summarizeSetScheme(it.set_scheme);
+                            return {
+                                ...it,
+                                set_scheme: null,
+                                method_key: null,
+                                rounds: 1,
+                                sets: summary.sets,
+                                reps: summary.reps,
+                                rest_seconds: summary.rest_seconds,
+                            };
+                        }),
+                    })),
                 },
                 isDirty: true,
             })),
@@ -1491,7 +1536,9 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                         ...state.draft,
                         workouts: state.draft.workouts.map(w =>
                             w.id === workoutId
-                                ? { ...w, items: ordered.map((item, i) => ({ ...item, order_index: i })) }
+                                // R23: reordenar muda quem é o último filho — o
+                                // container re-espelha o rest do novo último.
+                                ? { ...w, items: normalizeSupersetsAfterChange(ordered.map((item, i) => ({ ...item, order_index: i }))) }
                                 : w
                         ),
                     },

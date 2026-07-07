@@ -75,6 +75,7 @@ async function insertSetSchemeRows(
 export type SaveAndAssignResult =
     | { ok: true }
     | { ok: false; reason: "SUPERSET_BLOCKED" }
+    | { ok: false; reason: "ADVANCED_SCHEME_BLOCKED" }
     | { ok: false; reason: "ERROR"; message: string };
 
 export function useProgramBuilder() {
@@ -103,14 +104,20 @@ export function useProgramBuilder() {
         store.setSaving(true);
 
         try {
-            // 1. Create program_templates
+            // 1. Create program_templates.
+            // R28: nasce SEMPRE is_template=false (invisível na biblioteca) e o
+            // flag só vira true no fim, com a árvore completa — falha de rede
+            // no meio deixava um modelo TRUNCADO visível na biblioteca (e cada
+            // retry criava outro). O save é N+1 sem transação (pendência
+            // conhecida); isto contém o efeito visível da falha parcial.
+            const wantsLibraryFlag = !draft.studentId;
             const { data: newProgram, error: createError } = await supabase
                 .from('program_templates')
                 .insert({
                     name: draft.name.trim(),
                     description: draft.description.trim() || null,
                     duration_weeks: draft.duration_weeks,
-                    is_template: !draft.studentId,
+                    is_template: false,
                 } as any)
                 .select('id')
                 .single();
@@ -208,6 +215,15 @@ export function useProgramBuilder() {
                 }
             }
 
+            // R28: árvore completa — só agora o modelo aparece na biblioteca.
+            if (wantsLibraryFlag) {
+                const { error: flagError } = await supabase
+                    .from('program_templates')
+                    .update({ is_template: true } as any)
+                    .eq('id', programId);
+                if (flagError) throw flagError;
+            }
+
             return programId;
         } finally {
             store.setSaving(false);
@@ -221,6 +237,22 @@ export function useProgramBuilder() {
 
         // ── AI path: round-trip the snapshot to /api/programs/assign with isEdited=true ──
         if (draft.originatedFromAi && draft.generationId) {
+            // R9: o snapshot de IA (GeneratedWorkoutItem) não transporta
+            // set_scheme/method_key/rounds — salvar descartaria a prescrição
+            // avançada em silêncio (o aluno receberia só os agregados). Mesmo
+            // contrato do bloqueio de superset: falha explícita + auto-fix.
+            const hasAdvancedScheme = draft.workouts.some((w) =>
+                w.items.some(
+                    (it) =>
+                        (it.set_scheme && it.set_scheme.length > 0) ||
+                        (it.method_key != null && it.method_key !== "standard") ||
+                        (it.rounds ?? 1) > 1,
+                ),
+            );
+            if (hasAdvancedScheme) {
+                return { ok: false, reason: "ADVANCED_SCHEME_BLOCKED" };
+            }
+
             // Convert the mobile Workout[] into the structural ProgramDraftLike
             // shape the shared serializer expects.
             const draftLike: ProgramDraftLike = {
@@ -307,22 +339,31 @@ export function useProgramBuilder() {
                 pendingTemplateRef.current = { programId, signature };
             }
 
-            const { data: result, error } = await supabase.functions.invoke("assign-program", {
-                body: {
-                    studentId: targetStudentId,
-                    templateId: programId,
-                    startDate: new Date().toISOString(),
-                    isScheduled: false,
-                },
-            });
+            // R29: o finally interno do saveAsTemplate zera isSaving ANTES do
+            // invoke — o botão Salvar ficava ativo durante todo o roundtrip da
+            // Edge Function e um segundo tap disparava um assign concorrente
+            // (programa "concluído" fantasma + push duplicado). Cobre o invoke.
+            store.setSaving(true);
+            try {
+                const { data: result, error } = await supabase.functions.invoke("assign-program", {
+                    body: {
+                        studentId: targetStudentId,
+                        templateId: programId,
+                        startDate: new Date().toISOString(),
+                        isScheduled: false,
+                    },
+                });
 
-            if (error) throw new Error(error.message || "Falha ao atribuir programa");
-            if (result?.error) throw new Error(result.error);
+                if (error) throw new Error(error.message || "Falha ao atribuir programa");
+                if (result?.error) throw new Error(result.error);
 
-            pendingTemplateRef.current = null; // sucesso → não reaproveitar
-            toast.success("Programa criado!", `"${draft.name}" foi atribuído ao aluno.`);
-            store.reset();
-            return { ok: true };
+                pendingTemplateRef.current = null; // sucesso → não reaproveitar
+                toast.success("Programa criado!", `"${draft.name}" foi atribuído ao aluno.`);
+                store.reset();
+                return { ok: true };
+            } finally {
+                store.setSaving(false);
+            }
         } catch (err) {
             // Mantém pendingTemplateRef: o próximo retry (mesmo draft) reaproveita
             // a árvore criada em vez de gerar outra órfã. Editar o draft muda a
@@ -380,13 +421,20 @@ export function useProgramBuilder() {
             // 1. Update program-level metadata. Start date / status mirror the
             //    web edit flow: an immediate program writes `started_at` + sets
             //    status active; a scheduled one writes `scheduled_start_date` +
-            //    status scheduled. `expires_at` is intentionally not touched
-            //    here (it's managed by assign/extend/cron). Duration drives the
-            //    end date shown in the UI.
+            //    status scheduled.
+            // R21 (fix M1 no mobile, convenção 229/230): estender/encurtar a
+            // duração move a expiração junto (started + semanas; duração ≤0 ou
+            // sem started = nunca expira). Duração 0 normaliza para NULL.
+            const normalizedDuration =
+                draft.duration_weeks && draft.duration_weeks > 0 ? draft.duration_weeks : null;
+            const computeExpires = (startedAtIso: string | null): string | null =>
+                startedAtIso && normalizedDuration
+                    ? new Date(new Date(startedAtIso).getTime() + normalizedDuration * 7 * 24 * 60 * 60 * 1000).toISOString()
+                    : null;
             const programUpdate: Record<string, unknown> = {
                 name: draft.name.trim(),
                 description: draft.description.trim() || null,
-                duration_weeks: draft.duration_weeks,
+                duration_weeks: normalizedDuration,
             };
             if (draft.start_date && draft.assignment_type) {
                 if (draft.assignment_type === "immediate") {
@@ -395,14 +443,21 @@ export function useProgramBuilder() {
                     // deslocava current_week a cada edição do programa.
                     const sameDay = !!draft.original_started_at
                         && draft.original_started_at.split("T")[0] === draft.start_date;
-                    programUpdate.started_at = sameDay ? draft.original_started_at : draft.start_date;
+                    const startedAtValue = sameDay ? draft.original_started_at! : draft.start_date;
+                    programUpdate.started_at = startedAtValue;
                     programUpdate.scheduled_start_date = null;
                     programUpdate.status = "active";
+                    programUpdate.expires_at = computeExpires(startedAtValue);
                 } else {
                     programUpdate.scheduled_start_date = draft.start_date;
                     programUpdate.started_at = null;
                     programUpdate.status = "scheduled";
+                    programUpdate.expires_at = null;
                 }
+            } else if (draft.original_started_at) {
+                // Sem bloco de data (edição só de metadados): recalcula a
+                // expiração a partir do started_at vigente.
+                programUpdate.expires_at = computeExpires(draft.original_started_at);
             }
             const { error: updateProgramError } = await supabase
                 .from("assigned_programs")

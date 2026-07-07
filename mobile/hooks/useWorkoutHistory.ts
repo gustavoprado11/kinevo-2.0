@@ -207,6 +207,43 @@ export function useWorkoutHistory() {
                     return builtItem;
                 });
 
+                // 227: exercício removido da prescrição deixa os set_logs com
+                // FK NULL (SET NULL). Sem isto, as séries executadas sumiam da
+                // visão expandida (embora contassem no volume/PRs). Agrupa os
+                // logs órfãos por exercício e anexa como itens no fim.
+                const knownItemIds = new Set(rawItems.map((i: any) => i.id));
+                const orphanByExercise = new Map<string, { name: string; logs: any[] }>();
+                session.logs?.forEach((log: any) => {
+                    if (!log.is_completed) return;
+                    const itemId = log.assigned_workout_item_id;
+                    if (itemId && knownItemIds.has(itemId)) return;
+                    const key = log.executed_exercise_id || log.exercise_id || log.exercise_name || 'unknown';
+                    const name =
+                        log.executed_exercise?.name ||
+                        log.legacy_exercise?.name ||
+                        log.exercise_name ||
+                        'Exercício removido';
+                    if (!orphanByExercise.has(key)) orphanByExercise.set(key, { name, logs: [] });
+                    orphanByExercise.get(key)!.logs.push(log);
+                });
+                let orphanIdx = topLevel.length;
+                orphanByExercise.forEach(({ name, logs }, key) => {
+                    workoutItems.push({
+                        id: `orphan-${session.id}-${key}`,
+                        itemType: 'exercise',
+                        orderIndex: orphanIdx++,
+                        exerciseName: name,
+                        parentItemId: null,
+                        setLogs: logs.map((log: any) => ({
+                            id: log.id,
+                            weight: Number(log.weight) || 0,
+                            reps: Number(log.reps_completed) || 0,
+                            completed: !!log.is_completed,
+                        })),
+                        cardioResult: null,
+                    });
+                });
+
                 totalVol += sessionVol;
                 totalSecs += session.duration_seconds ?? 0;
 

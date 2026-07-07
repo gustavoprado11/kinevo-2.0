@@ -77,7 +77,22 @@ export default function ProgramBuilderScreen() {
     const addWarmup = useProgramBuilderStore((s) => s.addWarmup);
     const addCardio = useProgramBuilderStore((s) => s.addCardio);
     const clearSupersets = useProgramBuilderStore((s) => s.clearSupersets);
+    const clearAllAdvancedSchemes = useProgramBuilderStore((s) => s.clearAllAdvancedSchemes);
     const [setSchemeEditingItemId, setSetSchemeEditingItemId] = useState<string | null>(null);
+    // R9: no fluxo de revisão da IA o snapshot não transporta set_scheme/método,
+    // então o editor avançado seria uma armadilha (edição descartada no save).
+    // Bloqueia na entrada com explicação; o save tem cinto-e-suspensório.
+    const openSchemeEditor = useCallback((itemId: string) => {
+        const d = useProgramBuilderStore.getState().draft;
+        if (d.originatedFromAi && d.generationId) {
+            Alert.alert(
+                "Métodos avançados não suportados",
+                "A revisão de programa gerado por IA ainda não salva métodos/séries por fase (drop-set, pirâmide…). Salve o programa primeiro e edite-o depois pelo perfil do aluno, ou salve como programa novo.",
+            );
+            return;
+        }
+        setSetSchemeEditingItemId(itemId);
+    }, []);
     const [quickEditingItemId, setQuickEditingItemId] = useState<string | null>(null);
     const [swapTargetItemId, setSwapTargetItemId] = useState<string | null>(null);
     const [nameFocused, setNameFocused] = useState(false);
@@ -270,6 +285,43 @@ export default function ProgramBuilderScreen() {
                     );
                     return;
                 }
+                if (result.reason === "ADVANCED_SCHEME_BLOCKED") {
+                    // R9: snapshot de IA não transporta set_scheme/método —
+                    // sem este bloqueio o save descartava a prescrição
+                    // avançada em silêncio (aluno recebia só os agregados).
+                    Alert.alert(
+                        "Métodos avançados não suportados",
+                        "A revisão de programa gerado por IA ainda não salva métodos/séries por fase (drop-set, pirâmide…). Salve como programa novo para manter os métodos (sem vincular à geração), ou remova os métodos e mantenha o fluxo de IA.",
+                        [
+                            { text: "Cancelar", style: "cancel" },
+                            {
+                                text: "Salvar como programa novo",
+                                style: "default",
+                                onPress: async () => {
+                                    const r2 = await saveAsNewProgramDiscardingAi(params.studentId!);
+                                    if (r2.ok) {
+                                        removeProgramDraft(studentDraftKey(params.studentId!));
+                                        router.back();
+                                    }
+                                },
+                            },
+                            {
+                                text: "Remover métodos",
+                                style: "destructive",
+                                onPress: async () => {
+                                    clearAllAdvancedSchemes();
+                                    const r2 = await saveAndAssign(params.studentId!);
+                                    if (r2.ok) {
+                                        removeProgramDraft(studentDraftKey(params.studentId!));
+                                        reset();
+                                        router.back();
+                                    }
+                                },
+                            },
+                        ],
+                    );
+                    return;
+                }
                 // ERROR — toast already shown by the hook.
             } else {
                 await saveAsTemplate();
@@ -285,7 +337,7 @@ export default function ProgramBuilderScreen() {
                 `${message}\n\nTente novamente. Se persistir, contate o suporte.`
             );
         }
-    }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router, isEditMode, saveAssignedProgramFull, isEditTemplateMode, saveTemplateFull, clearSupersets]);
+    }, [draft, params.studentId, saveAndAssign, saveAsNewProgramDiscardingAi, saveAsTemplate, reset, router, isEditMode, saveAssignedProgramFull, isEditTemplateMode, saveTemplateFull, clearSupersets, clearAllAdvancedSchemes]);
 
     const handleAIGenerated = useCallback(
         (result: AgentResult) => {
@@ -474,7 +526,7 @@ export default function ProgramBuilderScreen() {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
                     duplicateItem(currentWorkout.id, item.id);
                 }}
-                onEditSets={() => setSetSchemeEditingItemId(item.id)}
+                onEditSets={() => openSchemeEditor(item.id)}
                 onQuickEdit={() => setQuickEditingItemId(item.id)}
                 onEditNote={() => setEditingNoteItemId(item.id)}
                 onEditWarmup={() => setEditingWarmupItemId(item.id)}
@@ -484,11 +536,29 @@ export default function ProgramBuilderScreen() {
                         exerciseName: item.exercise_name,
                         onChoose: (choice) => {
                             if (choice === 'quick_edit') {
-                                setQuickEditingItemId(item.id);
+                                // R10: item em modo avançado edita pelo editor de
+                                // séries (mesmo roteamento do tap no card) — o
+                                // QuickEdit gravaria agregados que o save recomputa
+                                // do scheme e descarta em silêncio.
+                                if (item.set_scheme && item.set_scheme.length > 0) {
+                                    openSchemeEditor(item.id);
+                                } else {
+                                    setQuickEditingItemId(item.id);
+                                }
                             } else if (choice === 'swap_exercise') {
+                                // R30: container de superset não tem exercício próprio.
+                                if (item.item_type === 'superset') {
+                                    Alert.alert('Superset', 'O bloco não tem exercício próprio — troque os exercícios de dentro dele.');
+                                    return;
+                                }
                                 setSwapTargetItemId(item.id);
                             } else if (choice === 'edit_sets') {
-                                setSetSchemeEditingItemId(item.id);
+                                // R30: scheme em container de superset é lixo gravável.
+                                if (item.item_type === 'superset') {
+                                    Alert.alert('Superset', 'Métodos avançados são configurados nos exercícios de dentro do bloco.');
+                                    return;
+                                }
+                                openSchemeEditor(item.id);
                             } else if (choice === 'duplicate') {
                                 duplicateItem(currentWorkout.id, item.id);
                                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => { });
@@ -730,43 +800,41 @@ export default function ProgramBuilderScreen() {
                     )}
 
                     {/* Exercise Picker (phone only) */}
-                    {!isTablet && (
-                        <ExercisePickerModal
-                            visible={showExercisePicker}
-                            onClose={() => setShowExercisePicker(false)}
-                            onSelect={handleExerciseSelected}
-                        />
-                    )}
+                    {/* R11: sem gate de tablet — no iPad estes sheets eram
+                        estado sem UI (botões mortos); mesmo fix do swap picker. */}
+                    <ExercisePickerModal
+                        visible={showExercisePicker}
+                        onClose={() => setShowExercisePicker(false)}
+                        onSelect={handleExerciseSelected}
+                    />
 
                     {/* Add Block Sheet — 4 options (exercise/warmup/cardio/note) */}
-                    {!isTablet && (
-                        <AddBlockSheet
-                            visible={showAddBlockSheet}
-                            onClose={() => setShowAddBlockSheet(false)}
-                            onAddExercise={() => {
-                                setShowAddBlockSheet(false);
-                                setShowExercisePicker(true);
-                            }}
-                            onAddWarmup={() => {
-                                if (!currentWorkout) return;
-                                addWarmup(currentWorkout.id);
-                                setShowAddBlockSheet(false);
-                            }}
-                            onAddCardio={() => {
-                                if (!currentWorkout) return;
-                                addCardio(currentWorkout.id);
-                                setShowAddBlockSheet(false);
-                            }}
-                            onAddNote={() => {
-                                if (!currentWorkout) return;
-                                addNote(currentWorkout.id);
-                                setShowAddBlockSheet(false);
-                            }}
-                        />
-                    )}
+                    <AddBlockSheet
+                        visible={showAddBlockSheet}
+                        onClose={() => setShowAddBlockSheet(false)}
+                        onAddExercise={() => {
+                            setShowAddBlockSheet(false);
+                            setShowExercisePicker(true);
+                        }}
+                        onAddWarmup={() => {
+                            if (!currentWorkout) return;
+                            addWarmup(currentWorkout.id);
+                            setShowAddBlockSheet(false);
+                        }}
+                        onAddCardio={() => {
+                            if (!currentWorkout) return;
+                            addCardio(currentWorkout.id);
+                            setShowAddBlockSheet(false);
+                        }}
+                        onAddNote={() => {
+                            if (!currentWorkout) return;
+                            addNote(currentWorkout.id);
+                            setShowAddBlockSheet(false);
+                        }}
+                    />
 
                     {/* Edit Note Sheet */}
-                    {!isTablet && currentWorkout && (() => {
+                    {currentWorkout && (() => {
                         const editingItem = editingNoteItemId
                             ? currentWorkout.items.find((it) => it.id === editingNoteItemId)
                             : null;
@@ -786,7 +854,7 @@ export default function ProgramBuilderScreen() {
                     })()}
 
                     {/* Edit Warmup Sheet */}
-                    {!isTablet && currentWorkout && (() => {
+                    {currentWorkout && (() => {
                         const editingItem = editingWarmupItemId
                             ? currentWorkout.items.find((it) => it.id === editingWarmupItemId)
                             : null;
@@ -823,7 +891,7 @@ export default function ProgramBuilderScreen() {
                     {/* Edit Cardio Sheet — recebe o item_config cru; o sheet
                      *  devolve o config canônico mesclado (preserva protocolo
                      *  intervalado do web, migra o legado mobile). */}
-                    {!isTablet && currentWorkout && (() => {
+                    {currentWorkout && (() => {
                         const editingItem = editingCardioItemId
                             ? currentWorkout.items.find((it) => it.id === editingCardioItemId)
                             : null;
@@ -911,13 +979,28 @@ export default function ProgramBuilderScreen() {
                       }}
                       onClose={() => setQuickEditingItemId(null)}
                       onSave={(next) => {
+                          // R30: container de superset — só o DESCANSO é real
+                          // (rodadas vêm dos filhos; sets/reps no pai são
+                          // ignorados pela execução, e o default reps '0'
+                          // corrompia o pai). Aplica o rest e espelha no
+                          // último filho (a execução usa o rest POR FILHO).
+                          if (quickEditingItem.item_type === 'superset') {
+                              updateItem(currentWorkout.id, quickEditingItem.id, { rest_seconds: next.rest_seconds });
+                              const kids = currentWorkout.items
+                                  .filter(i => i.parent_item_id === quickEditingItem.id)
+                                  .sort((a, b) => a.order_index - b.order_index);
+                              const last = kids[kids.length - 1];
+                              if (last) updateItem(currentWorkout.id, last.id, { rest_seconds: next.rest_seconds });
+                              return;
+                          }
                           updateItem(currentWorkout.id, quickEditingItem.id, next);
                       }}
                       // Filho de superset NÃO oferece edição avançada: o save
                       // nunca persiste scheme de filho (V1) — o editor seria
                       // uma armadilha de edição descartada (classe A2).
-                      onOpenAdvanced={quickEditingItem.parent_item_id ? undefined : () => {
-                          setSetSchemeEditingItemId(quickEditingItem.id);
+                      // R30: container de superset idem (scheme em pai é lixo).
+                      onOpenAdvanced={quickEditingItem.parent_item_id || quickEditingItem.item_type === 'superset' ? undefined : () => {
+                          openSchemeEditor(quickEditingItem.id);
                       }}
                   />
               )}

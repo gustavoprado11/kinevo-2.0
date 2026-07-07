@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+    normalizeSupersetsAfterChange,
     removeItemDissolvingSuperset,
     sortItemsHierarchically,
 } from '../item-helpers';
@@ -110,5 +111,69 @@ describe('removeItemDissolvingSuperset', () => {
         );
         expect(out.map(i => i.id)).toEqual(['ss', 'child1']);
         expect(out.find(i => i.id === 'child1')?.parent_item_id).toBe('ss');
+    });
+});
+
+// ── normalizeSupersetsAfterChange (R22/R23) ──
+
+interface SupersetTestItem extends TestItem {
+    item_type: string;
+    rest_seconds: number;
+}
+
+const sitem = (
+    id: string,
+    order_index: number,
+    rest_seconds: number,
+    parent_item_id: string | null = null,
+    item_type: string = parent_item_id ? 'exercise' : 'exercise',
+): SupersetTestItem => ({ id, order_index, rest_seconds, parent_item_id, item_type });
+
+const container = (id: string, order_index: number, rest_seconds: number): SupersetTestItem =>
+    ({ id, order_index, rest_seconds, parent_item_id: null, item_type: 'superset' });
+
+describe('normalizeSupersetsAfterChange', () => {
+    it('pai espelha o rest do último filho após reorder (R23)', () => {
+        // B(90) era o último; depois do drag A(0) vira o último → pai = 0,
+        // rótulo "descanso entre rodadas" passa a bater com o timer real.
+        const out = normalizeSupersetsAfterChange([
+            container('ss', 0, 90),
+            sitem('b', 1, 90, 'ss'),
+            sitem('a', 2, 0, 'ss'),
+        ]);
+        expect(out.find(i => i.id === 'ss')?.rest_seconds).toBe(0);
+    });
+
+    it('remover filho re-deriva o pai para o novo último (R22)', () => {
+        // Simula o pós-remoção do último filho B(90): sobra A(0)+C(45),
+        // C é o último → pai = 45.
+        const out = normalizeSupersetsAfterChange([
+            container('ss', 0, 90),
+            sitem('a', 1, 0, 'ss'),
+            sitem('c', 2, 45, 'ss'),
+        ]);
+        expect(out.find(i => i.id === 'ss')?.rest_seconds).toBe(45);
+    });
+
+    it('superset com 1 filho é dissolvido; sobrevivente com rest 0 herda o do pai', () => {
+        const out = normalizeSupersetsAfterChange([
+            container('ss', 0, 90),
+            sitem('a', 1, 0, 'ss'),
+            sitem('root', 2, 60),
+        ]);
+        expect(out.find(i => i.id === 'ss')).toBeUndefined();
+        const a = out.find(i => i.id === 'a');
+        expect(a?.parent_item_id).toBeNull();
+        expect(a?.rest_seconds).toBe(90);
+        expect(out.map(i => i.order_index)).toEqual([0, 1]);
+    });
+
+    it('lista sem supersets passa intocada (só reindex)', () => {
+        const out = normalizeSupersetsAfterChange([
+            sitem('a', 0, 60),
+            sitem('b', 1, 90),
+        ]);
+        expect(out.map(i => i.id)).toEqual(['a', 'b']);
+        expect(out.find(i => i.id === 'b')?.rest_seconds).toBe(90);
     });
 });
