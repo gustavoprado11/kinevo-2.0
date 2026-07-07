@@ -37,7 +37,7 @@ export function ActionPreview({ result, onConfirmationResolved }: ActionPreviewP
         <div className="py-2">
             {confirmation && (
                 <>
-                    <p className="px-[18px] pb-1.5 pt-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#8A8A8E]">
+                    <p className="px-[18px] pb-1.5 pt-2 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#8A8A8E] dark:text-muted-foreground/80">
                         Ação entendida
                     </p>
                     <ToolConfirmationCard
@@ -50,10 +50,10 @@ export function ActionPreview({ result, onConfirmationResolved }: ActionPreviewP
 
             {text && (
                 <div className="flex items-start gap-2.5 px-[18px] py-3">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#EDE9FE] text-[#7C3AED]">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#EDE9FE] dark:bg-violet-500/15 text-[#7C3AED] dark:text-violet-400">
                         <Sparkles className="h-3 w-3" strokeWidth={2.5} />
                     </span>
-                    <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#1D1D1F]">
+                    <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#1D1D1F] dark:text-foreground">
                         {text}
                     </p>
                 </div>
@@ -64,7 +64,7 @@ export function ActionPreview({ result, onConfirmationResolved }: ActionPreviewP
                     {executed.map((e, i) => (
                         <span
                             key={`${e.toolName}-${i}`}
-                            className="inline-flex items-center gap-1.5 rounded-md bg-[#DCFCE7] px-2 py-0.5 text-[11px] font-medium text-[#15803D]"
+                            className="inline-flex items-center gap-1.5 rounded-md bg-[#DCFCE7] dark:bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-[#15803D] dark:text-emerald-400"
                         >
                             <CheckCircle2 className="h-3 w-3" strokeWidth={2.5} />
                             {executedText(e.toolName, e.result)}
