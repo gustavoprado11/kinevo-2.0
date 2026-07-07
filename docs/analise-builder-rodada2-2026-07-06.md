@@ -414,7 +414,9 @@ exercício ANTIGO (Supino→Agachamento continua "Peito"). Afeta `get-program-mu
 
 - **(achados do QA, 06/jul)**: web — o botão "Salvar Modelo" do editor de atribuído só
   renderiza em viewport `min-[1700px]` sem fallback (`edit-assigned-program-client.tsx:849`):
-  a feature é INALCANÇÁVEL em telas ≤1440px CSS (a maioria dos laptops). Mobile — filhos de
+  a feature é INALCANÇÁVEL em telas ≤1440px CSS (a maioria dos laptops). **CORRIGIDO
+  (06/jul)**: abaixo de 1700px o botão vira ícone-apenas (BookmarkPlus, ~38px, com tooltip),
+  mesmo padrão do "Gerar com IA" do builder de criação; rótulo volta em ≥1700px. Mobile — filhos de
   superset não têm NENHUMA affordance de exclusão no builder (Swipeable desabilitado
   `WorkoutItemRow.tsx:597-598` + menu "…" gated `:347`); remover um filho só é possível pelo
   builder web.

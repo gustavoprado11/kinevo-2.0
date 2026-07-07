@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useId, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks } from 'lucide-react'
+import { BookmarkPlus, ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
@@ -846,16 +846,22 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                 Rascunho salvo
                             </span>
                         )}
-                        {/* Terciário: Salvar Modelo — ghost text. Only shown at min-[1700px] since at narrower widths its ~120px would push the primary action button off-screen (2xl alone isn't wide enough — at 1536-1700px the layout still overflows). */}
+                        {/* Terciário: Salvar Modelo — ghost. O rótulo (~120px) só cabe
+                            a partir de min-[1700px]; abaixo disso vira ícone-apenas
+                            (mesmo padrão do "Gerar com IA" no builder de criação) —
+                            escondê-lo inteiro tornava a feature inalcançável em telas
+                            ≤1440px (achado do QA da rodada 2). */}
                         <button
                             onClick={() => {
                                 setTemplateName(name)
                                 setShowTemplateDialog(true)
                             }}
                             disabled={saving}
-                            className="hidden min-[1700px]:inline px-3 py-2 h-9 text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors disabled:opacity-50"
+                            title="Salvar como modelo na biblioteca"
+                            className="flex items-center gap-1.5 px-2 min-[1700px]:px-3 py-2 h-9 text-sm text-k-text-quaternary hover:text-k-text-primary transition-colors disabled:opacity-50"
                         >
-                            Salvar Modelo
+                            <BookmarkPlus className="w-4 h-4" />
+                            <span className="hidden min-[1700px]:inline">Salvar Modelo</span>
                         </button>
 
                         {/* Primário: Salvar Alterações — roxo sólido */}
