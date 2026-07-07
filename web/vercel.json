@@ -39,7 +39,7 @@
     },
     {
       "path": "/api/cron/reconcile-asaas-charges",
-      "schedule": "20 * * * *"
+      "schedule": "20 12 * * *"
     }
   ]
 }
