@@ -32,12 +32,23 @@ export function getQuotaForTier(tier: AiTier): PlanQuota | null {
 }
 
 /**
- * Franquia mensal de CONVERSAS de IA do tier Free (chat do dock). Esgotou → o chat
- * bate o muro (402) e mostra o upsell. As AÇÕES PESADAS (gerar programa, etc.) têm
- * um teste 1× à parte (ai_free_trials), checado no call-site. Contado em
- * `ai_usage_periods` (mês), com clamp atômico via consume_ai_usage.
+ * Franquia mensal de CRÉDITOS de IA do tier Free (o "taste" do chat). Debitada por
+ * PESO de tool como nos pagos (consulta = 1; build de programa = 6+) — por isso a
+ * UI fala em "créditos", nunca em "conversas". Esgotou → o chat bate o muro (402)
+ * e mostra o upsell. As AÇÕES PESADAS confirmáveis têm um teste 1× à parte
+ * (ai_free_trials), checado no call-site. Contado em `ai_usage_periods` (mês),
+ * com clamp atômico via consume_ai_usage (creditLimitForTier).
  */
 export const FREE_MONTHLY_CHAT_LIMIT = 25
+
+/**
+ * Teto de créditos do ciclo p/ o clamp atômico do `consume_ai_usage`: balde do
+ * plano nos pagos; franquia mensal no Free (sem isto o Free ia sem teto e o
+ * `credits_used` podia passar da franquia dentro de um turno).
+ */
+export function creditLimitForTier(tier: AiTier): number | null {
+    return PLAN_AI_QUOTA[tier]?.credits ?? (tier === 'free' ? FREE_MONTHLY_CHAT_LIMIT : null)
+}
 
 type DBClient = SupabaseClient<Database>
 

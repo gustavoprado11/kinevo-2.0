@@ -8,8 +8,9 @@
  * Fonte da verdade do orçamento:
  *   - Pago (essencial/pro/premium): balde mensal de créditos (PLAN_AI_QUOTA) +
  *     `ai_usage_periods` do período corrente (via checkQuota).
- *   - Free: franquia mensal de 25 conversas de IA (chat) em `ai_usage_periods`. As
- *     ações pesadas (gerar programa, etc.) têm um teste 1× à parte (`ai_free_trials`).
+ *   - Free: franquia mensal de 25 créditos de IA (debitados por peso, como nos
+ *     pagos) em `ai_usage_periods`. As ações pesadas confirmáveis têm um teste 1×
+ *     à parte (`ai_free_trials`).
  *
  * Estouro NÃO trava o app: `exhausted=true` só sinaliza pra UI degradar pra GUI
  * (banner/upsell). A decisão de UX é da superfície.
@@ -77,9 +78,9 @@ export async function getAiUsageSummary(
         }
     }
 
-    // --- Free: franquia mensal de 25 CONVERSAS de IA (chat do dock), contada em
-    //     ai_usage_periods. As AÇÕES PESADAS (gerar programa, etc.) têm um teste 1×
-    //     à parte (ai_free_trials), checado no call-site. ---
+    // --- Free: franquia mensal de 25 CRÉDITOS de IA (debitados por peso, como nos
+    //     pagos), contada em ai_usage_periods. As AÇÕES PESADAS confirmáveis têm um
+    //     teste 1× à parte (ai_free_trials), checado no call-site. ---
     const periodStart = currentPeriodStart('month', now)
     const creditsTotal = FREE_MONTHLY_CHAT_LIMIT
 

@@ -32,21 +32,21 @@ const CREDIT_LEGEND: readonly string[] = [
     '1 — pergunta / consulta',
     '1 — ação simples (marcar pago, reagendar…)',
     '2–3 — ação composta (cobrar + avisar)',
-    '5 — gerar um programa completo',
+    '6 — gerar um programa completo',
     '1 por aluno em envio em massa (máx 10)',
 ]
 
 function FeatureRow({ feature }: { feature: TierFeature }) {
     const state = feature.state ?? 'on'
     return (
-        <li className="flex items-start gap-2 border-b border-[#F4F4F6] py-[5px] text-[12.5px] leading-snug last:border-b-0">
+        <li className="flex items-start gap-2 border-b border-[#F4F4F6] dark:border-k-border-subtle py-[5px] text-[12.5px] leading-snug last:border-b-0">
             <span
                 className={`mt-[1px] flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full ${
                     state === 'off'
-                        ? 'bg-[#EDEDF0] text-[#8A8A8E]'
+                        ? 'bg-[#EDEDF0] dark:bg-glass-bg text-[#8A8A8E] dark:text-muted-foreground/80'
                         : state === 'star'
-                          ? 'bg-[#EDE9FE] text-[#7C3AED]'
-                          : 'bg-[#DCFCE7] text-[#15803D]'
+                          ? 'bg-[#EDE9FE] dark:bg-violet-500/15 text-[#7C3AED] dark:text-violet-400'
+                          : 'bg-[#DCFCE7] dark:bg-emerald-500/15 text-[#15803D] dark:text-emerald-400'
                 }`}
             >
                 {state === 'off' ? null : state === 'star' ? (
@@ -55,7 +55,7 @@ function FeatureRow({ feature }: { feature: TierFeature }) {
                     <Check className="h-[10px] w-[10px]" strokeWidth={3} />
                 )}
             </span>
-            <span className={state === 'off' ? 'text-[#8A8A8E]' : 'text-[#3A3A40]'}>{feature.label}</span>
+            <span className={state === 'off' ? 'text-[#8A8A8E] dark:text-muted-foreground/60' : 'text-[#3A3A40] dark:text-foreground/90'}>{feature.label}</span>
         </li>
     )
 }
@@ -105,11 +105,11 @@ export function AiPlanSection({ summary }: AiPlanSectionProps) {
                     return (
                         <div
                             key={card.tier}
-                            className={`relative flex flex-col rounded-[15px] border bg-white p-[17px] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] ${
+                            className={`relative flex flex-col rounded-[15px] border bg-white dark:bg-surface-card p-[17px] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] ${
                                 card.featured
-                                    ? 'border-[#7C3AED] shadow-[0_0_0_1px_rgba(124,58,237,0.18),0_18px_44px_-26px_rgba(124,58,237,0.5)]'
-                                    : 'border-[#E8E8ED]'
-                            } ${card.free ? 'bg-[#FBFBFD]' : ''}`}
+                                    ? 'border-[#7C3AED] dark:border-violet-500 shadow-[0_0_0_1px_rgba(124,58,237,0.18),0_18px_44px_-26px_rgba(124,58,237,0.5)]'
+                                    : 'border-[#E8E8ED] dark:border-k-border-subtle'
+                            } ${card.free ? 'bg-[#FBFBFD] dark:bg-surface-card' : ''}`}
                         >
                             {card.featured && (
                                 <span className="absolute -top-[10px] left-4 rounded-[7px] bg-gradient-to-br from-[#7C3AED] to-[#A78BFA] px-[10px] py-[3px] text-[9.5px] font-extrabold uppercase tracking-wider text-white">
@@ -117,27 +117,27 @@ export function AiPlanSection({ summary }: AiPlanSectionProps) {
                                 </span>
                             )}
                             {isCurrent && (
-                                <span className="absolute -top-[10px] right-[14px] rounded-[7px] border border-[#D2D2D7] bg-white px-[9px] py-[3px] text-[9.5px] font-extrabold uppercase tracking-wider text-[#6E6E73]">
+                                <span className="absolute -top-[10px] right-[14px] rounded-[7px] border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-elevated px-[9px] py-[3px] text-[9.5px] font-extrabold uppercase tracking-wider text-[#6E6E73] dark:text-muted-foreground">
                                     Plano atual
                                 </span>
                             )}
 
                             <div
                                 className={`text-[12px] font-bold tracking-wide ${
-                                    card.free ? 'text-[#8A8A8E]' : 'text-[#7C3AED]'
+                                    card.free ? 'text-[#8A8A8E] dark:text-muted-foreground/80' : 'text-[#7C3AED] dark:text-violet-400'
                                 }`}
                             >
                                 {card.name.toUpperCase()}
                             </div>
 
-                            <div className="mb-[1px] mt-[5px] text-[26px] font-extrabold tracking-tight text-[#1D1D1F]">
+                            <div className="mb-[1px] mt-[5px] text-[26px] font-extrabold tracking-tight text-[#1D1D1F] dark:text-foreground">
                                 {card.price}
                                 {card.priceSuffix && (
-                                    <small className="text-[12px] font-medium text-[#8A8A8E]">{card.priceSuffix}</small>
+                                    <small className="text-[12px] font-medium text-[#8A8A8E] dark:text-muted-foreground/80">{card.priceSuffix}</small>
                                 )}
                             </div>
 
-                            <div className="mb-3 min-h-[34px] text-[12.5px] text-[#6E6E73]">{card.credits}</div>
+                            <div className="mb-3 min-h-[34px] text-[12.5px] text-[#6E6E73] dark:text-muted-foreground">{card.credits}</div>
 
                             <ul className="mb-[14px] flex-1 list-none p-0">
                                 {card.features.map((f) => (
@@ -146,11 +146,11 @@ export function AiPlanSection({ summary }: AiPlanSectionProps) {
                             </ul>
 
                             {isCurrent ? (
-                                <span className="block w-full rounded-[11px] bg-[#F5F5F7] py-[10px] text-center text-[13px] font-bold text-[#8A8A8E]">
+                                <span className="block w-full rounded-[11px] bg-[#F5F5F7] dark:bg-glass-bg py-[10px] text-center text-[13px] font-bold text-[#8A8A8E] dark:text-muted-foreground/80">
                                     {card.free ? 'Plano de teste' : 'Seu plano'}
                                 </span>
                             ) : card.free ? (
-                                <span className="block w-full rounded-[11px] border border-[#D2D2D7] bg-white py-[10px] text-center text-[13px] font-bold text-[#8A8A8E]">
+                                <span className="block w-full rounded-[11px] border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card py-[10px] text-center text-[13px] font-bold text-[#8A8A8E] dark:text-muted-foreground/80">
                                     Plano de teste
                                 </span>
                             ) : (
@@ -161,7 +161,7 @@ export function AiPlanSection({ summary }: AiPlanSectionProps) {
                                     className={`inline-flex w-full items-center justify-center gap-1.5 rounded-[11px] py-[10px] text-[13px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                                         card.featured
                                             ? 'bg-[#7C3AED] text-white hover:bg-[#6D28D9]'
-                                            : 'border border-[#D2D2D7] bg-white text-[#1D1D1F] hover:bg-[#F5F5F7]'
+                                            : 'border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card text-[#1D1D1F] dark:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
                                     }`}
                                 >
                                     {isLoading ? 'Abrindo…' : card.cta}
@@ -180,23 +180,23 @@ export function AiPlanSection({ summary }: AiPlanSectionProps) {
             )}
 
             {/* Legenda: como os créditos são gastos. */}
-            <div className="mt-5 rounded-[14px] border border-[#E8E8ED] bg-white p-[15px_18px] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]">
-                <h4 className="mb-[10px] text-[13px] font-semibold text-[#1D1D1F]">Como os créditos são gastos</h4>
+            <div className="mt-5 rounded-[14px] border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card p-[15px_18px] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]">
+                <h4 className="mb-[10px] text-[13px] font-semibold text-[#1D1D1F] dark:text-foreground">Como os créditos são gastos</h4>
                 <div className="flex flex-wrap gap-[9px]">
                     {CREDIT_LEGEND.map((item) => {
                         const [weight, ...rest] = item.split(' — ')
                         return (
                             <span
                                 key={item}
-                                className="inline-flex items-center gap-2 rounded-[10px] border border-[#E8E8ED] px-[11px] py-[6px] text-[12px] text-[#3A3A40]"
+                                className="inline-flex items-center gap-2 rounded-[10px] border border-[#E8E8ED] dark:border-k-border-subtle px-[11px] py-[6px] text-[12px] text-[#3A3A40] dark:text-foreground/90"
                             >
-                                <b className="font-extrabold text-[#7C3AED]">{weight}</b>
+                                <b className="font-extrabold text-[#7C3AED] dark:text-violet-400">{weight}</b>
                                 {rest.join(' — ')}
                             </span>
                         )
                     })}
                 </div>
-                <small className="mt-[10px] block text-[11.5px] text-[#8A8A8E]">
+                <small className="mt-[10px] block text-[11.5px] text-[#8A8A8E] dark:text-muted-foreground/80">
                     Créditos renovam a cada ciclo e não acumulam. Acabou a cota? O resto do Kinevo continua funcionando
                     normalmente — você só perde o atalho da IA até o próximo ciclo.
                 </small>

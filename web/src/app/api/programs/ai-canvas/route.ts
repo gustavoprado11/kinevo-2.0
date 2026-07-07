@@ -15,7 +15,7 @@ import { gateAssistant } from '@/lib/assistant/command-engine'
 import { limitTurn } from '@/lib/assistant/rate-limits'
 import { runCanvasTurn } from '@/lib/programs/ai-canvas/run-canvas-turn'
 import { recordAiUsage, turnCostMicros, type TokenUsage } from '@/lib/ai-usage/metering'
-import { getQuotaForTier } from '@/lib/ai-usage/quota'
+import { creditLimitForTier } from '@/lib/ai-usage/quota'
 import { CANVAS_BUILD_CREDITS } from '@/lib/assistant/tool-policy'
 import type { CanvasStreamEvent, CanvasTurnRequest } from '@/lib/programs/ai-canvas/types'
 
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
                     await recordAiUsage(admin, {
                         trainerId: trainer.id,
                         periodType: period,
-                        creditLimit: getQuotaForTier(tier)?.credits ?? null,
+                        creditLimit: creditLimitForTier(tier),
                         credits,
                         costMicros,
                         events: [{

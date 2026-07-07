@@ -13,7 +13,7 @@
  * escalada por COTA de créditos. TODOS os pagos têm o Assistente COMPLETO
  * (⌘K + voz + aba /assistente). Únicos perks NÃO-crédito: briefing proativo (Pro+)
  * e suporte exclusivo (Premium).
- *   - free:       1 aluno (você); IA "taste" (1× cada ação + algumas conversas/mês).
+ *   - free:       1 aluno (você); IA "taste" (25 créditos/mês + 1× cada ação pesada).
  *   - essencial:  alunos ∞ + 20 créditos/mês + Assistente completo (⌘K + voz).
  *   - pro_ia:     alunos ∞ + 300 créditos + Resumo da manhã (briefing proativo).
  *   - premium_ia: alunos ∞ + 1.000 créditos + suporte exclusivo.
@@ -68,7 +68,7 @@ export const TIER_DISPLAY: readonly TierDisplay[] = [
         priceNote: 'pra sempre',
         monthlyBrl: 0,
         creditsPerMonth: null,
-        credits: 'Experimente a IA: 1× cada ação',
+        credits: 'Experimente a IA: 25 créditos/mês',
         free: true,
         cta: 'Começar grátis',
         features: [
