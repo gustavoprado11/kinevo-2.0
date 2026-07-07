@@ -3,14 +3,9 @@
 > Atualize este arquivo ao fechar/abrir uma frente. Última atualização: **07/jul/2026**.
 > Convenção: ✅ concluído · 🔧 corrigido no working tree (NÃO commitado) · ⏳ pendente de decisão/ação · 🚧 em andamento.
 
-## ⚠️ Estado do working tree (07/jul)
+## ⚠️ Estado do working tree (07/jul, fim do dia)
 
-O working tree acumula 3 lotes NÃO COMMITADOS (workflow: commit/push só com autorização):
-1. **Auditoria geral web+mobile** — 12 fixes (`auditoria-web-mobile-2026-07-07.md`).
-2. **Financeiro Asaas Fases 1-4** — ~20 fixes (`analise-financeiro-2026-07-07.md` §6-§8).
-3. **Consultoria IA (feature WIP)** — `web/src/{app,actions,lib}/consultoria/` + migration 226 (**APLICADA em prod mas untracked — commitar junto!**).
-
-**QA COMPLETO (07/jul): APROVADO PARA COMMIT** — `qa-report-2026-07-07.md`. Zero bugs de correção; 30 itens conferem. Pré-commit: remover imports mortos (achado B1: `student-financial-modal.tsx` + `student-header.tsx`) e a prop morta `hasStripeConnect` do modal (B2). Itens bloqueados (carteira Asaas viva, device físico p/ push, MCP em prod) → validar no primeiro uso real pós-deploy.
+Os 3 lotes de 07/jul (auditoria geral, Financeiro Asaas F1-F4, Consultoria IA + migration 226) foram **COMMITADOS e PUSHADOS** (`8fdd40c`/`707619e`/`0de7d6d`/`df76dfd`…`3df15ec`) após o QA aprovado (`qa-report-2026-07-07.md`). O batch do **Assistente** (dark mode W1, créditos do free W2, kill-switch, fixes A1/A2 + docs) foi commitado/pushado com autorização em 07/jul — ver linha do Assistente abaixo. Restos untracked intencionais: `qa-scripts/` (harness descartável do QA comportamental; não commitar).
 
 ## Frentes
 
@@ -20,7 +15,7 @@ O working tree acumula 3 lotes NÃO COMMITADOS (workflow: commit/push só com au
 | **Auditoria geral (jul/07)** | 🔧 12 fixes no working tree | `auditoria-web-mobile-2026-07-07.md` | R1 deploy Strava fns (autorizar!), R2 rotacionar ANTHROPIC_API_KEY no Vercel, R3 hardening OVERDUE/REFUNDED/CHARGEBACK pós-prova, R4 gate no createOrganization, R5 markAsPaid retry parcial, advisors (leaked-password 1 clique, policies service_role, índices FK de IA) |
 | **Consultoria IA** | 🚧 WIP + fixes da auditoria | `rede-consultoria-ia/PLANO.md` | Testar localmente → commitar COM a migration 226; decidir merge do perfil de prescrição (clobber); validar CREF formato; M4 telemetria gate |
 | **Builder (web+mobile)** | ✅ rodadas 1+2 pushadas (38a7b66) | `analise-builder-rodada2-2026-07-06.md` | Deferidos R19/R20/R24 (design); validar em device R15 Watch/R11 iPad/R9 IA; builder de criação ainda N+1 (portar p/ RPC 198) |
-| **Assistente IA (Modo Assistente)** | ✅ Ondas 1-6 deployadas | `analise-modo-assistente-2026-06-22.md` | Voz desligada (reabrir só com TTS neural); mobile streaming; casca única (working tree antigo?); custos em `analise-mcp-assistente-custos.md` |
+| **Assistente IA (Modo Assistente)** | ✅ Ondas 1-6 deployadas · **JÁ ABERTO a todos os tiers desde 26/jun** (`80085ed`, free=taste) · 🔧 W1+W2 no working tree · ✅ **QA comportamental 07/jul: GO** (`analise-assistente-comportamental-2026-07-07.md`) · 🔧 kill-switch `ASSISTANT_DISABLED` no working tree | `analise-assistente-lancamento-2026-07-07.md` | 🔧 07/jul working tree: W1 dark mode (7 superfícies + fim do force-light em /assistente) e W2 copy/clamp do free — QA visual dark+light OK, 1386 testes verdes. **QA comportamental (07/jul): nada bloqueia** — F2 jornadas 14/14 no banco, F4 zero injeção/cross-tenant, F5 concorrência (clamp atômico, 429, idempotência), F3 prescrições Gemini profissionais/seguras, F6 kill-switch entregue + verificado. Achados: **A1 e A2 CORRIGIDOS no working tree 07/jul e verificados E2E 7/7** (broadcast→batch via prompt v2.4.0 + eval 36; posse estrita W-EXTERNO → 422 tipado; adendo §9 do relatório comportamental); A3 harness de evals dá falso-negativo (0 violações HITL, mas asserção de tool falha sem contexto de rota — corrigir p/ virar CI). Restam p/ anunciar: build EAS mobile (binário lojas é pré-Onda 3, sem OTA; bump 1.5.7; risco Apple IAP), gate mobile fail-closed (M2), CTA upgrade mobile (M3). Voz desligada (TTS neural). Casca única NÃO está em main (working tree perdido — redecidir). Economia fecha (Premium pior caso 15% → subir peso build 6→7-8) |
 | **Segurança/RLS** | ✅ auditorias mai+jul aplicadas | `security/`, memória | Vivo: R1/R2/R3 acima; advisors zero ERROR; resíduo Estúdios RESOLVIDO (migr 225) |
 | **Apple Watch** | ✅ fixes jun pushados | `analise-watch/` | Validar em device físico (sync, FINISH queue); integridade duplo-lado documentada |
 | **Mobile core (player/offline)** | ✅ + 2 fixes de sessão no working tree | `AUDITORIA-MOBILE-2026-06.md` + auditoria jul | LOWs: side effects em updaters, enqueue por isNetworkError, logout escopar filas por user, footer rest superset |
