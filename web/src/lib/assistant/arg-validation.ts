@@ -11,6 +11,9 @@
  * Política:
  *   - Estrito (pode BLOQUEAR) onde há dinheiro/conta e dá pra validar com confiança:
  *     contratos (criar/pagar/cancelar) e conversão de lead.
+ *   - POSSE do aluno nas ações EXTERNAS (mensagem/formulário/link de cobrança) também é
+ *     estrita: id estranho bloqueia com motivo tipado (422). Sem isso a rejeição só
+ *     aparecia como 502 genérico da tool na execução (QA comportamental 07/jul, A2).
  *   - Best-effort (NUNCA bloqueia) no resto: a própria tool já checa posse na execução
  *     (ex.: delete de treino via verifyItemOwnership; agenda/avaliação via core/RPC).
  *   - FAIL-OPEN: se o próprio validador falhar (erro de query/schema), liberamos —
@@ -216,11 +219,13 @@ export async function validateConfirmArgs(
             }
 
             // Ações externas / início de cobrança (HITL desde a auditoria 2026-06-22):
-            // best-effort — NUNCA bloqueiam (a própria tool checa posse na execução);
-            // só montam um ALVO LEGÍVEL p/ o card (destinatário + prévia / contagem).
+            // POSSE do aluno é estrita (id estranho → 422 tipado, não 502 da tool — A2);
+            // o resto (template, heurística de destinatário) segue best-effort.
             case 'kinevo_send_message': {
-                const name = await studentName(admin, trainerId, str(args.student_id))
-                if (!name) return { ok: true, target: null }
+                const sid = str(args.student_id)
+                if (!sid) return { ok: false, reason: 'Faltou indicar o aluno da mensagem.' }
+                const name = await studentName(admin, trainerId, sid)
+                if (!name) return { ok: false, reason: 'Aluno não encontrado na sua carteira.' }
                 // Guardrail anti-destinatário-errado (feedback 22/jun: pedido p/ "Gustavo",
                 // modelo mandou p/ "Giovanna"). Se a mensagem ABRE endereçada a OUTRO aluno
                 // (1º nome) e NÃO cita o destinatário, bloqueia p/ o treinador conferir.
@@ -264,7 +269,21 @@ export async function validateConfirmArgs(
 
             case 'kinevo_send_form':
             case 'kinevo_schedule_form': {
-                const count = Array.isArray(args.student_ids) ? args.student_ids.length : 0
+                const ids = Array.isArray(args.student_ids) ? (args.student_ids as unknown[]) : []
+                const count = ids.length
+                // Posse agregada (mesma regra do send_message_batch): qualquer id estranho
+                // bloqueia o envio inteiro com motivo tipado, em vez de 502 na execução.
+                const uuids = ids.filter((v): v is string => typeof v === 'string')
+                if (uuids.length > 0) {
+                    const { data: owned } = await admin
+                        .from('students')
+                        .select('id')
+                        .in('id', uuids)
+                        .eq('coach_id', trainerId)
+                    if ((owned ?? []).length !== new Set(uuids).size) {
+                        return { ok: false, reason: 'Um ou mais alunos do envio não pertencem a você — confira a lista.' }
+                    }
+                }
                 const templateId = str(args.template_id)
                 let templateTitle: string | null = null
                 if (templateId) {
@@ -283,7 +302,10 @@ export async function validateConfirmArgs(
             }
 
             case 'kinevo_generate_checkout_link': {
-                const name = await studentName(admin, trainerId, str(args.student_id))
+                const sid = str(args.student_id)
+                const name = await studentName(admin, trainerId, sid)
+                // Link de cobrança para aluno que não é seu: bloqueio tipado (A2).
+                if (sid && !name) return { ok: false, reason: 'Aluno não encontrado na sua carteira.' }
                 const planId = str(args.plan_id)
                 let planLabel: string | null = null
                 if (planId) {

@@ -37,7 +37,7 @@ import {
     type AiUsageEventInput,
 } from '@/lib/ai-usage/metering'
 import { getAiUsageSummary, type AiUsageSummary } from '@/lib/ai-usage/usage-summary'
-import { getQuotaForTier } from '@/lib/ai-usage/quota'
+import { creditLimitForTier, getQuotaForTier } from '@/lib/ai-usage/quota'
 import { type AiTier } from '@/lib/auth/get-ai-tier'
 import type { ToolConfirmationRequest, QuestionRequest, ProposalRequest } from '@/lib/assistant/hitl-types'
 import { buildChatContext } from '@/lib/assistant/context-builder'
@@ -47,6 +47,7 @@ import { validateConfirmArgs } from '@/lib/assistant/arg-validation'
 import { ambiguousStudentTarget, withAmbiguityGuard, type StudentRef } from '@/lib/assistant/ambiguity'
 import { digestToolResult, MEMORY_READ_TOOLS, type ProgramFocus } from '@/lib/assistant/tool-memory'
 import { redactSensitive } from '@/lib/assistant/redact'
+import { isAssistantDisabled, ASSISTANT_MAINTENANCE_MESSAGE } from '@/lib/assistant/kill-switch'
 import type { LLMModel } from '@/lib/prescription/llm-client'
 
 export const ASSISTANT_MODEL: LLMModel = 'gpt-4.1-mini'
@@ -114,6 +115,7 @@ export const ASSISTANT_TIERS: ReadonlySet<AiTier> = new Set<AiTier>([
 export type AssistantGate =
     | { allowed: true; tier: AiTier; period: 'week' | 'month' }
     | { allowed: false; status: 403; error: 'tier_locked'; message: string }
+    | { allowed: false; status: 403; error: 'maintenance'; message: string }
     | { allowed: false; status: 402; error: 'quota_exceeded'; message: string; resetAt: string | null }
 
 /**
@@ -129,6 +131,11 @@ export async function gateAssistant(
     admin: SupabaseClient,
     trainerId: string,
 ): Promise<AssistantGate> {
+    // Kill-switch operacional (freio de emergência, sem deploy): desliga todos os
+    // turnos antes de tocar tier/cota/LLM. 403 amigável de manutenção.
+    if (isAssistantDisabled()) {
+        return { allowed: false, status: 403, error: 'maintenance', message: ASSISTANT_MAINTENANCE_MESSAGE }
+    }
     // getAiUsageSummary já resolve o tier + o estado de cota/free-trial num só lugar.
     const summary = await getAiUsageSummary(admin, trainerId)
     const tier = summary.tier
@@ -147,7 +154,7 @@ export async function gateAssistant(
             error: 'quota_exceeded',
             message:
                 tier === 'free'
-                    ? 'Você usou suas conversas com a IA deste mês no plano Gratuito. Assine um plano para continuar com o Assistente — o resto do app segue normal.'
+                    ? 'Você usou seus créditos de IA deste mês no plano Gratuito. Assine um plano para continuar com o Assistente — o resto do app segue normal.'
                     : 'Sua cota de IA deste ciclo acabou. Você pode continuar pela interface normal; os créditos renovam em breve.',
             resetAt: summary.periodEnd ?? null,
         }
@@ -881,9 +888,9 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 credits,
                 costMicros,
                 events,
-                // Teto de cota do plano (C1): clamp atômico no DB — o medidor nunca
-                // estoura. Sem tier (ex.: proativo) → sem teto.
-                creditLimit: opts.tier ? getQuotaForTier(opts.tier)?.credits ?? null : null,
+                // Teto de cota do ciclo (C1): clamp atômico no DB — o medidor nunca
+                // estoura (Free clampa na franquia mensal). Sem tier (ex.: proativo) → sem teto.
+                creditLimit: opts.tier ? creditLimitForTier(opts.tier) : null,
             })
 
             summary = await getAiUsageSummary(admin, trainerId)
@@ -974,6 +981,13 @@ const MCP_HITL_INSTRUCTIONS = `
   direta ("Senti sua falta", "Bora retomar", "Tô aqui pra te ajudar"). JAMAIS voz de estúdio/equipe
   ("Estamos sentindo sua falta", "nossa equipe", "sentimos"). Curta (1–3 frases), com o primeiro nome
   do aluno, sem firula. Se o aluno pedido não estiver no contexto, use perguntar_treinador; nunca relê.
+- MENSAGEM PARA VÁRIOS OU TODOS OS ALUNOS ("manda pra todos", "avisa meus alunos", "todo mundo"):
+  use kinevo_send_message_batch — UMA chamada com student_ids = os UUIDs de TODOS os alunos do
+  contexto que se encaixam no pedido ("todos" = todos os alunos ATIVOS da lista) e um content único
+  (mesma VOZ 1:1 acima, sem citar nome próprio — a mensagem vai para vários). NUNCA use
+  kinevo_send_message individual para um pedido coletivo: enviar para UM aluno quando o treinador
+  pediu "todos" é ERRO GRAVE — ele confirma o card achando que todos receberão. O app abre um card
+  agregado com a lista de destinatários para aprovação.
 - HOMÔNIMOS (vale para QUALQUER ação sobre um aluno — editar, agendar, cobrar, avaliar, prescrever,
   não só mensagens): se o pedido cita um primeiro nome que corresponde a MAIS DE UM aluno da carteira
   (o contexto avisa quando há primeiros nomes repetidos), NUNCA escolha sozinho — chame

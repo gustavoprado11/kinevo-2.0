@@ -24,6 +24,7 @@ import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { ASSISTANT_TIERS, gateAssistant, runAssistantTurn, UUID_RE } from '@/lib/assistant/command-engine'
 import { limitTurn } from '@/lib/assistant/rate-limits'
 import { assistantErrorResponse } from '@/lib/assistant/errors'
+import { isAssistantDisabled } from '@/lib/assistant/kill-switch'
 
 export const maxDuration = 300 // build Sonnet pode passar de 60s (C5)
 
@@ -49,6 +50,11 @@ export async function GET() {
         if (!trainer) return NextResponse.json({ error: 'Trainer not found' }, { status: 404 })
 
         const homeStyle = trainer.home_style === 'assistant' ? 'assistant' : 'classic'
+
+        // Kill-switch: some com as superfícies web (⌘K, aba, sidebar) sem deploy.
+        if (isAssistantDisabled()) {
+            return NextResponse.json({ tier: 'free', allowed: false, homeStyle, summary: null })
+        }
 
         const summary = await getAiUsageSummary(supabaseAdmin, trainer.id)
         return NextResponse.json({

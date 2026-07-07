@@ -479,6 +479,18 @@ export const EVAL_CASES: EvalCase[] = [
             judge: 'Usa o lote (um único card agregado), NÃO dispara kinevo_send_message por aluno.',
         },
     },
+    {
+        id: 'comunicacao-broadcast-todos-36',
+        domain: 'alunos',
+        surface: 'workspace',
+        input: 'Manda uma mensagem pra todos os meus alunos avisando que não vai ter treino no feriado de quinta.',
+        expect: {
+            // QA comportamental 07/jul (A1): pedido coletivo virava send_message single —
+            // o treinador confirmava achando que todos receberiam. Coletivo = SEMPRE batch.
+            confirmation: 'kinevo_send_message_batch',
+            judge: 'Um único card agregado (send_message_batch) cobrindo os alunos ativos; jamais kinevo_send_message individual para pedido coletivo.',
+        },
+    },
 ]
 
 /** Sanidade: garante IDs únicos no array (usado pelo runner e por lint). */

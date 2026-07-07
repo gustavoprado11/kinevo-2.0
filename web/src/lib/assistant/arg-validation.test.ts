@@ -161,4 +161,61 @@ describe('validateConfirmArgs — send_message (guardrail anti-destinatário-err
         expect(r.ok).toBe(true)
         if (r.ok) expect(r.target?.details?.recipientName).toBe('Giovanna Prado')
     })
+
+    it('BLOQUEIA (A2): aluno que não é da carteira → motivo tipado, não fail-open', async () => {
+        const admin = makeSendMsgAdmin(null, roster)
+        const r = await validateConfirmArgs(admin, T, 'kinevo_send_message', {
+            student_id: 's-de-outro-treinador',
+            content: 'Oi! Bora treinar?',
+        })
+        expect(r.ok).toBe(false)
+        if (!r.ok) expect(r.reason).toMatch(/não encontrado/i)
+    })
+
+    it('BLOQUEIA (A2): sem student_id → motivo tipado', async () => {
+        const admin = makeSendMsgAdmin(null, roster)
+        const r = await validateConfirmArgs(admin, T, 'kinevo_send_message', {
+            content: 'Oi! Bora treinar?',
+        })
+        expect(r.ok).toBe(false)
+        if (!r.ok) expect(r.reason).toMatch(/faltou indicar/i)
+    })
+})
+
+describe('validateConfirmArgs — posse estrita nas ações externas (A2)', () => {
+    it('send_form: BLOQUEIA lote com id de aluno estranho', async () => {
+        const admin = makeAdmin({
+            students: { data: [{ id: 's1' }] }, // só 1 dos 2 ids pertence ao treinador
+            form_templates: { data: { title: 'Check-in' } },
+        })
+        const r = await validateConfirmArgs(admin, T, 'kinevo_send_form', {
+            template_id: 'tpl1',
+            student_ids: ['s1', 's-estranho'],
+        })
+        expect(r.ok).toBe(false)
+        if (!r.ok) expect(r.reason).toMatch(/não pertencem/i)
+    })
+
+    it('send_form: OK quando todos os alunos são da carteira', async () => {
+        const admin = makeAdmin({
+            students: { data: [{ id: 's1' }, { id: 's2' }] },
+            form_templates: { data: { title: 'Check-in' } },
+        })
+        const r = await validateConfirmArgs(admin, T, 'kinevo_send_form', {
+            template_id: 'tpl1',
+            student_ids: ['s1', 's2'],
+        })
+        expect(r.ok).toBe(true)
+        if (r.ok) expect(r.target?.label).toMatch(/2 alunos/)
+    })
+
+    it('checkout_link: BLOQUEIA aluno que não é da carteira', async () => {
+        const admin = makeAdmin({ students: { data: null } })
+        const r = await validateConfirmArgs(admin, T, 'kinevo_generate_checkout_link', {
+            student_id: 's-estranho',
+            plan_id: 'p1',
+        })
+        expect(r.ok).toBe(false)
+        if (!r.ok) expect(r.reason).toMatch(/não encontrado/i)
+    })
 })

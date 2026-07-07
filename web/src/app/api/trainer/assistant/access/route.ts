@@ -13,11 +13,14 @@ import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
 import { ASSISTANT_TIERS } from '@/lib/assistant/command-engine'
 import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { resolveTrainerBearer } from '@/lib/assistant/mobile-auth'
+import { isAssistantDisabled } from '@/lib/assistant/kill-switch'
 
 export async function GET(req: NextRequest) {
     try {
         const trainer = await resolveTrainerBearer(req)
         if (trainer instanceof NextResponse) return trainer
+        // Kill-switch: esconde o Assistente de todas as superfícies mobile.
+        if (isAssistantDisabled()) return NextResponse.json({ allowed: false, tier: 'free', summary: null })
         const tier = await getAiTierForTrainer(supabaseAdmin, trainer.id)
         // Medidor de créditos do período (mesmo `summary` que volta no fim de cada turno).
         const summary = await getAiUsageSummary(supabaseAdmin, trainer.id).catch(() => null)
