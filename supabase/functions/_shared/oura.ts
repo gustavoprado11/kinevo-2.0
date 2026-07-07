@@ -280,12 +280,35 @@ export function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-// HMAC-SHA256(body) com o client_secret. Confirmar esquema exato na doc da Oura.
-export async function verifyOuraSignature(rawBody: string, signatureHeader: string | null, clientSecret: string): Promise<boolean> {
-  if (!signatureHeader) return false;
+// HMAC-SHA256(timestamp + body) com o client_secret — esquema OFICIAL da doc da
+// Oura (Security Best Practices → Verify Webhook Signatures): o evento chega com
+// x-oura-signature (hex) e x-oura-timestamp, e a assinatura cobre a CONCATENAÇÃO
+// `timestamp + body`. ⚠️ A versão anterior assinava SÓ o body → TODA entrega real
+// falhava com 401 invalid_signature e o webhook nunca ingeriu um evento (root
+// cause do Oura "morto" — diagnóstico 07/jul/2026, docs/analise-saude-aluno).
+// Aceitamos o raw body e também o body re-serializado (o exemplo oficial assina
+// JSON.stringify(body) do body já parseado — cobre divergência de serialização).
+export async function verifyOuraSignature(
+  rawBody: string,
+  signatureHeader: string | null,
+  timestampHeader: string | null,
+  clientSecret: string,
+): Promise<boolean> {
+  if (!signatureHeader || !timestampHeader) return false;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(clientSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
-  const hex = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hmacHex = async (payload: string): Promise<string> => {
+    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+    return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  };
   const provided = signatureHeader.replace(/^sha256=/i, "").trim().toLowerCase();
-  return timingSafeEqual(provided, hex);
+  const candidates = [timestampHeader + rawBody];
+  try {
+    candidates.push(timestampHeader + JSON.stringify(JSON.parse(rawBody)));
+  } catch {
+    // body não-JSON: fica só o raw.
+  }
+  for (const payload of candidates) {
+    if (timingSafeEqual(provided, await hmacHex(payload))) return true;
+  }
+  return false;
 }

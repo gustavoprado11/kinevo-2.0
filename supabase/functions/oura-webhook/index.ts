@@ -39,11 +39,22 @@ Deno.serve(async (req) => {
   try {
     const rawBody = await req.text();
 
-    // Valida assinatura (HMAC com client_secret da config).
+    // Valida assinatura (HMAC-SHA256 de `timestamp + body` com o client_secret —
+    // esquema oficial da doc; ver verifyOuraSignature em _shared/oura.ts).
     const cfg = await getOuraConfig(admin);
     const signature = req.headers.get("x-oura-signature");
-    const valid = await verifyOuraSignature(rawBody, signature, cfg.clientSecret);
-    if (!valid) return json({ error: "invalid_signature" }, 401);
+    const timestamp = req.headers.get("x-oura-timestamp");
+    const valid = await verifyOuraSignature(rawBody, signature, timestamp, cfg.clientSecret);
+    if (!valid) {
+      // Loga o suficiente p/ diagnosticar um novo descompasso de esquema sem
+      // vazar segredo (foi um 401 silencioso aqui que matou a ingestão até jul/2026).
+      console.error("[oura-webhook] invalid_signature", {
+        hasSignature: !!signature,
+        hasTimestamp: !!timestamp,
+        bodyLength: rawBody.length,
+      });
+      return json({ error: "invalid_signature" }, 401);
+    }
 
     const event = JSON.parse(rawBody) as {
       event_type?: string;
