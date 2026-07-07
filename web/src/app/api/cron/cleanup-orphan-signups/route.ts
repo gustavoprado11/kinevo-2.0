@@ -1,21 +1,6 @@
 import { NextResponse } from 'next/server'
 import { verifyCronAuth } from '@/lib/cron-auth'
-import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-
-// O schema 'auth' fica fora dos tipos gerados (só public/graphql_public),
-// então este cron usa um client admin SEM o generic <Database> apenas para
-// consultar auth.users. Não usar este client para tabelas do schema public.
-const authAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-        },
-    }
-)
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -48,21 +33,30 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const cutoffIso = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+    const cutoffMs = Date.now() - 2 * 60 * 60 * 1000
+    const cutoffIso = new Date(cutoffMs).toISOString()
 
     // Pull candidate auth users: created >2h ago.
-    // Service-role admin client is required because auth.users isn't
-    // exposed via PostgREST to anon / authenticated.
-    const { data: candidates, error: listError } = await authAdmin
-        .schema('auth')
-        .from('users')
-        .select('id, email, created_at')
-        .lt('created_at', cutoffIso)
-        .limit(500)
-
-    if (listError) {
-        console.error('[cron:cleanup-orphan-signups] list error:', listError)
-        return NextResponse.json({ error: 'list_failed' }, { status: 500 })
+    // PostgREST NÃO expõe o schema `auth` (nem com service role — PGRST106),
+    // então a listagem vem da Admin API do GoTrue. listUsers pagina newest-
+    // first, o que prioriza exatamente as levas recentes de bots.
+    const candidates: { id: string; email: string | null; created_at: string }[] = []
+    const PER_PAGE = 200
+    for (let page = 1; page <= 10 && candidates.length < 500; page++) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+            page,
+            perPage: PER_PAGE,
+        })
+        if (error) {
+            console.error('[cron:cleanup-orphan-signups] list error:', error)
+            return NextResponse.json({ error: 'list_failed' }, { status: 500 })
+        }
+        for (const u of data.users) {
+            if (u.created_at && new Date(u.created_at).getTime() < cutoffMs) {
+                candidates.push({ id: u.id, email: u.email ?? null, created_at: u.created_at })
+            }
+        }
+        if (data.users.length < PER_PAGE) break
     }
 
     if (!candidates || candidates.length === 0) {
@@ -71,11 +65,17 @@ export async function GET(request: Request) {
 
     const candidateIds = candidates.map(c => c.id)
 
-    // For each candidate, check if it has a trainer or a subscription.
-    // Two roundtrips (cheap), then set-difference locally.
-    const [trainersRes, subsRes] = await Promise.all([
+    // For each candidate, check if it has a trainer, a STUDENT or a
+    // subscription. Alunos autenticam via auth.users sem linha em trainers —
+    // sem o check de students, o cron deletaria toda conta de aluno.
+    // Três roundtrips (cheap), then set-difference locally.
+    const [trainersRes, studentsRes, subsRes] = await Promise.all([
         supabaseAdmin
             .from('trainers')
+            .select('auth_user_id')
+            .in('auth_user_id', candidateIds),
+        supabaseAdmin
+            .from('students')
             .select('auth_user_id')
             .in('auth_user_id', candidateIds),
         supabaseAdmin
@@ -84,8 +84,22 @@ export async function GET(request: Request) {
             .in('trainers.auth_user_id', candidateIds as string[]),
     ])
 
+    // Falha em QUALQUER lookup aborta a run: um erro aqui faria contas
+    // legítimas parecerem órfãs (fail-closed obrigatório antes de deletar).
+    if (trainersRes.error || studentsRes.error || subsRes.error) {
+        console.error('[cron:cleanup-orphan-signups] linkage lookup failed:', {
+            trainers: trainersRes.error?.message,
+            students: studentsRes.error?.message,
+            subscriptions: subsRes.error?.message,
+        })
+        return NextResponse.json({ error: 'linkage_lookup_failed' }, { status: 500 })
+    }
+
     const linkedToTrainer = new Set(
         (trainersRes.data || []).map(r => r.auth_user_id).filter(Boolean)
+    )
+    const linkedToStudent = new Set(
+        (studentsRes.data || []).map(r => r.auth_user_id).filter(Boolean)
     )
     const linkedToSubscription = new Set(
         ((subsRes.data || []) as any[])
@@ -93,9 +107,11 @@ export async function GET(request: Request) {
             .filter(Boolean)
     )
 
-    // Orphans = candidates with no trainer AND no subscription link.
+    // Orphans = candidates with no trainer, no student AND no subscription link.
     const orphans = candidates.filter(c =>
-        !linkedToTrainer.has(c.id) && !linkedToSubscription.has(c.id)
+        !linkedToTrainer.has(c.id) &&
+        !linkedToStudent.has(c.id) &&
+        !linkedToSubscription.has(c.id)
     )
 
     if (orphans.length === 0) {

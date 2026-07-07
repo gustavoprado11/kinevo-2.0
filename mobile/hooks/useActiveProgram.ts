@@ -291,9 +291,13 @@ export function useActiveProgram() {
 
         if (!user || !studentId) return;
 
-        // Realtime Subscription — listen to both program changes AND session changes
+        // Realtime Subscription — listen to both program changes AND session changes.
+        // Topic ÚNICO por mount: home e logs montam este hook simultaneamente
+        // (tab navigator) e supabase.channel() com topic repetido devolve o
+        // canal existente — os listeners da 2ª instância nunca registram e o
+        // primeiro cleanup mataria o realtime da outra aba.
         const channel = supabase
-            .channel('active-program-and-sessions')
+            .channel(`active-program-and-sessions-${Math.random().toString(36).slice(2)}`)
             .on(
                 'postgres_changes',
                 {
@@ -339,6 +343,12 @@ export function useActiveProgram() {
         studentName,
         programStartedAt: data?.started_at || null,
         programDurationWeeks: data?.duration_weeks || null,
+        // Carimbo da Consultoria IA (migration 226): "Validado por Fulana · CREF …".
+        // Snapshot legal gravado na aprovação — null para programas comuns.
+        programValidationStamp:
+            data?.validated_by_name && data?.validator_cref
+                ? `Validado por ${data.validated_by_name} · CREF ${data.validator_cref}`
+                : null,
         isLoading,
         error,
         refetch: fetchActiveProgram,

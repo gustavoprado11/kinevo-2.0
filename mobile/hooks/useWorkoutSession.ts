@@ -1307,6 +1307,43 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
     const createSessionInternal = async (preWorkoutSubmissionId?: string): Promise<string | null> => {
         try {
+            // 0. Re-checa sessão in_progress existente ANTES de inserir. O lookup
+            // do mount pode estar minutos velho (deferSessionCreation: readiness
+            // sheet / pre-checkin) e o Watch pode ter pré-criado a sessão nesse
+            // meio-tempo (_layout START) — inserir sem re-checar cria uma segunda
+            // sessão: Watch finaliza a dele, a do celular fica órfã e os sets
+            // somem no cleanup de 24h.
+            let { data: existingSession }: { data: any } = await supabase
+                .from('workout_sessions' as any)
+                .select('id, started_at')
+                .eq('assigned_workout_id', workoutId)
+                .eq('student_id', studentId)
+                .eq('status', 'in_progress')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            // FIX C (mesma regra do reattach do mount): sessão que o aluno já
+            // descartou localmente não pode ser reanexada.
+            if (existingSession && isSessionDiscarded(existingSession.id)) {
+                enqueueDiscardSession(existingSession.id);
+                existingSession = null;
+            }
+
+            if (existingSession?.id) {
+                if (__DEV__) console.log(`[useWorkoutSession] Reattaching to existing session: ${existingSession.id}`);
+                sessionStartedAtRef.current = existingSession.started_at ?? null; // A14
+                if (preWorkoutSubmissionId) {
+                    preSubmissionIdRef.current = preWorkoutSubmissionId;
+                    await supabase
+                        .from('workout_sessions' as any)
+                        .update({ pre_workout_submission_id: preWorkoutSubmissionId })
+                        .eq('id', existingSession.id);
+                }
+                setSessionId(existingSession.id);
+                return existingSession.id;
+            }
+
             const { data: studentFull }: { data: any; error: any } = await supabase
                 .from('students' as any)
                 .select('coach_id')

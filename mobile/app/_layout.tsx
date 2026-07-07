@@ -120,17 +120,29 @@ function WatchBridge() {
                         .maybeSingle();
 
                     if (student) {
-                        const { data: existing }: { data: any } = await supabase
+                        // order+limit(1) + checagem de erro: com sessões in_progress
+                        // duplicadas, maybeSingle() sem limit devolve PGRST116 com
+                        // data null — ignorar o erro concluiria "não existe" e
+                        // criaria uma TERCEIRA sessão (mesma defesa do lookup em
+                        // useWorkoutSession).
+                        const { data: existing, error: existingError }: { data: any; error: any } = await supabase
                             .from('workout_sessions')
                             .select('id')
                             .eq('assigned_workout_id', workoutId)
                             .eq('student_id', student.id)
                             .eq('status', 'in_progress')
+                            .order('created_at', { ascending: false })
+                            .limit(1)
                             .maybeSingle();
+
+                        if (existingError && __DEV__) {
+                            console.warn(`[Layout] Existing-session lookup failed: ${existingError.message}`);
+                        }
 
                         let sessionId: string | null = existing?.id ?? null;
 
-                        if (!existing) {
+                        // Sem resposta confiável do lookup, não arriscar duplicar.
+                        if (!existing && !existingError) {
                             const { data: workout }: { data: any } = await supabase
                                 .from('assigned_workouts')
                                 .select('assigned_program_id')
@@ -163,7 +175,7 @@ function WatchBridge() {
                                     if (__DEV__) console.log(`[Layout] Pre-created in_progress session: ${session.id}`);
                                 }
                             }
-                        } else {
+                        } else if (existing) {
                             if (__DEV__) console.log(`[Layout] Session already exists for ${workoutId}: ${existing.id}`);
                         }
 

@@ -19,13 +19,22 @@ const ORG_ACTIVE = new Set(['active', 'trialing'])
  * própria org via org_members_member_read / organizations_member_read).
  */
 export async function hasOrgCoreAccess(client: DBClient, trainerId: string): Promise<boolean> {
-    const { data } = await client
-        .from('organization_members')
-        .select('organization:organizations(subscription_status, grace_until)')
-        .eq('trainer_id', trainerId)
-        .eq('status', 'active')
-        .limit(1)
-        .maybeSingle()
+    // Never-throw: erro de infra aqui não pode derrubar get-trainer nem os
+    // gates de cap — sem confirmação de org ativa, cai no fluxo solo (false).
+    let data: unknown
+    try {
+        const res = await client
+            .from('organization_members')
+            .select('organization:organizations(subscription_status, grace_until)')
+            .eq('trainer_id', trainerId)
+            .eq('status', 'active')
+            .limit(1)
+            .maybeSingle()
+        data = res.data
+    } catch (err) {
+        console.error('[hasOrgCoreAccess] lookup failed:', err)
+        return false
+    }
 
     if (!data) return false
     const rel = (data as { organization: unknown }).organization

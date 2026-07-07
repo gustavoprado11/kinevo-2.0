@@ -73,94 +73,87 @@ export async function getConversations(): Promise<Conversation[]> {
     const auth = await getAuthenticatedTrainer()
     if (!auth) return []
 
-    // Get all students that have at least one message, with last message + unread count.
-    // Using supabaseAdmin to avoid RLS overhead on the aggregation query.
-    const { data: rows, error } = await supabaseAdmin.rpc('get_trainer_conversations' as any, {
-        p_trainer_id: auth.trainer.id,
-    })
+    // Query direta com supabaseAdmin (sem overhead de RLS na agregação).
+    // A RPC get_trainer_conversations nunca existiu no banco (nenhuma migration
+    // a define) — a chamada foi removida; este caminho sempre foi o executado.
 
-    // Fallback: if RPC doesn't exist yet, do it with raw queries
-    if (error) {
-        // Get students with messages
-        const { data: students } = await supabaseAdmin
-            .from('students')
-            .select('id, name, avatar_url, status')
-            .eq('coach_id', auth.trainer.id)
-            .eq('status', 'active')
+    // Get students with messages
+    const { data: students } = await supabaseAdmin
+        .from('students')
+        .select('id, name, avatar_url, status')
+        .eq('coach_id', auth.trainer.id)
+        .eq('status', 'active')
 
-        if (!students?.length) return []
+    if (!students?.length) return []
 
-        const studentIds = students.map(s => s.id)
+    const studentIds = students.map(s => s.id)
 
-        // Get last message per student
-        const { data: messages } = await supabaseAdmin
-            .from('messages')
-            .select('student_id, content, image_url, sender_type, created_at')
-            .in('student_id', studentIds)
-            .order('created_at', { ascending: false })
+    // Get last message per student
+    const { data: messages } = await supabaseAdmin
+        .from('messages')
+        .select('student_id, content, image_url, sender_type, created_at')
+        .in('student_id', studentIds)
+        .order('created_at', { ascending: false })
 
-        // Get unread counts (messages from student that trainer hasn't read)
-        const { data: unreadRows } = await supabaseAdmin
-            .from('messages')
-            .select('student_id')
-            .in('student_id', studentIds)
-            .eq('sender_type', 'student')
-            .is('read_at', null)
+    // Get unread counts (messages from student that trainer hasn't read)
+    const { data: unreadRows } = await supabaseAdmin
+        .from('messages')
+        .select('student_id')
+        .in('student_id', studentIds)
+        .eq('sender_type', 'student')
+        .is('read_at', null)
 
-        // Build maps
-        const lastMessageMap = new Map<string, { content: string | null; image_url: string | null; sender_type: string; created_at: string | null }>()
-        for (const m of messages || []) {
-            if (!lastMessageMap.has(m.student_id)) {
-                lastMessageMap.set(m.student_id, m)
-            }
+    // Build maps
+    const lastMessageMap = new Map<string, { content: string | null; image_url: string | null; sender_type: string; created_at: string | null }>()
+    for (const m of messages || []) {
+        if (!lastMessageMap.has(m.student_id)) {
+            lastMessageMap.set(m.student_id, m)
         }
-
-        const unreadCountMap = new Map<string, number>()
-        for (const r of unreadRows || []) {
-            unreadCountMap.set(r.student_id, (unreadCountMap.get(r.student_id) || 0) + 1)
-        }
-
-        // Include ALL active students — those with messages first (by recency), then without (alphabetically)
-        const withMessages: Conversation[] = []
-        const withoutMessages: Conversation[] = []
-
-        for (const s of students) {
-            const last = lastMessageMap.get(s.id)
-            const conv: Conversation = {
-                student: {
-                    id: s.id,
-                    name: s.name,
-                    avatar_url: s.avatar_url,
-                    status: s.status,
-                },
-                lastMessage: last ? {
-                    content: last.content,
-                    image_url: last.image_url,
-                    sender_type: last.sender_type as 'trainer' | 'student',
-                    created_at: last.created_at ?? '',
-                } : null,
-                unreadCount: unreadCountMap.get(s.id) || 0,
-            }
-
-            if (last) {
-                withMessages.push(conv)
-            } else {
-                withoutMessages.push(conv)
-            }
-        }
-
-        // With messages: most recent first; without: alphabetical
-        withMessages.sort((a, b) => {
-            const aTime = a.lastMessage?.created_at ?? ''
-            const bTime = b.lastMessage?.created_at ?? ''
-            return bTime.localeCompare(aTime)
-        })
-        withoutMessages.sort((a, b) => a.student.name.localeCompare(b.student.name))
-
-        return [...withMessages, ...withoutMessages]
     }
 
-    return rows as Conversation[]
+    const unreadCountMap = new Map<string, number>()
+    for (const r of unreadRows || []) {
+        unreadCountMap.set(r.student_id, (unreadCountMap.get(r.student_id) || 0) + 1)
+    }
+
+    // Include ALL active students — those with messages first (by recency), then without (alphabetically)
+    const withMessages: Conversation[] = []
+    const withoutMessages: Conversation[] = []
+
+    for (const s of students) {
+        const last = lastMessageMap.get(s.id)
+        const conv: Conversation = {
+            student: {
+                id: s.id,
+                name: s.name,
+                avatar_url: s.avatar_url,
+                status: s.status,
+            },
+            lastMessage: last ? {
+                content: last.content,
+                image_url: last.image_url,
+                sender_type: last.sender_type as 'trainer' | 'student',
+                created_at: last.created_at ?? '',
+            } : null,
+            unreadCount: unreadCountMap.get(s.id) || 0,
+        }
+
+        if (last) {
+            withMessages.push(conv)
+        } else {
+            withoutMessages.push(conv)
+        }
+    }
+
+    // With messages: most recent first; without: alphabetical
+    withMessages.sort((a, b) => {
+        const aTime = a.lastMessage?.created_at ?? ''
+        const bTime = b.lastMessage?.created_at ?? ''
+        return bTime.localeCompare(aTime)
+    })
+    withoutMessages.sort((a, b) => a.student.name.localeCompare(b.student.name))
+
+    return [...withMessages, ...withoutMessages]
 }
 
 // ---------------------------------------------------------------------------

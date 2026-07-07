@@ -341,7 +341,7 @@ function stableArgs(args: unknown): string {
  * DIFERENTES (ex.: list_exercises por grupos distintos) seguem livres. Só afeta
  * READ_TOOLS; writes/confirm passam intactos.
  */
-function withReadGuard(tools: ToolSet): ToolSet {
+function withReadGuard(tools: ToolSet): { tools: ToolSet; reset: () => void } {
     const seen = new Set<string>()
     const guarded: ToolSet = {}
     for (const [name, t] of Object.entries(tools)) {
@@ -368,7 +368,10 @@ function withReadGuard(tools: ToolSet): ToolSet {
             }) as typeof t.execute,
         }
     }
-    return guarded
+    // reset: o fallback de modelo de build re-roda o turno do ZERO (contexto
+    // novo, sem os resultados anteriores) — sem limpar o `seen`, as re-leituras
+    // legítimas do fallback receberiam o corretivo em vez dos dados.
+    return { tools: guarded, reset: () => seen.clear() }
 }
 
 // ----------------------------------------------------------------------------
@@ -489,7 +492,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         bridgeClose = bridge.close
 
         // Guard anti-loop nas leituras (dedup por tool+args no turno).
-        const readGuardedTools = withReadGuard(bridge.tools)
+        const { tools: readGuardedTools, reset: resetReadGuard } = withReadGuard(bridge.tools)
         // Aluno em foco: o modelo já TEM o aluno (UUID + perfil no contexto) e não
         // precisa "listar alunos". Em prod ele entrava em loop justamente aqui
         // (kinevo_list_students 12x → estourava maxSteps sem concluir). Removemos a
@@ -682,6 +685,9 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             turnModel = ASSISTANT_MODEL
             // O modelo que falhou pode ter emitido texto parcial: o cliente descarta.
             opts.onTextReset?.()
+            // O fallback começa sem os tool-results do modelo que falhou — libera
+            // o dedup de leituras para as re-consultas legítimas dele.
+            resetReadGuard()
             result = await runGen(turnModel)
         }
 
