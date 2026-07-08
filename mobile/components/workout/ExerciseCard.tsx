@@ -4,7 +4,6 @@ import { BlurView } from 'expo-blur';
 import {
     ArrowRightLeft,
     PlayCircle,
-    Check,
     TrendingUp,
     TrendingDown,
     ChevronsDown,
@@ -14,24 +13,15 @@ import {
 } from 'lucide-react-native';
 import type { MethodKey } from '@kinevo/shared/types/prescription';
 import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels';
-import { RestConnector } from './RestConnector';
-import { SetRow } from './SetRow';
+import { ExerciseBody, computeRoundLayout } from './ExerciseBody';
+import type { SetData, PreviousSetData } from './ExerciseBody';
 import { TrainerNote } from './TrainerNote';
 import type { SetPrescription } from '../../lib/hydrateWorkoutSets';
 import { useV2Colors, useIsDark } from '../../hooks/useV2Colors';
 import { toRgba } from '../../lib/brandColor';
 
-export interface SetData {
-    weight: string;
-    reps: string;
-    completed: boolean;
-}
-
-export interface PreviousSetData {
-    set_number: number;
-    weight: number;
-    reps: number;
-}
+// Tipos reexportados do corpo extraído (Fase 0) — compat com quem importava daqui.
+export type { SetData, PreviousSetData };
 
 interface ExerciseCardProps {
     exerciseName: string;
@@ -163,31 +153,10 @@ export const ExerciseCard = React.memo(function ExerciseCard({
     const summary = hasScheme ? buildSchemeSummary(setScheme!) : null;
     const methodChip = getMethodChipLabel(methodKey);
 
-    // Compound layout: when rounds > 1 and the scheme has round_number tags
-    // (Fase 4.3+), group rows by round and render with a section header per
-    // round. Linear methods or legacy programs render the flat list.
-    const isCompoundLayout = hasScheme
-        && rounds > 1
-        && setScheme!.some((s) => typeof s.round_number === 'number');
-    const phasesPerRound = isCompoundLayout ? Math.max(1, Math.floor(setScheme!.length / rounds)) : 0;
-
-    // M5: agrupa as séries por round_number real (fallback posicional) em vez de
-    // fatiar por `phasesPerRound`. Sem isto, quando setScheme.length não é
-    // divisível por `rounds` (ex.: 5 séries / 2 rodadas) as séries excedentes
-    // não eram renderizadas — o aluno não conseguia registrá-las e o progresso
-    // travava sem chegar a 100%.
-    const roundGroups: number[][] = (() => {
-        if (!isCompoundLayout) return [];
-        const byRound = new Map<number, number[]>();
-        setScheme!.forEach((s, idx) => {
-            const r = typeof s.round_number === 'number'
-                ? s.round_number
-                : Math.floor(idx / Math.max(1, phasesPerRound)) + 1;
-            if (!byRound.has(r)) byRound.set(r, []);
-            byRound.get(r)!.push(idx);
-        });
-        return [...byRound.keys()].sort((a, b) => a - b).map((k) => byRound.get(k)!);
-    })();
+    // Layout composto (rounds) — fonte única compartilhada com o ExerciseBody
+    // (que renderiza as rodadas). Aqui só precisamos de isCompoundLayout +
+    // phasesPerRound para o resumo textual do header.
+    const { isCompoundLayout, phasesPerRound } = computeRoundLayout(setScheme, rounds);
 
     // Header summary: "3 rodadas · 2 fases · 10/8 reps" for compound; legacy
     // "N séries · X reps · Ys descanso" for linear.
@@ -302,142 +271,18 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                 </View>
             </View>
 
-            {/* Column Headers */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, marginBottom: 2 }}>
-                <View style={{ width: 26, marginRight: 6 }}>
-                    <Text style={{ color: colors.text.tertiary, fontSize: 10, fontWeight: '600', textAlign: 'center' }}>#</Text>
-                </View>
-                <View style={{ width: 58, marginRight: 6 }}>
-                    <Text style={{ color: colors.text.tertiary, fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Anterior</Text>
-                </View>
-                <View style={{ flex: 1, marginRight: 6 }}>
-                    <Text style={{ color: colors.text.tertiary, fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Peso</Text>
-                </View>
-                <View style={{ flex: 1, marginRight: 6 }}>
-                    <Text style={{ color: colors.text.tertiary, fontSize: 10, fontWeight: '600', textAlign: 'center' }}>Reps</Text>
-                </View>
-                <View style={{ width: 40, alignItems: 'center' }}>
-                    <Check size={10} color={colors.text.tertiary} />
-                </View>
-            </View>
-
-            {/* Sets List */}
-            <View>
-                {isCompoundLayout
-                    ? roundGroups.map((indices, roundIdx) => {
-                        const roundSlice = indices.map((i) => setsData[i]).filter(Boolean);
-                        const allDone = roundSlice.length > 0 && roundSlice.every((s) => s.completed);
-                        const isLastRound = roundIdx === roundGroups.length - 1;
-                        return (
-                            <View
-                                key={`round-${roundIdx + 1}`}
-                                style={{
-                                    marginTop: roundIdx === 0 ? 0 : 10,
-                                    paddingTop: roundIdx === 0 ? 0 : 6,
-                                    borderTopWidth: roundIdx === 0 ? 0 : 1,
-                                    borderTopColor: toRgba(colors.purple[600], 0.12),
-                                }}
-                            >
-                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 4 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.purple[700], letterSpacing: 0.4, textTransform: 'uppercase' }}>
-                                        Rodada {roundIdx + 1} de {roundGroups.length}
-                                    </Text>
-                                    <View
-                                        accessibilityLabel={allDone ? 'Rodada concluída' : 'Rodada em andamento'}
-                                        style={{
-                                            width: 18,
-                                            height: 18,
-                                            borderRadius: 9,
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            backgroundColor: allDone ? colors.purple[600] : 'transparent',
-                                            borderWidth: allDone ? 0 : 1.5,
-                                            borderColor: colors.border.default,
-                                        }}
-                                    >
-                                        {allDone ? <Check size={12} color="#fff" strokeWidth={3} /> : null}
-                                    </View>
-                                </View>
-                                {indices.map((globalIdx, localIdx) => {
-                                    const set = setsData[globalIdx];
-                                    if (!set) return null;
-                                    const prev = previousSets?.[globalIdx];
-                                    const prescription = setScheme![globalIdx];
-                                    const nextPrescription = setScheme![globalIdx + 1];
-                                    const isLastPhaseInRound = localIdx === indices.length - 1;
-                                    const isLastInExercise = isLastPhaseInRound && isLastRound;
-                                    const isLastInRound = isLastPhaseInRound && !isLastRound;
-                                    return (
-                                        <React.Fragment key={globalIdx}>
-                                            <SetRow
-                                                index={globalIdx}
-                                                weight={set.weight}
-                                                reps={set.reps}
-                                                isCompleted={set.completed}
-                                                onWeightChange={(val) => handleSetChange(globalIdx, 'weight', val)}
-                                                onRepsChange={(val) => handleSetChange(globalIdx, 'reps', val)}
-                                                onToggleComplete={() => handleToggleSetComplete(globalIdx)}
-                                                previousWeight={prev?.weight}
-                                                previousReps={prev?.reps}
-                                                setType={prescription?.set_type ?? 'normal'}
-                                                repsTarget={prescription?.reps_target}
-                                                weightTargetKg={prescription?.weight_target_kg ?? null}
-                                                weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
-                                                rirTarget={prescription?.rir ?? null}
-                                                tempoTarget={prescription?.tempo ?? null}
-                                                readOnly={readOnly}
-                                            />
-                                            <RestConnector
-                                                restSeconds={prescription?.rest_seconds ?? 0}
-                                                currentSetType={prescription?.set_type ?? 'normal'}
-                                                nextSetType={nextPrescription?.set_type}
-                                                isLastInRound={isLastInRound}
-                                                isLastInExercise={isLastInExercise}
-                                            />
-                                        </React.Fragment>
-                                    );
-                                })}
-                            </View>
-                        );
-                    })
-                    : setsData.map((set, index) => {
-                        const prev = previousSets?.[index];
-                        const prescription = hasScheme ? setScheme![index] : null;
-                        const nextPrescription = hasScheme ? setScheme![index + 1] : null;
-                        const isLast = index === setsData.length - 1;
-                        // Rest a usar pra o connector. Per-set se houver
-                        // scheme, senão o agregado uniforme.
-                        const restForConnector = prescription?.rest_seconds ?? restSeconds;
-                        return (
-                            <React.Fragment key={index}>
-                                <SetRow
-                                    index={index}
-                                    weight={set.weight}
-                                    reps={set.reps}
-                                    isCompleted={set.completed}
-                                    onWeightChange={(val) => handleSetChange(index, 'weight', val)}
-                                    onRepsChange={(val) => handleSetChange(index, 'reps', val)}
-                                    onToggleComplete={() => handleToggleSetComplete(index)}
-                                    previousWeight={prev?.weight}
-                                    previousReps={prev?.reps}
-                                    setType={prescription?.set_type ?? 'normal'}
-                                    repsTarget={prescription?.reps_target}
-                                    weightTargetKg={prescription?.weight_target_kg ?? null}
-                                    weightTargetPct1rm={prescription?.weight_target_pct1rm ?? null}
-                                    rirTarget={prescription?.rir ?? null}
-                                    tempoTarget={prescription?.tempo ?? null}
-                                    readOnly={readOnly}
-                                />
-                                <RestConnector
-                                    restSeconds={restForConnector}
-                                    currentSetType={prescription?.set_type ?? 'normal'}
-                                    nextSetType={nextPrescription?.set_type}
-                                    isLastInExercise={isLast}
-                                />
-                            </React.Fragment>
-                        );
-                    })}
-            </View>
+            {/* Corpo (cabeçalhos + grade de séries, incl. layout por rodadas) —
+                extraído para ExerciseBody (Fase 0) e reusado pelos dois modos. */}
+            <ExerciseBody
+                setsData={setsData}
+                setScheme={setScheme}
+                rounds={rounds}
+                restSeconds={restSeconds}
+                previousSets={previousSets}
+                readOnly={readOnly}
+                onSetChange={handleSetChange}
+                onToggleSetComplete={handleToggleSetComplete}
+            />
         </BlurView>
     );
 });

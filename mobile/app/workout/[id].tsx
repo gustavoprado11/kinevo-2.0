@@ -22,6 +22,15 @@ import { useStudentProfile } from '../../hooks/useStudentProfile';
 import { useWatchConnectivity } from '../../hooks/useWatchConnectivity';
 import { markWatchWorkoutScreenMounted, markWatchWorkoutScreenUnmounted } from '../../lib/persistWatchSetLog';
 import { ChevronLeft, Info } from 'lucide-react-native';
+import { WorkoutModeToggle } from '../../components/workout/WorkoutModeToggle';
+import { useWorkoutViewModeStore } from '../../stores/workoutViewModeStore';
+import { ExecutionExerciseCard } from '../../components/workout/ExecutionExerciseCard';
+import { ExerciseSummaryRow, type ExerciseStatus } from '../../components/workout/ExerciseSummaryRow';
+import { WorkoutFocusExercise } from '../../components/workout/WorkoutFocusExercise';
+import { WorkoutFocusPager } from '../../components/workout/WorkoutFocusPager';
+import { WorkoutFocusNav } from '../../components/workout/WorkoutFocusNav';
+import { GrowingVideoPlayer, type VideoChoice } from '../../components/workout/GrowingVideoPlayer';
+import { useSharedValue } from 'react-native-reanimated';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
 import { WorkoutCelebration, CelebrationData } from '../../components/workout/WorkoutCelebration';
 import { ShareWorkoutModal } from '../../components/workout/ShareWorkoutModal';
@@ -355,6 +364,26 @@ export default function WorkoutPlayerScreen() {
     }, [exercises]);
 
     const allSetsCompleted = totalSets > 0 && completedSets === totalSets;
+
+    // Preferência de modo de execução (lista/foco), persistida por device (MMKV).
+    // Fase 1: só o cabeçalho/toggle entram; os dois segmentos ainda renderizam a
+    // mesma lista. O branching lista×foco vem nas Fases 2-4.
+    const viewMode = useWorkoutViewModeStore((s) => s.mode);
+    const setViewMode = useWorkoutViewModeStore((s) => s.setMode);
+
+    // Barra de conclusão por EXERCÍCIO (D4): um exercício = todas as séries
+    // completas. Aquecimento (setsData vazio) e cardio ainda não engajado não
+    // contam. O gate de "Finalizar" segue por SÉRIES (allSetsCompleted, invariante).
+    const { doneExercises, totalExercises } = useMemo(() => {
+        let done = 0;
+        let total = 0;
+        exercises.forEach(ex => {
+            if (ex.setsData.length === 0) return;
+            total += 1;
+            if (ex.setsData.every(s => s.completed)) done += 1;
+        });
+        return { doneExercises: done, totalExercises: total };
+    }, [exercises]);
 
     // Perf: the workout list re-renders on every keystroke because setExercises
     // (useWorkoutSession) replaces the array. The memoized cards only skip
@@ -939,6 +968,67 @@ export default function WorkoutPlayerScreen() {
         return finalItems;
     }, [exercises, workoutNotes]);
 
+    // Fase 2 (modo Lista): número/status por item de trabalho (exercise|superset)
+    // e o "atual" = primeiro item com trabalho incompleto. Deriva do renderList
+    // (que já rebuilda quando exercises muda). Aquecimento/cardio/nota não contam.
+    const [manualExpanded, setManualExpanded] = React.useState<Set<string>>(new Set());
+    const toggleExpand = useCallback((key: string) => {
+        setManualExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+        });
+    }, []);
+    const { listMeta, currentKey } = useMemo(() => {
+        const meta = new Map<string, { number: number; done: boolean }>();
+        let current: string | null = null;
+        let n = 0;
+        for (const it of renderList) {
+            let key: string | null = null;
+            let done = false;
+            if (it.type === 'exercise') {
+                key = it.exercise.id;
+                done = it.exercise.setsData.length > 0 && it.exercise.setsData.every((s) => s.completed);
+            } else if (it.type === 'superset') {
+                key = it.supersetId;
+                done = it.exercises.every((e) => e.setsData.length > 0 && e.setsData.every((s) => s.completed));
+            }
+            if (key) {
+                n += 1;
+                meta.set(key, { number: n, done });
+                if (!done && current === null) current = key;
+            }
+        }
+        return { listMeta: meta, currentKey: current };
+    }, [renderList]);
+
+    // Fase 3 (modo Foco): páginas = itens de trabalho (exercise|superset|cardio/
+    // aquecimento), na ordem. section_header/note não viram página.
+    const focusItems = useMemo(
+        () => renderList.filter((it) => it.type === 'exercise' || it.type === 'superset' || it.type === 'warmup_cardio'),
+        [renderList],
+    );
+    const [focusIndex, setFocusIndex] = React.useState(0);
+    // Fase 4: scroll da página ativa → altura do player crescente (Reanimated).
+    const focusScrollY = useSharedValue(0);
+    // Superset (D1): qual vídeo do filho o player mostra; reseta ao trocar de item.
+    const [focusChildVideo, setFocusChildVideo] = React.useState(0);
+    useEffect(() => { setFocusChildVideo(0); }, [focusIndex]);
+    const enteredFocusRef = useRef(false);
+    // Ao ENTRAR no modo foco, aterrissa no item atual (1º incompleto).
+    useEffect(() => {
+        if (viewMode === 'foco' && !enteredFocusRef.current) {
+            enteredFocusRef.current = true;
+            const idx = focusItems.findIndex(
+                (it) => (it.type === 'exercise' && it.exercise.id === currentKey)
+                    || (it.type === 'superset' && it.supersetId === currentKey),
+            );
+            setFocusIndex(idx >= 0 ? idx : 0);
+        } else if (viewMode !== 'foco') {
+            enteredFocusRef.current = false;
+        }
+    }, [viewMode, focusItems, currentKey]);
+
     if (isLoading) {
         return (
             <ScreenWrapper>
@@ -958,26 +1048,50 @@ export default function WorkoutPlayerScreen() {
                 }}
             />
 
-            {/* Header */}
-            <View style={{ backgroundColor: colors.surface.card, borderBottomWidth: 1, borderBottomColor: colors.border.default, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
-                {/* Top row: back | name+timer | spacer */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }} hitSlop={12}>
-                        <ChevronLeft size={24} color={colors.text.primary} />
+            {/* Header (redesign lista/foco) */}
+            <View style={{ backgroundColor: colors.surface.card, borderBottomWidth: 1, borderBottomColor: colors.border.subtle, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10 }}>
+                {/* Top row: back | eyebrow+title | timer */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        hitSlop={10}
+                        accessibilityRole="button"
+                        accessibilityLabel="Voltar"
+                        style={{
+                            width: 38, height: 38, borderRadius: 13,
+                            backgroundColor: colors.surface.card2,
+                            alignItems: 'center', justifyContent: 'center',
+                            shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1,
+                        }}
+                    >
+                        <ChevronLeft size={19} color={colors.text.primary} />
                     </TouchableOpacity>
-                    <View style={{ alignItems: 'center' }}>
-                        <Text style={{ color: colors.text.primary, fontWeight: '700', fontSize: 17 }}>{workoutName}</Text>
-                        <Text style={{ color: colors.text.secondary, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 13 }}>{duration}</Text>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ color: colors.purple[700], fontSize: 11, fontWeight: '700', letterSpacing: 0.9, textTransform: 'uppercase' }}>
+                            Treino
+                        </Text>
+                        <Text numberOfLines={1} style={{ color: colors.text.primary, fontWeight: '800', fontSize: 18, marginTop: 1 }}>
+                            {workoutName}
+                        </Text>
                     </View>
-                    <View style={{ width: 40 }} />
+                    <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ color: colors.text.primary, fontWeight: '800', fontSize: 18, fontVariant: ['tabular-nums'] }}>{duration}</Text>
+                        <Text style={{ color: colors.text.tertiary, fontSize: 10 }}>tempo</Text>
+                    </View>
                 </View>
-                {/* Progress bar */}
-                <View style={{ marginTop: 12 }}>
-                    <View style={{ height: 3, backgroundColor: colors.border.default, borderRadius: 2, overflow: 'hidden' }}>
-                        <View style={{ height: '100%', width: `${totalSets > 0 ? (completedSets / totalSets) * 100 : 0}%`, backgroundColor: colors.purple[600], borderRadius: 2 }} />
+
+                {/* Preference toggle (persisted per student) */}
+                <View style={{ marginTop: 10 }}>
+                    <WorkoutModeToggle mode={viewMode} onChange={setViewMode} />
+                </View>
+
+                {/* Completion bar (por exercício — D4) */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                    <View style={{ flex: 1, height: 6, backgroundColor: colors.surface.card2, borderRadius: 3, overflow: 'hidden' }}>
+                        <View style={{ height: '100%', width: `${totalExercises > 0 ? (doneExercises / totalExercises) * 100 : 0}%`, backgroundColor: colors.purple[600], borderRadius: 3 }} />
                     </View>
-                    <Text style={{ color: colors.text.tertiary, fontSize: 11, marginTop: 4, textAlign: 'right' }}>
-                        {completedSets}/{totalSets} séries
+                    <Text style={{ color: colors.text.tertiary, fontSize: 11, fontWeight: '700' }}>
+                        {doneExercises} de {totalExercises} feito{doneExercises === 1 ? '' : 's'}
                     </Text>
                 </View>
             </View>
@@ -987,6 +1101,125 @@ export default function WorkoutPlayerScreen() {
                 style={{ flex: 1, backgroundColor: colors.surface.canvas }}
                 keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
             >
+                {viewMode === 'foco' && focusItems.length > 0 ? (
+                    <View style={{ flex: 1 }}>
+                        <WorkoutFocusPager
+                            index={focusIndex}
+                            onIndexChange={setFocusIndex}
+                            scrollY={focusScrollY}
+                            pageBottomPadding={restTimer ? 300 : 220}
+                            pages={focusItems.map((item, i) => {
+                                const eyebrow = (
+                                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.purple[700], letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>
+                                        Exercício {i + 1} de {focusItems.length}
+                                    </Text>
+                                );
+                                if (item.type === 'exercise') {
+                                    return (
+                                        <WorkoutFocusExercise
+                                            key={item.exercise.id}
+                                            exercise={item.exercise}
+                                            position={i + 1}
+                                            total={focusItems.length}
+                                            globalIndex={item.globalIndex}
+                                            onSetChangeGlobal={onSetChangeStable}
+                                            onToggleSetCompleteGlobal={onToggleSetCompleteStable}
+                                            onSwapPressGlobal={openSwapModal}
+                                            onVideoPress={onVideoPressStable}
+                                        />
+                                    );
+                                }
+                                if (item.type === 'superset') {
+                                    return (
+                                        <View key={item.supersetId}>
+                                            {eyebrow}
+                                            <SupersetGroup
+                                                exercises={item.exercises}
+                                                supersetRestSeconds={item.supersetRestSeconds}
+                                                onSetChange={onSetChangeStable}
+                                                onToggleSetComplete={onToggleSetCompleteStable}
+                                                onVideoPress={onVideoPressStable}
+                                                onSwapPress={openSwapModal}
+                                                globalIndices={item.globalIndices}
+                                            />
+                                        </View>
+                                    );
+                                }
+                                // warmup_cardio
+                                if (item.exercise.item_type === 'warmup') {
+                                    return (
+                                        <View key={item.exercise.id}>
+                                            {eyebrow}
+                                            <WarmupCard
+                                                exercise={item.exercise}
+                                                onTimerStart={(endTs, totalSecs, warmupType) => {
+                                                    liveActivityRef.current?.updateTimerState({ itemType: 'warmup', timerEndTimestamp: endTs, timerTotalSeconds: totalSecs, warmupType });
+                                                }}
+                                                onTimerStop={() => liveActivityRef.current?.clearTimerState()}
+                                            />
+                                        </View>
+                                    );
+                                }
+                                return (
+                                    <View key={item.exercise.id}>
+                                        {eyebrow}
+                                        <CardioCard
+                                            exercise={item.exercise}
+                                            onCardioToggle={toggleCardioComplete}
+                                            onTimerUpdate={(data) => liveActivityRef.current?.updateTimerState(data)}
+                                            onTimerStop={() => liveActivityRef.current?.clearTimerState()}
+                                        />
+                                    </View>
+                                );
+                            })}
+                        />
+                        <WorkoutFocusNav
+                            index={focusIndex}
+                            total={focusItems.length}
+                            onPrev={() => setFocusIndex((i) => Math.max(0, i - 1))}
+                            onNext={() => setFocusIndex((i) => Math.min(focusItems.length - 1, i + 1))}
+                            onFinish={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                                if (allSetsCompleted) {
+                                    handleFinish();
+                                } else {
+                                    Alert.alert(
+                                        'Finalizar treino incompleto?',
+                                        `Você completou ${completedSets} de ${totalSets} séries. Deseja finalizar mesmo assim?`,
+                                        [
+                                            { text: 'Continuar Treinando', style: 'cancel' },
+                                            { text: 'Finalizar', style: 'destructive', onPress: handleFinish },
+                                        ],
+                                    );
+                                }
+                            }}
+                        />
+                        {/* Fase 4: player de vídeo ancorado que cresce ao rolar. D2:
+                            cardio/aquecimento não têm player. D1: superset → seletor. */}
+                        {(() => {
+                            const cur = focusItems[focusIndex];
+                            if (!cur || cur.type === 'warmup_cardio') return null;
+                            let videoUrl: string | null = null;
+                            let childOptions: VideoChoice[] | undefined;
+                            if (cur.type === 'exercise') {
+                                videoUrl = cur.exercise.video_url ?? null;
+                            } else if (cur.type === 'superset') {
+                                childOptions = cur.exercises.map((e) => ({ name: e.name, videoUrl: e.video_url ?? null }));
+                                videoUrl = childOptions[Math.min(focusChildVideo, childOptions.length - 1)]?.videoUrl ?? null;
+                            }
+                            return (
+                                <GrowingVideoPlayer
+                                    videoUrl={videoUrl}
+                                    scrollY={focusScrollY}
+                                    onOpenFullscreen={onVideoPressStable}
+                                    childOptions={childOptions}
+                                    selectedChild={focusChildVideo}
+                                    onSelectChild={setFocusChildVideo}
+                                />
+                            );
+                        })()}
+                    </View>
+                ) : (
                 <ScrollView
                     style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16, backgroundColor: colors.surface.canvas }}
                     contentContainerStyle={{ paddingBottom: restTimer ? 260 : 24 }}
@@ -1035,9 +1268,8 @@ export default function WorkoutPlayerScreen() {
                             return <WorkoutNoteCard key={item.note.id} note={item.note.notes} />;
                         }
                         if (item.type === 'superset') {
-                            return (
+                            const supersetGroup = (
                                 <SupersetGroup
-                                    key={item.supersetId}
                                     exercises={item.exercises}
                                     supersetRestSeconds={item.supersetRestSeconds}
                                     onSetChange={onSetChangeStable}
@@ -1047,29 +1279,86 @@ export default function WorkoutPlayerScreen() {
                                     globalIndices={item.globalIndices}
                                 />
                             );
+                            // Foco (placeholder até a Fase 3) → grupo completo como hoje.
+                            if (viewMode !== 'lista') {
+                                return <React.Fragment key={item.supersetId}>{supersetGroup}</React.Fragment>;
+                            }
+                            const m = listMeta.get(item.supersetId);
+                            const status: ExerciseStatus = m?.done ? 'done' : (item.supersetId === currentKey ? 'current' : 'todo');
+                            const expanded = status === 'current' || manualExpanded.has(item.supersetId);
+                            if (!expanded) {
+                                return (
+                                    <View key={item.supersetId} style={{ backgroundColor: colors.surface.card, borderRadius: 20, borderWidth: 1, borderColor: colors.border.subtle, padding: 14, marginBottom: 14 }}>
+                                        <ExerciseSummaryRow
+                                            number={m?.number ?? 0}
+                                            name="Superset"
+                                            meta={`${item.exercises.length} exercícios · ${item.exercises.map((e) => e.name).join(' + ')}`}
+                                            status={status}
+                                            onPress={() => toggleExpand(item.supersetId)}
+                                            expanded={false}
+                                        />
+                                    </View>
+                                );
+                            }
+                            return (
+                                <View key={item.supersetId} style={{ marginBottom: 4 }}>
+                                    <View style={{ paddingHorizontal: 2, marginBottom: 6 }}>
+                                        <ExerciseSummaryRow
+                                            number={m?.number ?? 0}
+                                            name="Superset"
+                                            meta={`${item.exercises.length} exercícios`}
+                                            status={status}
+                                            onPress={status === 'current' ? undefined : () => toggleExpand(item.supersetId)}
+                                            expanded
+                                        />
+                                    </View>
+                                    {supersetGroup}
+                                </View>
+                            );
                         }
                         if (item.type === 'exercise') {
+                            // Foco (placeholder até a Fase 3) → card completo como hoje.
+                            if (viewMode !== 'lista') {
+                                return (
+                                    <ExerciseCard
+                                        key={item.exercise.id}
+                                        exerciseName={item.exercise.name}
+                                        sets={item.exercise.sets}
+                                        reps={item.exercise.reps}
+                                        restSeconds={item.exercise.rest_seconds}
+                                        videoUrl={item.exercise.video_url}
+                                        previousLoad={item.exercise.previousLoad}
+                                        previousSets={item.exercise.previousSets}
+                                        setsData={item.exercise.setsData}
+                                        globalIndex={item.globalIndex}
+                                        onSetChangeGlobal={onSetChangeStable}
+                                        onToggleSetCompleteGlobal={onToggleSetCompleteStable}
+                                        onSwapPressGlobal={openSwapModal}
+                                        onVideoPress={onVideoPressStable}
+                                        isSwapped={item.exercise.swap_source !== 'none'}
+                                        notes={item.exercise.notes}
+                                        setScheme={item.exercise.setScheme}
+                                        methodKey={item.exercise.methodKey}
+                                        rounds={item.exercise.rounds}
+                                    />
+                                );
+                            }
+                            const m = listMeta.get(item.exercise.id);
+                            const status: ExerciseStatus = m?.done ? 'done' : (item.exercise.id === currentKey ? 'current' : 'todo');
+                            const expanded = status === 'current' || manualExpanded.has(item.exercise.id);
                             return (
-                                <ExerciseCard
+                                <ExecutionExerciseCard
                                     key={item.exercise.id}
-                                    exerciseName={item.exercise.name}
-                                    sets={item.exercise.sets}
-                                    reps={item.exercise.reps}
-                                    restSeconds={item.exercise.rest_seconds}
-                                    videoUrl={item.exercise.video_url}
-                                    previousLoad={item.exercise.previousLoad}
-                                    previousSets={item.exercise.previousSets}
-                                    setsData={item.exercise.setsData}
+                                    exercise={item.exercise}
+                                    number={m?.number ?? 0}
+                                    status={status}
+                                    expanded={expanded}
+                                    onToggleExpand={() => toggleExpand(item.exercise.id)}
                                     globalIndex={item.globalIndex}
                                     onSetChangeGlobal={onSetChangeStable}
                                     onToggleSetCompleteGlobal={onToggleSetCompleteStable}
                                     onSwapPressGlobal={openSwapModal}
                                     onVideoPress={onVideoPressStable}
-                                    isSwapped={item.exercise.swap_source !== 'none'}
-                                    notes={item.exercise.notes}
-                                    setScheme={item.exercise.setScheme}
-                                    methodKey={item.exercise.methodKey}
-                                    rounds={item.exercise.rounds}
                                 />
                             );
                         }
@@ -1083,6 +1372,7 @@ export default function WorkoutPlayerScreen() {
                     )}
 
                 </ScrollView>
+                )}
             </KeyboardAvoidingView>
 
             {/* C1: aviso transitório não-bloqueante de série sem carga/reps */}
@@ -1117,7 +1407,9 @@ export default function WorkoutPlayerScreen() {
                 </View>
             )}
 
-            {/* Fixed Finalizar button */}
+            {/* Fixed Finalizar button — só no modo lista. No foco, a barra
+                WorkoutFocusNav ("Concluir treino" no último item) faz o papel. */}
+            {viewMode === 'lista' && (
             <View style={{
                 paddingHorizontal: 20,
                 paddingTop: 12,
@@ -1165,6 +1457,7 @@ export default function WorkoutPlayerScreen() {
                     )}
                 </TouchableOpacity>
             </View>
+            )}
             {/* Feedback Modal */}
             <WorkoutFeedbackModal
                 visible={isFeedbackVisible}
