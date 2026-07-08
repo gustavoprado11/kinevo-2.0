@@ -94,3 +94,6 @@ docs/prd/PROMPT_claude_code_preferencias.md
 
 # Word/Pages lockfiles
 ~$*
+
+# Throwaway QA harnesses (create/clean disposable prod test data — never commit)
+qa-scripts/
