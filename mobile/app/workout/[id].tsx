@@ -971,36 +971,54 @@ export default function WorkoutPlayerScreen() {
     // Fase 2 (modo Lista): número/status por item de trabalho (exercise|superset)
     // e o "atual" = primeiro item com trabalho incompleto. Deriva do renderList
     // (que já rebuilda quando exercises muda). Aquecimento/cardio/nota não contam.
-    const [manualExpanded, setManualExpanded] = React.useState<Set<string>>(new Set());
-    const toggleExpand = useCallback((key: string) => {
-        setManualExpanded((prev) => {
-            const next = new Set(prev);
-            if (next.has(key)) next.delete(key); else next.add(key);
-            return next;
-        });
-    }, []);
+    // Modo Lista = acordeão: UM card aberto por vez. `focusKey` é o exercício que
+    // o aluno escolheu abrir (ex.: pular pra outro porque o equipamento está
+    // ocupado). Quando null, segue o "atual" automático (primeiro não concluído),
+    // então concluir um exercício abre o próximo sozinho.
+    const [focusKey, setFocusKey] = React.useState<string | null>(null);
+    const prevFocusDoneRef = React.useRef(false);
     const { listMeta, currentKey } = useMemo(() => {
-        const meta = new Map<string, { number: number; done: boolean }>();
+        const meta = new Map<string, { number: number; done: boolean; started: boolean }>();
         let current: string | null = null;
         let n = 0;
         for (const it of renderList) {
             let key: string | null = null;
             let done = false;
+            let started = false;
             if (it.type === 'exercise') {
                 key = it.exercise.id;
-                done = it.exercise.setsData.length > 0 && it.exercise.setsData.every((s) => s.completed);
+                const sd = it.exercise.setsData;
+                done = sd.length > 0 && sd.every((s) => s.completed);
+                started = sd.some((s) => s.completed);
             } else if (it.type === 'superset') {
                 key = it.supersetId;
                 done = it.exercises.every((e) => e.setsData.length > 0 && e.setsData.every((s) => s.completed));
+                started = it.exercises.some((e) => e.setsData.some((s) => s.completed));
             }
             if (key) {
                 n += 1;
-                meta.set(key, { number: n, done });
+                meta.set(key, { number: n, done, started });
                 if (!done && current === null) current = key;
             }
         }
         return { listMeta: meta, currentKey: current };
     }, [renderList]);
+
+    // O card aberto: foco manual vence; sem foco, segue o atual automático.
+    const expandedKey = focusKey && listMeta.has(focusKey) ? focusKey : currentKey;
+    const focusExercise = (key: string) => {
+        // Semeia o "done anterior" com o estado atual: abrir um já-concluído para
+        // revisar não deve recolher na hora (o efeito abaixo só avança quando o
+        // exercício focado ACABA de ser concluído).
+        prevFocusDoneRef.current = listMeta.get(key)?.done ?? false;
+        setFocusKey(key);
+    };
+    React.useEffect(() => {
+        if (!focusKey) { prevFocusDoneRef.current = false; return; }
+        const isDone = listMeta.get(focusKey)?.done ?? false;
+        if (isDone && !prevFocusDoneRef.current) setFocusKey(null); // concluiu o focado → avança
+        prevFocusDoneRef.current = isDone;
+    }, [focusKey, listMeta]);
 
     // Fase 3 (modo Foco): páginas = itens de trabalho (exercise|superset|cardio/
     // aquecimento), na ordem. section_header/note não viram página.
@@ -1284,9 +1302,9 @@ export default function WorkoutPlayerScreen() {
                                 return <React.Fragment key={item.supersetId}>{supersetGroup}</React.Fragment>;
                             }
                             const m = listMeta.get(item.supersetId);
-                            const status: ExerciseStatus = m?.done ? 'done' : (item.supersetId === currentKey ? 'current' : 'todo');
-                            const expanded = status === 'current' || manualExpanded.has(item.supersetId);
-                            if (!expanded) {
+                            const isFocused = item.supersetId === expandedKey;
+                            const status: ExerciseStatus = m?.done ? 'done' : (isFocused || m?.started ? 'current' : 'todo');
+                            if (!isFocused) {
                                 return (
                                     <View key={item.supersetId} style={{ backgroundColor: colors.surface.card, borderRadius: 20, borderWidth: 1, borderColor: colors.border.subtle, padding: 14, marginBottom: 14 }}>
                                         <ExerciseSummaryRow
@@ -1294,7 +1312,7 @@ export default function WorkoutPlayerScreen() {
                                             name="Superset"
                                             meta={`${item.exercises.length} exercícios · ${item.exercises.map((e) => e.name).join(' + ')}`}
                                             status={status}
-                                            onPress={() => toggleExpand(item.supersetId)}
+                                            onPress={() => focusExercise(item.supersetId)}
                                             expanded={false}
                                         />
                                     </View>
@@ -1308,7 +1326,7 @@ export default function WorkoutPlayerScreen() {
                                             name="Superset"
                                             meta={`${item.exercises.length} exercícios`}
                                             status={status}
-                                            onPress={status === 'current' ? undefined : () => toggleExpand(item.supersetId)}
+                                            onPress={undefined}
                                             expanded
                                         />
                                     </View>
@@ -1344,16 +1362,17 @@ export default function WorkoutPlayerScreen() {
                                 );
                             }
                             const m = listMeta.get(item.exercise.id);
-                            const status: ExerciseStatus = m?.done ? 'done' : (item.exercise.id === currentKey ? 'current' : 'todo');
-                            const expanded = status === 'current' || manualExpanded.has(item.exercise.id);
+                            const isFocused = item.exercise.id === expandedKey;
+                            const status: ExerciseStatus = m?.done ? 'done' : (isFocused || m?.started ? 'current' : 'todo');
                             return (
                                 <ExecutionExerciseCard
                                     key={item.exercise.id}
                                     exercise={item.exercise}
                                     number={m?.number ?? 0}
                                     status={status}
-                                    expanded={expanded}
-                                    onToggleExpand={() => toggleExpand(item.exercise.id)}
+                                    isFocused={isFocused}
+                                    expanded={isFocused}
+                                    onToggleExpand={() => focusExercise(item.exercise.id)}
                                     globalIndex={item.globalIndex}
                                     onSetChangeGlobal={onSetChangeStable}
                                     onToggleSetCompleteGlobal={onToggleSetCompleteStable}

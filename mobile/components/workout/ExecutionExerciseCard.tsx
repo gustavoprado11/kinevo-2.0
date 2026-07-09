@@ -24,7 +24,12 @@ import { toRgba } from '../../lib/brandColor';
 interface ExecutionExerciseCardProps {
     exercise: ExerciseData;
     number: number;
+    /** Chip de progresso (done/current/todo) — baseado nas séries feitas. */
     status: ExerciseStatus;
+    /** Card ATIVO (aberto) do acordeão: anel roxo + cabeçalho não recolhível.
+     *  Separado de `status` para um exercício iniciado poder aparecer "Em
+     *  andamento" mesmo recolhido (juggling de equipamento ocupado). */
+    isFocused: boolean;
     expanded: boolean;
     onToggleExpand: () => void;
     globalIndex: number;
@@ -61,6 +66,7 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
     exercise,
     number,
     status,
+    isFocused,
     expanded,
     onToggleExpand,
     globalIndex,
@@ -70,7 +76,6 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
     onVideoPress,
 }: ExecutionExerciseCardProps) {
     const colors = useV2Colors();
-    const isCurrent = status === 'current';
     const methodChip = getMethodChipLabel(exercise.methodKey);
 
     const handleVideo = () => {
@@ -83,11 +88,11 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
             style={{
                 backgroundColor: colors.surface.card,
                 borderRadius: 20,
-                borderWidth: isCurrent ? 1.5 : 1,
-                borderColor: isCurrent ? colors.purple[600] : colors.border.subtle,
+                borderWidth: isFocused ? 1.5 : 1,
+                borderColor: isFocused ? colors.purple[600] : colors.border.subtle,
                 padding: 14,
                 marginBottom: 14,
-                ...(isCurrent
+                ...(isFocused
                     ? { shadowColor: colors.purple[600], shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 24, elevation: 4 }
                     : { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 1 }),
             }}
@@ -98,7 +103,7 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
                 meta={buildMeta(exercise, status)}
                 status={status}
                 // O atual fica sempre expandido (sem toggle); os demais alternam.
-                onPress={isCurrent ? undefined : onToggleExpand}
+                onPress={isFocused ? undefined : onToggleExpand}
                 expanded={expanded}
             />
 
