@@ -16,7 +16,12 @@ struct WorkoutDashboardView: View {
   private var displayPadding: WatchDisplayPadding { WatchDisplayPadding.current }
 
   var body: some View {
-    VStack(spacing: 6) {
+    // Companion mode adds the mirror banner, which can push the discard button
+    // past the bottom edge (a fixed .verticalPage page clips it with no way to
+    // scroll). A ScrollView keeps it reachable on every watch size; when the
+    // content already fits, nothing scrolls.
+    ScrollView {
+      VStack(spacing: 6) {
       // Mirror banner when phone-driven; progress now syncs from the phone so it's
       // shown in both modes.
       if mirroredFromPhone {
@@ -77,20 +82,34 @@ struct WorkoutDashboardView: View {
           .fill(Color.kinevoCard)
       )
 
-      // Discard button — minimal text to avoid accidental taps
+      // Discard — visible but understated (the tap only opens a confirmation).
+      // A tinted chip reads clearly outdoors, where dim red text on black had
+      // effectively vanished.
       if let onDiscard = onDiscardWorkout {
         Button(action: onDiscard) {
-          Text("Abandonar Treino")
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(.red.opacity(0.7))
-            .frame(maxWidth: .infinity)
+          HStack(spacing: 5) {
+            Image(systemName: "xmark.circle.fill")
+              .font(.system(size: 13))
+            Text("Abandonar Treino")
+              .font(.system(size: 13, weight: .semibold))
+          }
+          .foregroundStyle(.red)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 8)
+          .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+              .fill(Color.red.opacity(0.16))
+          )
         }
         .buttonStyle(.plain)
+        .padding(.top, 2)
       }
+      }
+      .padding(.horizontal, displayPadding.horizontal)
+      .padding(.top, displayPadding.top)
+      .padding(.bottom, 10)
+      .frame(maxWidth: .infinity)
     }
-    .padding(.horizontal, displayPadding.horizontal)
-    .padding(.top, displayPadding.top)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.black.edgesIgnoringSafeArea(.all))
   }
 
