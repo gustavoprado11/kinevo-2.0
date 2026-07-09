@@ -6,11 +6,19 @@
  * Só o exercício ATUAL fica expandido por padrão; tocar num recolhido o expande
  * (D3). NÃO substitui o ExerciseCard das outras telas — é específico do player.
  *
+ * Transição do acordeão (Reanimated, thread de UI — LayoutAnimation é no-op na
+ * New Arch/Fabric): o corpo abre/fecha com SPRING de altura+opacidade. O corpo é
+ * sempre montado (medido por onLayout num filho absoluto) e clipado por um
+ * container `overflow:hidden` — a sombra/anel de foco fica no root, fora do clip.
+ * Como a altura animada é layout real, a lista abaixo reflui sozinha, quadro a
+ * quadro.
+ *
  * Callbacks Global + globalIndex (contrato estável do player) são ligados aqui
  * antes de descer ao ExerciseBody.
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, Pressable, Alert } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { ArrowRightLeft, Play } from 'lucide-react-native';
 import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels';
@@ -20,6 +28,8 @@ import { TrainerNote } from './TrainerNote';
 import type { ExerciseData } from '../../hooks/useWorkoutSession';
 import { useV2Colors } from '../../hooks/useV2Colors';
 import { toRgba } from '../../lib/brandColor';
+
+const SPRING = { damping: 16, stiffness: 165, mass: 0.6 };
 
 interface ExecutionExerciseCardProps {
     exercise: ExerciseData;
@@ -78,6 +88,31 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
     const colors = useV2Colors();
     const methodChip = getMethodChipLabel(exercise.methodKey);
 
+    // Acordeão animado. progress: 0 recolhido → 1 expandido. contentHeight: altura
+    // natural do corpo (medida). O primeiro layout fixa o estado SEM animar (evita
+    // flash ao entrar na tela); trocas seguintes usam spring.
+    const progress = useSharedValue(expanded ? 1 : 0);
+    const contentHeight = useSharedValue(0);
+    const measured = useRef(false);
+
+    useEffect(() => {
+        if (!measured.current) return;
+        progress.value = withSpring(expanded ? 1 : 0, SPRING);
+    }, [expanded, progress]);
+
+    const bodyStyle = useAnimatedStyle(() => ({
+        height: contentHeight.value * progress.value,
+        opacity: progress.value,
+    }));
+
+    const onBodyLayout = (h: number) => {
+        if (h > 0) contentHeight.value = h;
+        if (!measured.current) {
+            measured.current = true;
+            progress.value = expanded ? 1 : 0;
+        }
+    };
+
     const handleVideo = () => {
         if (exercise.video_url) onVideoPress(exercise.video_url);
         else Alert.alert('Vídeo indisponível', 'Este exercício não possui vídeo cadastrado.');
@@ -102,13 +137,17 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
                 name={exercise.name}
                 meta={buildMeta(exercise, status)}
                 status={status}
-                // O atual fica sempre expandido (sem toggle); os demais alternam.
+                // O card aberto (foco) não recolhe pelo cabeçalho; troca-se abrindo outro.
                 onPress={isFocused ? undefined : onToggleExpand}
                 expanded={expanded}
             />
 
-            {expanded ? (
-                <>
+            {/* Corpo colapsável — sempre montado (p/ medir), clipado pela altura animada. */}
+            <Animated.View style={[{ overflow: 'hidden' }, bodyStyle]} pointerEvents={expanded ? 'auto' : 'none'}>
+                <View
+                    style={{ position: 'absolute', left: 0, right: 0, top: 0 }}
+                    onLayout={(e) => onBodyLayout(e.nativeEvent.layout.height)}
+                >
                     <View style={{ height: 1, backgroundColor: colors.border.subtle, marginHorizontal: -14, marginTop: 12, marginBottom: 10 }} />
 
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -145,8 +184,8 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
                         onSetChange={(setIndex, field, value) => onSetChangeGlobal(globalIndex, setIndex, field, value)}
                         onToggleSetComplete={(setIndex) => onToggleSetCompleteGlobal(globalIndex, setIndex)}
                     />
-                </>
-            ) : null}
+                </View>
+            </Animated.View>
         </View>
     );
 });

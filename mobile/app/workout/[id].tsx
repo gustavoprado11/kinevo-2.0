@@ -1005,6 +1005,8 @@ export default function WorkoutPlayerScreen() {
     }, [renderList]);
 
     // O card aberto: foco manual vence; sem foco, segue o atual automático.
+    // A transição (spring de altura+opacidade) vive no próprio ExecutionExerciseCard
+    // via Reanimated — reage à troca da prop `expanded`.
     const expandedKey = focusKey && listMeta.has(focusKey) ? focusKey : currentKey;
     const focusExercise = (key: string) => {
         // Semeia o "done anterior" com o estado atual: abrir um já-concluído para
