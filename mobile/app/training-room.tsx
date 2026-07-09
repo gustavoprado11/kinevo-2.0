@@ -21,6 +21,7 @@ import {
     Trash2,
     X,
     Timer,
+    Settings2,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -44,6 +45,8 @@ import { WarmupCardioCard } from '../components/workout/WarmupCardioCard';
 import { ExerciseVideoModal } from '../components/workout/ExerciseVideoModal';
 import { ExerciseSwapModal } from '../components/workout/ExerciseSwapModal';
 import { RestTimerOverlay } from '../components/workout/RestTimerOverlay';
+import { TrainingRoomSettingsSheet } from '../components/trainer/TrainingRoomSettingsSheet';
+import { useTrainingRoomPreferencesStore } from '../stores/trainingRoomPreferencesStore';
 import { useV2Colors } from '../hooks/useV2Colors';
 import { toRgba } from '../lib/brandColor';
 
@@ -363,11 +366,16 @@ export default function TrainingRoomScreen() {
     const clearRestTimer = useTrainingRoomStore((s) => s.clearRestTimer);
     const toggleCardioComplete = useTrainingRoomStore((s) => s.toggleCardioComplete);
 
+    // Preferências do treinador (Configurações da Sala) — globais, device-local.
+    const restTimerAuto = useTrainingRoomPreferencesStore((s) => s.restTimerAuto);
+    const defaultRestSeconds = useTrainingRoomPreferencesStore((s) => s.defaultRestSeconds);
+
     const { finish, isSubmitting } = useFinishTrainerWorkout();
     const { loadSubstituteOptions, searchSubstituteOptions, performSwap } = useExerciseSwap();
 
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     // Vindo do detalhe do aluno: abre o picker já com o aluno pré-selecionado (one-shot).
     const { studentId: presetStudentId } = useLocalSearchParams<{ studentId?: string }>();
@@ -644,18 +652,27 @@ export default function TrainingRoomScreen() {
             toggleSetComplete(activeStudentId, exerciseIndex, setIndex);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-            // Auto-start rest timer on set completion
+            // Auto-start rest timer on set completion — respeita a preferência do
+            // treinador (Configurações da Sala). Quando ligado: não dispara na
+            // última série do exercício, e usa a duração padrão quando o exercício
+            // não tem descanso prescrito (antes era um fixo de 60s).
+            if (!restTimerAuto) return;
             const exercise = activeSession.exercises[exerciseIndex];
             if (exercise) {
                 const setData = exercise.setsData[setIndex];
                 if (!setData?.completed) {
-                    // Set was just completed (toggle makes it true)
-                    const restSeconds = exercise.supersetRestSeconds || exercise.rest_seconds || 60;
-                    startRestTimer(activeStudentId, restSeconds);
+                    // Set was just completed (toggle makes it true).
+                    const hasRemainingSets = exercise.setsData.some(
+                        (s, i) => i !== setIndex && !s.completed,
+                    );
+                    if (hasRemainingSets) {
+                        const restSeconds = exercise.supersetRestSeconds || exercise.rest_seconds || defaultRestSeconds;
+                        startRestTimer(activeStudentId, restSeconds);
+                    }
                 }
             }
         },
-        [activeStudentId, activeSession, toggleSetComplete, startRestTimer],
+        [activeStudentId, activeSession, toggleSetComplete, startRestTimer, restTimerAuto, defaultRestSeconds],
     );
 
     const handleRestTimerSkip = useCallback(() => {
@@ -894,6 +911,7 @@ export default function TrainingRoomScreen() {
                     style={{
                         flexDirection: 'row',
                         alignItems: 'center',
+                        justifyContent: 'space-between',
                         paddingHorizontal: 20,
                         paddingTop: 8,
                         paddingBottom: sessionCount > 0 ? 6 : 12,
@@ -907,6 +925,15 @@ export default function TrainingRoomScreen() {
                         <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text.primary }}>
                             Sala de Treino
                         </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => { Haptics.selectionAsync(); setIsSettingsOpen(true); }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Configurações da Sala"
+                        hitSlop={8}
+                        style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: colors.surface.card2, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                        <Settings2 size={19} color={colors.text.secondary} />
                     </TouchableOpacity>
                 </View>
 
@@ -1160,6 +1187,11 @@ export default function TrainingRoomScreen() {
             </SafeAreaView>
 
             {/* Modals */}
+            <TrainingRoomSettingsSheet
+                visible={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+            />
+
             <StudentPickerModal
                 visible={isPickerOpen}
                 onClose={() => setIsPickerOpen(false)}
