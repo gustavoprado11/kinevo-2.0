@@ -171,6 +171,7 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
             <SessionChecklistCard
                 schema={template?.schema_json ?? null}
                 measurements={detail.measurements}
+                status={session.status}
             />
 
             {session.notes && (

@@ -10,6 +10,7 @@ import type {
 interface SessionChecklistCardProps {
     schema: AssessmentTemplateSchema | null
     measurements: AssessmentMeasurement[]
+    status?: string
 }
 
 /**
@@ -17,11 +18,24 @@ interface SessionChecklistCardProps {
  * captured/pending based on whether at least one measurement exists for the
  * test's metric_key. Used on the session detail page.
  */
-export function SessionChecklistCard({ schema, measurements }: SessionChecklistCardProps) {
+export function SessionChecklistCard({ schema, measurements, status }: SessionChecklistCardProps) {
     if (!schema || !schema.sections?.length) {
         return (
             <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-5 text-center">
                 <p className="text-sm text-k-text-tertiary">Sem template anexado.</p>
+            </div>
+        )
+    }
+
+    // A captura web só persiste as medições ao concluir; antes disso o servidor
+    // tem apenas o contexto (sexo/idade) e o checklist mostraria 0% enganoso.
+    if (status && status !== 'completed') {
+        return (
+            <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-5">
+                <h3 className="text-sm font-semibold text-k-text-primary">Checklist da avaliação</h3>
+                <p className="mt-2 text-xs text-k-text-tertiary">
+                    Disponível quando a avaliação for concluída.
+                </p>
             </div>
         )
     }

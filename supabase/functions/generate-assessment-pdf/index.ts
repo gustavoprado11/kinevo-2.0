@@ -67,6 +67,7 @@ interface MeasurementRow {
     value_numeric: number | null;
     value_text: string | null;
     value_unit: string | null;
+    is_selected: boolean | null;
 }
 
 interface ComputedMetrics {
@@ -389,9 +390,12 @@ async function buildAssessmentPdf(args: BuildArgs): Promise<Uint8Array> {
         const measurementByKey = new Map<string, MeasurementRow>();
         for (const m of args.measurements) {
             if (m.metric_key === SUBJECT_SEX_KEY || m.metric_key === SUBJECT_AGE_KEY) continue;
-            // Only consider rows with numeric values (selected attempt)
             const existing = measurementByKey.get(m.metric_key);
-            if (!existing) measurementByKey.set(m.metric_key, m);
+            // Prefere a tentativa SELECIONADA (is_selected); senão mantém a primeira
+            // vista. Antes pegava sempre a #1, ignorando a tentativa escolhida.
+            if (!existing || (m.is_selected !== false && existing.is_selected === false)) {
+                measurementByKey.set(m.metric_key, m);
+            }
         }
 
         // Iterate template sections to preserve trainer-defined order; fall back
@@ -521,7 +525,7 @@ Deno.serve(async (req: Request) => {
                 .eq('id', sessionId)
                 .maybeSingle(),
             admin.from('assessment_measurements')
-                .select('metric_key, value_numeric, value_text, value_unit')
+                .select('metric_key, value_numeric, value_text, value_unit, is_selected')
                 .eq('session_id', sessionId),
         ]);
         if (sessionRes.error) {

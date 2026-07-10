@@ -278,6 +278,18 @@ function renderStep(
                         warn_above={test.max}
                         initialValue={initial}
                         onCommit={m => commit([m])}
+                        onValidParsed={parsed => {
+                            // Auto-commit quando o valor é válido (como no bilateral):
+                            // "Próximo" libera sem exigir Enter e a edição não é descartada.
+                            commit([{
+                                metric_key: test.metric_key,
+                                value_numeric: parsed,
+                                value_unit: test.unit,
+                                attempt_number: 1,
+                                is_selected: true,
+                                raw_input: { test_id: test.id },
+                            }])
+                        }}
                     />
                 ),
             }
