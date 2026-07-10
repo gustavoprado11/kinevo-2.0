@@ -146,6 +146,9 @@ export async function GET(request: NextRequest) {
 
                 if (subError || !submission) {
                     console.error(`[cron:process-form-schedules] Submission error schedule=${schedule.id}:`, subError)
+                    // Remove o inbox item recém-criado para não deixar um form_request
+                    // órfão (pendente sem submission associada) na caixa do aluno.
+                    await supabaseAdmin.from('student_inbox_items').delete().eq('id', inboxItem.id)
                     skippedCount++
                     continue
                 }
