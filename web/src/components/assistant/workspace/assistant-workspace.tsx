@@ -10,7 +10,7 @@
  * com o dock lateral (Onda 4); aqui ficam só a casca e a navegação.
  */
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { setHomeStyle } from '@/actions/assistant/set-home-style'
 import { setCachedAiAllowed, setCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
@@ -18,6 +18,7 @@ import type { SidebarStudent } from './assistant-rail'
 import { AssistantSidebar } from './assistant-sidebar'
 import { AssistantHome } from './assistant-home'
 import { ConversationView } from './conversation-view'
+import { StudentContextPanel } from './student-context-panel'
 import { useAssistantThread } from './use-assistant-thread'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AttentionItem } from '@/lib/assistant/home-data'
@@ -77,6 +78,45 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     )
 
     const recents = useMemo(() => conversations.slice(0, 5), [conversations])
+
+    // ── Coluna de contexto do aluno (3ª coluna) ──
+    // Aluno exibido: na conversa vale o escopo da conversa; na home vale o foco.
+    const panelStudentId = active?.student_id ?? focusedStudentId
+    const panelFromConversation = !!active?.student_id
+
+    // Colapso persistido; default aberto. Lê o localStorage após a hidratação.
+    const [contextOpen, setContextOpen] = useState(true)
+    useEffect(() => {
+        const saved = window.localStorage.getItem('kinevo:assistant-context-open')
+        if (saved !== null) setContextOpen(saved === '1')
+    }, [])
+    const toggleContext = useCallback(() => {
+        setContextOpen((o) => {
+            const next = !o
+            try { window.localStorage.setItem('kinevo:assistant-context-open', next ? '1' : '0') } catch { /* noop */ }
+            return next
+        })
+    }, [])
+
+    // Focar um aluno (novo/diferente) reabre o painel se estiver colapsado.
+    const prevPanelStudent = useRef<string | null>(null)
+    useEffect(() => {
+        const prev = prevPanelStudent.current
+        prevPanelStudent.current = panelStudentId
+        if (panelStudentId && prev !== panelStudentId) setContextOpen(true)
+    }, [panelStudentId])
+
+    // Pré-armar o composer (fillInput) + focar — mesmo padrão dos cards da home.
+    const prefillComposer = useCallback((prompt: string) => {
+        fillInput(prompt)
+        requestAnimationFrame(() => {
+            const el = document.querySelector<HTMLTextAreaElement>('[data-assistant-composer]')
+            if (!el) return
+            el.focus()
+            const end = el.value.length
+            try { el.setSelectionRange(end, end) } catch { /* noop */ }
+        })
+    }, [fillInput])
 
     // Toggle → Clássico: navegação ótimista (?h=classic evita bounce ao Assistente
     // enquanto a preferência sincroniza em background). O pill mostra spinner.
@@ -171,6 +211,15 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     onOpenConversation={selectConversation}
                 />
             )}
+
+            <StudentContextPanel
+                studentId={panelStudentId}
+                fromConversation={panelFromConversation}
+                open={contextOpen}
+                onToggle={toggleContext}
+                onRemove={() => setFocusedStudentId(null)}
+                onPrefill={prefillComposer}
+            />
         </div>
     )
 }

@@ -10,11 +10,12 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
     Sparkles, Send, Loader2, ChevronDown, ChevronRight, Globe, Check,
-    Wallet, Users, Dumbbell, MessageCircle, TrendingDown, TrendingUp, FileText, Coins, UserPlus,
+    Wallet, Users, Dumbbell, MessageCircle, Coins, UserPlus,
 } from 'lucide-react'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AttentionItem } from '@/lib/assistant/home-data'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
+import { attentionKind, KIND_TAG, attentionPrompt } from '@/lib/assistant/attention'
 import { avatarFor, greeting, timeShort } from './ui-util'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
 import { MicButton } from './mic-button'
@@ -54,35 +55,6 @@ const STARTERS: { label: string; icon: typeof Wallet; color: string; bg: string;
         ],
     },
 ]
-
-/** Tipo visual do card de atenção, derivado de category/priority do insight. */
-type AttentionKind = 'estagnado' | 'pronto_para_evoluir' | 'nota'
-
-function attentionKind(item: AttentionItem): AttentionKind {
-    if (item.category === 'progression') return 'pronto_para_evoluir'
-    if (item.category === 'suggestion' || item.category === 'summary') return 'nota'
-    return 'estagnado' // alert / desconhecido
-}
-
-const KIND_TAG: Record<AttentionKind, { label: string; bg: string; fg: string; icon: typeof TrendingDown }> = {
-    estagnado: { label: 'Estagnado', bg: '#FFFBEB', fg: '#B45309', icon: TrendingDown },
-    pronto_para_evoluir: { label: 'Pronto p/ evoluir', bg: '#F0FDF4', fg: '#15803D', icon: TrendingUp },
-    nota: { label: 'Nota', bg: '#EFF6FF', fg: '#2563EB', icon: FileText },
-}
-
-/** Prompt otimizado p/ o card de atenção: contexto do insight + o que produzir. */
-function attentionPrompt(item: AttentionItem): string {
-    const ctx = item.studentName ? `${item.studentName}: ${item.title}` : item.title
-    const ofWho = item.studentName ? ` de ${item.studentName}` : ''
-    switch (attentionKind(item)) {
-        case 'pronto_para_evoluir':
-            return `Sobre ${ctx}. Analise o histórico recente${ofWho} e proponha uma progressão concreta — quais exercícios, novo alvo de carga/reps/volume e o porquê — para o próximo ciclo.`
-        case 'estagnado':
-            return `Sobre ${ctx}. Identifique em quais exercícios está o platô e proponha uma estratégia para destravar a evolução (variação de estímulo, deload ou ajuste de volume), com os próximos passos.`
-        default:
-            return `Sobre ${ctx}. Resuma a situação e recomende o próximo passo.`
-    }
-}
 
 interface Props {
     trainerName: string | null
@@ -167,6 +139,7 @@ export function AssistantHome({
                 <div className="rounded-[22px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated p-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_4px_rgba(60,60,67,0.07)]">
                     <textarea
                         ref={composerRef}
+                        data-assistant-composer
                         value={input}
                         onChange={(e) => onInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
@@ -276,7 +249,7 @@ export function AssistantHome({
                                 const heading = a.studentName ?? a.title
                                 const TagIcon = tag.icon
                                 return (
-                                    <button key={a.id} onClick={() => fillFromCard(prompt)}
+                                    <button key={a.id} onClick={() => { if (a.studentId) onFocusStudent(a.studentId); fillFromCard(prompt) }}
                                         className="group flex items-center gap-3.5 rounded-[14px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card py-[14px] pl-4 pr-4 text-left transition hover:bg-[#FAFAFA] dark:hover:bg-white/5">
                                         {a.studentName ? (
                                             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] text-[13px] font-bold" style={{ background: av.bg, color: av.fg }}>{av.initials}</span>

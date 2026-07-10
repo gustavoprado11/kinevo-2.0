@@ -252,6 +252,7 @@ export function ConversationView({
                         {!voiceOn && <MicButton disabled={sending} value={input} onChange={onInput} />}
                         <textarea
                             ref={inputRef}
+                            data-assistant-composer
                             value={input}
                             onChange={(e) => onInput(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
