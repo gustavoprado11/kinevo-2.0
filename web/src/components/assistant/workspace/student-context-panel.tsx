@@ -10,17 +10,19 @@
  * Estilo Shield Strategy (§2.3): light hex + par dark: com tokens semânticos.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
-    User, MessageCircle, Dumbbell, ChevronRight, ChevronLeft, X,
+    User, MessageCircle, Dumbbell, ChevronRight, ChevronLeft, X, Pencil, Plus,
     TrendingUp, TrendingDown, FileText,
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { updateTrainerNotes } from '@/app/students/[id]/actions/update-trainer-notes'
 import type { StudentContextPayload } from '@/lib/assistant/student-panel-data'
 import type { AttentionKind } from '@/lib/assistant/attention'
 import { avatarFor } from './ui-util'
 
-// Cache por id entre montagens — a F1 só refaz o fetch na troca de aluno.
+// Cache por id entre montagens — refaz o fetch na troca de aluno e nas revalidações.
 const CACHE = new Map<string, StudentContextPayload>()
 
 interface UseStudentContext {
@@ -28,9 +30,11 @@ interface UseStudentContext {
     loading: boolean
     error: boolean
     reload: () => void
+    /** Patch local (ex.: notas salvas) — atualiza entry + CACHE sem refetch. */
+    mutate: (updater: (d: StudentContextPayload) => StudentContextPayload) => void
 }
 
-function useStudentContext(studentId: string | null): UseStudentContext {
+function useStudentContext(studentId: string | null, refreshKey: number): UseStudentContext {
     // O payload vive em STATE (`entry`), não derivado do CACHE em tempo de render:
     // com o React Compiler ligado, ler um Map mutável módulo-level no corpo do
     // componente é memoizado por `studentId` e não reage à mutação do Map depois
@@ -38,6 +42,44 @@ function useStudentContext(studentId: string | null): UseStudentContext {
     const [entry, setEntry] = useState<{ id: string; data: StudentContextPayload } | null>(null)
     const [errId, setErrId] = useState<string | null>(null)
     const [nonce, setNonce] = useState(0)
+
+    // reload: derruba o cache do aluno e refaz o fetch. O card antigo continua
+    // visível até o payload novo chegar (stale-while-revalidate) — `entry` não é
+    // limpo aqui de propósito.
+    const reload = useCallback(() => {
+        if (!studentId) return
+        CACHE.delete(studentId)
+        setErrId((prev) => (prev === studentId ? null : prev))
+        setNonce((n) => n + 1)
+    }, [studentId])
+
+    // Revalidação pedida pelo workspace (fim de turno / confirmação HITL).
+    // reload via microtask: regra react-hooks/set-state-in-effect (padrão do repo).
+    const prevRefreshRef = useRef(refreshKey)
+    useEffect(() => {
+        if (refreshKey === prevRefreshRef.current) return
+        prevRefreshRef.current = refreshKey
+        let alive = true
+        Promise.resolve().then(() => { if (alive) reload() })
+        return () => { alive = false }
+    }, [refreshKey, reload])
+
+    // Realtime: insight do aluno em foco criado/atualizado (cron, dismissal em
+    // outra aba) → revalida o card. A tabela assistant_insights publica realtime
+    // (migration 088) e a RLS filtra pelo treinador.
+    useEffect(() => {
+        if (!studentId) return
+        const supabase = createClient()
+        const channel = supabase
+            .channel(`student-context-${studentId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'assistant_insights', filter: `student_id=eq.${studentId}` },
+                () => reload(),
+            )
+            .subscribe()
+        return () => { void supabase.removeChannel(channel) }
+    }, [studentId, reload])
 
     useEffect(() => {
         if (!studentId) return
@@ -68,14 +110,16 @@ function useStudentContext(studentId: string | null): UseStudentContext {
     const error = !!studentId && errId === studentId && !data
     const loading = !!studentId && !data && !error
 
-    // reload: limpa o cache e o erro deste aluno → o efeito (via nonce) refaz o fetch.
-    const reload = () => {
-        if (studentId) CACHE.delete(studentId)
-        setErrId((prev) => (prev === studentId ? null : prev))
-        setNonce((n) => n + 1)
-    }
+    const mutate = useCallback((updater: (d: StudentContextPayload) => StudentContextPayload) => {
+        setEntry((prev) => {
+            if (!prev || !studentId || prev.id !== studentId) return prev
+            const next = updater(prev.data)
+            CACHE.set(studentId, next)
+            return { id: prev.id, data: next }
+        })
+    }, [studentId])
 
-    return { data, loading, error, reload }
+    return { data, loading, error, reload, mutate }
 }
 
 const ALERT_STYLE: Record<AttentionKind, { cls: string; icon: typeof TrendingUp }> = {
@@ -91,14 +135,16 @@ interface Props {
     /** Aluno vindo do escopo da conversa: esconde o × (escopo é fixo). */
     fromConversation: boolean
     open: boolean
+    /** Incrementado pelo workspace quando o card pode ter ficado stale (turno/HITL). */
+    refreshKey: number
     onToggle: () => void
     onRemove: () => void
     /** Preenche o composer (fillInput) — não envia. */
     onPrefill: (prompt: string) => void
 }
 
-export function StudentContextPanel({ studentId, fromConversation, open, onToggle, onRemove, onPrefill }: Props) {
-    const { data, loading, error, reload } = useStudentContext(studentId)
+export function StudentContextPanel({ studentId, fromConversation, open, refreshKey, onToggle, onRemove, onPrefill }: Props) {
+    const { data, loading, error, reload, mutate } = useStudentContext(studentId, refreshKey)
     const hasStudent = !!studentId
 
     // Sem aluno o painel NÃO existe (width 0); selecionar um aluno anima a
@@ -163,7 +209,13 @@ export function StudentContextPanel({ studentId, fromConversation, open, onToggl
                                 Não foi possível carregar. Tentar de novo
                             </button>
                         ) : data ? (
-                            <StudentCard data={data} fromConversation={fromConversation} onRemove={onRemove} onPrefill={onPrefill} loading={loading} />
+                            <StudentCard
+                                data={data}
+                                fromConversation={fromConversation}
+                                onRemove={onRemove}
+                                onPrefill={onPrefill}
+                                onNotesSaved={(notes) => mutate((d) => ({ ...d, notes }))}
+                            />
                         ) : null}
                     </div>
                 </div>
@@ -197,10 +249,10 @@ interface CardProps {
     fromConversation: boolean
     onRemove: () => void
     onPrefill: (prompt: string) => void
-    loading: boolean
+    onNotesSaved: (notes: string | null) => void
 }
 
-function StudentCard({ data, fromConversation, onRemove, onPrefill, loading }: CardProps) {
+function StudentCard({ data, fromConversation, onRemove, onPrefill, onNotesSaved }: CardProps) {
     const { student, program, adherence, alert, history, notes } = data
     const av = avatarFor(student.name)
     const firstName = student.name.split(' ')[0] || student.name
@@ -214,7 +266,7 @@ function StudentCard({ data, fromConversation, onRemove, onPrefill, loading }: C
     const AlertIcon = alert ? ALERT_STYLE[alert.kind].icon : null
 
     return (
-        <div className={`rounded-[20px] border border-[#EDEDF0] bg-white p-4 transition-opacity dark:border-k-border-subtle dark:bg-surface-card ${loading ? 'opacity-60' : ''}`}>
+        <div className="rounded-[20px] border border-[#EDEDF0] bg-white p-4 dark:border-k-border-subtle dark:bg-surface-card">
             {/* Cabeçalho do card */}
             <div className="flex items-start gap-3">
                 <span
@@ -266,31 +318,31 @@ function StudentCard({ data, fromConversation, onRemove, onPrefill, loading }: C
                 </button>
             )}
 
-            {/* Histórico recente */}
+            {/* Histórico recente — cada sessão pré-arma uma análise no composer */}
             {history.length > 0 && (
                 <div className="mt-4">
                     <div className={EYEBROW}>Histórico recente</div>
-                    <ul className="mt-1.5 flex flex-col gap-1.5">
+                    <ul className="mt-1.5 flex flex-col gap-0.5">
                         {history.map((h) => (
-                            <li key={h.id} className="flex items-center gap-2 text-[12.5px] text-[#1D1D1F] dark:text-foreground">
-                                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C7C7CC] dark:bg-muted-foreground/50" />
-                                <span className="min-w-0 flex-1 truncate">{h.text}</span>
-                                <span className="shrink-0 text-[11px] text-[#86868B] dark:text-muted-foreground/60">{h.dateLabel}</span>
+                            <li key={h.id}>
+                                <button
+                                    onClick={() => onPrefill(
+                                        `Sobre ${firstName}: analise a sessão "${h.text.replace(/ concluído$/, '')}" (${h.dateLabel === 'Hoje' ? 'hoje' : h.dateLabel}). Como foi o desempenho — cargas, RPE, feedback — e o que ajustar para a próxima?`,
+                                    )}
+                                    className="-mx-1.5 flex w-[calc(100%+12px)] items-center gap-2 rounded-lg px-1.5 py-1 text-left text-[12.5px] text-[#1D1D1F] transition hover:bg-[#F5F5F7] dark:text-foreground dark:hover:bg-glass-bg"
+                                >
+                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C7C7CC] dark:bg-muted-foreground/50" />
+                                    <span className="min-w-0 flex-1 truncate">{h.text}</span>
+                                    <span className="shrink-0 text-[11px] text-[#86868B] dark:text-muted-foreground/60">{h.dateLabel}</span>
+                                </button>
                             </li>
                         ))}
                     </ul>
                 </div>
             )}
 
-            {/* Notas do treinador */}
-            {notes && (
-                <div className="mt-4">
-                    <div className={EYEBROW}>Notas do treinador</div>
-                    <p className="mt-1.5 rounded-[12px] bg-[#FAFAFA] px-3 py-2.5 text-[12.5px] italic leading-relaxed text-[#6E6E73] dark:bg-surface-inset dark:text-muted-foreground">
-                        {notes}
-                    </p>
-                </div>
-            )}
+            {/* Notas do treinador — editáveis inline (F2); readOnly esconde a edição */}
+            <NotesSection studentId={student.id} notes={notes} readOnly={data.readOnly} onSaved={onNotesSaved} />
 
             {/* Ações rápidas */}
             <div className="mt-4 flex items-stretch gap-2">
@@ -312,6 +364,105 @@ function StudentCard({ data, fromConversation, onRemove, onPrefill, loading }: C
                     />
                 )}
             </div>
+        </div>
+    )
+}
+
+/**
+ * Notas do treinador com edição inline (F2). Salva via server action
+ * updateTrainerNotes (auth + posse + lock no servidor); sucesso atualiza o
+ * cache local via onSaved — sem refetch. readOnly (free ex-pagante) só lê.
+ */
+function NotesSection({ studentId, notes, readOnly, onSaved }: {
+    studentId: string
+    notes: string | null
+    readOnly: boolean
+    onSaved: (notes: string | null) => void
+}) {
+    const [editing, setEditing] = useState(false)
+    const [draft, setDraft] = useState('')
+    const [saving, setSaving] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const start = () => { setDraft(notes ?? ''); setError(null); setEditing(true) }
+    const save = async () => {
+        setSaving(true)
+        setError(null)
+        try {
+            const res = await updateTrainerNotes(studentId, draft.trim())
+            if (res.success) {
+                onSaved(draft.trim() || null)
+                setEditing(false)
+            } else {
+                setError(res.error ?? 'Não foi possível salvar.')
+            }
+        } catch {
+            setError('Não foi possível salvar.')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    if (!notes && !editing) {
+        if (readOnly) return null
+        return (
+            <button
+                onClick={start}
+                className="mt-4 flex items-center gap-1.5 text-[11.5px] font-semibold text-[#86868B] transition hover:text-[#6E6E73] dark:text-muted-foreground/60 dark:hover:text-muted-foreground"
+            >
+                <Plus className="h-3 w-3" strokeWidth={2.2} />
+                Adicionar nota do treinador
+            </button>
+        )
+    }
+
+    return (
+        <div className="mt-4">
+            <div className="flex items-center gap-1.5">
+                <div className={EYEBROW}>Notas do treinador</div>
+                {!readOnly && !editing && (
+                    <button
+                        onClick={start}
+                        aria-label="Editar notas do treinador"
+                        className="flex h-5 w-5 items-center justify-center rounded text-[#AEAEB2] transition hover:bg-[#F5F5F7] hover:text-[#6E6E73] dark:text-muted-foreground/60 dark:hover:bg-glass-bg"
+                    >
+                        <Pencil className="h-3 w-3" strokeWidth={2} />
+                    </button>
+                )}
+            </div>
+            {editing ? (
+                <div className="mt-1.5">
+                    <textarea
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        rows={4}
+                        autoFocus
+                        disabled={saving}
+                        className="w-full resize-none rounded-[12px] border border-[#D2D2D7] bg-white px-3 py-2.5 text-[12.5px] leading-relaxed text-[#1D1D1F] outline-none focus:border-[#7C3AED] disabled:opacity-60 dark:border-k-border-primary dark:bg-surface-card dark:text-foreground dark:focus:border-violet-500"
+                    />
+                    {error && <p className="mt-1 text-[11.5px] text-[#DC2626] dark:text-red-400">{error}</p>}
+                    <div className="mt-1.5 flex justify-end gap-2">
+                        <button
+                            onClick={() => setEditing(false)}
+                            disabled={saving}
+                            className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-[#6E6E73] transition hover:bg-[#F5F5F7] disabled:opacity-60 dark:text-muted-foreground dark:hover:bg-glass-bg"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={save}
+                            disabled={saving}
+                            className="rounded-lg bg-[#7C3AED] px-2.5 py-1.5 text-[11.5px] font-bold text-white transition hover:bg-[#6D28D9] disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-600"
+                        >
+                            {saving ? 'Salvando…' : 'Salvar'}
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <p className="mt-1.5 whitespace-pre-wrap rounded-[12px] bg-[#FAFAFA] px-3 py-2.5 text-[12.5px] italic leading-relaxed text-[#6E6E73] dark:bg-surface-inset dark:text-muted-foreground">
+                    {notes}
+                </p>
+            )}
         </div>
     )
 }

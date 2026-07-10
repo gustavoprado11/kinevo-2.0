@@ -85,10 +85,14 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     const panelFromConversation = !!active?.student_id
 
     // Colapso persistido; default aberto. Lê o localStorage após a hidratação.
+    // setState via microtask: regra react-hooks/set-state-in-effect (padrão do repo).
     const [contextOpen, setContextOpen] = useState(true)
     useEffect(() => {
         const saved = window.localStorage.getItem('kinevo:assistant-context-open')
-        if (saved !== null) setContextOpen(saved === '1')
+        if (saved === null) return
+        let alive = true
+        Promise.resolve().then(() => { if (alive) setContextOpen(saved === '1') })
+        return () => { alive = false }
     }, [])
     const toggleContext = useCallback(() => {
         setContextOpen((o) => {
@@ -99,12 +103,41 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     }, [])
 
     // Focar um aluno (novo/diferente) reabre o painel se estiver colapsado.
+    // O ref só avança AO APLICAR (mesmo motivo StrictMode do effect de ?s=/?c=).
     const prevPanelStudent = useRef<string | null>(null)
     useEffect(() => {
-        const prev = prevPanelStudent.current
-        prevPanelStudent.current = panelStudentId
-        if (panelStudentId && prev !== panelStudentId) setContextOpen(true)
+        if (!(panelStudentId && prevPanelStudent.current !== panelStudentId)) {
+            prevPanelStudent.current = panelStudentId
+            return
+        }
+        let alive = true
+        Promise.resolve().then(() => {
+            if (!alive) return
+            prevPanelStudent.current = panelStudentId
+            setContextOpen(true)
+        })
+        return () => { alive = false }
     }, [panelStudentId])
+
+    // F2: revalida o card do painel quando o mundo pode ter mudado — fim de turno
+    // (tools de escrita auto-executadas) e confirmação HITL. O painel mantém o
+    // card antigo visível enquanto refaz o fetch (stale-while-revalidate), então
+    // revalidar até em turno só-de-leitura custa 1 GET e nenhum flicker.
+    const [panelRefreshKey, setPanelRefreshKey] = useState(0)
+    const prevSendingRef = useRef(false)
+    useEffect(() => {
+        const was = prevSendingRef.current
+        prevSendingRef.current = sending
+        if (!(was && !sending && panelStudentId)) return
+        let alive = true
+        Promise.resolve().then(() => { if (alive) setPanelRefreshKey((k) => k + 1) })
+        return () => { alive = false }
+    }, [sending, panelStudentId])
+
+    const confirmAndRefresh = useCallback(async (toolName: string, confirmed: boolean, result?: unknown) => {
+        await recordConfirmation(toolName, confirmed, result)
+        if (confirmed && panelStudentId) setPanelRefreshKey((k) => k + 1)
+    }, [recordConfirmation, panelStudentId])
 
     // Pré-armar o composer (fillInput) + focar — mesmo padrão dos cards da home.
     const prefillComposer = useCallback((prompt: string) => {
@@ -136,13 +169,28 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
 
     // Ao chegar de outra aba pelo rail persistente (AssistantNavSidebar), abre o
     // contexto pedido na URL: ?c=<conversa> ou ?s=<aluno em foco>. ?new = home limpa.
+    // Reage a MUDANÇAS de searchParams (não só ao mount): navegar para
+    // /assistente?s=X já estando na página não remonta o componente. O ref evita
+    // re-aplicar o mesmo parâmetro quando o effect re-roda por outra dependência
+    // (o usuário pode ter desfeito o foco em-app; a URL fica pra trás).
+    const handledParamRef = useRef<string | null>(null)
     useEffect(() => {
         const c = searchParams.get('c')
         const s = searchParams.get('s')
-        if (c) selectConversation(c)
-        else if (s) { selectStudent(s); setSegment('alunos') }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+        const key = c ? `c:${c}` : s ? `s:${s}` : null
+        if (!key || handledParamRef.current === key) return
+        let alive = true
+        Promise.resolve().then(() => {
+            // O ref só é marcado AO APLICAR: com StrictMode (dev) o 1º ciclo do
+            // effect agenda e é cancelado pelo cleanup — marcar antes engoliria o
+            // parâmetro no 2º ciclo e o ?s=/?c= nunca abriria.
+            if (!alive || handledParamRef.current === key) return
+            handledParamRef.current = key
+            if (c) selectConversation(c)
+            else if (s) { selectStudent(s); setSegment('alunos') }
+        })
+        return () => { alive = false }
+    }, [searchParams, selectConversation, selectStudent])
 
     return (
         <div className="kv-mode-in flex h-[100dvh] overflow-hidden bg-[#F5F5F7] text-[#1D1D1F] dark:bg-background dark:text-foreground">
@@ -188,7 +236,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     onSendText={starter}
                     onBackHome={goHome}
                     onRename={renameActive}
-                    onConfirmResolved={recordConfirmation}
+                    onConfirmResolved={confirmAndRefresh}
                     onVoiceTurn={sendVoice}
                 />
             ) : (
@@ -216,6 +264,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 studentId={panelStudentId}
                 fromConversation={panelFromConversation}
                 open={contextOpen}
+                refreshKey={panelRefreshKey}
                 onToggle={toggleContext}
                 onRemove={() => setFocusedStudentId(null)}
                 onPrefill={prefillComposer}
