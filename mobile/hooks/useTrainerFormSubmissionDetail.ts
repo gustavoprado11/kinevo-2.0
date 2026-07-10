@@ -21,7 +21,7 @@ export interface SubmissionDetail {
 
 export interface SchemaQuestion {
     id: string;
-    type: "short_text" | "long_text" | "single_choice" | "scale" | "photo";
+    type: "short_text" | "long_text" | "single_choice" | "multi_choice" | "scale" | "photo";
     label: string;
     required?: boolean;
     options?: { label: string; value: string }[];

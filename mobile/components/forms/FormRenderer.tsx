@@ -84,9 +84,13 @@ export function FormRenderer(props: FormRendererProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [draftReady, setDraftReady] = useState(mode !== "full");
 
-    // Update answers if initialAnswers change externally (e.g. draft restore)
+    // Adota mudanças externas em initialAnswers (load assíncrono, restauração de
+    // rascunho, ou uma foto que o pai escreveu de volta) SEM descartar o que o
+    // usuário já digitou localmente — merge em vez de replace. Um replace aqui
+    // apagava o texto digitado no instante em que uma foto voltava do pai (o pai
+    // só carrega/injeta foto; nunca re-emite texto, então o merge é seguro).
     useEffect(() => {
-        if (initialAnswers) setAnswers(initialAnswers);
+        if (initialAnswers) setAnswers((prev) => ({ ...prev, ...initialAnswers }));
     }, [initialAnswers]);
 
     const setAnswer = useCallback((questionId: string, value: any) => {

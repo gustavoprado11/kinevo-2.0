@@ -41,6 +41,32 @@ interface LocalDraft {
     template_version: number | null;
 }
 
+// Traduz as exceções de validação da RPC submit_form_submission para PT-BR,
+// substituindo o id interno da pergunta pelo seu label. Nunca vaza o texto cru
+// em inglês nem o id (ex.: "Invalid option for field: ci02").
+function friendlyFormError(raw: string | undefined, questions: Question[]): string {
+    const fallback = "Não foi possível enviar o formulário. Confira as respostas e tente de novo.";
+    if (!raw) return fallback;
+    const labelFor = (fieldId: string) => questions.find((q) => q.id === fieldId)?.label ?? null;
+
+    const rules: { re: RegExp; build: (label: string | null) => string }[] = [
+        { re: /Required (?:field missing|field empty):\s*(.+)$/i, build: (l) => (l ? `Preencha o campo obrigatório: ${l}` : "Preencha todos os campos obrigatórios antes de enviar.") },
+        { re: /Required scale value missing:\s*(.+)$/i, build: (l) => (l ? `Selecione um valor em: ${l}` : "Selecione um valor nas escalas obrigatórias.") },
+        { re: /(?:Invalid scale value for field|Scale value out of range for field):\s*(.+)$/i, build: (l) => (l ? `Valor fora do intervalo em: ${l}` : "Um valor de escala está fora do intervalo permitido.") },
+        { re: /Invalid option for field:\s*(.+)$/i, build: (l) => (l ? `Opção inválida em: ${l}` : "Uma das opções selecionadas é inválida.") },
+        { re: /Required photo missing for field:\s*(.+)$/i, build: (l) => (l ? `Envie a foto em: ${l}` : "Envie as fotos obrigatórias.") },
+    ];
+
+    for (const rule of rules) {
+        const m = rule.re.exec(raw);
+        if (m) return rule.build(labelFor(m[1].trim()));
+    }
+
+    if (/not in draft status/i.test(raw)) return "Este formulário já foi enviado.";
+    if (/not found for current student/i.test(raw)) return "Formulário não encontrado. Atualize a tela e tente novamente.";
+    return fallback;
+}
+
 export default function InboxItemDetailScreen() {
     const colors = useV2Colors();
     const router = useRouter();
@@ -324,21 +350,11 @@ export default function InboxItemDetailScreen() {
             });
 
             if (error) {
-                // Defensive fallback: client-side validation in FormRenderer already
-                // catches required fields before submit. If the RPC still raises
-                // 'Required field missing: <question_id>' (e.g., client desync),
-                // map the id back to the question label so the user sees a human
-                // message instead of internal id like 'ra01'.
-                let userMessage = error.message || "Não foi possível enviar o formulário.";
-                const missingMatch = /Required field missing:\s*(.+)$/i.exec(userMessage);
-                if (missingMatch) {
-                    const missingId = missingMatch[1].trim();
-                    const q = questions.find((x) => x.id === missingId);
-                    userMessage = q
-                        ? `Campo obrigatório não preenchido: ${q.label}`
-                        : "Algum campo obrigatório não foi preenchido. Confira o formulário antes de enviar.";
-                }
-                Alert.alert("Validação", userMessage);
+                // A validação client no FormRenderer já pega obrigatórios antes do
+                // envio; se a RPC ainda lançar (desync, opção-string, multi_choice),
+                // traduzimos para PT-BR usando o LABEL da pergunta — nunca o id
+                // interno nem o texto cru em inglês da exceção.
+                Alert.alert("Validação", friendlyFormError(error.message, questions));
                 return;
             }
 

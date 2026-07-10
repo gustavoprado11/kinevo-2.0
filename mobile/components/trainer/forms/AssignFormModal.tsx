@@ -19,6 +19,7 @@ import { supabase } from "../../../lib/supabase";
 import { useTrainerStudentsList } from "../../../hooks/useTrainerStudentsList";
 import type { FormTemplate } from "../../../hooks/useTrainerFormTemplates";
 import { useV2Colors } from "../../../hooks/useV2Colors";
+import { useRoleMode } from "../../../contexts/RoleModeContext";
 
 interface Props {
     visible: boolean;
@@ -56,6 +57,7 @@ function computeNextDue(frequency: Frequency): string {
 
 export function AssignFormModal({ visible, template, onClose, onSuccess }: Props) {
     const colors = useV2Colors();
+    const { trainerId } = useRoleMode();
     const insets = useSafeAreaInsets();
     const { students, isLoading: studentsLoading } = useTrainerStudentsList();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -113,21 +115,30 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
 
             const result = data as any;
 
-            // If recurring, create schedules
+            // Recorrência: cria os schedules com o trainers.id CORRETO (o antigo
+            // usava o auth uid → violava a RLS/FK de form_schedules e o erro
+            // mascarava o envio já concluído). Erro aqui é isolado e não-fatal.
+            let recurringOk = true;
             if (isRecurring) {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    const studentIds = Array.from(selectedIds);
-                    for (const studentId of studentIds) {
-                        await (supabase as any)
-                            .from("form_schedules")
-                            .upsert({
-                                trainer_id: user.id,
-                                student_id: studentId,
-                                form_template_id: template.id,
-                                frequency,
-                                next_due_at: computeNextDue(frequency),
-                            }, { onConflict: "student_id,form_template_id,frequency" });
+                if (!trainerId) {
+                    recurringOk = false;
+                } else {
+                    try {
+                        for (const studentId of Array.from(selectedIds)) {
+                            const { error: schedErr } = await (supabase as any)
+                                .from("form_schedules")
+                                .upsert({
+                                    trainer_id: trainerId,
+                                    student_id: studentId,
+                                    form_template_id: template.id,
+                                    frequency,
+                                    next_due_at: computeNextDue(frequency),
+                                }, { onConflict: "student_id,form_template_id,frequency" });
+                            if (schedErr) throw schedErr;
+                        }
+                    } catch (schedErr) {
+                        recurringOk = false;
+                        if (__DEV__) console.error("[AssignFormModal] schedule error:", schedErr);
                     }
                 }
             }
@@ -137,7 +148,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                 "Enviado!",
                 `Formulário enviado para ${result.assigned_count} aluno(s).${
                     result.skipped_count > 0 ? ` ${result.skipped_count} já tinham pendente.` : ""
-                }${isRecurring ? ` Recorrência ${freqLabel.toLowerCase()} ativada.` : ""}`
+                }${isRecurring ? (recurringOk ? ` Recorrência ${freqLabel.toLowerCase()} ativada.` : " (não foi possível ativar a recorrência)") : ""}`
             );
 
             setSelectedIds(new Set());

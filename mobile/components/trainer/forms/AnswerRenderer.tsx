@@ -1,11 +1,14 @@
 import React from "react";
 import { View, Text, Image } from "react-native";
+import { Check } from "lucide-react-native";
 import type { SchemaQuestion } from "../../../hooks/useTrainerFormSubmissionDetail";
 import { useV2Colors } from "../../../hooks/useV2Colors";
+import { supabase } from "../../../lib/supabase";
 
 interface Props {
     question: SchemaQuestion;
-    answer: any; // { value: string | number } or { files: string[] }
+    // { value } | { values: string[] } | { files: Array<{ path, url }> } (ou strings legadas)
+    answer: any;
 }
 
 export function AnswerRenderer({ question: rawQuestion, answer }: Props) {
@@ -19,9 +22,6 @@ export function AnswerRenderer({ question: rawQuestion, answer }: Props) {
             )
             : undefined,
     };
-    const value = answer?.value;
-    const files = answer?.files;
-
     return (
         <View style={{ marginBottom: 20 }}>
             {/* Question label */}
@@ -31,14 +31,17 @@ export function AnswerRenderer({ question: rawQuestion, answer }: Props) {
             </Text>
 
             {/* Answer */}
-            {renderAnswer(question, value, files, colors)}
+            {renderAnswer(question, answer, colors)}
         </View>
     );
 }
 
 type V2Palette = ReturnType<typeof useV2Colors>;
 
-function renderAnswer(question: SchemaQuestion, value: any, files: any, colors: V2Palette) {
+function renderAnswer(question: SchemaQuestion, answer: any, colors: V2Palette) {
+    const value = answer?.value;
+    const files = answer?.files;
+    const values: string[] = Array.isArray(answer?.values) ? answer.values : [];
     switch (question.type) {
         case "short_text":
         case "long_text":
@@ -108,6 +111,61 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any, colors: 
                 </View>
             );
 
+        case "multi_choice":
+            return (
+                <View>
+                    {(question.options || []).map((opt) => {
+                        const isSelected = values.includes(opt.value);
+                        return (
+                            <View
+                                key={opt.value}
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    paddingVertical: 8,
+                                    paddingHorizontal: 12,
+                                    marginBottom: 4,
+                                    backgroundColor: isSelected ? colors.purple[100] : colors.surface.card2,
+                                    borderRadius: 10,
+                                    borderWidth: isSelected ? 1.5 : 0,
+                                    borderColor: isSelected ? colors.purple[600] : "transparent",
+                                }}
+                            >
+                                <View
+                                    style={{
+                                        width: 18,
+                                        height: 18,
+                                        borderRadius: 5,
+                                        borderWidth: 2,
+                                        borderColor: isSelected ? colors.purple[600] : colors.border.default,
+                                        backgroundColor: isSelected ? colors.purple[600] : "transparent",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        marginRight: 10,
+                                    }}
+                                >
+                                    {isSelected && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
+                                </View>
+                                <Text
+                                    style={{
+                                        fontSize: 14,
+                                        color: isSelected ? colors.purple[600] : colors.text.secondary,
+                                        fontWeight: isSelected ? "600" : "400",
+                                    }}
+                                >
+                                    {opt.label}
+                                </Text>
+                            </View>
+                        );
+                    })}
+                    {values.length === 0 && (
+                        <View style={{ backgroundColor: colors.surface.card2, borderRadius: 10, padding: 12 }}>
+                            <Text style={{ fontSize: 15, color: colors.text.primary }}>—</Text>
+                        </View>
+                    )}
+                </View>
+            );
+
         case "scale": {
             const min = question.scale?.min ?? 1;
             const max = question.scale?.max ?? 5;
@@ -162,25 +220,7 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any, colors: 
         }
 
         case "photo":
-            return (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                    {(files || []).map((uri: string, idx: number) => (
-                        <Image
-                            key={idx}
-                            source={{ uri }}
-                            style={{
-                                width: 80,
-                                height: 80,
-                                borderRadius: 10,
-                                backgroundColor: colors.border.default,
-                            }}
-                        />
-                    ))}
-                    {(!files || files.length === 0) && (
-                        <Text style={{ fontSize: 14, color: colors.text.tertiary }}>Nenhuma foto</Text>
-                    )}
-                </View>
-            );
+            return <PhotoAnswer files={files} colors={colors} />;
 
         default:
             return (
@@ -191,4 +231,54 @@ function renderAnswer(question: SchemaQuestion, value: any, files: any, colors: 
                 </View>
             );
     }
+}
+
+// O aluno grava cada foto como { path, url, ... } onde `url` é uma signed URL de
+// 1h (expira antes de o treinador abrir). Re-assinamos pelo `path` (o treinador
+// tem policy de leitura dos arquivos dos seus alunos). Aceita também strings
+// legadas. O render antigo passava o OBJETO como uri → imagem sempre quebrada.
+function PhotoAnswer({ files, colors }: { files: any; colors: V2Palette }) {
+    const list: any[] = Array.isArray(files) ? files : [];
+    const [uris, setUris] = React.useState<(string | null)[]>(() =>
+        list.map((f) => (typeof f === "string" ? f : (f?.url ?? null)))
+    );
+
+    React.useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const resolved = await Promise.all(
+                list.map(async (f) => {
+                    const path = typeof f === "object" && f ? f.path : undefined;
+                    if (path) {
+                        const { data } = await supabase.storage
+                            .from("form-uploads")
+                            .createSignedUrl(path, 3600);
+                        if (data?.signedUrl) return data.signedUrl;
+                    }
+                    return typeof f === "string" ? f : (f?.url ?? null);
+                })
+            );
+            if (!cancelled) setUris(resolved);
+        })();
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [files]);
+
+    if (list.length === 0) {
+        return <Text style={{ fontSize: 14, color: colors.text.tertiary }}>Nenhuma foto</Text>;
+    }
+
+    return (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {uris.map((uri, idx) => (
+                <Image
+                    key={idx}
+                    source={uri ? { uri } : undefined}
+                    style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: colors.border.default }}
+                />
+            ))}
+        </View>
+    );
 }
