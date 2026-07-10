@@ -14,13 +14,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@kinevo/shared/types/database'
 import { computeWeeklyAdherence } from '@/lib/students/weekly-adherence'
-import { attentionKind, attentionPrompt, KIND_TAG, type AttentionKind } from '@/lib/assistant/attention'
+import { attentionKind, attentionPrompt, KIND_TAG, PRIORITY_RANK, type AttentionKind } from '@/lib/assistant/attention'
 import type { AttentionItem } from '@/lib/assistant/home-data'
 
 type Client = SupabaseClient<Database>
 
 const WEEK_TZ = 'America/Sao_Paulo'
-const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 export interface StudentContextPayload {
     student: { id: string; name: string; avatarUrl: string | null; status: string }
@@ -43,10 +42,16 @@ export interface StudentContextPayload {
     readOnly: boolean
 }
 
-/** Data relativa curta: "Hoje", "Ontem", "há N dias" (consistente com a home). */
-function relativeDayLabel(iso: string, now: Date): string {
-    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-    const diff = Math.round((startOfDay(now) - startOfDay(new Date(iso))) / 86_400_000)
+/** Dia civil no fuso dado (nº de dias desde a época) — o server roda em UTC. */
+function civilDay(d: Date, timeZone: string): number {
+    // en-CA formata YYYY-MM-DD, parseável direto como UTC-midnight.
+    const ymd = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+    return Date.parse(`${ymd}T00:00:00Z`) / 86_400_000
+}
+
+/** Data relativa curta: "Hoje", "Ontem", "há N dias" — no fuso do produto. */
+function relativeDayLabel(iso: string, now: Date, timeZone: string): string {
+    const diff = civilDay(now, timeZone) - civilDay(new Date(iso), timeZone)
     if (diff <= 0) return 'Hoje'
     if (diff === 1) return 'Ontem'
     return `há ${diff} dias`
@@ -98,7 +103,7 @@ export async function getStudentPanelData(
         // Insights ativos do aluno; o de maior prioridade vira o badge de alerta.
         sb
             .from('assistant_insights')
-            .select('id, category, priority, title, body')
+            .select('id, category, priority, title, body, insight_key')
             .eq('student_id', studentId)
             .eq('trainer_id', trainerId)
             .in('status', ['new', 'read'])
@@ -141,17 +146,17 @@ export async function getStudentPanelData(
             return {
                 id: s.id,
                 text: `${name} concluído`,
-                dateLabel: relativeDayLabel(s.completed_at as string, now),
+                dateLabel: relativeDayLabel(s.completed_at as string, now, timeZone),
                 completedAt: s.completed_at as string,
             }
         })
 
-    // Alerta: insight de maior prioridade (high > medium > low), mapeado como na home.
+    // Alerta: insight de maior prioridade (critical > high > medium > low), como na home.
     const insightRows = (insightsRes.data as
-        | { id: string; category: string | null; priority: string | null; title: string | null; body: string | null }[]
+        | { id: string; category: string | null; priority: string | null; title: string | null; body: string | null; insight_key: string | null }[]
         | null) ?? []
     const topInsight = [...insightRows].sort(
-        (a, b) => (PRIORITY_RANK[a.priority ?? 'medium'] ?? 1) - (PRIORITY_RANK[b.priority ?? 'medium'] ?? 1),
+        (a, b) => (PRIORITY_RANK[a.priority ?? 'medium'] ?? 2) - (PRIORITY_RANK[b.priority ?? 'medium'] ?? 2),
     )[0]
 
     let alert: StudentContextPayload['alert'] = null
@@ -164,6 +169,7 @@ export async function getStudentPanelData(
             body: topInsight.body ?? '',
             studentId,
             studentName: student.name,
+            insightKey: topInsight.insight_key,
         }
         const kind = attentionKind(item)
         alert = {

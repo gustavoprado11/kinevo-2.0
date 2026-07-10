@@ -156,4 +156,33 @@ describe('getStudentPanelData', () => {
         expect(p.alert!.insightId).toBe('hi1')
         expect(p.alert!.kind).toBe('pronto_para_evoluir')
     })
+
+    it('critical vence high na escolha do alerta', async () => {
+        const sb = makeClient({
+            students: { id: STUDENT_ID, name: 'Zoe', avatar_url: null, status: 'active', trainer_notes: null },
+            assigned_programs: [],
+            workout_sessions: [],
+            assistant_insights: [
+                { id: 'hi1', category: 'alert', priority: 'high', title: 'Sumiu dos treinos', body: '' },
+                { id: 'cr1', category: 'alert', priority: 'critical', title: 'Dor reportada', body: '' },
+            ],
+        })
+        const p = (await getStudentPanelData(sb, TRAINER_ID, STUDENT_ID, OPTS))!
+        expect(p.alert!.insightId).toBe('cr1')
+    })
+
+    it("insight de estagnação (key stagnation:*) é 'estagnado' mesmo com category progression", async () => {
+        const sb = makeClient({
+            students: { id: STUDENT_ID, name: 'Ivo', avatar_url: null, status: 'active', trainer_notes: null },
+            assigned_programs: [],
+            workout_sessions: [],
+            assistant_insights: [
+                // O detector do cron grava estagnação com category='progression'
+                // (pré-existente) — a insight_key é o contrato que corrige a leitura.
+                { id: 'st1', category: 'progression', priority: 'high', title: 'Estagnado em 4 exercícios', body: '', insight_key: `stagnation:${STUDENT_ID}` },
+            ],
+        })
+        const p = (await getStudentPanelData(sb, TRAINER_ID, STUDENT_ID, OPTS))!
+        expect(p.alert!.kind).toBe('estagnado')
+    })
 })

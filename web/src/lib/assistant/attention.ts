@@ -11,10 +11,21 @@
 import { TrendingDown, TrendingUp, FileText } from 'lucide-react'
 import type { AttentionItem } from '@/lib/assistant/home-data'
 
-/** Tipo visual do card de atenção, derivado de category/priority do insight. */
+/**
+ * Ordem de severidade dos insights (menor = mais urgente). Fonte única —
+ * home-data e student-panel-data importam daqui. Inclui 'critical' (o CHECK da
+ * tabela permite, embora nenhum detector emita hoje).
+ */
+export const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+
+/** Tipo visual do card de atenção, derivado de insight_key/category do insight. */
 export type AttentionKind = 'estagnado' | 'pronto_para_evoluir' | 'nota'
 
 export function attentionKind(item: AttentionItem): AttentionKind {
+    // insight_key é o contrato estável. O detector de estagnação grava
+    // category='progression' (pré-existente), o que pintaria o card de verde
+    // "Pronto p/ evoluir" num aluno ESTAGNADO — a key corrige a leitura.
+    if (item.insightKey?.startsWith('stagnation')) return 'estagnado'
     if (item.category === 'progression') return 'pronto_para_evoluir'
     if (item.category === 'suggestion' || item.category === 'summary') return 'nota'
     return 'estagnado' // alert / desconhecido

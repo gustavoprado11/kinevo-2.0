@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { PRIORITY_RANK } from '@/lib/assistant/attention'
 
 export interface AttentionItem {
     id: string
@@ -15,9 +16,9 @@ export interface AttentionItem {
     body: string
     studentId: string | null
     studentName: string | null
+    /** Contrato estável (`stagnation:*`, `ready_to_progress:*`…) — categoria pode mentir. */
+    insightKey?: string | null
 }
-
-const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 /** Top insights ativos do treinador (mais prioritários primeiro). */
 export async function getAttentionInsights(
@@ -27,7 +28,7 @@ export async function getAttentionInsights(
 ): Promise<AttentionItem[]> {
     const { data, error } = await sb
         .from('assistant_insights')
-        .select('id, category, priority, title, body, student_id, status, students:student_id(name)')
+        .select('id, category, priority, title, body, student_id, insight_key, status, students:student_id(name)')
         .eq('trainer_id', trainerId)
         .in('status', ['new', 'read'])
         .order('created_at', { ascending: false })
@@ -45,8 +46,9 @@ export async function getAttentionInsights(
                 body: (r.body as string) ?? '',
                 studentId: (r.student_id as string | null) ?? null,
                 studentName: student?.name ?? null,
+                insightKey: (r.insight_key as string | null) ?? null,
             }
         })
-        .sort((a, b) => (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1))
+        .sort((a, b) => (PRIORITY_RANK[a.priority] ?? 2) - (PRIORITY_RANK[b.priority] ?? 2))
         .slice(0, limit)
 }

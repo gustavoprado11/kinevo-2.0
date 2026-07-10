@@ -24,14 +24,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ student
 
         const { trainer } = await getTrainerWithSubscription(user.id)
 
-        // readOnly (gestão travada) é ortogonal ao painel; calculado aqui p/ manter
-        // a montagem do payload testável sem o admin client.
-        const readOnly = await isStudentManagementLockedForTrainer(trainer.id)
-
-        const payload = await getStudentPanelData(supabase, trainer.id, studentId, { readOnly })
+        // readOnly (gestão travada) é ortogonal ao payload → roda em PARALELO com
+        // as queries do painel (era sequencial e dominava a latência da rota).
+        const [readOnly, payload] = await Promise.all([
+            isStudentManagementLockedForTrainer(trainer.id),
+            getStudentPanelData(supabase, trainer.id, studentId),
+        ])
         if (!payload) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-        return NextResponse.json(payload)
+        return NextResponse.json({ ...payload, readOnly })
     } catch (error) {
         console.error('[student-context GET] error:', error)
         return NextResponse.json({ error: 'Internal error' }, { status: 500 })
