@@ -1,97 +1,85 @@
 /**
  * WorkoutFocusPager — pager horizontal (uma página por item de trabalho) do modo
- * Foco. ScrollView horizontal com pagingEnabled (JS puro — sem dep nativa nova;
- * roda no dev build atual). Cada página é um ScrollView vertical (a área de
- * séries rola dentro). Índice CONTROLADO: o botão "Próximo" muda `index` (o pager
- * rola até lá); o swipe reporta via onIndexChange. Fase 3.
+ * Foco. ScrollView horizontal com pagingEnabled (JS puro). Cada página é um
+ * ScrollView vertical (a área de séries rola dentro). Índice CONTROLADO: o botão
+ * "Próximo" muda `index` (o pager rola até lá, animado); o swipe reporta via
+ * onIndexChange. Ao trocar de página, a nova começa no topo. Fase 3.
  *
- * A barra "Voltar/Próximo" fixa vem separada (WorkoutFocusNav), fora do pager,
- * para nunca sumir atrás do scroll.
+ * Transição (design "Um por vez"): o conteúdo de cada página tem opacidade+escala
+ * interpoladas pela posição do scroll horizontal — efeito de carrossel (o exercício
+ * que sai esmaece/encolhe, o que entra foca/cresce). Como o botão usa scrollTo
+ * ANIMADO, o mesmo `scrollX` dirige a transição tanto no swipe quanto no botão.
  *
- * Fase 5 (polish do colapso): ao TROCAR de página, a nova página começa colapsada
- * e no topo. Dois cuidados garantem isso:
- *  1. `enterPage` zera o `scrollY` (player) E leva a lista de destino ao topo.
- *  2. Só a página ATIVA escreve em `scrollY` (guarda `activeIndex`). Sem isso, a
- *     página que acabou de sair — ainda desacelerando do scroll — continuava
- *     gravando seu offset antigo e "ressuscitava" o player crescido logo após o
- *     reset (o bug clássico: colapsava só quando a nova página era rolada).
+ * A barra "Voltar/Próximo" fixa vem separada (WorkoutFocusNav), fora do pager.
  */
 import React, { useEffect, useRef } from 'react';
 import { View, ScrollView, useWindowDimensions, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native';
-import Animated, { useAnimatedScrollHandler, useSharedValue, type SharedValue } from 'react-native-reanimated';
-
-/** Só precisamos do scrollTo imperativo do ScrollView interno de cada página. */
-type VerticalScrollable = { scrollTo: (options: { x?: number; y?: number; animated?: boolean }) => void };
+import Animated, { useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
 
 interface WorkoutFocusPagerProps {
     /** Conteúdo de cada página (já renderizado pelo caller, que tem os callbacks). */
     pages: React.ReactNode[];
     index: number;
     onIndexChange: (index: number) => void;
-    /** Padding de baixo (deixa espaço acima da barra fixa / player). */
+    /** Padding de baixo (folga acima da barra fixa). */
     pageBottomPadding?: number;
-    /** Scroll vertical da página ATIVA → alimenta o player crescente (Fase 4). */
-    scrollY?: SharedValue<number>;
 }
 
-/** Uma página do pager: ScrollView vertical cujo scroll só alimenta `scrollY`
- *  quando esta página é a ativa (`activeIndex === pageIndex`). */
 function FocusPage({
-    pageIndex, activeIndex, scrollY, width, pageBottomPadding, registerRef, children,
+    pageIndex, scrollX, width, pageBottomPadding, registerRef, children,
 }: {
     pageIndex: number;
-    activeIndex: SharedValue<number>;
-    scrollY?: SharedValue<number>;
+    scrollX: SharedValue<number>;
     width: number;
     pageBottomPadding: number;
-    registerRef: (ref: VerticalScrollable | null) => void;
+    registerRef: (ref: ScrollView | null) => void;
     children: React.ReactNode;
 }) {
-    const handler = useAnimatedScrollHandler({
-        onScroll: (e) => {
-            if (scrollY && activeIndex.value === pageIndex) scrollY.value = e.contentOffset.y;
-        },
+    const style = useAnimatedStyle(() => {
+        const inputRange = [(pageIndex - 1) * width, pageIndex * width, (pageIndex + 1) * width];
+        return {
+            opacity: interpolate(scrollX.value, inputRange, [0.4, 1, 0.4], Extrapolation.CLAMP),
+            transform: [{ scale: interpolate(scrollX.value, inputRange, [0.93, 1, 0.93], Extrapolation.CLAMP) }],
+        };
     });
     return (
-        <View style={{ width }}>
-            <Animated.ScrollView
-                ref={(r) => registerRef((r as unknown as VerticalScrollable) ?? null)}
+        <Animated.View style={[{ width }, style]}>
+            <ScrollView
+                ref={registerRef}
                 contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: pageBottomPadding }}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
-                onScroll={handler}
-                scrollEventThrottle={16}
             >
                 {children}
-            </Animated.ScrollView>
-        </View>
+            </ScrollView>
+        </Animated.View>
     );
 }
 
-export function WorkoutFocusPager({ pages, index, onIndexChange, pageBottomPadding = 24, scrollY }: WorkoutFocusPagerProps) {
+export function WorkoutFocusPager({ pages, index, onIndexChange, pageBottomPadding = 24 }: WorkoutFocusPagerProps) {
     const { width } = useWindowDimensions();
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<React.ComponentRef<typeof Animated.ScrollView>>(null);
     const lastReported = useRef(index);
-    const innerRefs = useRef<Record<number, VerticalScrollable | null>>({});
-    const activeIndex = useSharedValue(index);
+    const innerRefs = useRef<Record<number, ScrollView | null>>({});
+    const scrollX = useSharedValue(index * width);
 
-    // A página de destino começa colapsada e no topo: marca a nova ativa (só ela
-    // passa a escrever no scrollY), zera o player e leva a lista ao topo.
+    const scrollHandler = useAnimatedScrollHandler({
+        onScroll: (e) => { scrollX.value = e.contentOffset.x; },
+    });
+
+    // A página de destino começa no topo.
     const enterPage = (i: number) => {
-        activeIndex.value = i;
-        if (scrollY) scrollY.value = 0;
-        const ref = innerRefs.current[i];
-        if (ref && typeof ref.scrollTo === 'function') ref.scrollTo({ y: 0, animated: false });
+        innerRefs.current[i]?.scrollTo({ y: 0, animated: false });
     };
 
-    // Índice controlado → rola o pager quando muda por fora (botão Próximo/Voltar).
+    // Índice controlado → rola o pager (animado) quando muda por fora (botão).
     useEffect(() => {
         if (index !== lastReported.current) {
             lastReported.current = index;
             scrollRef.current?.scrollTo({ x: index * width, animated: true });
             enterPage(index);
         }
-    }, [index, width, scrollY]);
+    }, [index, width]);
 
     const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
         const i = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -103,11 +91,13 @@ export function WorkoutFocusPager({ pages, index, onIndexChange, pageBottomPaddi
     };
 
     return (
-        <ScrollView
+        <Animated.ScrollView
             ref={scrollRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
+            onScroll={scrollHandler}
+            scrollEventThrottle={16}
             onMomentumScrollEnd={onMomentumEnd}
             keyboardShouldPersistTaps="handled"
             // Começa já na página do exercício atual (evita flash da página 0 no iOS).
@@ -118,15 +108,14 @@ export function WorkoutFocusPager({ pages, index, onIndexChange, pageBottomPaddi
                 <FocusPage
                     key={i}
                     pageIndex={i}
-                    activeIndex={activeIndex}
-                    scrollY={scrollY}
+                    scrollX={scrollX}
                     width={width}
                     pageBottomPadding={pageBottomPadding}
-                    registerRef={(ref) => { innerRefs.current[i] = ref; }}
+                    registerRef={(r) => { innerRefs.current[i] = r; }}
                 >
                     {page}
                 </FocusPage>
             ))}
-        </ScrollView>
+        </Animated.ScrollView>
     );
 }

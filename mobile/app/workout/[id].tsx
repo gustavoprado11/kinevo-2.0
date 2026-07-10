@@ -30,8 +30,6 @@ import { ExerciseSummaryRow, type ExerciseStatus } from '../../components/workou
 import { WorkoutFocusExercise } from '../../components/workout/WorkoutFocusExercise';
 import { WorkoutFocusPager } from '../../components/workout/WorkoutFocusPager';
 import { WorkoutFocusNav } from '../../components/workout/WorkoutFocusNav';
-import { GrowingVideoPlayer, type VideoChoice } from '../../components/workout/GrowingVideoPlayer';
-import { useSharedValue } from 'react-native-reanimated';
 import { WorkoutFeedbackModal } from '../../components/workout/WorkoutFeedbackModal';
 import { WorkoutCelebration, CelebrationData } from '../../components/workout/WorkoutCelebration';
 import { ShareWorkoutModal } from '../../components/workout/ShareWorkoutModal';
@@ -1030,11 +1028,6 @@ export default function WorkoutPlayerScreen() {
         [renderList],
     );
     const [focusIndex, setFocusIndex] = React.useState(0);
-    // Fase 4: scroll da página ativa → altura do player crescente (Reanimated).
-    const focusScrollY = useSharedValue(0);
-    // Superset (D1): qual vídeo do filho o player mostra; reseta ao trocar de item.
-    const [focusChildVideo, setFocusChildVideo] = React.useState(0);
-    useEffect(() => { setFocusChildVideo(0); }, [focusIndex]);
     const enteredFocusRef = useRef(false);
     // Ao ENTRAR no modo foco, aterrissa no item atual (1º incompleto).
     useEffect(() => {
@@ -1127,8 +1120,7 @@ export default function WorkoutPlayerScreen() {
                         <WorkoutFocusPager
                             index={focusIndex}
                             onIndexChange={setFocusIndex}
-                            scrollY={focusScrollY}
-                            pageBottomPadding={restTimer ? 300 : 220}
+                            pageBottomPadding={restTimer ? 300 : 28}
                             pages={focusItems.map((item, i) => {
                                 const eyebrow = (
                                     <Text style={{ fontSize: 10, fontWeight: '700', color: colors.purple[700], letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>
@@ -1215,30 +1207,6 @@ export default function WorkoutPlayerScreen() {
                                 }
                             }}
                         />
-                        {/* Fase 4: player de vídeo ancorado que cresce ao rolar. D2:
-                            cardio/aquecimento não têm player. D1: superset → seletor. */}
-                        {(() => {
-                            const cur = focusItems[focusIndex];
-                            if (!cur || cur.type === 'warmup_cardio') return null;
-                            let videoUrl: string | null = null;
-                            let childOptions: VideoChoice[] | undefined;
-                            if (cur.type === 'exercise') {
-                                videoUrl = cur.exercise.video_url ?? null;
-                            } else if (cur.type === 'superset') {
-                                childOptions = cur.exercises.map((e) => ({ name: e.name, videoUrl: e.video_url ?? null }));
-                                videoUrl = childOptions[Math.min(focusChildVideo, childOptions.length - 1)]?.videoUrl ?? null;
-                            }
-                            return (
-                                <GrowingVideoPlayer
-                                    videoUrl={videoUrl}
-                                    scrollY={focusScrollY}
-                                    onOpenFullscreen={onVideoPressStable}
-                                    childOptions={childOptions}
-                                    selectedChild={focusChildVideo}
-                                    onSelectChild={setFocusChildVideo}
-                                />
-                            );
-                        })()}
                     </View>
                 ) : (
                 <ScrollView

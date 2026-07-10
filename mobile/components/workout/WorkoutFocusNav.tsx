@@ -1,7 +1,7 @@
 /**
  * WorkoutFocusNav — barra fixa "Voltar / Próximo exercício" do modo Foco.
- * Sempre visível acima do player (Fase 4) — o aluno nunca rola atrás de um botão.
  * No último item, o "Próximo" vira "Concluir" e chama onFinish. Fase 3.
+ * (O tempo decorrido fica só no header — não repetir aqui.)
  */
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
