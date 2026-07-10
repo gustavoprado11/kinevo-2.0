@@ -80,7 +80,7 @@ export function evaluateComputed(
     try {
         if (test.formula_id === 'bmi') {
             const w = inputs[0] ? pickNumeric(measurements, inputs[0]) : undefined;
-            const h = inputs[1] ? pickNumeric(measurements, inputs[1]) : undefined;
+            const h = inputs[1] ? heightMeters(measurements, inputs[1]) : undefined;
             if (w === undefined || h === undefined) return { value: null, error: null };
             return { value: bmi(w, h), error: null };
         }
@@ -155,11 +155,20 @@ export function pickWeightKg(ms: MeasurementInput[]): number | undefined {
     return pickNumeric(ms, 'weight') ?? pickNumeric(ms, 'weight_kg');
 }
 
+// Resolve uma medição de estatura para METROS. O builder de avaliação emite
+// `height_cm` (centímetros); os templates de sistema usam `height_m` (metros).
+// bmi() exige metros. Converte por chave (_cm) ou magnitude (>3 → veio em cm).
+function heightMeters(ms: MeasurementInput[], key: string): number | undefined {
+    const raw = pickNumeric(ms, key);
+    if (raw === undefined) return undefined;
+    return key.endsWith('_cm') || raw > 3 ? raw / 100 : raw;
+}
+
 /**
- * Pick the subject stature in meters. Accepts `height` and `height_m`.
+ * Pick the subject stature in meters. Accepts `height`, `height_m` and `height_cm`.
  */
 export function pickHeightM(ms: MeasurementInput[]): number | undefined {
-    return pickNumeric(ms, 'height') ?? pickNumeric(ms, 'height_m');
+    return heightMeters(ms, 'height') ?? heightMeters(ms, 'height_m') ?? heightMeters(ms, 'height_cm');
 }
 
 /**

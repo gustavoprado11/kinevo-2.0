@@ -39,7 +39,13 @@ function fmt(n: number | undefined, digits: number, suffix?: string): string {
  * the immediately previous, color-coded by `betterDirection`.
  */
 export function ResultComparisonTable({ sessions, maxColumns = 4 }: ResultComparisonTableProps) {
-    const completed = sessions.filter(s => s.status === 'completed' && s.computed_metrics)
+    // Ordena por completed_at DESC (a lista chega ordenada por scheduled_at, que é
+    // NULL em avaliações "começar agora" → a mais recente afundava e a coluna
+    // "Atual" mostrava a sessão errada, com deltas invertidos).
+    const completed = sessions
+        .filter(s => s.status === 'completed' && s.computed_metrics)
+        .slice()
+        .sort((a, b) => (b.completed_at ? Date.parse(b.completed_at) : 0) - (a.completed_at ? Date.parse(a.completed_at) : 0))
     if (completed.length < 2) {
         return (
             <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-5">

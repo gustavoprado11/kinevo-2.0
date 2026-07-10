@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/toast'
 import { MeasurementWizardWeb, type RangePromptState } from '@/components/assessments/capture/MeasurementWizardWeb'
@@ -244,7 +244,9 @@ export function CaptureClient({
             isLast={isLast}
             rangePrompt={rangePrompt}
         >
-            {stepRender.content}
+            {/* key por teste: sem isso o React reusa a instância do input entre
+                steps do mesmo tipo e o valor digitado vazava pro step seguinte. */}
+            <Fragment key={currentTest!.id}>{stepRender.content}</Fragment>
         </MeasurementWizardWeb>
     )
 }
