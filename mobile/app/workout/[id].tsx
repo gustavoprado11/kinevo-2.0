@@ -25,6 +25,7 @@ import { ChevronLeft, Info } from 'lucide-react-native';
 import { WorkoutModeToggle } from '../../components/workout/WorkoutModeToggle';
 import { useWorkoutViewModeStore } from '../../stores/workoutViewModeStore';
 import { ExecutionExerciseCard } from '../../components/workout/ExecutionExerciseCard';
+import { CollapsibleSection } from '../../components/workout/CollapsibleSection';
 import { ExerciseSummaryRow, type ExerciseStatus } from '../../components/workout/ExerciseSummaryRow';
 import { WorkoutFocusExercise } from '../../components/workout/WorkoutFocusExercise';
 import { WorkoutFocusPager } from '../../components/workout/WorkoutFocusPager';
@@ -1306,33 +1307,37 @@ export default function WorkoutPlayerScreen() {
                             const m = listMeta.get(item.supersetId);
                             const isFocused = item.supersetId === expandedKey;
                             const status: ExerciseStatus = m?.done ? 'done' : (isFocused || m?.started ? 'current' : 'todo');
-                            if (!isFocused) {
-                                return (
-                                    <View key={item.supersetId} style={{ backgroundColor: colors.surface.card, borderRadius: 20, borderWidth: 1, borderColor: colors.border.subtle, padding: 14, marginBottom: 14 }}>
-                                        <ExerciseSummaryRow
-                                            number={m?.number ?? 0}
-                                            name="Superset"
-                                            meta={`${item.exercises.length} exercícios · ${item.exercises.map((e) => e.name).join(' + ')}`}
-                                            status={status}
-                                            onPress={() => focusExercise(item.supersetId)}
-                                            expanded={false}
-                                        />
-                                    </View>
-                                );
-                            }
+                            // Mesma estrutura do card de exercício (card + resumo +
+                            // CollapsibleSection) para o superset abrir/fechar com o
+                            // mesmo spring, em vez de corte seco.
                             return (
-                                <View key={item.supersetId} style={{ marginBottom: 4 }}>
-                                    <View style={{ paddingHorizontal: 2, marginBottom: 6 }}>
-                                        <ExerciseSummaryRow
-                                            number={m?.number ?? 0}
-                                            name="Superset"
-                                            meta={`${item.exercises.length} exercícios`}
-                                            status={status}
-                                            onPress={undefined}
-                                            expanded
-                                        />
-                                    </View>
-                                    {supersetGroup}
+                                <View
+                                    key={item.supersetId}
+                                    style={{
+                                        backgroundColor: colors.surface.card,
+                                        borderRadius: 20,
+                                        borderWidth: isFocused ? 1.5 : 1,
+                                        borderColor: isFocused ? colors.purple[600] : colors.border.subtle,
+                                        padding: 14,
+                                        marginBottom: 14,
+                                        ...(isFocused
+                                            ? { shadowColor: colors.purple[600], shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 24, elevation: 4 }
+                                            : { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 1 }),
+                                    }}
+                                >
+                                    <ExerciseSummaryRow
+                                        number={m?.number ?? 0}
+                                        name="Superset"
+                                        meta={`${item.exercises.length} exercícios · ${item.exercises.map((e) => e.name).join(' + ')}`}
+                                        status={status}
+                                        onPress={isFocused ? undefined : () => focusExercise(item.supersetId)}
+                                        expanded={isFocused}
+                                    />
+                                    <CollapsibleSection expanded={isFocused}>
+                                        <View style={{ marginTop: 12, marginBottom: -12 }}>
+                                            {supersetGroup}
+                                        </View>
+                                    </CollapsibleSection>
                                 </View>
                             );
                         }
