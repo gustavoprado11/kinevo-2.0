@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Json } from '@kinevo/shared/types/database'
 import { AppLayout } from '@/components/layout'
 import { deleteFormTemplate } from '@/actions/forms/delete-form-template'
+import { useToast } from '@/components/ui/toast'
 import {
     Plus,
     Search,
@@ -178,6 +179,7 @@ function ActionsMenu({ template, onDelete, mode = 'forms' }: { template: FormTem
 
 export function TemplatesClient({ trainer, templates: initialTemplates, mode = 'forms' }: TemplatesClientProps) {
     const router = useRouter()
+    const { toast } = useToast()
     const [templates, setTemplates] = useState(initialTemplates)
     const [searchQuery, setSearchQuery] = useState('')
     const [deleting, setDeleting] = useState<string | null>(null)
@@ -194,6 +196,9 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
 
         if (result.success) {
             setTemplates(templates.filter(t => t.id !== templateId))
+        } else {
+            // Antes o erro era engolido: o spinner sumia e nada acontecia.
+            toast({ message: result.error || 'Não foi possível excluir o template.', type: 'error' })
         }
 
         setDeleting(null)

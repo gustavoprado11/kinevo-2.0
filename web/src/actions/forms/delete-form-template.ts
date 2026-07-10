@@ -25,6 +25,14 @@ export async function deleteFormTemplate({ templateId }: { templateId: string })
 
     if (error) {
         console.error('[deleteFormTemplate] error:', error)
+        // FK RESTRICT: form_submissions referencia este template. Um template já
+        // enviado a alunos (tem submissões/respostas) não pode ser excluído.
+        if (error.code === '23503') {
+            return {
+                success: false,
+                error: 'Este template já foi enviado a alunos e tem respostas associadas, por isso não pode ser excluído.',
+            }
+        }
         return { success: false, error: 'Erro ao excluir template' }
     }
 

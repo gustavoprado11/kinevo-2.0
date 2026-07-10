@@ -488,7 +488,7 @@ export async function generateFormDraftWithAI(input: GenerateFormWithAIInput) {
     if (!goal) return { success: false, error: 'Defina o objetivo do formulário.' }
 
     const safeCategory = input.category
-    if (!['anamnese', 'checkin', 'survey'].includes(safeCategory)) {
+    if (!['anamnese', 'checkin', 'survey', 'feedback'].includes(safeCategory)) {
         return { success: false, error: 'Categoria inválida.' }
     }
 

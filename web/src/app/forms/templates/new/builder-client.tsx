@@ -369,6 +369,29 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
             return
         }
 
+        // Toda pergunta precisa de enunciado — sem isso o aluno recebe perguntas
+        // em branco (o submit valida por id, não por label, então passariam).
+        const emptyLabelIdx = questions.findIndex((q) => !q.label.trim())
+        if (emptyLabelIdx !== -1) {
+            toast({ message: `A pergunta ${emptyLabelIdx + 1} está sem enunciado.`, type: 'error' })
+            return
+        }
+
+        // Perguntas de escolha precisam de opções com texto.
+        for (let i = 0; i < questions.length; i++) {
+            const q = questions[i]
+            if (q.type !== 'single_choice') continue
+            const opts = q.options ?? []
+            if (opts.length === 0) {
+                toast({ message: `A pergunta ${i + 1} (escolha única) precisa de ao menos uma opção.`, type: 'error' })
+                return
+            }
+            if (opts.some((o) => !o.label.trim())) {
+                toast({ message: `A pergunta ${i + 1} tem uma opção sem texto.`, type: 'error' })
+                return
+            }
+        }
+
         setIsSaving(true)
         try {
             const schemaJson = JSON.stringify(schema)
