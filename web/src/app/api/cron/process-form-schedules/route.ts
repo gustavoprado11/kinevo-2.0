@@ -15,17 +15,27 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const now = new Date().toISOString()
+        const nowDate = new Date()
+        const now = nowDate.toISOString()
+        const BATCH_LIMIT = 200
 
         const { data: dueSchedules, error: fetchError } = await supabaseAdmin
             .from('form_schedules')
             .select('id, trainer_id, student_id, form_template_id, frequency, next_due_at')
             .eq('is_active', true)
             .lte('next_due_at', now)
+            .order('next_due_at', { ascending: true })
+            .limit(BATCH_LIMIT)
 
         if (fetchError) {
             console.error('[cron:process-form-schedules] Fetch error:', fetchError)
             return NextResponse.json({ error: 'Fetch error' }, { status: 500 })
+        }
+
+        if (dueSchedules && dueSchedules.length === BATCH_LIMIT) {
+            // Não silenciar o teto: se batemos no limite, há mais vencidos que
+            // serão processados no próximo run (ordenados pelos mais antigos).
+            console.warn(`[cron:process-form-schedules] batch limit ${BATCH_LIMIT} atingido — restantes no próximo run`)
         }
 
         if (!dueSchedules || dueSchedules.length === 0) {
@@ -46,10 +56,9 @@ export async function GET(request: NextRequest) {
                     .single()
 
                 if (!student) {
-                    await supabaseAdmin
-                        .from('form_schedules')
-                        .update({ is_active: false })
-                        .eq('id', schedule.id)
+                    // Aluno arquivado/reatribuído: PULA sem desativar (reversível se
+                    // o aluno voltar). Antes matava o schedule para sempre.
+                    await advanceSchedule(schedule, nowDate, false)
                     skippedCount++
                     continue
                 }
@@ -63,10 +72,9 @@ export async function GET(request: NextRequest) {
                     .single()
 
                 if (!template) {
-                    await supabaseAdmin
-                        .from('form_schedules')
-                        .update({ is_active: false })
-                        .eq('id', schedule.id)
+                    // Template temporariamente inativo: PULA sem desativar o schedule
+                    // (antes o desativava para sempre). Retoma quando reativarem.
+                    await advanceSchedule(schedule, nowDate, false)
                     skippedCount++
                     continue
                 }
@@ -85,12 +93,9 @@ export async function GET(request: NextRequest) {
                 )
 
                 if (hasPendingForTemplate) {
-                    // Already pending — just advance the schedule
-                    const nextDue = computeNextDue(schedule.frequency, new Date())
-                    await supabaseAdmin
-                        .from('form_schedules')
-                        .update({ next_due_at: nextDue.toISOString(), last_sent_at: now })
-                        .eq('id', schedule.id)
+                    // Já tem pendente — só avança. Nada foi enviado, então NÃO
+                    // atualiza last_sent_at (antes o campo mentia).
+                    await advanceSchedule(schedule, nowDate, false)
                     skippedCount++
                     continue
                 }
@@ -164,18 +169,14 @@ export async function GET(request: NextRequest) {
                 // Send push notification (fire-and-forget)
                 sendStudentPush({
                     studentId: schedule.student_id,
-                    title: 'Nova avaliação disponível',
-                    body: 'Seu treinador enviou uma avaliação para você preencher.',
+                    title: 'Novo formulário disponível',
+                    body: 'Seu treinador enviou um formulário para você preencher.',
                     inboxItemId: inboxItem.id,
                     data: { type: 'form_request', inbox_item_id: inboxItem.id },
                 })
 
-                // Advance schedule
-                const nextDue = computeNextDue(schedule.frequency, new Date())
-                await supabaseAdmin
-                    .from('form_schedules')
-                    .update({ next_due_at: nextDue.toISOString(), last_sent_at: now })
-                    .eq('id', schedule.id)
+                // Avança o schedule (enviado → registra last_sent_at).
+                await advanceSchedule(schedule, nowDate, true)
 
                 sentCount++
             } catch (err) {
@@ -192,7 +193,9 @@ export async function GET(request: NextRequest) {
     }
 }
 
-function computeNextDue(frequency: string, fromDate: Date): Date {
+/** Avança UM intervalo a partir de `fromDate`. `monthly` com clamp (dia 31 →
+ *  último dia do mês seguinte, em vez de transbordar para o mês subsequente). */
+function addInterval(frequency: string, fromDate: Date): Date {
     const next = new Date(fromDate)
     switch (frequency) {
         case 'daily':
@@ -204,11 +207,45 @@ function computeNextDue(frequency: string, fromDate: Date): Date {
         case 'biweekly':
             next.setDate(next.getDate() + 14)
             break
-        case 'monthly':
+        case 'monthly': {
+            const day = next.getDate()
+            next.setDate(1)
             next.setMonth(next.getMonth() + 1)
+            const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()
+            next.setDate(Math.min(day, lastDay))
             break
+        }
         default:
             next.setDate(next.getDate() + 7)
     }
     return next
+}
+
+/**
+ * Próximo vencimento ancorado no vencimento AGENDADO (não no instante do run —
+ * era o que causava o drift: cada ciclo re-ancorava em ~08:00:0X e o dia/semana
+ * andava). Rola pra frente até passar de `now`, pulando ocorrências perdidas em
+ * vez de disparar um backlog.
+ */
+function nextDueAfter(frequency: string, currentDueISO: string | null, now: Date): Date {
+    let d = addInterval(frequency, currentDueISO ? new Date(currentDueISO) : now)
+    let guard = 0
+    while (d.getTime() <= now.getTime() && guard < 600) {
+        d = addInterval(frequency, d)
+        guard++
+    }
+    return d
+}
+
+/** Avança next_due_at preservando a cadência; grava last_sent_at só quando de
+ *  fato enviou (antes o campo era atualizado mesmo em skip). */
+async function advanceSchedule(
+    schedule: { id: string; frequency: string; next_due_at: string | null },
+    nowDate: Date,
+    sent: boolean,
+): Promise<void> {
+    const nextDue = nextDueAfter(schedule.frequency, schedule.next_due_at, nowDate)
+    const patch: { next_due_at: string; last_sent_at?: string } = { next_due_at: nextDue.toISOString() }
+    if (sent) patch.last_sent_at = nowDate.toISOString()
+    await supabaseAdmin.from('form_schedules').update(patch).eq('id', schedule.id)
 }

@@ -46,13 +46,21 @@ function extractAnamneseFlags(answersJson: Record<string, unknown>): string[] {
     return [...new Set(flags)]
 }
 
-function extractCheckinFlags(answersJson: Record<string, unknown>): string[] {
+function extractCheckinFlags(
+    answersJson: Record<string, unknown>,
+    questionLabels: Record<string, string> = {},
+): string[] {
     const answersStr = JSON.stringify(answersJson).toLowerCase()
     const lowScoreFlags: string[] = []
 
-    for (const [key, value] of Object.entries(answersJson)) {
-        const keyLower = key.toLowerCase()
-        const numValue = typeof value === 'number' ? value : parseInt(String(value))
+    for (const [key, rawAnswer] of Object.entries(answersJson)) {
+        // Resposta real vem como { value: n }; o sentido está no LABEL (ids opacos).
+        const rawValue =
+            rawAnswer && typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)
+                ? (rawAnswer as { value?: unknown }).value
+                : rawAnswer
+        const keyLower = (questionLabels[key] || key).toLowerCase()
+        const numValue = typeof rawValue === 'number' ? rawValue : parseInt(String(rawValue))
         if (isNaN(numValue)) continue
 
         const isLowScore = numValue <= 2
@@ -243,5 +251,29 @@ describe('Check-in flag detection', () => {
         const twoFlags = extractCheckinFlags({ sono_qualidade: 1, nivel_energia: 1 })
         expect(twoFlags.length).toBeGreaterThanOrEqual(2)
         expect(twoFlags.length >= 2).toBe(true)
+    })
+
+    // ── Shape REAL de produção: { <id opaco>: { value } } + sentido no LABEL ──
+
+    it('matches keywords against the question LABEL, not the opaque id', () => {
+        const answers = { q_1773172666668_dtdbl: { value: 1 }, ci06: { value: 5 } }
+        const labels = { q_1773172666668_dtdbl: 'Qualidade do Sono', ci06: 'Nível de estresse' }
+        const flags = extractCheckinFlags(answers, labels)
+        expect(flags).toContain('sono ruim')
+        expect(flags).toContain('estresse alto')
+    })
+
+    it('does NOT fire when the id is opaque and no label is provided (regressão do bug)', () => {
+        const flags = extractCheckinFlags({ q_1773172666668_dtdbl: { value: 1 } })
+        expect(flags.length).toBe(0)
+    })
+
+    it('unwraps the { value } answer object', () => {
+        const flags = extractCheckinFlags(
+            { qa: { value: 1 }, qb: { value: 1 } },
+            { qa: 'Qualidade do Sono', qb: 'Nível de energia' },
+        )
+        expect(flags).toContain('sono ruim')
+        expect(flags).toContain('fadiga elevada')
     })
 })

@@ -704,7 +704,7 @@ async function detectFormInsights(trainerId: string, today: string): Promise<Ins
     const { data, error } = await supabaseAdmin
         .from('form_submissions')
         .select(`
-            id, student_id, answers_json, created_at, trigger_context,
+            id, student_id, answers_json, schema_snapshot_json, created_at, trigger_context,
             form_templates!inner(category, title),
             students!inner(name)
         `)
@@ -731,8 +731,21 @@ async function detectFormInsights(trainerId: string, today: string): Promise<Ins
     for (const row of data as any[]) {
         const category = row.form_templates?.category as string
         const studentName = row.students?.name || 'Aluno'
-        const answers = row.answers_json || {}
+        // O submit encapsula as respostas em `answers_json.answers`; aceita também o
+        // shape legado plano. Antes lia o nível de cima (submitted_from/app_version)
+        // e a detecção numérica de check-in NUNCA disparava.
+        const answersRoot = (row.answers_json || {}) as Record<string, any>
+        const answers: Record<string, any> =
+            answersRoot.answers && typeof answersRoot.answers === 'object'
+                ? answersRoot.answers
+                : answersRoot
         const answersStr = JSON.stringify(answers).toLowerCase()
+        // id da pergunta → label. Os ids são opacos (ex.: 'q_..._x', 'ci06'); o
+        // sentido ("sono", "stress") está no LABEL — é nele que casamos as keywords.
+        const questionLabels: Record<string, string> = {}
+        for (const q of (row.schema_snapshot_json?.questions ?? []) as any[]) {
+            if (q?.id) questionLabels[q.id] = String(q.label ?? '')
+        }
         const insightKey = `form_insight:${row.id}`
 
         // Skip already-processed
@@ -808,9 +821,15 @@ async function detectFormInsights(trainerId: string, today: string): Promise<Ins
         if (category === 'checkin' && row.trigger_context !== 'post_workout') {
             const lowScoreFlags: string[] = []
 
-            for (const [key, value] of Object.entries(answers)) {
-                const keyLower = key.toLowerCase()
-                const numValue = typeof value === 'number' ? value : parseInt(String(value))
+            for (const [key, rawAnswer] of Object.entries(answers)) {
+                // A resposta vem como { value: n } (ou escalar legado). O texto
+                // semântico está no LABEL, não no id opaco.
+                const rawValue =
+                    rawAnswer && typeof rawAnswer === 'object' && !Array.isArray(rawAnswer)
+                        ? (rawAnswer as any).value
+                        : rawAnswer
+                const keyLower = (questionLabels[key] || key).toLowerCase()
+                const numValue = typeof rawValue === 'number' ? rawValue : parseInt(String(rawValue), 10)
 
                 if (isNaN(numValue)) continue
 
