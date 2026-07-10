@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
-import { getWeekRange, generateCalendarDays } from '@kinevo/shared/utils/schedule-projection'
+import { generateCalendarDays } from '@kinevo/shared/utils/schedule-projection'
+import { computeWeeklyAdherence } from '@/lib/students/weekly-adherence'
 import { StudentDetailClient } from './student-detail-client'
 import { getSessionsTonnage } from './actions/get-sessions-tonnage'
 import { computeDisplayStatus } from '@/lib/utils/financial'
@@ -270,21 +271,16 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     const totalSessions = sessions?.length || 0
     const lastSessionDate = sessions?.[0]?.completed_at || null
 
-    // Calculate sessions this week (Sunday–Saturday) in São Paulo timezone
-    const currentWeekRange = getWeekRange(new Date(), 'America/Sao_Paulo')
-    const completedThisWeek = sessions?.filter(s => {
-        if (!s.completed_at) return false
-        const d = new Date(s.completed_at)
-        return d >= currentWeekRange.start && d <= currentWeekRange.end
-    }).length || 0
-
-    // Calculate expected workouts per week from active program (sum of all occurrences)
-    let expectedPerWeek = 0
-    if (activeProgram?.assigned_workouts) {
-        for (const w of activeProgram.assigned_workouts as any[]) {
-            expectedPerWeek += (w.scheduled_days?.length || 0)
-        }
-    }
+    // Weekly adherence (segunda→domingo, São Paulo) — cálculo compartilhado com o
+    // painel de contexto do assistente (computeWeeklyAdherence). Mesma semântica:
+    // done = sessões concluídas na semana; expected = soma de scheduled_days.
+    const weekAdherence = computeWeeklyAdherence(
+        sessions ?? [],
+        (activeProgram?.assigned_workouts as { scheduled_days: number[] | null }[] | undefined) ?? [],
+        { timeZone: 'America/Sao_Paulo' },
+    )
+    const completedThisWeek = weekAdherence.done
+    const expectedPerWeek = weekAdherence.expected
 
     // Calculate streak + weekly adherence from calendar days
     let streak = 0
