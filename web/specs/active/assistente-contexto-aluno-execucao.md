@@ -121,7 +121,58 @@ Follow-ups adicionais identificados na revisão (pré-existentes, NÃO desta fre
 - Divergência pré-existente `expected` página (soma) × dashboard (dias únicos) — já
   registrada na pendência §5.3 acima.
 
-## 8. Comandos de verificação
+## 8. Batch 2 — F2 + follow-ups (10/jul à noite, sessão revisora, autorizado)
+
+No working tree (após o deploy de F0+F1), a sessão revisora implementou a F2 e os
+follow-ups pequenos. Validado: tsc 0, lint limpo nos tocados, vitest 1414/0 (+3 testes),
+QA vivo em localhost (fluxos abaixo).
+
+**F2 implementada:**
+1. **Notas do treinador editáveis inline** (`NotesSection` no painel): lápis edita,
+   "+ Adicionar nota" quando vazio, salva via server action `updateTrainerNotes`
+   (auth+posse+lock no servidor), patch local via `mutate` (sem refetch); `readOnly`
+   esconde a edição. QA: adicionar → salvar → editar → limpar → volta ao estado vazio.
+2. **Histórico clicável**: cada sessão pré-arma no composer uma análise daquela sessão.
+3. **Refresh pós-turno**: `panelRefreshKey` no workspace bumpa quando um turno termina
+   (`sending` true→false) ou uma confirmação HITL resolve com aluno em foco; o painel
+   revalida em stale-while-revalidate (card antigo visível durante o refetch). QA por
+   rede: turno → novo GET student-context ao terminar.
+4. **Realtime do badge**: subscription `postgres_changes` em `assistant_insights`
+   filtrada por `student_id` (padrão idêntico ao chat de mensagens, que roda em prod);
+   revalida o card em INSERT/UPDATE/DELETE. Não disparado ao vivo no QA (exigiria
+   escrita no banco); validado por paridade de código.
+
+**Follow-ups corrigidos:**
+5. **Tag de estagnação**: `attentionKind` agora trata `insight_key` `stagnation:*` como
+   'estagnado' (o detector grava `category='progression'` — pré-existente). Corrige a
+   home, o rail e o painel de uma vez. QA visual: cards "estagnado em..." agora âmbar.
+   NOTA: o fix na ORIGEM (categoria no detector do cron) ficou de fora porque
+   `generate-insights/route.ts` está modificado pela frente de formulários — fazer lá
+   quando aquela frente commitar. Mobile tem mapeamento próprio espelhado
+   (`assistantPrompts.ts`) — segue com a tag errada até ganhar o mesmo fix (follow-up).
+6. **`?s=` deep-link**: o effect era mount-only; agora reage a `searchParams` com guarda
+   de re-aplicação. GOTCHA novo: com StrictMode, marcar o ref ANTES do microtask engole o
+   parâmetro (1º ciclo agenda e cancela; 2º ciclo vê o ref marcado) — o ref só avança ao
+   aplicar. QA: /assistente?s=<id> foca o aluno e abre o painel.
+7. **`PRIORITY_RANK` centralizado** em `attention.ts` com `critical` (rank 0); home-data
+   e panel-data importam. Teste novo: critical vence high.
+8. **"Hoje/Ontem" timezone-aware** (`America/Sao_Paulo` via Intl) — antes usava o fuso do
+   servidor (UTC em prod, escorregava ~3h na virada do dia).
+9. **Rota paralelizada**: `isStudentManagementLockedForTrainer` roda em `Promise.all` com
+   as queries do painel (era sequencial e dominava a latência).
+10. **Lint**: 5 erros `react-hooks/set-state-in-effect` corrigidos com o padrão microtask
+    do repo — 3 do batch, **2 pré-existentes do F1** que o baseline anterior deixou passar.
+
+**QA em aba oculta — gotcha de ambiente**: Chrome congela transições CSS e throttla
+timers em abas hidden; screenshots mostram o frame congelado (painel "preso" a 1px) e
+cliques por coordenada erram os alvos reais. Verificar largura com `transition:none`
+momentâneo e dirigir por DOM/JS. Não é bug do produto.
+
+**Fora deste batch (decisões do Gustavo):** F3 multi-seleção; unificação da fórmula de
+`expected` página×dashboard; chips visuais sob o composer; fix de categoria na origem
+(pós-forms); paridade mobile do attentionKind.
+
+## 9. Comandos de verificação
 
 ```bash
 cd web

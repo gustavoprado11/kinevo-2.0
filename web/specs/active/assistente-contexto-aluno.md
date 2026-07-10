@@ -303,12 +303,10 @@ concluído ainda"; sem notas → esconder a caixa (não mostrar vazio).
 6. Botões Perfil/Mensagem/Programa + badge de alerta + G4 (insight foca o aluno).
 7. QA E2E via CDP (ver gotchas §9) + tsc/eslint/testes limpos.
 
-### F2 — Interatividade estendida
-8. Notas editáveis inline (`updateTrainerNotes`, respeitar `readOnly`).
-9. Histórico clicável; refresh do painel pós-turno com tool de escrita; realtime opcional de
-   `assistant_insights` (a tabela já publica realtime) para o badge.
-10. Chips de aluno sob o composer no estilo do design (substituindo o visual do dropdown atual,
-    mantendo a mecânica single).
+### F2 — Interatividade estendida — **CONCLUÍDA 10/jul (itens 8 e 9; ver §8 do relatório de execução)**
+8. ~~Notas editáveis inline (`updateTrainerNotes`, respeitar `readOnly`).~~ ✔
+9. ~~Histórico clicável; refresh do painel pós-turno; realtime de `assistant_insights` para o badge.~~ ✔
+10. Chips de aluno sob o composer no estilo do design — ADIADO (decisão cosmética pendente, §10.3).
 
 ### F3 — Multi-seleção (NÃO iniciar sem decisão do Gustavo — §10)
 11. `selected: string[]` no workspace, N cards no painel, chips múltiplos; definição de como o
