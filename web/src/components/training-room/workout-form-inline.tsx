@@ -20,7 +20,7 @@ interface Question {
     type: 'short_text' | 'long_text' | 'single_choice' | 'multi_choice' | 'scale' | 'photo'
     label: string
     required?: boolean
-    options?: string[]
+    options?: Array<string | { value: string; label?: string }>
     scale?: { min: number; max: number; minLabel?: string; maxLabel?: string }
 }
 
@@ -43,9 +43,18 @@ export function WorkoutFormInline({
     }, [])
 
     const handleSubmit = async () => {
-        // Validate required fields
+        // Validate required fields against the wrapped answer shape the RPC expects
+        // ({ value } / { values } / { files }), mirroring submit_inline_form.
         for (const q of questions) {
-            if (q.required && (answers[q.id] === undefined || answers[q.id] === '' || answers[q.id] === null)) {
+            if (!q.required) continue
+            const a = answers[q.id]
+            const filled =
+                q.type === 'multi_choice'
+                    ? Array.isArray(a?.values) && a.values.length > 0
+                    : q.type === 'photo'
+                        ? Array.isArray(a?.files) && a.files.length > 0
+                        : a?.value !== undefined && a?.value !== null && String(a.value).trim() !== ''
+            if (!filled) {
                 setError(`Campo obrigatório: ${q.label}`)
                 return
             }
@@ -146,6 +155,16 @@ export function WorkoutFormInline({
 // Question field renderer
 // ---------------------------------------------------------------------------
 
+// Normaliza opções que podem vir como string pura (templates de sistema) ou
+// como objeto { value, label } (builder/IA) num shape único.
+function normalizeOptions(
+    options?: Array<string | { value: string; label?: string }>,
+): { value: string; label: string }[] {
+    return (options || []).map((o) =>
+        typeof o === 'string' ? { value: o, label: o } : { value: o.value, label: o.label ?? o.value },
+    )
+}
+
 function QuestionField({
     question,
     value,
@@ -160,8 +179,8 @@ function QuestionField({
             return (
                 <input
                     type="text"
-                    value={value || ''}
-                    onChange={(e) => onChange(e.target.value)}
+                    value={value?.value ?? ''}
+                    onChange={(e) => onChange({ type: 'short_text', value: e.target.value })}
                     className="w-full rounded-lg border border-slate-200 dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3 py-2.5 text-sm text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground/50 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/30"
                     placeholder="Resposta curta..."
                 />
@@ -170,53 +189,69 @@ function QuestionField({
         case 'long_text':
             return (
                 <textarea
-                    value={value || ''}
-                    onChange={(e) => onChange(e.target.value)}
+                    value={value?.value ?? ''}
+                    onChange={(e) => onChange({ type: 'long_text', value: e.target.value })}
                     rows={3}
                     className="w-full rounded-lg border border-slate-200 dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3 py-2.5 text-sm text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground/50 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/30 resize-none"
                     placeholder="Resposta longa..."
                 />
             )
 
-        case 'single_choice':
+        case 'single_choice': {
+            const options = normalizeOptions(question.options)
+            const selected: string | undefined = value?.value
             return (
                 <div className="space-y-2">
-                    {(question.options || []).map((opt) => (
-                        <label
-                            key={opt}
-                            className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                                value === opt
-                                    ? 'border-violet-500 bg-violet-500/5 dark:border-violet-500/40 dark:bg-violet-600/10'
-                                    : 'border-slate-200 dark:border-k-border-subtle hover:bg-slate-50 dark:hover:bg-glass-bg'
-                            }`}
-                        >
-                            <div
-                                className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                                    value === opt
-                                        ? 'border-violet-500'
-                                        : 'border-slate-300 dark:border-muted-foreground/30'
+                    {options.map((opt) => {
+                        const isSelected = selected === opt.value
+                        return (
+                            <button
+                                type="button"
+                                key={opt.value}
+                                onClick={() => onChange({ type: 'single_choice', value: opt.value })}
+                                className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                                    isSelected
+                                        ? 'border-violet-500 bg-violet-500/5 dark:border-violet-500/40 dark:bg-violet-600/10'
+                                        : 'border-slate-200 dark:border-k-border-subtle hover:bg-slate-50 dark:hover:bg-glass-bg'
                                 }`}
                             >
-                                {value === opt && (
-                                    <div className="h-2 w-2 rounded-full bg-violet-500" />
-                                )}
-                            </div>
-                            <span className="text-sm text-slate-700 dark:text-foreground">{opt}</span>
-                        </label>
-                    ))}
+                                <div
+                                    className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                                        isSelected
+                                            ? 'border-violet-500'
+                                            : 'border-slate-300 dark:border-muted-foreground/30'
+                                    }`}
+                                >
+                                    {isSelected && (
+                                        <div className="h-2 w-2 rounded-full bg-violet-500" />
+                                    )}
+                                </div>
+                                <span className="text-sm text-slate-700 dark:text-foreground">{opt.label}</span>
+                            </button>
+                        )
+                    })}
                 </div>
             )
+        }
 
         case 'multi_choice': {
-            const selected: string[] = value || []
+            const options = normalizeOptions(question.options)
+            const selected: string[] = value?.values || []
             return (
                 <div className="space-y-2">
-                    {(question.options || []).map((opt) => {
-                        const isChecked = selected.includes(opt)
+                    {options.map((opt) => {
+                        const isChecked = selected.includes(opt.value)
                         return (
-                            <label
-                                key={opt}
-                                className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                            <button
+                                type="button"
+                                key={opt.value}
+                                onClick={() => {
+                                    const next = isChecked
+                                        ? selected.filter((s) => s !== opt.value)
+                                        : [...selected, opt.value]
+                                    onChange({ type: 'multi_choice', values: next })
+                                }}
+                                className={`flex w-full cursor-pointer items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                                     isChecked
                                         ? 'border-violet-500 bg-violet-500/5 dark:border-violet-500/40 dark:bg-violet-600/10'
                                         : 'border-slate-200 dark:border-k-border-subtle hover:bg-slate-50 dark:hover:bg-glass-bg'
@@ -235,19 +270,8 @@ function QuestionField({
                                         </svg>
                                     )}
                                 </div>
-                                <span className="text-sm text-slate-700 dark:text-foreground">{opt}</span>
-                                <input
-                                    type="checkbox"
-                                    className="sr-only"
-                                    checked={isChecked}
-                                    onChange={() => {
-                                        const next = isChecked
-                                            ? selected.filter((s) => s !== opt)
-                                            : [...selected, opt]
-                                        onChange(next)
-                                    }}
-                                />
-                            </label>
+                                <span className="text-sm text-slate-700 dark:text-foreground">{opt.label}</span>
+                            </button>
                         )
                     })}
                 </div>
@@ -264,9 +288,9 @@ function QuestionField({
                             <button
                                 key={n}
                                 type="button"
-                                onClick={() => onChange(n)}
+                                onClick={() => onChange({ type: 'scale', value: n })}
                                 className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-                                    value === n
+                                    value?.value === n
                                         ? 'bg-violet-600 text-white'
                                         : 'bg-slate-100 dark:bg-glass-bg text-slate-600 dark:text-muted-foreground hover:bg-slate-200 dark:hover:bg-glass-bg-hover'
                                 }`}
