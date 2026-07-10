@@ -36,7 +36,7 @@ export async function finalizeAssessmentSession(
         return { success: false, error: error.message }
     }
 
-    revalidatePath('/forms')
+    revalidatePath('/avaliacoes')
 
     return { success: true, data: data as unknown as FinalizeAssessmentResult }
 }

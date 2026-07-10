@@ -46,6 +46,18 @@ export async function assignFormCore(
         return { success: false, error: 'Selecione ao menos um aluno' }
     }
 
+    // Guard: templates de avaliação presencial usam sections[] (não questions[]) e
+    // são capturados pelo treinador — enviá-los como formulário de auto-preenchimento
+    // gera um form vazio/quebrado. A UI /forms já os exclui; isto fecha o caminho MCP.
+    const { data: tpl } = await supabase
+        .from('form_templates')
+        .select('category')
+        .eq('id', input.formTemplateId)
+        .maybeSingle()
+    if (tpl?.category === 'assessment') {
+        return { success: false, error: 'Templates de avaliação presencial não podem ser enviados como formulário. Use a área de Avaliações.' }
+    }
+
     const normalizedStudentIds = Array.from(new Set(input.studentIds.filter(Boolean)))
     const dueAt = input.dueAt && input.dueAt.trim() !== ''
         ? new Date(input.dueAt).toISOString()
@@ -102,8 +114,8 @@ export async function assignFormCore(
             for (const item of createdItems) {
                 sendStudentPush({
                     studentId: item.student_id,
-                    title: 'Nova avaliação disponível',
-                    body: 'Seu treinador enviou uma avaliação para você preencher.',
+                    title: 'Novo formulário disponível',
+                    body: 'Seu treinador enviou um formulário para você preencher.',
                     inboxItemId: item.id,
                     data: { type: 'form_request', inbox_item_id: item.id },
                 })

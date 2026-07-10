@@ -112,6 +112,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; co
     checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-500/10' },
     survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-500/10' },
     assessment: { label: 'Avaliação Presencial', icon: Activity, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-500/10' },
+    feedback: { label: 'Feedback do programa', icon: MessageSquare, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-500/10' },
 }
 
 // --- Actions Menu ---

@@ -377,18 +377,27 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
             return
         }
 
-        // Perguntas de escolha precisam de opções com texto.
+        // Validação por tipo: escolha precisa de opções com texto; escala precisa
+        // de mínimo < máximo (senão a RPC nunca aceita e o aluno não submete).
         for (let i = 0; i < questions.length; i++) {
             const q = questions[i]
-            if (q.type !== 'single_choice') continue
-            const opts = q.options ?? []
-            if (opts.length === 0) {
-                toast({ message: `A pergunta ${i + 1} (escolha única) precisa de ao menos uma opção.`, type: 'error' })
-                return
+            if (q.type === 'single_choice') {
+                const opts = q.options ?? []
+                if (opts.length === 0) {
+                    toast({ message: `A pergunta ${i + 1} (escolha única) precisa de ao menos uma opção.`, type: 'error' })
+                    return
+                }
+                if (opts.some((o) => !o.label.trim())) {
+                    toast({ message: `A pergunta ${i + 1} tem uma opção sem texto.`, type: 'error' })
+                    return
+                }
             }
-            if (opts.some((o) => !o.label.trim())) {
-                toast({ message: `A pergunta ${i + 1} tem uma opção sem texto.`, type: 'error' })
-                return
+            if (q.type === 'scale' && q.scale) {
+                const { min, max } = q.scale
+                if (!Number.isFinite(min) || !Number.isFinite(max) || min >= max) {
+                    toast({ message: `A pergunta ${i + 1} (escala) precisa de um mínimo menor que o máximo.`, type: 'error' })
+                    return
+                }
             }
         }
 

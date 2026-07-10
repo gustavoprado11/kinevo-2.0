@@ -105,8 +105,8 @@ export async function updateAssessmentTemplate(input: UpdateAssessmentTemplateIn
             return { success: false, error: 'Erro ao salvar cópia do template' }
         }
 
-        revalidatePath('/forms')
-        revalidatePath('/forms/templates')
+        revalidatePath('/avaliacoes')
+        revalidatePath('/avaliacoes/templates')
         return { success: true, clonedId: cloned.id }
     }
 
@@ -128,8 +128,8 @@ export async function updateAssessmentTemplate(input: UpdateAssessmentTemplateIn
         return { success: false, error: 'Erro ao atualizar template' }
     }
 
-    revalidatePath('/forms')
-    revalidatePath('/forms/templates')
+    revalidatePath('/avaliacoes')
+    revalidatePath('/avaliacoes/templates')
     return { success: true }
 }
 
@@ -161,7 +161,7 @@ export async function createAssessmentTemplate(input: CreateAssessmentTemplateIn
         return { success: false, error: 'Erro ao criar template' }
     }
 
-    revalidatePath('/forms')
-    revalidatePath('/forms/templates')
+    revalidatePath('/avaliacoes')
+    revalidatePath('/avaliacoes/templates')
     return { success: true, templateId: data.id }
 }

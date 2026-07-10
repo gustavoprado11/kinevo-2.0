@@ -67,7 +67,7 @@ export async function cancelAssessmentSession(
         return { success: false, error: updErr.message }
     }
 
-    revalidatePath('/forms')
+    revalidatePath('/avaliacoes')
 
     return { success: true }
 }

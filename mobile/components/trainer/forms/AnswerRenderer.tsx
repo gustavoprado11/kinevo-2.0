@@ -205,16 +205,20 @@ function renderAnswer(question: SchemaQuestion, answer: any, colors: V2Palette) 
                             );
                         })}
                     </View>
-                    {(question.scale?.minLabel || question.scale?.maxLabel) && (
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
-                            <Text style={{ fontSize: 11, color: colors.text.tertiary }}>
-                                {question.scale?.minLabel || ""}
-                            </Text>
-                            <Text style={{ fontSize: 11, color: colors.text.tertiary }}>
-                                {question.scale?.maxLabel || ""}
-                            </Text>
-                        </View>
-                    )}
+                    {(() => {
+                        // O builder mobile grava min_label/max_label (snake); os seeds
+                        // usam minLabel/maxLabel (camel). Lê ambos.
+                        const s = question.scale as { minLabel?: string; maxLabel?: string; min_label?: string; max_label?: string } | undefined;
+                        const minL = s?.minLabel ?? s?.min_label ?? "";
+                        const maxL = s?.maxLabel ?? s?.max_label ?? "";
+                        if (!minL && !maxL) return null;
+                        return (
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+                                <Text style={{ fontSize: 11, color: colors.text.tertiary }}>{minL}</Text>
+                                <Text style={{ fontSize: 11, color: colors.text.tertiary }}>{maxL}</Text>
+                            </View>
+                        );
+                    })()}
                 </View>
             );
         }
