@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { AppState } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -62,6 +63,24 @@ export function useTrainerChatRoom(studentId: string): UseTrainerChatRoomReturn 
             setHasMore(result.hasMore);
             setIsLoading(false);
         });
+    }, [studentId, fetchMessages]);
+
+    // M3 (auditoria 11/jul): o Realtime não reentrega eventos perdidos em
+    // background — ao voltar ao foreground, re-busca a página mais recente e
+    // mescla por id (preserva o histórico já paginado).
+    useEffect(() => {
+        if (!studentId) return;
+        const sub = AppState.addEventListener('change', (state) => {
+            if (state !== 'active') return;
+            fetchMessages().then(result => {
+                setMessages(prev => {
+                    const known = new Set(prev.map(m => m.id));
+                    const fresh = result.messages.filter(m => !known.has(m.id));
+                    return fresh.length === 0 ? prev : [...prev, ...fresh];
+                });
+            }).catch(() => {});
+        });
+        return () => sub.remove();
     }, [studentId, fetchMessages]);
 
     // Mark student messages as read

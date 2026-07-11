@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View, Text, FlatList, TextInput, Pressable, Image,
-    KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard, Alert,
+    KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard, Alert, AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -112,6 +112,27 @@ export function ChatView({ showBackButton = false }: ChatViewProps) {
             markAsReadRef.current();
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [studentId]);
+
+    // M3 (auditoria 11/jul): o Realtime NÃO reentrega eventos perdidos enquanto
+    // o app esteve em background (socket cai) — a thread aberta ficava sem as
+    // mensagens novas mesmo com o badge subindo. Ao voltar ao foreground,
+    // re-busca a página mais recente e MESCLA por id (preserva histórico já
+    // paginado; fresh chega em ordem ascendente, igual ao append do realtime).
+    useEffect(() => {
+        if (!studentId) return;
+        const sub = AppState.addEventListener('change', (state) => {
+            if (state !== 'active') return;
+            fetchMessagesRef.current().then(result => {
+                setMessages(prev => {
+                    const known = new Set(prev.map(m => m.id));
+                    const fresh = result.messages.filter(m => !known.has(m.id));
+                    return fresh.length === 0 ? prev : [...prev, ...fresh];
+                });
+                markAsReadRef.current();
+            }).catch(() => {});
+        });
+        return () => sub.remove();
     }, [studentId]);
 
     // Realtime: new messages

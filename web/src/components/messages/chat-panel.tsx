@@ -68,6 +68,25 @@ export function ChatPanel({ studentId, studentName, studentAvatar, onBack }: Cha
         })
     }, [studentId])
 
+    // M3 (auditoria 11/jul): o Realtime não reentrega eventos perdidos com a
+    // aba em background (socket cai) — ao voltar a ficar visível, re-busca a
+    // página mais recente e mescla por id (preserva histórico já paginado).
+    useEffect(() => {
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return
+            getMessages(studentId).then(result => {
+                setMessages(prev => {
+                    const known = new Set(prev.map(m => m.id))
+                    const fresh = result.messages.filter(m => !known.has(m.id))
+                    return fresh.length === 0 ? prev : [...prev, ...fresh]
+                })
+                markMessagesAsRead(studentId).catch(() => {})
+            }).catch(() => {})
+        }
+        document.addEventListener('visibilitychange', onVisible)
+        return () => document.removeEventListener('visibilitychange', onVisible)
+    }, [studentId])
+
     // Realtime: listen for new messages in this conversation
     useEffect(() => {
         const supabase = createClient()
