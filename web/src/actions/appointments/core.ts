@@ -13,6 +13,7 @@ import { revalidatePath } from 'next/cache'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@kinevo/shared/types/database'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { runAfterResponse } from '@/lib/run-after-response'
 import { expandAppointments } from '@kinevo/shared/utils/appointments-projection'
 import { appointmentMessages } from '@kinevo/shared/constants/notification-messages'
 import type {
@@ -226,12 +227,14 @@ export async function createRecurringCore(
         return { success: false, error: 'Erro ao criar agendamento' }
     }
 
-    void (async () => {
+    // AG2: after() — fire-and-forget congelava com a lambda e o sync podia
+    // nunca rodar (o cron reconcile-google-sync cobre o que ainda escapar).
+    runAfterResponse(async () => {
         const { syncCreateAppointment } = await import('@/lib/google-calendar/sync-service')
         await syncCreateAppointment(inserted.id).catch((err) => {
             console.error('[createRecurringCore] google sync error:', err)
         })
-    })()
+    })
 
     await enqueueAppointmentNotifications({
         supabase,
@@ -393,7 +396,9 @@ export async function rescheduleOccurrenceCore(
             console.error('[rescheduleOccurrenceCore only_this] notifications error:', err)
         }
 
-        void (async () => {
+        // AG2: este bloco também MUTA a regra (once) — com fire-and-forget a
+        // mutação podia congelar junto com a lambda e nunca persistir.
+        runAfterResponse(async () => {
             if (rule.frequency === 'once') {
                 const newDow = parseDateKey(payload.newDate).getUTCDay()
                 const { error: updateRuleError } = await supabaseAdmin
@@ -418,7 +423,7 @@ export async function rescheduleOccurrenceCore(
             }).catch((err) => {
                 console.error('[rescheduleOccurrenceCore only_this] google sync error:', err)
             })
-        })()
+        })
 
         revalidatePath('/dashboard')
         revalidatePath(`/students/${rule.student_id}`)
@@ -527,7 +532,7 @@ export async function rescheduleOccurrenceCore(
         console.error('[rescheduleOccurrenceCore this_and_future] notifications error:', err)
     }
 
-    void (async () => {
+    runAfterResponse(async () => {
         const { syncUpdateAppointment, syncCreateAppointment } = await import('@/lib/google-calendar/sync-service')
         await syncUpdateAppointment(payload.recurringAppointmentId).catch((err) => {
             console.error('[rescheduleOccurrenceCore this_and_future] google sync update error:', err)
@@ -535,7 +540,7 @@ export async function rescheduleOccurrenceCore(
         await syncCreateAppointment(created.id).catch((err) => {
             console.error('[rescheduleOccurrenceCore this_and_future] google sync create error:', err)
         })
-    })()
+    })
 
     revalidatePath('/dashboard')
     revalidatePath(`/students/${rule.student_id}`)
@@ -615,7 +620,7 @@ export async function cancelOccurrenceCore(
         console.error('[cancelOccurrenceCore] notifications error:', err)
     }
 
-    void (async () => {
+    runAfterResponse(async () => {
         if (rule.frequency === 'once') {
             const { syncDeleteAppointment } = await import('@/lib/google-calendar/sync-service')
             await syncDeleteAppointment(payload.recurringAppointmentId).catch((err) => {
@@ -627,7 +632,7 @@ export async function cancelOccurrenceCore(
         await syncCancelOccurrence(payload.recurringAppointmentId, payload.occurrenceDate).catch((err) => {
             console.error('[cancelOccurrenceCore] google sync error:', err)
         })
-    })()
+    })
 
     revalidatePath('/dashboard')
     revalidatePath(`/students/${rule.student_id}`)
@@ -746,12 +751,12 @@ export async function cancelRecurringCore(
         console.error('[cancelRecurringCore] notifications error:', err)
     }
 
-    void (async () => {
+    runAfterResponse(async () => {
         const { syncDeleteAppointment } = await import('@/lib/google-calendar/sync-service')
         await syncDeleteAppointment(payload.id).catch((err) => {
             console.error('[cancelRecurringCore] google sync error:', err)
         })
-    })()
+    })
 
     revalidatePath('/dashboard')
     revalidatePath(`/students/${existing.student_id}`)

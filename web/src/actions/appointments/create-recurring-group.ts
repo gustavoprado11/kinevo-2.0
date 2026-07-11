@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { runAfterResponse } from '@/lib/run-after-response'
 import { appointmentMessages } from '@kinevo/shared/constants/notification-messages'
 import type { RecurringAppointment } from '@kinevo/shared/types/appointments'
 import {
@@ -154,8 +155,8 @@ export async function createRecurringAppointmentGroup(
         return { success: false, error: 'Erro ao criar pacote de rotinas' }
     }
 
-    // Google Calendar sync — 1 evento por slot (fire-and-forget).
-    void (async () => {
+    // Google Calendar sync — 1 evento por slot, garantido por after() (AG2).
+    runAfterResponse(async () => {
         const { syncCreateAppointment } = await import(
             '@/lib/google-calendar/sync-service'
         )
@@ -164,7 +165,7 @@ export async function createRecurringAppointmentGroup(
                 console.error('[createRecurringAppointmentGroup] google sync error:', err)
             })
         }
-    })()
+    })
 
     // Pushes + lembretes — resiliente, não reverte a criação.
     // 1 push imediato agregado + 1 bloco de lembretes POR slot.
