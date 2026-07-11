@@ -1,28 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { logContractEvent } from '@/lib/contract-events'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { markAsPaidCore } from '@/actions/financial/contracts-core'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-function addInterval(date: Date, interval: string): Date {
-    const result = new Date(date)
-    switch (interval) {
-        case 'month':
-            result.setMonth(result.getMonth() + 1)
-            break
-        case 'quarter':
-            result.setMonth(result.getMonth() + 3)
-            break
-        case 'year':
-            result.setFullYear(result.getFullYear() + 1)
-            break
-        default:
-            result.setMonth(result.getMonth() + 1)
-    }
-    return result
-}
-
+// Endpoint Bearer usado pelo app MOBILE. Delega ao markAsPaidCore — o MESMO
+// caminho da Server Action web e do MCP — que traz a idempotência determinística
+// (chave manual_<contrato>_<período> + unique da migration 220, evitando linha
+// duplicada E avanço duplo de período no retry) e a guarda de asaas_auto_recurring
+// (registrar pago local não pausa o débito no cartão → cobrança dupla no aluno).
+// Antes este route tinha uma reimplementação própria SEM as duas proteções.
 export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     if (!authHeader?.startsWith('Bearer ')) {
@@ -68,96 +56,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: rl.error }, { status: 429 })
     }
 
-    // Fetch contract with plan interval
-    const { data: contract } = await supabaseAdmin
-        .from('student_contracts')
-        .select('*, trainer_plans:plan_id(interval)')
-        .eq('id', contractId)
-        .single()
-
-    if (!contract) {
-        return NextResponse.json({ error: 'Contrato não encontrado' }, { status: 404 })
-    }
-
-    if (contract.trainer_id !== trainer.id) {
-        return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
-    }
-
     try {
-        if (contract.billing_type === 'manual_one_off') {
-            // One-off: mark active, no period renewal
-            const { error: updateError } = await supabaseAdmin
-                .from('student_contracts')
-                .update({ status: 'active' })
-                .eq('id', contractId)
-
-            if (updateError) {
-                return NextResponse.json({ error: 'Erro ao atualizar contrato' }, { status: 500 })
-            }
-
-            await supabaseAdmin.from('financial_transactions').insert({
-                coach_id: trainer.id,
-                student_id: contract.student_id,
-                amount_gross: contract.amount,
-                amount_net: contract.amount,
-                currency: 'brl',
-                type: 'subscription',
-                status: 'succeeded',
-                stripe_payment_id: `manual_${crypto.randomUUID()}`,
-                description: 'Pagamento avulso registrado',
-            })
-
-            await logContractEvent({
-                studentId: contract.student_id,
-                trainerId: trainer.id,
-                contractId,
-                eventType: 'payment_received',
-                metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_one_off' },
-            })
-
-            return NextResponse.json({ success: true })
+        const result = await markAsPaidCore(supabaseAdmin, trainer.id, { contractId })
+        if (result.error) {
+            const status = result.error === 'Contrato não encontrado' ? 404
+                : result.error === 'Sem permissão' ? 403
+                : 400
+            return NextResponse.json({ error: result.error }, { status })
         }
-
-        // manual_recurring: renew period from previous due date
-        const currentEnd = contract.current_period_end
-            ? new Date(contract.current_period_end)
-            : new Date()
-
-        const planInterval = (contract.trainer_plans as { interval: string } | null)?.interval || 'month'
-        const newPeriodEnd = addInterval(currentEnd, planInterval)
-
-        const { error: updateError } = await supabaseAdmin
-            .from('student_contracts')
-            .update({
-                status: 'active',
-                current_period_end: newPeriodEnd.toISOString(),
-            })
-            .eq('id', contractId)
-
-        if (updateError) {
-            return NextResponse.json({ error: 'Erro ao atualizar contrato' }, { status: 500 })
-        }
-
-        await supabaseAdmin.from('financial_transactions').insert({
-            coach_id: trainer.id,
-            student_id: contract.student_id,
-            amount_gross: contract.amount,
-            amount_net: contract.amount,
-            currency: 'brl',
-            type: 'subscription',
-            status: 'succeeded',
-            stripe_payment_id: `manual_${crypto.randomUUID()}`,
-            description: 'Pagamento manual registrado',
-        })
-
-        await logContractEvent({
-            studentId: contract.student_id,
-            trainerId: trainer.id,
-            contractId,
-            eventType: 'payment_received',
-            metadata: { amount: contract.amount, method: 'manual', billing_type: 'manual_recurring' },
-        })
-
         return NextResponse.json({ success: true })
     } catch (err) {
         console.error('[mark-paid] Error:', err)
