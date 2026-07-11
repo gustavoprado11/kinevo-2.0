@@ -108,6 +108,7 @@ export function AppointmentCard({
                     studentAvatarUrl={student.avatarUrl}
                     onRescheduled={onChanged}
                     onCanceled={onChanged}
+                    onStatusChanged={onChanged}
                 >
                     <div
                         style={{
@@ -146,6 +147,11 @@ export function AppointmentCard({
                         {occurrence.status === 'no_show' && (
                             <p className="text-[9px] font-semibold uppercase tracking-wider mt-0.5 text-[#FF3B30] dark:text-red-400">
                                 Faltou
+                            </p>
+                        )}
+                        {occurrence.status === 'completed' && (
+                            <p className="text-[9px] font-semibold uppercase tracking-wider mt-0.5 text-[#34C759] dark:text-green-400">
+                                Concluído
                             </p>
                         )}
                     </div>

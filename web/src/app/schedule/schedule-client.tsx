@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { WeeklyCalendar } from '@/components/schedule/weekly-calendar'
 import { WeekNavigator } from '@/components/schedule/week-navigator'
@@ -233,6 +235,21 @@ export function ScheduleClient({
         setCreateModal({ date, time })
     }, [])
 
+    const handleNewAppointment = useCallback(() => {
+        const hourSP = Number(
+            new Date().toLocaleTimeString('en-GB', {
+                timeZone: 'America/Sao_Paulo',
+                hour: '2-digit',
+                hour12: false,
+            }),
+        )
+        const nextHour = Math.min(hourSP + 1, 23)
+        setCreateModal({
+            date: todayKeyBR(),
+            time: `${String(nextHour).padStart(2, '0')}:00`,
+        })
+    }, [])
+
     return (
         <AppLayout
             trainerName={trainerName}
@@ -258,13 +275,22 @@ export function ScheduleClient({
                             </span>
                         </p>
                     </div>
-                    <WeekNavigator
-                        weekStart={weekStart}
-                        isNavigating={isPending}
-                        onPrevious={goToPreviousWeek}
-                        onNext={goToNextWeek}
-                        onToday={goToToday}
-                    />
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <WeekNavigator
+                            weekStart={weekStart}
+                            isNavigating={isPending}
+                            onPrevious={goToPreviousWeek}
+                            onNext={goToNextWeek}
+                            onToday={goToToday}
+                        />
+                        <Button
+                            onClick={handleNewAppointment}
+                            className="gap-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 rounded-full dark:rounded-xl px-5 py-2 text-sm font-medium shadow-none dark:shadow-lg dark:shadow-violet-500/20 transition-all"
+                        >
+                            <Plus size={14} strokeWidth={2.5} />
+                            Novo agendamento
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Card único contendo header de dias + grid de horas */}

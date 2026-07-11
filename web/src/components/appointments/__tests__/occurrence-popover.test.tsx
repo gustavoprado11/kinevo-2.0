@@ -35,6 +35,11 @@ vi.mock('@/actions/appointments/cancel-recurring', () => ({
     cancelRecurringAppointment: (...args: unknown[]) => cancelRecurringMock(...args),
 }))
 
+const markStatusMock = vi.fn()
+vi.mock('@/actions/appointments/mark-occurrence-status', () => ({
+    markOccurrenceStatus: (...args: unknown[]) => markStatusMock(...args),
+}))
+
 function makeOcc(overrides: Partial<AppointmentOccurrence> = {}): AppointmentOccurrence {
     return {
         recurringAppointmentId: 'ra-1',
@@ -57,9 +62,85 @@ describe('OccurrencePopover', () => {
         routerPush.mockReset()
         cancelOccurrenceMock.mockReset()
         cancelRecurringMock.mockReset()
+        markStatusMock.mockReset()
     })
 
-    it('abre menu com 4 ações ao clicar no trigger', () => {
+    it('"Marcar como concluído" chama markOccurrenceStatus e dispara onStatusChanged', async () => {
+        markStatusMock.mockResolvedValue({ success: true })
+        const onStatusChanged = vi.fn()
+        render(
+            <OccurrencePopover
+                occurrence={makeOcc({ originalDate: '2026-04-22' })}
+                studentName="João"
+                onStatusChanged={onStatusChanged}
+            >
+                <span>trigger</span>
+            </OccurrencePopover>,
+        )
+        fireEvent.click(screen.getByText('trigger'))
+        fireEvent.click(screen.getByRole('menuitem', { name: /Marcar como concluído/i }))
+        await waitFor(() => {
+            expect(markStatusMock).toHaveBeenCalledWith({
+                recurringAppointmentId: 'ra-1',
+                occurrenceDate: '2026-04-22',
+                status: 'completed',
+            })
+            expect(onStatusChanged).toHaveBeenCalled()
+        })
+    })
+
+    it('"Marcar falta" envia status no_show', async () => {
+        markStatusMock.mockResolvedValue({ success: true })
+        render(
+            <OccurrencePopover occurrence={makeOcc()} studentName="João">
+                <span>trigger</span>
+            </OccurrencePopover>,
+        )
+        fireEvent.click(screen.getByText('trigger'))
+        fireEvent.click(screen.getByRole('menuitem', { name: /Marcar falta/i }))
+        await waitFor(() => {
+            expect(markStatusMock).toHaveBeenCalledWith(
+                expect.objectContaining({ status: 'no_show' }),
+            )
+        })
+    })
+
+    it('ocorrência FUTURA não mostra ações de presença', () => {
+        render(
+            <OccurrencePopover
+                occurrence={makeOcc({ date: '2099-01-01' })}
+                studentName="João"
+            >
+                <span>trigger</span>
+            </OccurrencePopover>,
+        )
+        fireEvent.click(screen.getByText('trigger'))
+        expect(
+            screen.queryByRole('menuitem', { name: /Marcar como concluído/i }),
+        ).not.toBeInTheDocument()
+        expect(
+            screen.queryByRole('menuitem', { name: /Marcar falta/i }),
+        ).not.toBeInTheDocument()
+        expect(screen.getByRole('menuitem', { name: /Remarcar/i })).toBeInTheDocument()
+    })
+
+    it('mostra erro inline quando markOccurrenceStatus falha', async () => {
+        markStatusMock.mockResolvedValue({ success: false, error: 'Sem permissão' })
+        render(
+            <OccurrencePopover occurrence={makeOcc()} studentName="João">
+                <span>trigger</span>
+            </OccurrencePopover>,
+        )
+        fireEvent.click(screen.getByText('trigger'))
+        fireEvent.click(screen.getByRole('menuitem', { name: /Marcar falta/i }))
+        await waitFor(() => {
+            expect(screen.getByText('Sem permissão')).toBeInTheDocument()
+        })
+        // Menu continua aberto pra tentar de novo.
+        expect(screen.getByRole('menu')).toBeInTheDocument()
+    })
+
+    it('abre menu com as ações ao clicar no trigger (presença incluída — ocorrência passada)', () => {
         render(
             <OccurrencePopover occurrence={makeOcc()} studentName="João">
                 <span>Linha do João</span>
@@ -67,6 +148,10 @@ describe('OccurrencePopover', () => {
         )
         fireEvent.click(screen.getByText('Linha do João'))
         expect(screen.getByRole('menu')).toBeInTheDocument()
+        expect(
+            screen.getByRole('menuitem', { name: /Marcar como concluído/i }),
+        ).toBeInTheDocument()
+        expect(screen.getByRole('menuitem', { name: /Marcar falta/i })).toBeInTheDocument()
         expect(screen.getByRole('menuitem', { name: /Remarcar/i })).toBeInTheDocument()
         expect(
             screen.getByRole('menuitem', { name: /Cancelar este treino/i }),

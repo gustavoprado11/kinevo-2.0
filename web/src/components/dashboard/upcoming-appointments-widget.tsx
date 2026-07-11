@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback } from 'react'
+import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, ChevronRight, Package } from 'lucide-react'
 import type { AppointmentOccurrence } from '@kinevo/shared/types/appointments'
@@ -93,6 +94,13 @@ export function UpcomingAppointmentsWidget({ appointments, studentsById }: Props
                         </span>
                     )}
                 </div>
+                <Link
+                    href="/schedule"
+                    className="inline-flex items-center gap-0.5 text-xs font-medium text-[#7C3AED] dark:text-violet-400 hover:underline"
+                >
+                    Ver agenda
+                    <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+                </Link>
             </div>
 
             {appointments.length === 0 ? (
@@ -104,8 +112,15 @@ export function UpcomingAppointmentsWidget({ appointments, studentsById }: Props
                         Nenhum agendamento marcado
                     </p>
                     <p className="text-xs text-[#86868B] dark:text-k-text-tertiary mt-1">
-                        Crie uma rotina no perfil de um aluno
+                        Crie uma rotina no perfil de um aluno ou direto na agenda
                     </p>
+                    <Link
+                        href="/schedule"
+                        className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#7C3AED] dark:text-violet-400 hover:underline"
+                    >
+                        Abrir agenda
+                        <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+                    </Link>
                 </div>
             ) : (
                 <ul className="divide-y divide-[#E8E8ED] dark:divide-border">
@@ -128,6 +143,7 @@ export function UpcomingAppointmentsWidget({ appointments, studentsById }: Props
                                     studentAvatarUrl={student?.avatarUrl ?? null}
                                     onRescheduled={refresh}
                                     onCanceled={refresh}
+                                    onStatusChanged={refresh}
                                 >
                                     <div className="flex items-center gap-3 w-full group hover:bg-[#F9F9FB] dark:hover:bg-white/5 -mx-2 px-2 py-1 rounded-lg transition-colors">
                                         <div className="h-9 w-9 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center overflow-hidden">

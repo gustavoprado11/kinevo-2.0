@@ -6,14 +6,17 @@ import Image from 'next/image'
 import {
     CalendarClock,
     CalendarOff,
+    Check,
     ExternalLink,
     Loader2,
     Trash2,
+    UserX,
     X,
 } from 'lucide-react'
 import type { AppointmentOccurrence } from '@kinevo/shared/types/appointments'
 import { cancelOccurrence } from '@/actions/appointments/cancel-occurrence'
 import { cancelRecurringAppointment } from '@/actions/appointments/cancel-recurring'
+import { markOccurrenceStatus } from '@/actions/appointments/mark-occurrence-status'
 import { RescheduleOccurrenceModal } from './reschedule-occurrence-modal'
 
 interface Props {
@@ -25,6 +28,8 @@ interface Props {
     onRescheduled?: () => void
     /** Fires after a successful cancel. Caller should refresh data. */
     onCanceled?: () => void
+    /** Fires after marking presence (concluído/faltou). Caller should refresh data. */
+    onStatusChanged?: () => void
     /** The trigger (card/row/button) the popover attaches to. */
     children: React.ReactNode
 }
@@ -81,6 +86,7 @@ export function OccurrencePopover({
     studentAvatarUrl,
     onRescheduled,
     onCanceled,
+    onStatusChanged,
     children,
 }: Props) {
     const router = useRouter()
@@ -91,6 +97,7 @@ export function OccurrencePopover({
     const [confirming, setConfirming] = useState<'cancel' | 'end' | null>(null)
     const [canceling, setCanceling] = useState(false)
     const [ending, setEnding] = useState(false)
+    const [marking, setMarking] = useState<'completed' | 'no_show' | null>(null)
     const todayKey = useMemo(() => {
         const d = new Date()
         const y = d.getFullYear()
@@ -171,10 +178,30 @@ export function OccurrencePopover({
         onCanceled?.()
     }
 
+    const handleMarkStatus = async (status: 'completed' | 'no_show') => {
+        setMarking(status)
+        setError(null)
+        const result = await markOccurrenceStatus({
+            recurringAppointmentId: occurrence.recurringAppointmentId,
+            occurrenceDate: occurrence.originalDate,
+            status,
+        })
+        setMarking(null)
+        if (!result.success) {
+            setError(result.error ?? 'Erro ao marcar presença.')
+            return
+        }
+        setOpen(false)
+        onStatusChanged?.()
+    }
+
     const handleOpenProfile = () => {
         setOpen(false)
         router.push(`/students/${occurrence.studentId}`)
     }
+
+    /** Presença só faz sentido pra treinos de hoje ou passados. */
+    const canMarkPresence = occurrence.date <= todayKey
 
     const headerDate = formatOccurrenceHeader(
         occurrence.date,
@@ -234,6 +261,47 @@ export function OccurrencePopover({
 
                     {confirming === null && (
                         <div className="p-1.5">
+                            {canMarkPresence && occurrence.status !== 'completed' && (
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => void handleMarkStatus('completed')}
+                                    disabled={marking !== null}
+                                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors disabled:opacity-50"
+                                >
+                                    {marking === 'completed' ? (
+                                        <Loader2 className="w-4 h-4 text-[#34C759] dark:text-green-400 flex-shrink-0 animate-spin" />
+                                    ) : (
+                                        <Check
+                                            className="w-4 h-4 text-[#34C759] dark:text-green-400 flex-shrink-0"
+                                            strokeWidth={1.5}
+                                        />
+                                    )}
+                                    Marcar como concluído
+                                </button>
+                            )}
+                            {canMarkPresence && occurrence.status !== 'no_show' && (
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => void handleMarkStatus('no_show')}
+                                    disabled={marking !== null}
+                                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors disabled:opacity-50"
+                                >
+                                    {marking === 'no_show' ? (
+                                        <Loader2 className="w-4 h-4 text-[#FF9500] dark:text-amber-400 flex-shrink-0 animate-spin" />
+                                    ) : (
+                                        <UserX
+                                            className="w-4 h-4 text-[#FF9500] dark:text-amber-400 flex-shrink-0"
+                                            strokeWidth={1.5}
+                                        />
+                                    )}
+                                    Marcar falta
+                                </button>
+                            )}
+                            {canMarkPresence && (
+                                <div className="h-px bg-[#E8E8ED] dark:bg-k-border-subtle my-1 mx-1" />
+                            )}
                             <button
                                 type="button"
                                 role="menuitem"
