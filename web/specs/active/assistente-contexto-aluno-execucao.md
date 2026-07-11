@@ -172,7 +172,29 @@ momentâneo e dirigir por DOM/JS. Não é bug do produto.
 `expected` página×dashboard; chips visuais sob o composer; fix de categoria na origem
 (pós-forms); paridade mobile do attentionKind.
 
-## 9. Comandos de verificação
+## 9. Batch 3 — decisões fechadas (10/jul, madrugada)
+
+Gustavo decidiu: **manter single** (F3 fica no backlog, medir uso); **soma de ocorrências
+vira a fórmula canônica** de `expected`; **deletar o projeto Vercel duplicado**. Chips
+visuais: considerados atendidos pelo pill atual (avatar+nome+×, ≈ design).
+
+Implementado neste batch:
+1. **Categoria de estagnação corrigida NA ORIGEM** (desbloqueado pela frente de forms):
+   `detectLoadStagnation` (cron) e a consolidação do enricher agora gravam
+   `category='alert'` (era 'progression'). O upsert por key atualiza as linhas
+   existentes no próximo run do cron; o mobile deriva a tag da category → **corrige o
+   mobile sem build EAS**. O check por `insight_key` no web fica como cinto de segurança.
+2. **Fórmula unificada**: `get-dashboard-data.ts` (stat do header) soma ocorrências (o
+   ranking já somava); **migração 240** (`trainer_stats_expected_sums_occurrences`)
+   APLICADA EM PROD — `count(DISTINCT d.day)` → `count(d.day)` no RPC `get_trainer_stats`
+   (consumido pelo mobile). Verificado ao vivo no pg_proc. Efeito: treinadores com 2+
+   treinos no mesmo dia veem `expected` maior e aderência menor (agora honesta).
+3. **Vercel**: projeto duplicado "web" (acidente de 07/jul, sem domínios) DELETADO via
+   API; `web/.vercel` re-linkado ao `kinevo-web` (produção real).
+
+Validação: tsc 0, vitest 1414/0, lint sem novos (dashboard: −1 `as any`).
+
+## 10. Comandos de verificação
 
 ```bash
 cd web
