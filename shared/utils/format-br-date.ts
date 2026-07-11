@@ -21,6 +21,44 @@ const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 const TIMEZONE = 'America/Sao_Paulo'
 
+const NOON_MS = 12 * 60 * 60 * 1000
+
+/**
+ * Resolve um valor de data vindo do banco num `Date` seguro pra formatar com
+ * qualquer Intl/`toLocaleDateString`, SEM shift de dia:
+ *
+ * - `"YYYY-MM-DD"` (date-only) → ancorado ao MEIO-DIA UTC. O dia do calendário
+ *   fica idêntico em qualquer fuso entre UTC−11 e UTC+11.
+ * - ISO exatamente à MEIA-NOITE UTC (ex.: `2026-09-15T00:00:00+00:00`) →
+ *   é a convenção de valor "ancorado em data" (Asaas grava
+ *   `new Date(payment.dueDate)` com dueDate `YYYY-MM-DD`); re-ancoramos ao
+ *   meio-dia UTC pelo mesmo motivo. Sem isto, exibir em BRT mostra o dia
+ *   anterior ("vence 14/set" para vencimento 15/set).
+ * - ISO com hora real → passa intacto (timestamp de verdade, ex.: Stripe).
+ * - Inválido/vazio → `null`.
+ */
+export function parseAnchoredDate(input: string): Date | null {
+    if (!input) return null
+
+    if (DATE_ONLY_PATTERN.test(input)) {
+        return new Date(`${input}T12:00:00Z`)
+    }
+
+    const date = new Date(input)
+    if (Number.isNaN(date.getTime())) return null
+
+    const isUtcMidnight =
+        date.getUTCHours() === 0 &&
+        date.getUTCMinutes() === 0 &&
+        date.getUTCSeconds() === 0 &&
+        date.getUTCMilliseconds() === 0
+    if (isUtcMidnight) {
+        return new Date(date.getTime() + NOON_MS)
+    }
+
+    return date
+}
+
 /**
  * Formata como "DD/MM".
  *
@@ -37,8 +75,8 @@ export function formatBrDateShort(input: string): string {
         return `${day}/${month}`
     }
 
-    const date = new Date(input)
-    if (Number.isNaN(date.getTime())) return ''
+    const date = parseAnchoredDate(input)
+    if (!date) return ''
 
     return new Intl.DateTimeFormat('pt-BR', {
         timeZone: TIMEZONE,
@@ -61,8 +99,8 @@ export function formatBrDate(input: string): string {
         return `${day}/${month}/${year}`
     }
 
-    const date = new Date(input)
-    if (Number.isNaN(date.getTime())) return ''
+    const date = parseAnchoredDate(input)
+    if (!date) return ''
 
     return new Intl.DateTimeFormat('pt-BR', {
         timeZone: TIMEZONE,

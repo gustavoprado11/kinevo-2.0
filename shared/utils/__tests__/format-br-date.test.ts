@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { formatBrDate, formatBrDateShort } from '../format-br-date'
+import {
+    formatBrDate,
+    formatBrDateShort,
+    parseAnchoredDate,
+} from '../format-br-date'
 
 describe('formatBrDateShort', () => {
     describe('date-only input (YYYY-MM-DD)', () => {
@@ -70,5 +74,40 @@ describe('formatBrDate', () => {
         it('retorna string vazia em string não-parseável', () => {
             expect(formatBrDate('not a date')).toBe('')
         })
+    })
+
+    describe('timestamp ancorado (meia-noite UTC — convenção Asaas)', () => {
+        it('CS1: vencimento 15/set NÃO vira 14/set em BRT', () => {
+            expect(formatBrDate('2026-09-15T00:00:00+00:00')).toBe('15/09/2026')
+        })
+
+        it('variação .000Z também é tratada como data-âncora', () => {
+            expect(formatBrDate('2026-09-15T00:00:00.000Z')).toBe('15/09/2026')
+        })
+    })
+})
+
+describe('parseAnchoredDate', () => {
+    it('date-only ancora ao meio-dia UTC (dia estável em qualquer fuso)', () => {
+        const d = parseAnchoredDate('2026-09-15')!
+        expect(d.toISOString()).toBe('2026-09-15T12:00:00.000Z')
+    })
+
+    it('meia-noite UTC re-ancora ao meio-dia UTC do MESMO dia', () => {
+        const d = parseAnchoredDate('2026-09-15T00:00:00+00:00')!
+        expect(d.toISOString()).toBe('2026-09-15T12:00:00.000Z')
+        expect(
+            d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+        ).toBe('15/09/2026')
+    })
+
+    it('timestamp real passa intacto', () => {
+        const d = parseAnchoredDate('2026-09-15T18:30:00Z')!
+        expect(d.toISOString()).toBe('2026-09-15T18:30:00.000Z')
+    })
+
+    it('inválido/vazio → null', () => {
+        expect(parseAnchoredDate('')).toBeNull()
+        expect(parseAnchoredDate('not a date')).toBeNull()
     })
 })

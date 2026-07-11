@@ -7,6 +7,7 @@ import { walletFetch } from "../../lib/wallet-api";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import type { FinancialStudent, DisplayStatus } from "../../types/financial";
 import { formatBRL } from "@/lib/currency";
+import { parseAnchoredDate } from "@kinevo/shared/utils/format-br-date";
 
 const STATUS_LABEL: Record<DisplayStatus, string> = {
     courtesy: "Cortesia",
@@ -21,12 +22,19 @@ const STATUS_LABEL: Record<DisplayStatus, string> = {
 
 function daysOverdue(dateStr: string | null): number {
     if (!dateStr) return 0;
-    return Math.max(0, Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000));
+    const date = parseAnchoredDate(dateStr);
+    if (!date) return 0;
+    return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
 }
 
 function statusLine(s: FinancialStudent): string {
     if (s.display_status === "overdue" && s.current_period_end) return `Atrasado há ${daysOverdue(s.current_period_end)}d`;
-    if (s.display_status === "canceling" && s.current_period_end) return `Cancela em ${new Date(s.current_period_end).toLocaleDateString("pt-BR")}`;
+    if (s.display_status === "canceling" && s.current_period_end) {
+        // Vencimento Asaas é gravado à meia-noite UTC — new Date() cru exibia
+        // o dia ANTERIOR em BRT. parseAnchoredDate re-ancora ao meio-dia UTC.
+        const date = parseAnchoredDate(s.current_period_end);
+        if (date) return `Cancela em ${date.toLocaleDateString("pt-BR")}`;
+    }
     return STATUS_LABEL[s.display_status];
 }
 

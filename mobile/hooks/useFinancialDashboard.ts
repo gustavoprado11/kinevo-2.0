@@ -59,6 +59,13 @@ export function useFinancialDashboard() {
                     .limit(5),
             ]);
 
+            // supabase-js NÃO rejeita em falha de rede/RPC — resolve com
+            // { data: null, error }. Sem esta checagem o catch do P16 nunca
+            // dispara e a tela renderiza R$ 0,00 como dado real.
+            const failed =
+                studentsRes?.error ?? dashboardRes?.error ?? pendingRes?.error ?? payoutsRes?.error;
+            if (failed) throw new Error(failed.message ?? "RPC error");
+
             const students: FinancialStudent[] = (studentsRes.data as any) || [];
             const dashboard = (dashboardRes.data as any) || { monthlyRevenue: 0, recentTransactions: [] };
 

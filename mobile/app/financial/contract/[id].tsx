@@ -34,6 +34,7 @@ import { ContractTimeline } from "../../../components/financial/ContractTimeline
 import { NewSubscriptionSheet } from "../../../components/financial/NewSubscriptionSheet";
 import type { DisplayStatus } from "../../../types/financial";
 import { useV2Colors } from "../../../hooks/useV2Colors";
+import { parseAnchoredDate } from "@kinevo/shared/utils/format-br-date";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
@@ -64,7 +65,11 @@ function formatCurrency(value: number | null): string {
 
 function formatDate(dateStr: string | null): string {
     if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("pt-BR", {
+    // Vencimento Asaas é gravado à meia-noite UTC — new Date() cru exibia o
+    // dia ANTERIOR em BRT. parseAnchoredDate re-ancora ao meio-dia UTC.
+    const date = parseAnchoredDate(dateStr);
+    if (!date) return "—";
+    return date.toLocaleDateString("pt-BR", {
         day: "numeric",
         month: "long",
         year: "numeric",
@@ -75,7 +80,7 @@ export default function ContractDetailScreen() {
     const colors = useV2Colors();
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { student, contract, events, isLoading, refresh } = useContractDetail(id || null);
+    const { student, contract, events, isLoading, error, refresh } = useContractDetail(id || null);
     const { activePlans, refresh: refreshPlans } = useTrainerPlans();
     const { summary: wallet } = useWallet();
     const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -331,9 +336,20 @@ export default function ContractDetailScreen() {
                         <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }}>Contrato</Text>
                         <View style={{ width: 24 }} />
                     </View>
-                    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
                         {isLoading ? (
                             <ActivityIndicator color={colors.purple[600]} size="large" />
+                        ) : error ? (
+                            <>
+                                <Text style={{ fontSize: 15, color: colors.text.tertiary, textAlign: "center" }}>
+                                    {error}
+                                </Text>
+                                <TouchableOpacity onPress={() => void refresh()} hitSlop={12} style={{ marginTop: 12 }}>
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.purple[600] }}>
+                                        Tentar de novo
+                                    </Text>
+                                </TouchableOpacity>
+                            </>
                         ) : (
                             <Text style={{ fontSize: 15, color: colors.text.tertiary }}>Contrato não encontrado</Text>
                         )}

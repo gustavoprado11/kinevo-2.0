@@ -5,6 +5,7 @@ import { PressableScale } from "../shared/PressableScale";
 import type { FinancialStudent, DisplayStatus } from "../../types/financial";
 import { useV2Colors } from "../../hooks/useV2Colors";
 import { formatBRL } from "@/lib/currency";
+import { parseAnchoredDate } from "@kinevo/shared/utils/format-br-date";
 
 const STATUS_CONFIG: Record<DisplayStatus, { bg: string; text: string; label: string }> = {
     courtesy: { bg: "rgba(59,130,246,0.12)", text: "#3b82f6", label: "Cortesia" },
@@ -33,7 +34,11 @@ function formatCurrency(value: number | null): string {
 
 function formatDate(dateStr: string | null): string {
     if (!dateStr) return "";
-    return new Date(dateStr).toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+    // Vencimento Asaas é gravado à meia-noite UTC — new Date() cru exibia o
+    // dia ANTERIOR em BRT. parseAnchoredDate re-ancora ao meio-dia UTC.
+    const date = parseAnchoredDate(dateStr);
+    if (!date) return "";
+    return date.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 }
 
 interface Props {

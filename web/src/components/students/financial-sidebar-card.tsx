@@ -3,6 +3,7 @@
 import { CreditCard, AlertTriangle, ArrowRight } from 'lucide-react'
 import type { DisplayStatus } from '@/types/financial'
 import { STATUS_CONFIG, INTERVAL_LABELS, formatCurrency } from '@/lib/utils/financial'
+import { formatBrDate } from '@kinevo/shared/utils/format-br-date'
 
 interface FinancialContract {
     id: string
@@ -104,7 +105,7 @@ export function FinancialSidebarCard({
                                     : 'Próx. vencimento'}
                         </p>
                         <p className="text-sm font-medium text-[#1C1C1E] dark:text-k-text-secondary mt-0.5">
-                            {new Date(contract.current_period_end).toLocaleDateString('pt-BR')}
+                            {formatBrDate(contract.current_period_end)}
                         </p>
                     </div>
                 )}

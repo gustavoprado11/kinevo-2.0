@@ -17,6 +17,7 @@ export function useContractDetail(contractId: string | null) {
     const [student, setStudent] = useState<FinancialStudent | null>(null);
     const [contract, setContract] = useState<ContractRow | null>(null);
     const [events, setEvents] = useState<ContractEvent[]>([]);
+    const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchData = useCallback(async () => {
@@ -38,6 +39,11 @@ export function useContractDetail(contractId: string | null) {
                     .maybeSingle(),
             ]);
 
+            // supabase-js resolve com { data: null, error } sem lançar — sem esta
+            // checagem, um blip de rede vira "Contrato não encontrado".
+            const failed = studentsRes?.error ?? eventsRes?.error ?? contractRes?.error;
+            if (failed) throw new Error(failed.message ?? "RPC error");
+
             const students = (studentsRes.data as any as FinancialStudent[]) || [];
             const match = students.find((s) => s.contract_id === contractId) || null;
             setStudent(match);
@@ -46,8 +52,10 @@ export function useContractDetail(contractId: string | null) {
 
             const eventsData = (eventsRes.data as any) || {};
             setEvents((eventsData.events || []) as ContractEvent[]);
+            setError(null);
         } catch (err) {
             if (__DEV__) console.error("[useContractDetail] error:", err);
+            setError("Não foi possível carregar o contrato.");
         } finally {
             setIsLoading(false);
         }
@@ -57,5 +65,5 @@ export function useContractDetail(contractId: string | null) {
         fetchData();
     }, [fetchData]);
 
-    return { student, contract, events, isLoading, refresh: fetchData };
+    return { student, contract, events, isLoading, error, refresh: fetchData };
 }
