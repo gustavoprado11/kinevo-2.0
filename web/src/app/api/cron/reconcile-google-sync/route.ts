@@ -24,6 +24,10 @@ export const maxDuration = 60
  * inócuo e eterno) e linhas paradas há >10min (não disputa com after() em voo).
  * Instâncias (exceções remarcadas/canceladas) não têm coluna de status — fora
  * do escopo deste cron.
+ *
+ * Roda 1×/dia (11:45 UTC): o plano Hobby do Vercel só aceita crons diários —
+ * expressão mais frequente REPROVA o deployment inteiro na criação. O caminho
+ * primário é o after() inline; este cron é a rede de segurança pros pendings.
  */
 export async function GET(request: Request) {
     if (!verifyCronAuth(request)) {

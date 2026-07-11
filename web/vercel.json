@@ -43,7 +43,7 @@
     },
     {
       "path": "/api/cron/reconcile-google-sync",
-      "schedule": "15 * * * *"
+      "schedule": "45 11 * * *"
     }
   ]
 }
