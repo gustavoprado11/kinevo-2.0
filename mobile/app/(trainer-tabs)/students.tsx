@@ -151,7 +151,7 @@ export default function StudentsScreen() {
 
     const renderItem = useCallback(
         ({ item, index }: { item: TrainerStudent; index: number }) => (
-            <Animated.View entering={FadeInUp.delay(index * 25).duration(220).easing(Easing.out(Easing.cubic))}>
+            <Animated.View entering={FadeInUp.delay(Math.min(index, 8) * 25).duration(220).easing(Easing.out(Easing.cubic))}>
                 <StudentRow
                     student={item}
                     selected={isTablet && selectedStudentId === item.id}

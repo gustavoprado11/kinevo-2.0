@@ -164,6 +164,7 @@ export default function ReportScreen() {
     const [isRegenerating, setIsRegenerating] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [notes, setNotes] = useState("");
+    const [notesSaveFailed, setNotesSaveFailed] = useState(false);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const fetchReport = useCallback(async () => {
@@ -213,20 +214,32 @@ export default function ReportScreen() {
     }, [fetchReport]);
 
     // Auto-save trainer notes with debounce
+    const saveNotes = useCallback(
+        async (text: string) => {
+            if (!report) return;
+            const { error } = await (supabase as any)
+                .from("program_reports")
+                .update({ trainer_notes: text })
+                .eq("id", report.id);
+            if (error) {
+                if (__DEV__) console.error("[report] Failed to save notes:", error.message);
+                // CS8: falha de save NÃO pode ser silenciosa em produção — a
+                // nota digitada se perdia ao sair da tela sem nenhum aviso.
+                setNotesSaveFailed(true);
+            } else {
+                setNotesSaveFailed(false);
+            }
+        },
+        [report]
+    );
+
     const handleNotesChange = useCallback(
         (text: string) => {
             setNotes(text);
             if (debounceRef.current) clearTimeout(debounceRef.current);
-            debounceRef.current = setTimeout(async () => {
-                if (!report) return;
-                const { error } = await (supabase as any)
-                    .from("program_reports")
-                    .update({ trainer_notes: text })
-                    .eq("id", report.id);
-                if (error && __DEV__) console.error("[report] Failed to save notes:", error.message);
-            }, 1500);
+            debounceRef.current = setTimeout(() => void saveNotes(text), 1500);
         },
-        [report]
+        [saveNotes]
     );
 
     const handlePublish = useCallback(() => {
@@ -604,19 +617,31 @@ export default function ReportScreen() {
                         </SectionLabel>
                         <View style={{ backgroundColor: COLORS.card, borderRadius: 14, padding: 16, marginBottom: 20 }}>
                             {isTrainerView && isDraft ? (
-                                <TextInput
-                                    value={notes}
-                                    onChangeText={handleNotesChange}
-                                    placeholder="Adicione suas observações sobre o desempenho do aluno..."
-                                    placeholderTextColor={COLORS.textMuted}
-                                    multiline
-                                    style={{
-                                        fontSize: 15,
-                                        color: COLORS.text,
-                                        minHeight: 100,
-                                        textAlignVertical: "top",
-                                    }}
-                                />
+                                <>
+                                    <TextInput
+                                        value={notes}
+                                        onChangeText={handleNotesChange}
+                                        placeholder="Adicione suas observações sobre o desempenho do aluno..."
+                                        placeholderTextColor={COLORS.textMuted}
+                                        multiline
+                                        style={{
+                                            fontSize: 15,
+                                            color: COLORS.text,
+                                            minHeight: 100,
+                                            textAlignVertical: "top",
+                                        }}
+                                    />
+                                    {notesSaveFailed && (
+                                        <TouchableOpacity
+                                            onPress={() => void saveNotes(notes)}
+                                            hitSlop={8}
+                                        >
+                                            <Text style={{ fontSize: 12, fontWeight: "600", color: COLORS.red, marginTop: 8 }}>
+                                                Não foi possível salvar as observações. Toque para tentar de novo.
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </>
                             ) : (
                                 <Text style={{ fontSize: 15, color: COLORS.text, fontStyle: notes ? "italic" : "normal" }}>
                                     {notes || "Nenhuma observação adicionada."}

@@ -123,7 +123,7 @@ export default function MessagesScreen() {
 
     const renderItem = useCallback(
         ({ item, index }: { item: Conversation; index: number }) => (
-            <Animated.View entering={FadeInUp.delay(index * 25).duration(220).easing(Easing.out(Easing.cubic))}>
+            <Animated.View entering={FadeInUp.delay(Math.min(index, 8) * 25).duration(220).easing(Easing.out(Easing.cubic))}>
                 <ConversationRow
                     conversation={item}
                     onPress={() => handleConversationPress(item)}

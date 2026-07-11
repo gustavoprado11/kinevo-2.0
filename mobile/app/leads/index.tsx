@@ -46,6 +46,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
     { key: "new", label: "Novos" },
     { key: "contacted", label: "Contatados" },
     { key: "converted", label: "Convertidos" },
+    { key: "archived", label: "Arquivados" },
 ];
 
 function relativeTime(iso: string) {
@@ -74,7 +75,7 @@ function whatsappLink(whatsapp: string, firstName: string) {
 export default function LeadsScreen() {
     const router = useRouter();
     const colors = useV2Colors();
-    const { leads, loading, refetch, updateStatus, convertLead } = useTrainerLeads();
+    const { leads, loading, error, refetch, updateStatus, convertLead } = useTrainerLeads();
     const [filter, setFilter] = useState<FilterKey>("all");
     const [refreshing, setRefreshing] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -87,9 +88,12 @@ export default function LeadsScreen() {
     const selected = selectedId ? leads.find((l) => l.id === selectedId) ?? null : null;
 
     const counts = useMemo(() => {
-        const c = { all: 0, new: 0, contacted: 0, converted: 0 };
+        const c = { all: 0, new: 0, contacted: 0, converted: 0, archived: 0 };
         for (const l of leads) {
-            if (l.status === "archived") continue;
+            if (l.status === "archived") {
+                c.archived++;
+                continue;
+            }
             c.all++;
             if (l.status === "new") c.new++;
             else if (l.status === "contacted" || l.status === "read") c.contacted++;
@@ -169,6 +173,37 @@ export default function LeadsScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand.primary} />}
                 showsVerticalScrollIndicator={false}
             >
+                {/* Erro visível — lista vazia por falha de rede não pode passar
+                    por "nenhum lead ainda" (mesmo padrão P16 do financeiro). */}
+                {error ? (
+                    <Pressable
+                        onPress={onRefresh}
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                            backgroundColor: colors.semantic.danger.bg,
+                            borderRadius: 14,
+                            paddingHorizontal: 14,
+                            paddingVertical: 12,
+                            marginHorizontal: spacing[4],
+                            marginTop: spacing[3],
+                        }}
+                    >
+                        <AlertCircle size={16} color={colors.semantic.danger.fg} />
+                        <Text
+                            style={{
+                                flex: 1,
+                                fontFamily: "PlusJakartaSans_600SemiBold",
+                                fontSize: 13,
+                                color: colors.semantic.danger.fg,
+                            }}
+                        >
+                            Não foi possível carregar os leads. Toque para tentar de novo.
+                        </Text>
+                    </Pressable>
+                ) : null}
+
                 {/* Filtros */}
                 {leads.length > 0 && (
                     <View style={{ paddingHorizontal: spacing[4], paddingTop: spacing[3], paddingBottom: spacing[2] }}>
@@ -182,7 +217,9 @@ export default function LeadsScreen() {
                                         ? counts.new
                                         : f.key === "contacted"
                                             ? counts.contacted
-                                            : counts.converted,
+                                            : f.key === "converted"
+                                                ? counts.converted
+                                                : counts.archived,
                             }))}
                             value={filter}
                             onChange={(k) => setFilter(k)}
@@ -196,8 +233,9 @@ export default function LeadsScreen() {
                         <ActivityIndicator color={colors.brand.primary} />
                     </View>
                 ) : leads.length === 0 ? (
-                    /* Empty global */
-                    <EmptyState colors={colors} />
+                    /* Empty global (não exibir a orientação de divulgação quando
+                       a lista está vazia por ERRO — o banner acima já orienta) */
+                    error ? null : <EmptyState colors={colors} />
                 ) : filtered.length === 0 ? (
                     <View
                         style={{

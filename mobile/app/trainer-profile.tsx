@@ -210,6 +210,7 @@ export default function TrainerProfileEditScreen() {
                 contentContainerStyle={styles.scroll}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
+                automaticallyAdjustKeyboardInsets
             >
                 {/* PERFIL — foto + nome */}
                 <Text style={styles.sectionLabel}>PERFIL</Text>

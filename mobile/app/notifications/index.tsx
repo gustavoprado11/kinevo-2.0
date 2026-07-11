@@ -34,8 +34,16 @@ function getDeepLinkForNotification(n: TrainerNotification): { pathname: string;
 
         case 'message':
         case 'student_message':
-        case 'text_message':
-            return { pathname: '/(tabs)/inbox' };
+        case 'text_message': {
+            // Central de notificações é do TREINADOR: mensagem de aluno abre a
+            // thread dele (mesma resolução do push em usePushNotifications) —
+            // nunca o inbox do modo aluno.
+            const sid = data?.studentId || data?.student_id;
+            if (sid) {
+                return { pathname: '/messages/[studentId]', params: { studentId: sid } };
+            }
+            return { pathname: '/(trainer-tabs)/messages' };
+        }
 
         case 'program_assigned':
             return { pathname: '/(tabs)/home' };

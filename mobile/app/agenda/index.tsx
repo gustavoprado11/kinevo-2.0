@@ -74,16 +74,21 @@ export default function AgendaScreen() {
                     <Pressable
                         onPress={handleBack}
                         hitSlop={8}
-                        style={({ pressed }) => ({
-                            width: 36,
-                            height: 36,
-                            borderRadius: 18,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            opacity: pressed ? 0.6 : 1,
-                        })}
+                        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                     >
-                        <ChevronLeft size={24} color={colors.text.primary} />
+                        {/* Layout numa View interna: flex props em style-função de
+                            Pressable não aplicam (gotcha do projeto). */}
+                        <View
+                            style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 18,
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <ChevronLeft size={24} color={colors.text.primary} />
+                        </View>
                     </Pressable>
                     <Text style={{ fontSize: 17, fontWeight: "600", color: colors.text.primary, marginLeft: 4 }}>
                         Agenda
