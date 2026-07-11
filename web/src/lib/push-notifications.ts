@@ -1,5 +1,33 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
+/**
+ * CLAIM atômico do envio de push (M1, auditoria 11/jul): o mesmo evento tem
+ * DOIS emissores concorrentes — o trigger do banco (pg_net → Edge Function) e
+ * o envio direto in-process das rotas. O dedup antigo era check-then-act sobre
+ * push_sent_at: sob latência os dois liam NULL e o usuário recebia 2 pushes
+ * idênticos. Agora quem vence o UPDATE condicional (push_sent_at IS NULL)
+ * envia; o perdedor sai. Se o envio FALHAR depois do claim, o claim é
+ * DEVOLVIDO (push_sent_at = null) para o outro caminho/cron retentar.
+ */
+async function claimPushSend(table: 'trainer_notifications' | 'student_inbox_items', id: string): Promise<boolean> {
+    const { data: claimed, error } = await supabaseAdmin
+        .from(table)
+        .update({ push_sent_at: new Date().toISOString() })
+        .eq('id', id)
+        .is('push_sent_at', null)
+        .select('id')
+    // Erro no claim: NÃO envia (o outro caminho cobre; melhor perder a corrida
+    // que duplicar).
+    if (error) return false
+    return (claimed?.length ?? 0) > 0
+}
+
+async function releasePushClaim(table: 'trainer_notifications' | 'student_inbox_items', id: string): Promise<void> {
+    try {
+        await supabaseAdmin.from(table).update({ push_sent_at: null }).eq('id', id)
+    } catch { /* melhor-esforço */ }
+}
+
 interface SendTrainerPushParams {
     trainerId: string
     type: string
@@ -16,15 +44,14 @@ interface SendTrainerPushParams {
  * Handles DeviceNotRegistered by marking tokens as inactive.
  */
 export async function sendTrainerPush(params: SendTrainerPushParams): Promise<void> {
+    let sent = false
     try {
-        // 0. Check if push was already sent by DB trigger → Edge Function
+        // 0. Claim atômico (anti-corrida com o trigger → Edge Function).
+        // No-ops legítimos abaixo (sem prefs/tokens) MANTÊM o claim: não há o
+        // que enviar, e liberar faria o outro caminho tentar à toa.
         if (params.notificationId) {
-            const { data: existing } = await supabaseAdmin
-                .from('trainer_notifications')
-                .select('push_sent_at')
-                .eq('id', params.notificationId)
-                .single()
-            if (existing?.push_sent_at) return
+            const won = await claimPushSend('trainer_notifications', params.notificationId)
+            if (!won) return
         }
 
         // 1. Check trainer preferences
@@ -69,8 +96,11 @@ export async function sendTrainerPush(params: SendTrainerPushParams): Promise<vo
 
         if (!response.ok) {
             console.error('[push-notifications] Expo API error:', response.status)
+            // Devolve o claim: o envio não aconteceu — o outro caminho/cron retenta.
+            if (params.notificationId) await releasePushClaim('trainer_notifications', params.notificationId)
             return
         }
+        sent = true
 
         const result = await response.json()
         const tickets = result.data ?? []
@@ -125,15 +155,12 @@ export async function sendTrainerPush(params: SendTrainerPushParams): Promise<vo
             await supabaseAdmin.from('push_tickets').insert(ticketRows)
         }
 
-        // 5. Mark push_sent_at so flush/cron won't re-send
-        if (params.notificationId) {
-            await supabaseAdmin
-                .from('trainer_notifications')
-                .update({ push_sent_at: new Date().toISOString() })
-                .eq('id', params.notificationId)
-        }
+        // push_sent_at já foi marcado pelo claim do passo 0.
     } catch (err) {
         console.error('[push-notifications] Unexpected error:', err)
+        // Falha ANTES do envio devolve o claim; depois do envio mantém (senão
+        // um erro de bookkeeping pós-envio geraria push duplicado no retry).
+        if (!sent && params.notificationId) await releasePushClaim('trainer_notifications', params.notificationId)
     }
 }
 
@@ -155,7 +182,15 @@ interface SendStudentPushParams {
  * Non-blocking — never throws.
  */
 export async function sendStudentPush(params: SendStudentPushParams): Promise<void> {
+    let sent = false
     try {
+        // Claim atômico (M1/M4): o lado student nem tinha o pré-check que o
+        // trainer tinha — a janela de push duplicado era ainda maior.
+        if (params.inboxItemId) {
+            const won = await claimPushSend('student_inbox_items', params.inboxItemId)
+            if (!won) return
+        }
+
         const { data: student } = await supabaseAdmin
             .from('students')
             .select('auth_user_id, notification_preferences')
@@ -200,8 +235,11 @@ export async function sendStudentPush(params: SendStudentPushParams): Promise<vo
 
         if (!response.ok) {
             console.error('[push-notifications] Expo API error (student):', response.status)
+            // Devolve o claim: o envio não aconteceu — o outro caminho/cron retenta.
+            if (params.inboxItemId) await releasePushClaim('student_inbox_items', params.inboxItemId)
             return
         }
+        sent = true
 
         const result = await response.json()
         const tickets = result.data ?? []
@@ -254,15 +292,11 @@ export async function sendStudentPush(params: SendStudentPushParams): Promise<vo
             await supabaseAdmin.from('push_tickets').insert(ticketRows)
         }
 
-        // Mark push_sent_at so flush/cron won't re-send
-        if (params.inboxItemId) {
-            await supabaseAdmin
-                .from('student_inbox_items')
-                .update({ push_sent_at: new Date().toISOString() })
-                .eq('id', params.inboxItemId)
-        }
+        // push_sent_at já foi marcado pelo claim inicial.
     } catch (err) {
         console.error('[push-notifications] Student push error:', err)
+        // Falha ANTES do envio devolve o claim; depois do envio mantém.
+        if (!sent && params.inboxItemId) await releasePushClaim('student_inbox_items', params.inboxItemId)
     }
 }
 

@@ -56,6 +56,28 @@ Deno.serve(async (req) => {
     }
 });
 
+// ── Claim atômico do envio (M1, auditoria 11/jul) ──
+// O mesmo evento tem DOIS emissores concorrentes: esta Edge Function (via
+// trigger pg_net) e o envio direto in-process das rotas web. O dedup antigo
+// era check-then-act sobre push_sent_at (os dois liam NULL → 2 pushes). Agora
+// quem vence o UPDATE condicional envia; falha ANTES do envio devolve o claim.
+async function claimPushSend(table: string, id: string): Promise<boolean> {
+    const { data: claimed, error } = await supabaseAdmin
+        .from(table)
+        .update({ push_sent_at: new Date().toISOString() })
+        .eq("id", id)
+        .is("push_sent_at", null)
+        .select("id");
+    if (error) return false; // perde a corrida em vez de arriscar duplicar
+    return (claimed?.length ?? 0) > 0;
+}
+
+async function releasePushClaim(table: string, id: string): Promise<void> {
+    try {
+        await supabaseAdmin.from(table).update({ push_sent_at: null }).eq("id", id);
+    } catch (_) { /* melhor-esforço */ }
+}
+
 // ── Trainer Push ──
 
 async function handleTrainerNotification(record: Record<string, any>) {
@@ -66,14 +88,8 @@ async function handleTrainerNotification(record: Record<string, any>) {
     const body = record.body ?? record.message ?? "";
     const data = record.data ?? record.metadata ?? {};
 
-    // 0. Check if push was already sent (avoid double-send from API routes)
-    const { data: existingNotif } = await supabaseAdmin
-        .from("trainer_notifications")
-        .select("push_sent_at")
-        .eq("id", notificationId)
-        .single();
-
-    if (existingNotif?.push_sent_at) return;
+    // 0. Claim atômico (anti-corrida com o envio direto das rotas web).
+    if (!(await claimPushSend("trainer_notifications", notificationId))) return;
 
     // 1. Check trainer notification preferences
     const { data: trainer } = await supabaseAdmin
@@ -121,6 +137,7 @@ async function handleTrainerNotification(record: Record<string, any>) {
 
     if (!response.ok) {
         console.error("[send-push] Expo API error:", response.status);
+        await releasePushClaim("trainer_notifications", notificationId);
         return;
     }
 
@@ -176,11 +193,7 @@ async function handleTrainerNotification(record: Record<string, any>) {
         await supabaseAdmin.from("push_tickets").insert(ticketRows);
     }
 
-    // 6. Mark push_sent_at
-    await supabaseAdmin
-        .from("trainer_notifications")
-        .update({ push_sent_at: new Date().toISOString() })
-        .eq("id", notificationId);
+    // push_sent_at já foi marcado pelo claim do passo 0.
 }
 
 // ── Student Push ──
@@ -193,14 +206,8 @@ async function handleStudentNotification(record: Record<string, any>) {
     const type = record.type ?? "unknown";
     const payload = record.payload ?? {};
 
-    // 0. Check if push was already sent
-    const { data: existingItem } = await supabaseAdmin
-        .from("student_inbox_items")
-        .select("push_sent_at")
-        .eq("id", inboxItemId)
-        .single();
-
-    if (existingItem?.push_sent_at) return;
+    // 0. Claim atômico (anti-corrida com o envio direto das rotas web).
+    if (!(await claimPushSend("student_inbox_items", inboxItemId))) return;
 
     // 1. Get student auth_user_id and preferences
     const { data: student } = await supabaseAdmin
@@ -254,6 +261,7 @@ async function handleStudentNotification(record: Record<string, any>) {
 
     if (!response.ok) {
         console.error("[send-push] Expo API error (student):", response.status);
+        await releasePushClaim("student_inbox_items", inboxItemId);
         return;
     }
 
@@ -307,9 +315,5 @@ async function handleStudentNotification(record: Record<string, any>) {
         await supabaseAdmin.from("push_tickets").insert(ticketRows);
     }
 
-    // Mark push_sent_at
-    await supabaseAdmin
-        .from("student_inbox_items")
-        .update({ push_sent_at: new Date().toISOString() })
-        .eq("id", inboxItemId);
+    // push_sent_at já foi marcado pelo claim do passo 0.
 }
