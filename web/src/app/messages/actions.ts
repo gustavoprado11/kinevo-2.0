@@ -69,91 +69,56 @@ export async function getTotalUnreadCount(): Promise<number> {
 // getConversations
 // ---------------------------------------------------------------------------
 
+/** Linha da RPC get_trainer_conversations (migration 244) — fora dos tipos gerados. */
+interface ConversationSummaryRow {
+    student_id: string
+    student_name: string
+    avatar_url: string | null
+    student_status: string
+    last_content: string | null
+    last_image_url: string | null
+    last_sender_type: string | null
+    last_created_at: string | null
+    unread_count: number | null
+}
+
 export async function getConversations(): Promise<Conversation[]> {
     const auth = await getAuthenticatedTrainer()
     if (!auth) return []
 
-    // Query direta com supabaseAdmin (sem overhead de RLS na agregação).
-    // A RPC get_trainer_conversations nunca existiu no banco (nenhuma migration
-    // a define) — a chamada foi removida; este caminho sempre foi o executado.
+    // PF3: agregação no BANCO (migration 244). Antes baixávamos TODAS as
+    // mensagens de todos os alunos, sem limit, só pra achar a última por
+    // aluno — payload O(histórico) a cada abertura E a cada INSERT realtime,
+    // com preview errado acima do cap de 1000 linhas do PostgREST.
+    const { data, error } = await supabaseAdmin.rpc(
+        'get_trainer_conversations' as never,
+        { p_trainer_id: auth.trainer.id } as never,
+    )
 
-    // Get students with messages
-    const { data: students } = await supabaseAdmin
-        .from('students')
-        .select('id, name, avatar_url, status')
-        .eq('coach_id', auth.trainer.id)
-        .eq('status', 'active')
-
-    if (!students?.length) return []
-
-    const studentIds = students.map(s => s.id)
-
-    // Get last message per student
-    const { data: messages } = await supabaseAdmin
-        .from('messages')
-        .select('student_id, content, image_url, sender_type, created_at')
-        .in('student_id', studentIds)
-        .order('created_at', { ascending: false })
-
-    // Get unread counts (messages from student that trainer hasn't read)
-    const { data: unreadRows } = await supabaseAdmin
-        .from('messages')
-        .select('student_id')
-        .in('student_id', studentIds)
-        .eq('sender_type', 'student')
-        .is('read_at', null)
-
-    // Build maps
-    const lastMessageMap = new Map<string, { content: string | null; image_url: string | null; sender_type: string; created_at: string | null }>()
-    for (const m of messages || []) {
-        if (!lastMessageMap.has(m.student_id)) {
-            lastMessageMap.set(m.student_id, m)
-        }
+    if (error) {
+        console.error('[getConversations] RPC error:', error)
+        return []
     }
 
-    const unreadCountMap = new Map<string, number>()
-    for (const r of unreadRows || []) {
-        unreadCountMap.set(r.student_id, (unreadCountMap.get(r.student_id) || 0) + 1)
-    }
-
-    // Include ALL active students — those with messages first (by recency), then without (alphabetically)
-    const withMessages: Conversation[] = []
-    const withoutMessages: Conversation[] = []
-
-    for (const s of students) {
-        const last = lastMessageMap.get(s.id)
-        const conv: Conversation = {
-            student: {
-                id: s.id,
-                name: s.name,
-                avatar_url: s.avatar_url,
-                status: s.status,
-            },
-            lastMessage: last ? {
-                content: last.content,
-                image_url: last.image_url,
-                sender_type: last.sender_type as 'trainer' | 'student',
-                created_at: last.created_at ?? '',
-            } : null,
-            unreadCount: unreadCountMap.get(s.id) || 0,
-        }
-
-        if (last) {
-            withMessages.push(conv)
-        } else {
-            withoutMessages.push(conv)
-        }
-    }
-
-    // With messages: most recent first; without: alphabetical
-    withMessages.sort((a, b) => {
-        const aTime = a.lastMessage?.created_at ?? ''
-        const bTime = b.lastMessage?.created_at ?? ''
-        return bTime.localeCompare(aTime)
-    })
-    withoutMessages.sort((a, b) => a.student.name.localeCompare(b.student.name))
-
-    return [...withMessages, ...withoutMessages]
+    const rows = (data ?? []) as unknown as ConversationSummaryRow[]
+    // A RPC já ordena: com mensagens por recência, depois sem mensagens por nome.
+    return rows.map((r) => ({
+        student: {
+            id: r.student_id,
+            name: r.student_name,
+            avatar_url: r.avatar_url,
+            status: r.student_status,
+        },
+        lastMessage: r.last_created_at
+            ? {
+                content: r.last_content,
+                image_url: r.last_image_url,
+                sender_type: (r.last_sender_type ?? 'student') as 'trainer' | 'student',
+                created_at: r.last_created_at,
+            }
+            : null,
+        unreadCount: r.unread_count ?? 0,
+    }))
 }
 
 // ---------------------------------------------------------------------------

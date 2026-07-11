@@ -58,81 +58,42 @@ export function useTrainerConversations(): UseTrainerConversationsReturn {
             trainerIdRef.current = trainerId;
         }
 
-        // Fetch active students
-        const { data: students }: { data: any } = await supabase
-            .from('students' as any)
-            .select('id, name, avatar_url, status')
-            .eq('coach_id', trainerId)
-            .eq('status', 'active');
+        // PF2: agregação no BANCO (RPC da migration 244) — antes baixávamos
+        // TODAS as mensagens de todos os alunos, sem limit, a cada foco da
+        // aba, só pra achar a última por aluno (payload O(histórico) e
+        // preview errado acima do cap de 1000 linhas do PostgREST).
+        const { data: rows, error } = await (supabase as any).rpc(
+            'get_trainer_conversations',
+            { p_trainer_id: trainerId },
+        );
 
-        if (!students || students.length === 0) {
-            setConversations([]);
+        if (error) {
+            if (__DEV__) console.error('[useTrainerConversations] RPC error:', error.message);
             setIsLoading(false);
             return;
         }
 
-        const studentIds = students.map((s: any) => s.id) as string[];
-        studentIdsRef.current = new Set(studentIds);
-
-        // Fetch all messages for these students (ordered by recency)
-        const { data: messages }: { data: any } = await supabase
-            .from('messages' as any)
-            .select('student_id, content, image_url, sender_type, created_at')
-            .in('student_id', studentIds)
-            .order('created_at', { ascending: false });
-
-        // Fetch unread counts (student messages not read by trainer)
-        const { data: unreadRows }: { data: any } = await supabase
-            .from('messages' as any)
-            .select('student_id')
-            .in('student_id', studentIds)
-            .eq('sender_type', 'student')
-            .is('read_at', null);
-
-        // Build last-message map (first occurrence per student_id = most recent)
-        const lastMessageMap = new Map<string, ConversationLastMessage>();
-        if (messages) {
-            for (const msg of messages) {
-                if (!lastMessageMap.has(msg.student_id)) {
-                    lastMessageMap.set(msg.student_id, {
-                        content: msg.content,
-                        image_url: msg.image_url,
-                        sender_type: msg.sender_type,
-                        created_at: msg.created_at,
-                    });
-                }
-            }
-        }
-
-        // Build unread count map
-        const unreadMap = new Map<string, number>();
-        if (unreadRows) {
-            for (const row of unreadRows) {
-                unreadMap.set(row.student_id, (unreadMap.get(row.student_id) ?? 0) + 1);
-            }
-        }
-
-        // Build conversations
-        const convs: Conversation[] = students.map((s: any) => ({
+        // A RPC já ordena: com mensagens por recência, depois sem mensagens
+        // por nome — mesma semântica do sort antigo.
+        const convs: Conversation[] = ((rows as any[]) ?? []).map((r: any) => ({
             student: {
-                id: s.id,
-                name: s.name,
-                avatar_url: s.avatar_url,
-                status: s.status,
+                id: r.student_id,
+                name: r.student_name,
+                avatar_url: r.avatar_url,
+                status: r.student_status,
             },
-            lastMessage: lastMessageMap.get(s.id) ?? null,
-            unreadCount: unreadMap.get(s.id) ?? 0,
+            lastMessage: r.last_created_at
+                ? {
+                    content: r.last_content,
+                    image_url: r.last_image_url,
+                    sender_type: (r.last_sender_type ?? 'student') as 'trainer' | 'student',
+                    created_at: r.last_created_at,
+                }
+                : null,
+            unreadCount: r.unread_count ?? 0,
         }));
 
-        // Sort: conversations with messages first (by recency), then without (alphabetical)
-        convs.sort((a, b) => {
-            if (a.lastMessage && b.lastMessage) {
-                return new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime();
-            }
-            if (a.lastMessage && !b.lastMessage) return -1;
-            if (!a.lastMessage && b.lastMessage) return 1;
-            return a.student.name.localeCompare(b.student.name);
-        });
+        studentIdsRef.current = new Set(convs.map((c) => c.student.id));
 
         setConversations(convs);
         setIsLoading(false);

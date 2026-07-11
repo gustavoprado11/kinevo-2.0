@@ -5,6 +5,7 @@ import { Search, MessageCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getConversations } from '@/app/messages/actions'
 import type { Conversation } from '@/types/messages'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 function timeAgo(dateStr: string): string {
     const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
@@ -39,9 +40,12 @@ export function ConversationList({
 }: ConversationListProps) {
     const [search, setSearch] = useState('')
 
-    // Realtime: listen for new messages to update list
+    // Realtime: listen for new messages to update list.
+    // PF3: o refetch agora é a RPC agregada (barata) e com debounce — antes
+    // cada INSERT disparava a agregação O(histórico inteiro) imediatamente.
     useEffect(() => {
         const supabase = createClient()
+        let debounce: ReturnType<typeof setTimeout> | null = null
 
         const channel = supabase
             .channel(`messages_list_${trainerId}`)
@@ -53,18 +57,22 @@ export function ConversationList({
                     table: 'messages',
                 },
                 () => {
-                    getConversations().then(onConversationsUpdate).catch(() => {})
+                    if (debounce) clearTimeout(debounce)
+                    debounce = setTimeout(() => {
+                        getConversations().then(onConversationsUpdate).catch(() => {})
+                    }, 400)
                 }
             )
             .subscribe()
 
-        return () => { supabase.removeChannel(channel) }
+        return () => {
+            if (debounce) clearTimeout(debounce)
+            supabase.removeChannel(channel)
+        }
     }, [trainerId, onConversationsUpdate])
 
     const filtered = search.trim()
-        ? conversations.filter(c =>
-            c.student.name.toLowerCase().includes(search.toLowerCase())
-        )
+        ? conversations.filter(c => matchesSearch(c.student.name, search))
         : conversations
 
     const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
