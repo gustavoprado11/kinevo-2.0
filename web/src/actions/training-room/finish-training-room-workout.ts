@@ -159,6 +159,12 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
             .insert(setLogs)
 
         if (logsError) {
+            // Compensação: sem as séries, a sessão 'completed' recém-criada vira
+            // um fantasma (0 séries no histórico) e o retry do treinador criaria
+            // uma SEGUNDA sessão concluída. Remove a sessão; o retry recomeça
+            // limpo. (O insert das séries é um statement único — ou entra tudo,
+            // ou nada; não há parcial pra preservar.)
+            await supabaseAdmin.from('workout_sessions').delete().eq('id', session.id)
             return { sessionId: null, error: logsError.message }
         }
     }

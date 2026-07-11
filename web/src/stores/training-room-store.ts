@@ -264,6 +264,12 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                         const setsData = Array.from({ length: freshEx.setsData.length }, (_, i) =>
                             old.setsData[i] ?? { weight: '', reps: '', completed: false },
                         )
+                        // Série JÁ CONCLUÍDA além do novo nº de séries não some da
+                        // tela (mesmo princípio do bloco de itens removidos abaixo):
+                        // o editor reduziu 4→3 séries DEPOIS de a 4ª ser executada.
+                        for (let i = freshEx.setsData.length; i < old.setsData.length; i++) {
+                            if (old.setsData[i]?.completed) setsData.push(old.setsData[i])
+                        }
 
                         const withProgress: ExerciseData = { ...freshEx, setsData }
 
