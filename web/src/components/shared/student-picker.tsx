@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { Search } from 'lucide-react'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 export interface StudentPickerOption {
     id: string
@@ -73,9 +74,8 @@ function MultiPicker({
     const [query, setQuery] = useState('')
 
     const filtered = useMemo(() => {
-        const q = query.trim().toLowerCase()
-        if (!q) return students
-        return students.filter(s => s.name.toLowerCase().includes(q))
+        if (!query.trim()) return students
+        return students.filter(s => matchesSearch(s.name, query))
     }, [students, query])
 
     const allFilteredSelected =

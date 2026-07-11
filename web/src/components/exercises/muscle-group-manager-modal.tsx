@@ -5,6 +5,7 @@ import { MuscleGroup } from '@/types/exercise'
 import { useMuscleGroups } from '@/hooks/use-muscle-groups'
 import { useToast } from '@/components/ui/toast'
 import { X, Plus, Search, Loader2, Check, Edit2, Trash2, Lock, AlertTriangle } from 'lucide-react'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 interface MuscleGroupManagerModalProps {
     isOpen: boolean
@@ -35,9 +36,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
     const [isDeleting, setIsDeleting] = useState(false)
 
     // Filtered list
-    const filteredGroups = muscleGroups.filter(g =>
-        g.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const filteredGroups = muscleGroups.filter(g => matchesSearch(g.name, searchQuery))
 
     const handleCreate = async () => {
         if (!newName.trim()) return

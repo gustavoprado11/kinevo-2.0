@@ -19,6 +19,7 @@ import type { SessionSetupData } from '../../stores/training-room-store';
 import { useRoleMode } from '../../contexts/RoleModeContext';
 import { useV2Colors } from '../../hooks/useV2Colors';
 import { toRgba } from '../../lib/brandColor';
+import { matchesSearch } from '@kinevo/shared/utils/search-text';
 
 interface StudentPickerModalProps {
     visible: boolean;
@@ -124,8 +125,7 @@ export function StudentPickerModal({ visible, onClose, initialStudentId }: Stude
 
     const filtered = useMemo(() => {
         if (!search) return enrichedStudents;
-        const q = search.toLowerCase();
-        return enrichedStudents.filter((s) => s.name.toLowerCase().includes(q));
+        return enrichedStudents.filter((s) => matchesSearch(s.name, search));
     }, [enrichedStudents, search]);
 
     const handleSelectStudent = (student: StudentWithWorkouts) => {

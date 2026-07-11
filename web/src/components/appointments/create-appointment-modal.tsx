@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 import {
     AlertCircle,
     Calendar as CalendarIcon,
@@ -165,9 +166,8 @@ export function CreateAppointmentModal({
 
     const filteredStudents = useMemo(() => {
         if (!students) return []
-        const q = studentQuery.trim().toLowerCase()
-        if (!q) return students
-        return students.filter((s) => s.name.toLowerCase().includes(q))
+        if (!studentQuery.trim()) return students
+        return students.filter((s) => matchesSearch(s.name, studentQuery))
     }, [students, studentQuery])
 
     const selectedStudent = useMemo(() => {

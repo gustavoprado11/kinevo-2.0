@@ -25,6 +25,7 @@ import { updateLeadStatus } from '@/actions/leads/update-lead-status'
 import { convertLeadToStudent } from '@/actions/leads/convert-lead-to-student'
 import { relativeTime, whatsappLink } from '@/lib/leads/format'
 import { StudentAccessDialog } from '@/components/students'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 export interface LeadRow {
     id: string
@@ -122,10 +123,10 @@ export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }:
             if (tab === 'all' && l.status === 'archived') return false
             if (!q) return true
             return (
-                l.name.toLowerCase().includes(q) ||
-                l.email.toLowerCase().includes(q) ||
-                l.whatsapp.toLowerCase().includes(q) ||
-                (l.message?.toLowerCase().includes(q) ?? false)
+                matchesSearch(l.name, q) ||
+                matchesSearch(l.email, q) ||
+                matchesSearch(l.whatsapp, q) ||
+                (!!l.message && matchesSearch(l.message, q))
             )
         })
     }, [enriched, tab, query])

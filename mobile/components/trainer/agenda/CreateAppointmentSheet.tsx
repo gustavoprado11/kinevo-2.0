@@ -22,6 +22,7 @@ import {
 } from "../../../hooks/useAppointmentMutations";
 import { useScheduleAppointmentReminder } from "../../../hooks/useScheduleAppointmentReminder";
 import type { AppointmentFrequency } from "@kinevo/shared/types/appointments";
+import { matchesSearch } from "@kinevo/shared/utils/search-text";
 import { useV2Colors, type V2Palette } from "../../../hooks/useV2Colors";
 
 /** When provided, the sheet edits an existing recurring rule instead of
@@ -153,10 +154,9 @@ export function CreateAppointmentSheet({
     );
 
     const filteredStudents = useMemo(() => {
-        const q = studentSearch.trim().toLowerCase();
         const all = (studentsListed ?? []).filter((s: TrainerStudent) => !s.is_trainer_profile);
-        if (!q) return all;
-        return all.filter((s: TrainerStudent) => s.name.toLowerCase().includes(q));
+        if (!studentSearch.trim()) return all;
+        return all.filter((s: TrainerStudent) => matchesSearch(s.name, studentSearch));
     }, [studentsListed, studentSearch]);
 
     const selectedStudent = useMemo(

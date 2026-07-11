@@ -35,6 +35,6 @@ export async function updateLeadStatus(leadId: string, status: LeadStatus): Prom
         return { success: false, message: 'Não foi possível atualizar.' }
     }
 
-    revalidatePath('/leads')
+    revalidatePath('/marketing/leads')
     return { success: true }
 }

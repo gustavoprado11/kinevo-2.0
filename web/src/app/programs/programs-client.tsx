@@ -13,6 +13,7 @@ import { duplicateProgram } from './actions/duplicate-program'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { useToast } from '@/components/ui/toast'
+import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
 // --- Helpers ---
 const TIMEZONE = 'America/Sao_Paulo'
@@ -195,9 +196,7 @@ function ApplyToStudentDialog({
         loadStudents()
     }, [])
 
-    const filtered = students.filter(s =>
-        s.name.toLowerCase().includes(search.toLowerCase())
-    )
+    const filtered = students.filter(s => matchesSearch(s.name, search))
 
     const handleApply = async () => {
         if (!selectedId) return
@@ -358,8 +357,8 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
     }, [initialPrograms])
 
     const filteredPrograms = programs.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+        matchesSearch(p.name, searchQuery) ||
+        (!!p.description && matchesSearch(p.description, searchQuery))
     )
 
     const handleExpand = (id: string) => {

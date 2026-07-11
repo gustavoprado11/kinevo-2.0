@@ -21,6 +21,7 @@ import { useTrainerProgramTemplates, type ProgramTemplate } from "@/hooks/useTra
 import { useProgramTemplateActions } from "@/hooks/useProgramTemplateActions";
 import { useV2Colors } from "@/hooks/useV2Colors";
 import { toast } from "@/lib/toast";
+import { matchesSearch } from "@kinevo/shared/utils/search-text";
 
 export default function ProgramTemplatesScreen() {
     const colors = useV2Colors();
@@ -40,12 +41,11 @@ export default function ProgramTemplatesScreen() {
     );
 
     const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        if (!q) return templates;
+        if (!search.trim()) return templates;
         return templates.filter(
             (t) =>
-                t.name.toLowerCase().includes(q) ||
-                (t.description?.toLowerCase().includes(q) ?? false),
+                matchesSearch(t.name, search) ||
+                (!!t.description && matchesSearch(t.description, search)),
         );
     }, [templates, search]);
 
