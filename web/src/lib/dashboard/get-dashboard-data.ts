@@ -382,17 +382,15 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         if (idx !== undefined) sessionsPerDay[idx]++
     }
 
-    // Expected sessions per week: sum unique scheduled_days across all active programs
+    // Expected sessions per week: soma de OCORRÊNCIAS agendadas (2 treinos no
+    // mesmo dia = 2). Unificado com a página do aluno, o ranking abaixo e o
+    // painel do assistente (computeWeeklyAdherence) — antes deduplicava dias.
     let expectedSessionsThisWeek = 0
     for (const program of activePrograms) {
-        const uniqueDays = new Set<number>()
-        const workouts = (program as any).assigned_workouts ?? []
+        const workouts = (program as { assigned_workouts?: { scheduled_days?: number[] | null }[] }).assigned_workouts ?? []
         for (const w of workouts) {
-            if (w.scheduled_days) {
-                for (const d of w.scheduled_days) uniqueDays.add(d)
-            }
+            expectedSessionsThisWeek += w.scheduled_days?.length ?? 0
         }
-        expectedSessionsThisWeek += uniqueDays.size
     }
 
     // Receita mensal (transações recebidas no mês corrente)
@@ -403,7 +401,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
 
     // Aderência = % de sessões executadas vs planejadas na semana atual.
     // Fórmula canônica alinhada com mobile (RPC get_trainer_stats,
-    // migração 105). Mede execução do plano, não engajamento.
+    // migração 240 — expected soma ocorrências). Mede execução do plano.
     // weekSessions e expectedSessionsThisWeek já calculados acima.
     const hasActivePrograms = activePrograms.some(p =>
         activeStudents.some(s => s.id === p.student_id)
