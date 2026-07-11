@@ -36,7 +36,9 @@ interface ExecutionExerciseCardProps {
      *  andamento" mesmo recolhido (juggling de equipamento ocupado). */
     isFocused: boolean;
     expanded: boolean;
-    onToggleExpand: () => void;
+    /** Estável (PF1): o card chama com o próprio exercise.id — arrow inline
+     *  por item na tela quebrava o React.memo de todos os cards. */
+    onToggleExpand: (exerciseId: string) => void;
     globalIndex: number;
     onSetChangeGlobal: (globalIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void;
     onToggleSetCompleteGlobal: (globalIndex: number, setIndex: number) => void;
@@ -108,7 +110,7 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
                 meta={buildMeta(exercise, status)}
                 status={status}
                 // O card aberto (foco) não recolhe pelo cabeçalho; troca-se abrindo outro.
-                onPress={isFocused ? undefined : onToggleExpand}
+                onPress={isFocused ? undefined : () => onToggleExpand(exercise.id)}
                 expanded={expanded}
             />
 

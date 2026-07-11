@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,6 +33,13 @@ async function isNetworkError(error: unknown): Promise<boolean> {
         return true;
     }
     return false;
+}
+
+/** "MM:SS" a partir de segundos. Pura — vive fora do hook. */
+function formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 export interface WorkoutSetData {
@@ -176,7 +183,6 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     // S4: depois do finish bem-sucedido, o snapshot local já foi limpo — o
     // effect de save não pode regravá-lo com o estado final da tela.
     const hasFinishedRef = useRef(false);
-    const [elapsed, setElapsed] = useState(0);
     const [workoutName, setWorkoutName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -538,15 +544,20 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
     // Timer — timestamp-based so it survives background/lock screen.
     // M4: em sessão reanexada, o display parte do started_at REAL (lido do ref a
-    // cada tick, pois ele chega async depois do fetch), não do mount da tela.
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const parsedStart = sessionStartedAtRef.current ? Date.parse(sessionStartedAtRef.current) : NaN;
-            const base = Number.isFinite(parsedStart) ? parsedStart : startTime;
-            setElapsed(Math.max(0, Math.floor((Date.now() - base) / 1000)));
-        }, 1000);
-        return () => clearInterval(interval);
+    // cada chamada, pois ele chega async depois do fetch), não do mount da tela.
+    // PF1: SEM setInterval aqui — um tick de 1s no hook re-renderizava a tela
+    // inteira (1.566 linhas + todos os cards) o treino todo. O tick vive num
+    // componente-folha na tela; o hook só expõe getters estáveis.
+    const getElapsedSeconds = useCallback(() => {
+        const parsedStart = sessionStartedAtRef.current ? Date.parse(sessionStartedAtRef.current) : NaN;
+        const base = Number.isFinite(parsedStart) ? parsedStart : startTime;
+        return Math.max(0, Math.floor((Date.now() - base) / 1000));
     }, [startTime]);
+
+    const getDuration = useCallback(
+        () => formatTime(getElapsedSeconds()),
+        [getElapsedSeconds],
+    );
 
     // Fetch Workout Data
     useEffect(() => {
@@ -1688,18 +1699,13 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
         });
     };
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-
     return {
         isLoading,
         workoutName,
         exercises,
         workoutNotes,
-        duration: formatTime(elapsed),
+        getDuration,
+        getElapsedSeconds,
         handleSetChange,
         handleToggleSetComplete,
         applyWatchSetCompletion,

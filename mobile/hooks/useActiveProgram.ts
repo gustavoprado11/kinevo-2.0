@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { getWeekRange, toDateKey, calculateWeeklyProgress, type WeeklyProgress, type WorkoutWithMeta } from "@kinevo/shared/utils/schedule-projection";
 import { appEvents, WORKOUT_COMPLETED } from "../lib/events";
+import { getCached, setCache } from "../lib/cache";
 
 interface AssignedWorkout {
     id: string;
@@ -42,6 +43,56 @@ interface ActiveProgramData {
     [key: string]: any;
 }
 
+// PF6: snapshot da home (stale-while-revalidate via lib/cache). O
+// `workoutCounts` do progresso semanal é um Map — serializado como entries
+// (JSON.stringify de Map viraria `{}` e quebraria os consumidores).
+type SerializedWeeklyProgress = Omit<WeeklyProgress, "workoutCounts"> & {
+    workoutCounts: [string, { expected: number; completed: number }][];
+};
+
+interface HomeSnapshot {
+    studentName: string;
+    studentId: string;
+    programId: string | null;
+    /** toDateKey da segunda-feira — progresso semanal só vale na MESMA semana. */
+    weekStartKey: string;
+    activeProgram:
+        | (Omit<ActiveProgramData, "weeklyProgressFull"> & {
+              weeklyProgressFull?: SerializedWeeklyProgress;
+          })
+        | null;
+}
+
+function toSnapshotProgram(data: ActiveProgramData | null): HomeSnapshot["activeProgram"] {
+    if (!data) return null;
+    const { weeklyProgressFull, ...rest } = data;
+    return {
+        ...rest,
+        weeklyProgressFull: weeklyProgressFull
+            ? {
+                  ...weeklyProgressFull,
+                  workoutCounts: Array.from(weeklyProgressFull.workoutCounts.entries()),
+              }
+            : undefined,
+    };
+}
+
+function fromSnapshotProgram(snap: HomeSnapshot["activeProgram"]): ActiveProgramData | null {
+    if (!snap) return null;
+    const { weeklyProgressFull, ...rest } = snap;
+    // Cast: Omit sobre tipo com index signature degrada o spread pra
+    // `{[x:string]: any}` e o TS perde as chaves obrigatórias.
+    return {
+        ...rest,
+        weeklyProgressFull: weeklyProgressFull
+            ? {
+                  ...weeklyProgressFull,
+                  workoutCounts: new Map(weeklyProgressFull.workoutCounts),
+              }
+            : undefined,
+    } as ActiveProgramData;
+}
+
 export function useActiveProgram() {
     const { user } = useAuth();
     const [data, setData] = useState<ActiveProgramData | null>(null);
@@ -59,6 +110,27 @@ export function useActiveProgram() {
     // Keep programId and studentId in refs for fetch callbacks
     const programIdRef = useRef<string | null>(null);
     const studentIdRef = useRef<string | null>(null);
+
+    // PF6: hidrata o último snapshot da MESMA semana pra render instantâneo —
+    // a home é a tela mais aberta do app e o cold start esperava ~4 roundtrips
+    // seriais até us-west-2 atrás de um skeleton. O fetch revalida em seguida.
+    const hydratedRef = useRef(false);
+    useEffect(() => {
+        if (hydratedRef.current || !user) return;
+        hydratedRef.current = true;
+        const snap = getCached<HomeSnapshot>(`active-program:${user.id}`);
+        if (!snap) return;
+        const currentWeekKey = toDateKey(getWeekRange(new Date()).start);
+        // Progresso semanal é escopado à semana — snapshot de outra semana
+        // mostraria números errados por alguns segundos.
+        if (snap.data.weekStartKey !== currentWeekKey) return;
+        setStudentName(snap.data.studentName);
+        setStudentId(snap.data.studentId);
+        studentIdRef.current = snap.data.studentId;
+        programIdRef.current = snap.data.programId;
+        setData(fromSnapshotProgram(snap.data.activeProgram));
+        setIsLoading(false);
+    }, [user]);
 
     /**
      * Merge fetched sessions into the cache for a specific date range.
@@ -197,23 +269,45 @@ export function useActiveProgram() {
 
             if (programError) throw programError;
 
+            const weekRange = getWeekRange(new Date());
+
             let programData: any = null;
+            let sessions: WorkoutSession[] = [];
 
             if (program) {
                 programIdRef.current = program.id;
 
-                // 2. Get Workouts with Items for count
-                const { data: workouts, error: workoutsError }: { data: any; error: any } = await supabase
-                    .from("assigned_workouts" as any)
-                    .select("*, items:assigned_workout_items(id)")
-                    .eq("assigned_program_id", program.id)
-                    .order("order_index");
+                // 2+3 em PARALELO (PF6): workouts e sessões da semana dependem
+                // ambos só de program.id — em série eram 2 roundtrips seriais
+                // até us-west-2 no cold start da tela mais aberta do app.
+                // Sessions: started_at OU completed_at na semana (pega sessão
+                // iniciada na semana anterior e concluída nesta).
+                const wkStart = weekRange.start.toISOString();
+                const wkEnd = weekRange.end.toISOString();
 
-                if (workoutsError) throw workoutsError;
+                const [workoutsRes, sessionsRes]: [{ data: any; error: any }, { data: any; error: any }] = await Promise.all([
+                    supabase
+                        .from("assigned_workouts" as any)
+                        .select("*, items:assigned_workout_items(id)")
+                        .eq("assigned_program_id", program.id)
+                        .order("order_index"),
+                    supabase
+                        .from("workout_sessions" as any)
+                        .select("id, assigned_workout_id, started_at, completed_at, status")
+                        .eq("assigned_program_id", program.id)
+                        .or(`and(started_at.gte.${wkStart},started_at.lte.${wkEnd}),and(completed_at.gte.${wkStart},completed_at.lte.${wkEnd})`)
+                        .order("started_at", { ascending: false }),
+                ]);
+
+                if (workoutsRes.error) throw workoutsRes.error;
+                if (sessionsRes.error) {
+                    console.error("[useActiveProgram] Error fetching sessions:", __DEV__ ? sessionsRes.error : '');
+                }
+                sessions = (sessionsRes.data as WorkoutSession[]) || [];
 
                 programData = {
                     ...program,
-                    workouts: (workouts || []).sort(
+                    workouts: ((workoutsRes.data as AssignedWorkout[]) || []).sort(
                         (a: AssignedWorkout, b: AssignedWorkout) => a.order_index - b.order_index,
                     ),
                 };
@@ -222,27 +316,6 @@ export function useActiveProgram() {
             }
 
             if (programData) {
-                // 3. Fetch sessions for the current week
-                const weekRange = getWeekRange(new Date());
-
-                // Fetch sessions where started_at OR completed_at falls within the week
-                // This catches sessions started in a previous week but completed in this one
-                const wkStart = weekRange.start.toISOString();
-                const wkEnd = weekRange.end.toISOString();
-
-                const { data: sessionsData, error: sessionsError }: { data: any; error: any } = await supabase
-                    .from("workout_sessions" as any)
-                    .select("id, assigned_workout_id, started_at, completed_at, status")
-                    .eq("assigned_program_id", programData.id)
-                    .or(`and(started_at.gte.${wkStart},started_at.lte.${wkEnd}),and(completed_at.gte.${wkStart},completed_at.lte.${wkEnd})`)
-                    .order("started_at", { ascending: false });
-
-                if (sessionsError) {
-                    console.error("[useActiveProgram] Error fetching sessions:", __DEV__ ? sessionsError : '');
-                }
-
-                const sessions: WorkoutSession[] = sessionsData || [];
-
                 // Merge current-week sessions into cache (preserves past weeks)
                 mergeSessionsForRange(sessions, weekRange.start, weekRange.end);
 
@@ -267,9 +340,26 @@ export function useActiveProgram() {
                 };
 
                 setData(formattedData);
+
+                // PF6: snapshot pro render instantâneo do próximo cold start.
+                setCache<HomeSnapshot>(`active-program:${user.id}`, {
+                    studentName: student.name || "",
+                    studentId: student.id,
+                    programId: programData.id,
+                    weekStartKey: toDateKey(weekRange.start),
+                    activeProgram: toSnapshotProgram(formattedData),
+                });
             } else {
                 setData(null);
                 setSessionsMap(new Map());
+                // Snapshot também no caso sem programa (empty state instantâneo).
+                setCache<HomeSnapshot>(`active-program:${user.id}`, {
+                    studentName: student.name || "",
+                    studentId: student.id,
+                    programId: null,
+                    weekStartKey: toDateKey(weekRange.start),
+                    activeProgram: null,
+                });
             }
         } catch (err: any) {
             if (__DEV__) console.error("[useActiveProgram] Error:", err);

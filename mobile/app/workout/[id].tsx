@@ -59,6 +59,25 @@ type RenderItem =
     | { type: 'section_header'; label: string; orderIndex: number }
     | { type: 'warmup_cardio'; exercise: ExerciseData; orderIndex: number };
 
+// PF1: o tick de 1s do cronômetro vive AQUI — re-renderiza só este Text.
+// No hook, um setInterval com setState re-renderizava a tela inteira (e todos
+// os cards de exercício) a cada segundo durante o treino todo.
+function TickingDuration({
+    getDuration,
+    style,
+}: {
+    getDuration: () => string;
+    style: React.ComponentProps<typeof Text>['style'];
+}) {
+    const [label, setLabel] = React.useState(() => getDuration());
+    useEffect(() => {
+        setLabel(getDuration());
+        const interval = setInterval(() => setLabel(getDuration()), 1000);
+        return () => clearInterval(interval);
+    }, [getDuration]);
+    return <Text style={style}>{label}</Text>;
+}
+
 const FUNCTION_LABELS: Record<string, string> = {
     warmup: 'AQUECIMENTO',
     activation: 'ATIVAÇÃO',
@@ -154,7 +173,7 @@ export default function WorkoutPlayerScreen() {
         workoutName,
         exercises,
         workoutNotes,
-        duration,
+        getDuration,
         handleSetChange,
         handleToggleSetComplete,
         applyWatchSetCompletion,
@@ -779,7 +798,7 @@ export default function WorkoutPlayerScreen() {
 
                 setSuccessData({
                     workoutName: workoutName,
-                    duration: duration,
+                    duration: getDuration(),
                     exerciseCount: completedExercisesCount,
                     volume: totalVolume,
                     date: new Date().toLocaleDateString('pt-BR'),
@@ -806,7 +825,7 @@ export default function WorkoutPlayerScreen() {
 
                 // Set celebration data (summary for the celebration screen)
                 setCelebrationData({
-                    duration,
+                    duration: getDuration(),
                     completedSets,
                     totalSets,
                     totalVolume,
@@ -1007,13 +1026,18 @@ export default function WorkoutPlayerScreen() {
     // A transição (spring de altura+opacidade) vive no próprio ExecutionExerciseCard
     // via Reanimated — reage à troca da prop `expanded`.
     const expandedKey = focusKey && listMeta.has(focusKey) ? focusKey : currentKey;
-    const focusExercise = (key: string) => {
+    // PF1: identidade estável (lê listMeta via ref) — passada direto ao
+    // ExecutionExerciseCard memoizado; uma arrow inline por item quebrava o
+    // memo de TODOS os cards a cada render da tela.
+    const listMetaRef = useRef(listMeta);
+    useEffect(() => { listMetaRef.current = listMeta; }, [listMeta]);
+    const focusExercise = useCallback((key: string) => {
         // Semeia o "done anterior" com o estado atual: abrir um já-concluído para
         // revisar não deve recolher na hora (o efeito abaixo só avança quando o
         // exercício focado ACABA de ser concluído).
-        prevFocusDoneRef.current = listMeta.get(key)?.done ?? false;
+        prevFocusDoneRef.current = listMetaRef.current.get(key)?.done ?? false;
         setFocusKey(key);
-    };
+    }, []);
     React.useEffect(() => {
         if (!focusKey) { prevFocusDoneRef.current = false; return; }
         const isDone = listMeta.get(focusKey)?.done ?? false;
@@ -1089,7 +1113,10 @@ export default function WorkoutPlayerScreen() {
                         </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={{ color: colors.text.primary, fontWeight: '800', fontSize: 18, fontVariant: ['tabular-nums'] }}>{duration}</Text>
+                        <TickingDuration
+                            getDuration={getDuration}
+                            style={{ color: colors.text.primary, fontWeight: '800', fontSize: 18, fontVariant: ['tabular-nums'] }}
+                        />
                         <Text style={{ color: colors.text.tertiary, fontSize: 10 }}>tempo</Text>
                     </View>
                 </View>
@@ -1347,7 +1374,7 @@ export default function WorkoutPlayerScreen() {
                                     status={status}
                                     isFocused={isFocused}
                                     expanded={isFocused}
-                                    onToggleExpand={() => focusExercise(item.exercise.id)}
+                                    onToggleExpand={focusExercise}
                                     globalIndex={item.globalIndex}
                                     onSetChangeGlobal={onSetChangeStable}
                                     onToggleSetCompleteGlobal={onToggleSetCompleteStable}
@@ -1458,7 +1485,7 @@ export default function WorkoutPlayerScreen() {
                 onClose={() => setIsFeedbackVisible(false)}
                 onConfirm={handleConfirmFinish}
                 summary={{
-                    duration,
+                    duration: getDuration(),
                     exerciseCount: exercises.filter(ex => ex.setsData.some(s => s.completed)).length || exercises.length,
                     completedSets,
                     totalSets,
