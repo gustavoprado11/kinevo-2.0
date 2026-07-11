@@ -89,16 +89,9 @@ export default function VerifyEmailScreen() {
             return;
         }
 
-        // 2. Atualizar e-mail na tabela students (manter consistência).
-        // M3: via RPC — students não tem policy de UPDATE pro aluno (o .update
-        // direto falhava em silêncio).
-        const { error: dbError } = await supabase
-            .rpc("update_student_self_email" as any, { p_email: trimmed });
-
-        if (dbError) {
-            if (__DEV__) console.error("[VerifyEmail] Erro ao atualizar students:", dbError.message);
-            // Não bloqueia o fluxo - auth email é a fonte de verdade
-        }
+        // 2. students.email é sincronizado em enter-code.tsx SÓ depois do OTP
+        // confirmado — gravar aqui deixava students ≠ auth pra sempre quando o
+        // código nunca era confirmado (typo, e-mail de terceiro, abandono).
 
         setLoading(false);
 

@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Loader2, TimerOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { translateAuthError } from '@/lib/translate-auth-error'
+import { updatePasswordSecure } from '@/actions/auth/update-password'
 import { AuthLayout } from '@/components/auth/auth-layout'
+
+/** Estado do link de recovery: validando → utilizável | inválido/expirado. */
+type LinkState = 'checking' | 'ready' | 'invalid'
 
 export default function UpdatePasswordPage() {
     const [password, setPassword] = useState('')
@@ -13,14 +16,57 @@ export default function UpdatePasswordPage() {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [linkState, setLinkState] = useState<LinkState>('checking')
+
+    // AC1: valida o link NA CHEGADA. Antes, a página assumia sessão de
+    // recovery presente e o usuário só descobria o link expirado/aberto em
+    // outro dispositivo (PKCE sem code_verifier) no submit, com erro genérico.
+    useEffect(() => {
+        const supabase = createClient()
+
+        // Supabase devolve erros de link no hash (#error=...&error_code=otp_expired)
+        // ou na query, dependendo do fluxo.
+        const url = new URL(window.location.href)
+        const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''))
+        const errParam = url.searchParams.get('error') ?? hashParams.get('error')
+        if (errParam) {
+            setLinkState('invalid')
+            return
+        }
+
+        let decided = false
+        const decide = (hasSession: boolean) => {
+            if (decided) return
+            decided = true
+            setLinkState(hasSession ? 'ready' : 'invalid')
+        }
+
+        // O exchange do ?code= roda async no client — escuta o evento e dá
+        // uma margem antes de declarar o link inválido.
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session) decide(true)
+        })
+        supabase.auth.getSession().then(({ data }) => {
+            if (data.session) decide(true)
+        })
+        const fallback = setTimeout(() => {
+            supabase.auth.getSession().then(({ data }) => decide(!!data.session))
+        }, 2500)
+
+        return () => {
+            sub.subscription.unsubscribe()
+            clearTimeout(fallback)
+        }
+    }, [])
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
         setSuccess(false)
 
-        if (password.length < 6) {
-            setError('A senha deve ter pelo menos 6 caracteres.')
+        // AC4: política alinhada com o signup (8+; HIBP roda na action).
+        if (password.length < 8) {
+            setError('A senha deve ter pelo menos 8 caracteres.')
             return
         }
 
@@ -30,14 +76,11 @@ export default function UpdatePasswordPage() {
         }
 
         setLoading(true)
-        const supabase = createClient()
 
-        const { error } = await supabase.auth.updateUser({
-            password: password
-        })
+        const result = await updatePasswordSecure(password)
 
-        if (error) {
-            setError(translateAuthError(error.message))
+        if (!result.success) {
+            setError(result.error ?? 'Não foi possível salvar a nova senha.')
             setLoading(false)
             return
         }
@@ -47,6 +90,7 @@ export default function UpdatePasswordPage() {
         setLoading(false)
 
         // Clear session so they have to login with new credentials (optional but secure)
+        const supabase = createClient()
         await supabase.auth.signOut()
     }
 
@@ -65,7 +109,34 @@ export default function UpdatePasswordPage() {
                     </p>
                 </div>
 
-                {success ? (
+                {linkState === 'checking' && !success ? (
+                    <div className="py-10 flex flex-col items-center justify-center gap-3 text-slate-500">
+                        <Loader2 size={22} className="animate-spin text-violet-500" />
+                        <p className="text-sm">Validando seu link de redefinição…</p>
+                    </div>
+                ) : linkState === 'invalid' && !success ? (
+                    <div className="space-y-6">
+                        <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex flex-col items-center justify-center text-center gap-3">
+                            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mb-2">
+                                <TimerOff size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-amber-800">Link inválido ou expirado</h3>
+                                <p className="text-amber-700 text-sm mt-1 leading-relaxed">
+                                    Links de redefinição valem por pouco tempo e funcionam
+                                    apenas no navegador em que foram abertos. Peça um novo
+                                    link e abra-o neste mesmo dispositivo.
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            href="/auth/forgot-password"
+                            className="w-full py-3 px-4 flex justify-center bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-500/15"
+                        >
+                            Pedir novo link
+                        </Link>
+                    </div>
+                ) : success ? (
                     <div className="space-y-6">
                         <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl flex flex-col items-center justify-center text-center gap-3">
                             <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-2">
@@ -103,9 +174,9 @@ export default function UpdatePasswordPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                minLength={6}
+                                minLength={8}
                                 className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
-                                placeholder="Mínimo 6 caracteres"
+                                placeholder="Mínimo 8 caracteres"
                             />
                         </div>
 
@@ -119,7 +190,7 @@ export default function UpdatePasswordPage() {
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
-                                minLength={6}
+                                minLength={8}
                                 className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
                                 placeholder="Repita a senha"
                             />

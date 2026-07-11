@@ -77,6 +77,17 @@ export default function EnterCodeScreen() {
                 return;
             }
 
+            if (otpType === "email_change") {
+                // Sincroniza students.email SÓ com o novo e-mail confirmado.
+                // M3: via RPC — students não tem policy de UPDATE pro aluno.
+                // Falha não bloqueia: auth é a fonte de verdade.
+                const { error: dbError } = await supabase
+                    .rpc("update_student_self_email" as any, { p_email: email! });
+                if (dbError && __DEV__) {
+                    console.error("[EnterCode] Erro ao sincronizar students:", dbError.message);
+                }
+            }
+
             if (__DEV__) console.log("[EnterCode] E-mail verificado com sucesso!");
             router.replace("/");
         },
