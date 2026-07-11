@@ -348,12 +348,15 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .eq('trainer_id', trainerId)
             .eq('status', 'active'),
 
-        // 14. Exceptions pros próximos 90 dias (janela que o helper de projeção consulta)
+        // 14. Exceptions pros próximos 90 dias (janela que o helper de projeção consulta).
+        // AG1: também por new_date — remarcação "ontem → amanhã" tem
+        // occurrence_date no passado mas aterrissa na janela; sem a segunda
+        // condição ela nunca chega à projeção e some do widget.
         supabaseAdmin
             .from('appointment_exceptions')
             .select('*')
             .eq('trainer_id', trainerId)
-            .gte('occurrence_date', brDateStr),
+            .or(`occurrence_date.gte.${brDateStr},new_date.gte.${brDateStr}`),
     ])
 
     const students = studentsResult.data ?? []

@@ -47,15 +47,21 @@ function addDaysUTC(d: Date, days: number): Date {
     return r
 }
 
-function addMonthsUTC(d: Date, months: number): Date {
-    const r = new Date(d)
-    const targetMonth = r.getUTCMonth() + months
-    r.setUTCMonth(targetMonth)
-    // Se a data alvo não existir (ex: 31 jan + 1 mês = 28/29 fev), setUTCMonth
-    // rola pra frente. Normaliza pra último dia do mês anterior nesse caso.
-    // Simplicidade: manter comportamento padrão do JS (rolando). Monthly
-    // recurrence raramente cai em dia 29-31.
-    return r
+/**
+ * N-ésima ocorrência mensal a partir de `startsOn`: sempre re-ancorada no
+ * dia-do-mês original, CLAMPADA ao último dia do mês alvo (31/jan → 28/fev →
+ * 31/mar…).
+ *
+ * CS6: a versão anterior acumulava `setUTCMonth` deixando o JS ROLAR
+ * (31/jan + 1 mês = 03/mar) e iterava sobre a data rolada — a regra derivava
+ * PERMANENTEMENTE pro dia 3.
+ */
+function monthlyOccurrenceUTC(startsOn: Date, monthIndex: number): Date {
+    const y = startsOn.getUTCFullYear()
+    const m = startsOn.getUTCMonth() + monthIndex
+    const anchorDay = startsOn.getUTCDate()
+    const lastDayOfTarget = new Date(Date.UTC(y, m + 1, 0)).getUTCDate()
+    return new Date(Date.UTC(y, m, Math.min(anchorDay, lastDayOfTarget)))
 }
 
 /** Normalize "HH:MM:SS" → "HH:MM". */
@@ -94,6 +100,13 @@ export function expandAppointments(
     }
 
     const out: AppointmentOccurrence[] = []
+    // Chave (regra::data-efetiva::hora-efetiva) de tudo que já foi emitido —
+    // o resgate de remarcadas abaixo usa isto pra nunca duplicar.
+    const emitted = new Set<string>()
+    const emit = (occ: AppointmentOccurrence) => {
+        emitted.add(`${occ.recurringAppointmentId}::${occ.date}::${occ.startTime}`)
+        out.push(occ)
+    }
 
     for (const rule of recurring) {
         if (rule.status !== 'active') continue
@@ -104,7 +117,7 @@ export function expandAppointments(
             const exc = exceptionsByKey.get(`${rule.id}::${originalKey}`)
 
             if (!exc) {
-                out.push(buildOccurrence(rule, originalKey, null))
+                emit(buildOccurrence(rule, originalKey, null))
                 continue
             }
 
@@ -120,13 +133,49 @@ export function expandAppointments(
                 ) {
                     continue
                 }
-                out.push(buildOccurrence(rule, originalKey, exc))
+                emit(buildOccurrence(rule, originalKey, exc))
                 continue
             }
 
             // completed | no_show: keep at original slot with computed status
-            out.push(buildOccurrence(rule, originalKey, exc))
+            emit(buildOccurrence(rule, originalKey, exc))
         }
+    }
+
+    // AG1: o loop acima itera as datas ORIGINAIS dentro do range — uma exceção
+    // `rescheduled` cuja data original está FORA do range (ex.: "remarcar pra
+    // semana que vem") nunca era visitada, e o atendimento sumia de TODAS as
+    // visões semanais. Este passe materializa as remarcadas que ATERRISSAM
+    // (new_date) dentro do range.
+    const rulesById = new Map(recurring.map((r) => [r.id, r]))
+    for (const exc of exceptions) {
+        if (exc.kind !== 'rescheduled' || !exc.new_date) continue
+
+        const landing = parseDateKey(exc.new_date)
+        if (
+            landing.getTime() < start.getTime() ||
+            landing.getTime() > end.getTime()
+        ) {
+            continue
+        }
+
+        const rule = rulesById.get(exc.recurring_appointment_id)
+        if (!rule || rule.status !== 'active') continue
+
+        // A data original precisa ser uma ocorrência que a regra realmente
+        // gera (guarda contra exceções órfãs — ex.: regra `once` cujo
+        // starts_on já foi movido, ou ends_on anterior à data original).
+        const originalDay = parseDateKey(exc.occurrence_date)
+        if (iterateValidDates(rule, originalDay, originalDay).length === 0) {
+            continue
+        }
+
+        const occ = buildOccurrence(rule, exc.occurrence_date, exc)
+        const key = `${occ.recurringAppointmentId}::${occ.date}::${occ.startTime}`
+        // Original dentro do range (já emitida pelo loop principal) ou colisão
+        // exata com ocorrência natural da regra — não duplica.
+        if (emitted.has(key)) continue
+        emit(occ)
     }
 
     out.sort((a, b) => {
@@ -244,16 +293,20 @@ export function iterateValidDates(
     }
 
     if (rule.frequency === 'monthly') {
-        // Monthly: same calendar day-of-month as starts_on. day_of_week is
-        // ignored (the spec anchors on starts_on for monthly rules).
-        let cursor = new Date(startsOn)
+        // Monthly: same calendar day-of-month as starts_on (clampado ao fim do
+        // mês — ver monthlyOccurrenceUTC). day_of_week is ignored (the spec
+        // anchors on starts_on for monthly rules).
+        let monthIndex = 0
+        let cursor = monthlyOccurrenceUTC(startsOn, monthIndex)
         // Fast-forward cursor into the range
         while (cursor.getTime() < effStart.getTime()) {
-            cursor = addMonthsUTC(cursor, 1)
+            monthIndex++
+            cursor = monthlyOccurrenceUTC(startsOn, monthIndex)
         }
         while (cursor.getTime() <= effEnd.getTime()) {
             result.push(cursor)
-            cursor = addMonthsUTC(cursor, 1)
+            monthIndex++
+            cursor = monthlyOccurrenceUTC(startsOn, monthIndex)
         }
         return result
     }

@@ -394,6 +394,162 @@ describe('getOccurrencesForDay', () => {
 })
 
 // ---------------------------------------------------------------------------
+// expandAppointments — recorrência mensal em dia 29–31 (CS6)
+// ---------------------------------------------------------------------------
+
+describe('expandAppointments — mensal ancorada com clamp (CS6)', () => {
+    it('regra de dia 31 NÃO deriva: 31/jan → 28/fev → 31/mar → 30/abr', () => {
+        const rule = makeRule({ frequency: 'monthly', starts_on: '2026-01-31' })
+        const out = expandAppointments([rule], [], d('2026-01-01'), d('2026-04-30'))
+        expect(out.map((o) => o.date)).toEqual([
+            '2026-01-31',
+            '2026-02-28',
+            '2026-03-31',
+            '2026-04-30',
+        ])
+    })
+
+    it('ano bissexto clampa pra 29/fev', () => {
+        const rule = makeRule({ frequency: 'monthly', starts_on: '2028-01-31' })
+        const out = expandAppointments([rule], [], d('2028-02-01'), d('2028-02-29'))
+        expect(out.map((o) => o.date)).toEqual(['2028-02-29'])
+    })
+
+    it('dia ≤28 segue idêntico ao comportamento anterior', () => {
+        const rule = makeRule({ frequency: 'monthly', starts_on: '2026-01-15' })
+        const out = expandAppointments([rule], [], d('2026-01-01'), d('2026-03-31'))
+        expect(out.map((o) => o.date)).toEqual([
+            '2026-01-15',
+            '2026-02-15',
+            '2026-03-15',
+        ])
+    })
+})
+
+// ---------------------------------------------------------------------------
+// expandAppointments — remarcações vindas de FORA do range (AG1)
+// ---------------------------------------------------------------------------
+
+describe('expandAppointments — remarcada aterrissando de fora do range (AG1)', () => {
+    it('remarcar pra semana seguinte APARECE na semana de destino', () => {
+        // Terça 14/04 remarcada pra quarta 22/04 09:00 (semana seguinte).
+        const rule = makeRule()
+        const exc = makeException({
+            occurrence_date: '2026-04-14',
+            new_date: '2026-04-22',
+            new_start_time: '09:00',
+        })
+        // Semana de destino: 19–25/abr.
+        const out = expandAppointments([rule], [exc], d('2026-04-19'), d('2026-04-25'))
+
+        expect(out).toHaveLength(2)
+        // Ocorrência natural da semana (terça 21) intacta…
+        expect(out[0]).toMatchObject({
+            date: '2026-04-21',
+            startTime: '07:00',
+            status: 'scheduled',
+        })
+        // …e a remarcada materializada na data de aterrissagem.
+        expect(out[1]).toMatchObject({
+            date: '2026-04-22',
+            startTime: '09:00',
+            status: 'rescheduled',
+            originalDate: '2026-04-14',
+        })
+    })
+
+    it('continua SUMINDO da semana original (comportamento correto preservado)', () => {
+        const rule = makeRule()
+        const exc = makeException({
+            occurrence_date: '2026-04-14',
+            new_date: '2026-04-22',
+        })
+        const out = expandAppointments([rule], [exc], d('2026-04-12'), d('2026-04-18'))
+        expect(out).toHaveLength(0)
+    })
+
+    it('não duplica quando original e destino estão AMBOS no range', () => {
+        const rule = makeRule()
+        const exc = makeException({
+            occurrence_date: '2026-04-14',
+            new_date: '2026-04-15',
+        })
+        const out = expandAppointments([rule], [exc], d('2026-04-12'), d('2026-04-18'))
+        expect(out).toHaveLength(1)
+        expect(out[0]).toMatchObject({ date: '2026-04-15', status: 'rescheduled' })
+    })
+
+    it('colisão exata (mesma data e hora da ocorrência natural) não duplica', () => {
+        // 14/04 remarcada pra cima da terça 21/04 no MESMO horário da regra.
+        const rule = makeRule()
+        const exc = makeException({
+            occurrence_date: '2026-04-14',
+            new_date: '2026-04-21',
+            new_start_time: null,
+        })
+        const out = expandAppointments([rule], [exc], d('2026-04-19'), d('2026-04-25'))
+        expect(out).toHaveLength(1)
+        expect(out[0].date).toBe('2026-04-21')
+    })
+
+    it('mesma data da natural mas hora DIFERENTE → as duas aparecem', () => {
+        const rule = makeRule()
+        const exc = makeException({
+            occurrence_date: '2026-04-14',
+            new_date: '2026-04-21',
+            new_start_time: '09:00',
+        })
+        const out = expandAppointments([rule], [exc], d('2026-04-19'), d('2026-04-25'))
+        expect(out).toHaveLength(2)
+        expect(out.map((o) => `${o.date} ${o.startTime}`)).toEqual([
+            '2026-04-21 07:00',
+            '2026-04-21 09:00',
+        ])
+    })
+
+    it('exceção órfã (regra once já movida) NÃO materializa nem duplica', () => {
+        // Regra once com starts_on movido pra 22/04; exceção velha aponta
+        // occurrence_date=08/04 (que a regra não gera mais) → new_date=22/04.
+        const rule = makeRule({ frequency: 'once', starts_on: '2026-04-22' })
+        const exc = makeException({
+            occurrence_date: '2026-04-08',
+            new_date: '2026-04-22',
+        })
+        const out = expandAppointments([rule], [exc], d('2026-04-19'), d('2026-04-25'))
+        expect(out).toHaveLength(1)
+        expect(out[0]).toMatchObject({ date: '2026-04-22', status: 'scheduled' })
+    })
+
+    it('regra encerrada ANTES da data original não materializa a remarcada', () => {
+        const rule = makeRule({ ends_on: '2026-04-10' })
+        const exc = makeException({
+            occurrence_date: '2026-04-14',
+            new_date: '2026-04-22',
+        })
+        const out = expandAppointments([rule], [exc], d('2026-04-19'), d('2026-04-25'))
+        expect(out).toHaveLength(0)
+    })
+
+    it('getNextOccurrences enxerga a remarcada vinda de fora da janela imediata', () => {
+        const rule = makeRule({ ends_on: '2026-04-14' })
+        const exc = makeException({
+            occurrence_date: '2026-04-14',
+            new_date: '2026-04-22',
+            new_start_time: '09:00',
+        })
+        // A partir de 20/04: a regra já acabou (ends_on 14/04), mas a
+        // remarcada aterrissa em 22/04 e deve aparecer.
+        const out = getNextOccurrences([rule], [exc], d('2026-04-20'), 5)
+        expect(out).toHaveLength(1)
+        expect(out[0]).toMatchObject({
+            date: '2026-04-22',
+            startTime: '09:00',
+            status: 'rescheduled',
+        })
+    })
+})
+
+// ---------------------------------------------------------------------------
 // iterateValidDates (internal, exported como test seam)
 // ---------------------------------------------------------------------------
 
