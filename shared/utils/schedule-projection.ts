@@ -79,11 +79,57 @@ function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
 
-/** Strip time from a Date in a specific timezone, returning midnight for that calendar day. */
+/** Offset (ms) do `timeZone` em relação ao UTC no instante `d`.
+ *  Técnica padrão (date-fns-tz): wall-clock do instante no fuso, lida como
+ *  UTC, menos o próprio instante. Só usa campos básicos do Intl (Hermes ok). */
+function tzOffsetMs(d: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(d)
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? '0')
+  const wallAsUtc = Date.UTC(
+    get('year'),
+    get('month') - 1,
+    get('day'),
+    get('hour') % 24, // alguns engines formatam meia-noite como "24"
+    get('minute'),
+    get('second'),
+  )
+  return wallAsUtc - Math.floor(d.getTime() / 1000) * 1000
+}
+
+/** Strip time from a Date in a specific timezone, returning midnight for that calendar day.
+ *
+ *  CS5: a versão anterior fazia `new Date(dateKey + 'T00:00:00')` — meia-noite
+ *  no fuso do RUNTIME. Na Vercel (UTC), a "semana" do dashboard começava às
+ *  21h de domingo BRT e um treino de domingo à noite caía na semana seguinte
+ *  (divergindo do mobile, que roda em BRT). Agora ancoramos no offset REAL do
+ *  fuso pedido, com segunda passada pra dias de transição de DST. */
 function startOfDayTz(d: Date, timeZone: string): Date {
   const dateKey = d.toLocaleDateString('en-CA', { timeZone }) // YYYY-MM-DD
-  return new Date(dateKey + 'T00:00:00')
+  const [y, m, day] = dateKey.split('-').map(Number)
+  const wallMidnightUtc = Date.UTC(y, m - 1, day)
+  const guess = wallMidnightUtc - tzOffsetMs(d, timeZone)
+  // O offset à meia-noite pode diferir do offset em `d` (transição de DST).
+  const refined = wallMidnightUtc - tzOffsetMs(new Date(guess), timeZone)
+  return new Date(refined)
 }
+
+/** Dia da semana (0=dom..6=sáb) do instante `d` NO fuso pedido —
+ *  `getDay()` usa o fuso do runtime e erraria em runtimes distantes. */
+function dayOfWeekTz(d: Date, timeZone: string): number {
+  const name = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(d)
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(name.slice(0, 3))
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 /** Format date as YYYY-MM-DD (local time). */
 export function toDateKey(d: Date): string {
@@ -479,7 +525,18 @@ export function generateCalendarDays(
  *  A semana de treinos começa na segunda — alinhado com o banco
  *  (Postgres date_trunc('week') é ISO/segunda) e com getISOWeekRange. */
 export function getWeekRange(date: Date, timeZone?: string): DateRange {
-  const d = timeZone ? startOfDayTz(date, timeZone) : startOfDay(date)
+  if (timeZone) {
+    // CS5: aritmética pura em ms sobre a meia-noite ancorada no fuso — addDays/
+    // setHours operariam no fuso do RUNTIME e cortariam/esticariam a semana em
+    // servidores UTC. (America/Sao_Paulo não tem DST desde 2019; para fusos com
+    // DST a semana pode variar ±1h nas transições — aceitável pro domínio.)
+    const d = startOfDayTz(date, timeZone)
+    const mondayOffset = (dayOfWeekTz(d, timeZone) + 6) % 7 // dom=6, seg=0, ..., sáb=5
+    const start = new Date(d.getTime() - mondayOffset * DAY_MS) // Monday 00:00 no fuso
+    const end = new Date(start.getTime() + 7 * DAY_MS - 1) // Sunday 23:59:59.999 no fuso
+    return { start, end }
+  }
+  const d = startOfDay(date)
   const mondayOffset = (d.getDay() + 6) % 7 // dom=6, seg=0, ter=1, ..., sáb=5
   const start = addDays(d, -mondayOffset) // Monday 00:00
   const end = addDays(start, 6) // Sunday 00:00
@@ -492,13 +549,9 @@ export function getWeekRange(date: Date, timeZone?: string): DateRange {
  *  mantido por compatibilidade com o dashboard trainer e RPCs
  *  (get_trainer_stats / Postgres date_trunc('week'), migração 105). */
 export function getISOWeekRange(date: Date, timeZone?: string): DateRange {
-  const d = timeZone ? startOfDayTz(date, timeZone) : startOfDay(date)
-  // getDay(): 0=Sun..6=Sat. ISO weekday: 1=Mon..7=Sun → offset pra segunda anterior.
-  const isoOffset = (d.getDay() + 6) % 7 // dom=6, seg=0, ter=1, ..., sáb=5
-  const start = addDays(d, -isoOffset) // Monday 00:00
-  const end = addDays(start, 6) // Sunday 00:00
-  end.setHours(23, 59, 59, 999) // Sunday 23:59:59.999
-  return { start, end }
+  // Idêntico a getWeekRange (ambos segunda→domingo) — delega, inclusive o
+  // caminho timezone-aware corrigido do CS5.
+  return getWeekRange(date, timeZone)
 }
 
 /** Get the 1st–last day range for the month containing `date`. */
