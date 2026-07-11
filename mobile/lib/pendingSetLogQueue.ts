@@ -208,6 +208,12 @@ export async function drainPendingSetLogs(): Promise<{ flushed: number; remainin
     try {
         const now = Date.now();
         const entries = readQueue().filter((e) => {
+            // Ops TERMINAIS (finish/discard) nunca expiram: são idempotentes e
+            // guardadas por status='in_progress' no servidor (replay tardio é
+            // no-op seguro). Expirá-las descartava silenciosamente um treino
+            // finalizado offline >24h — o aluno via "concluído" e a sessão
+            // ficava órfã pra sempre. TTL continua valendo só p/ série solta.
+            if (e.op === 'finish_session' || e.op === 'discard_session') return true;
             const age = now - Date.parse(e.queuedAt);
             return Number.isFinite(age) && age <= MAX_AGE_MS;
         });
@@ -255,14 +261,20 @@ export async function drainPendingSetLogs(): Promise<{ flushed: number; remainin
                     unmarkSessionDiscarded(sid);
                 } else if (entry.op === 'finish_session' && entry.finish) {
                     // FIX D: drena a finalização durável do celular — completa a
-                    // sessão (só se ainda in_progress, p/ não ressuscitar/duplicar)
-                    // e re-upserta as séries (idempotente via onConflict).
+                    // sessão e re-upserta as séries (idempotente via onConflict).
+                    // Aceita in_progress OU abandoned: o cron server-side
+                    // (migração 243) marca abandoned sessões >48h; um finish
+                    // enfileirado offline que só drena depois disso RECUPERA a
+                    // sessão (abandoned→completed é legítimo). O descarte
+                    // intencional não corre risco: discardWorkout limpa a fila
+                    // desta sessão antes. 'completed' nunca é tocado (não
+                    // sobrescreve o que o Watch concluiu em paralelo).
                     const f = entry.finish;
                     const { error: updError } = await supabase
                         .from('workout_sessions' as any)
                         .update(f.session_update)
                         .eq('id', f.session_id)
-                        .eq('status', 'in_progress');
+                        .in('status', ['in_progress', 'abandoned']);
                     if (updError) { failed.push(entry); continue; }
                     if (f.set_logs.length > 0) {
                         const { error: logsError } = await supabase

@@ -33,6 +33,7 @@ const sb = vi.hoisted(() => {
         update(payload: unknown) { this.q.op = 'update'; this.q.payload = payload; return this; }
         delete() { this.q.op = 'delete'; return this; }
         eq(col: string, val: unknown) { this.q.filters.push([col, val]); return this; }
+        in(col: string, vals: unknown) { this.q.filters.push([col, vals]); return this; }
         then(onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) {
             const out = state.resolver(this.q) ?? { data: null, error: null };
             return Promise.resolve(out).then(onFulfilled, onRejected);
@@ -175,6 +176,25 @@ describe('pendingSetLogQueue', () => {
         expect(result).toEqual({ flushed: 0, remaining: 0 });
         expect(sb.state.recorded.filter((q) => q.op === 'upsert')).toHaveLength(0);
     });
+
+    it('finish_session NUNCA expira: drena mesmo >24h depois (auditoria 11/jul)', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-06-10T00:00:00Z'));
+        const sid = freshSession();
+        enqueueFinishSession({
+            session_id: sid,
+            session_update: { status: 'completed', completed_at: '2026-06-10T00:00:00Z' },
+            set_logs: [payloadFor(sid, 'item-1', 1)],
+        });
+
+        vi.setSystemTime(new Date('2026-06-13T00:00:00Z')); // 3 DIAS depois
+        sb.state.resolver = () => ({ data: null, error: null });
+        const result = await drainPendingSetLogs();
+        expect(result).toEqual({ flushed: 1, remaining: 0 });
+        const upds = sb.state.recorded.filter((q) => q.op === 'update' && q.table === 'workout_sessions');
+        expect(upds).toHaveLength(1);
+        expect(upds[0].payload).toMatchObject({ status: 'completed' });
+    });
 });
 
 // ── FIX C: registro de sessões descartadas ───────────────────────────────────
@@ -251,7 +271,7 @@ describe('drain de ops duráveis (FIX C/D)', () => {
         const upds = sb.state.recorded.filter((q) => q.op === 'update' && q.table === 'workout_sessions');
         expect(upds).toHaveLength(1);
         expect(upds[0].payload).toMatchObject({ status: 'completed', rpe: 8 });
-        expect(upds[0].filters).toEqual([['id', sid], ['status', 'in_progress']]);
+        expect(upds[0].filters).toEqual([['id', sid], ['status', ['in_progress', 'abandoned']]]);
 
         const ups = sb.state.recorded.filter((q) => q.op === 'upsert' && q.table === 'set_logs');
         expect(ups).toHaveLength(1);

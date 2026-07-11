@@ -505,8 +505,13 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     // C2: ao desmarcar uma série, remove o registro já persistido. Sem isto a
     // série "removida" continuava valendo no banco (inflando volume / PR falso).
     const deletePersistedSetLog = async (exercise: ExerciseData, setIndex: number) => {
-        const sid = sessionId;
-        if (!sid) return; // nada foi persistido ainda
+        // Lê do ref (o estado pode não ter propagado) e, se a criação da sessão
+        // ainda está em voo (o persistSetLog desta mesma série a disparou),
+        // espera por ela — senão marcar→desmarcar rápido logo no início retornava
+        // cedo e a linha fantasma is_completed=true sobrevivia ao finish.
+        let sid = sessionIdRef.current ?? sessionId;
+        if (!sid && createSessionPromiseRef.current) sid = await createSessionPromiseRef.current;
+        if (!sid) return; // nada foi nem está sendo persistido
         const deleteKey = {
             workout_session_id: sid,
             assigned_workout_item_id: exercise.id,
