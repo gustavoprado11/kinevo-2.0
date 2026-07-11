@@ -383,7 +383,10 @@ async function detectLoadStagnation(trainerId: string, today: string): Promise<I
         insights.push({
             trainer_id: trainerId,
             student_id: entry.studentId,
-            category: 'progression',
+            // 'alert': estagnação é problema, não progresso. Era 'progression'
+            // (pintava tag verde "Pronto p/ evoluir" na home/painel/mobile); o
+            // upsert por key corrige as linhas existentes no próximo run.
+            category: 'alert',
             priority: 'medium',
             title: `${studentName} — ${exerciseName} estagnado há ${weeksAtTop} semanas`,
             body: `Carga máxima de ${topWeight}kg sem alteração há ${weeksAtTop} semanas. Considere variar o estímulo ou ajustar a progressão.`,

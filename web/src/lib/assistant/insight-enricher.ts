@@ -186,7 +186,8 @@ export async function enrichInsightsWithLLM(
                 await upsertInsightByKey(supabaseAdmin, {
                     trainerId,
                     studentId: replacedInsight.student_id,
-                    category: 'progression',
+                    // 'alert' como no detector: estagnação não é progressão (tag).
+                    category: 'alert',
                     priority: 'medium',
                     insightKeyPrefix: `stagnation_summary:${replacedInsight.student_id}`,
                     insightKey: `stagnation_summary:${replacedInsight.student_id}:${today}`,
