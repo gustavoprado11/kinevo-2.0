@@ -279,6 +279,11 @@ export async function sendMessage(
 
     if (insertError || !msg) {
         console.error('[sendMessage] Insert error:', insertError)
+        // A imagem já subiu mas a mensagem não existe — remove o objeto órfão
+        // (o retry gera outro nome e deixaria lixo acumulando no bucket).
+        if (imagePath) {
+            await auth.supabase.storage.from('messages').remove([imagePath]).catch(() => {})
+        }
         return { success: false, error: 'Erro ao enviar mensagem.' }
     }
 

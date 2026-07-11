@@ -194,6 +194,9 @@ export function useTrainerChat() {
 
         if (error) {
             if (__DEV__) console.error('[useTrainerChat] sendImageMessage error:', error);
+            // Upload passou mas a mensagem falhou — remove o objeto órfão (o
+            // retry gera outro nome e o bucket acumularia lixo sem dono).
+            supabase.storage.from('messages').remove([fileName]).catch(() => {});
             return null;
         }
 

@@ -196,7 +196,11 @@ export function FormRenderer(props: FormRendererProps) {
                 const hasValue =
                     a.value !== undefined && a.value !== "" && a.value !== null;
                 const hasValues = Array.isArray(a.values) && a.values.length > 0;
-                if (!hasValue && !hasValues) {
+                // Foto responde com { files: [...] } (contrato da RPC) — sem este
+                // check, pergunta de foto OBRIGATÓRIA nunca passava da validação
+                // local mesmo com a foto anexada.
+                const hasFiles = Array.isArray(a.files) && a.files.length > 0;
+                if (!hasValue && !hasValues && !hasFiles) {
                     Alert.alert("Campo obrigatório", q.label);
                     return;
                 }

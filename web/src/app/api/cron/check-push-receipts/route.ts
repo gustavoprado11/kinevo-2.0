@@ -102,7 +102,7 @@ export async function GET(request: Request) {
 }
 
 async function cleanupOldTickets() {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 1000).toISOString()
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     await supabaseAdmin
         .from('push_tickets')
         .delete()
