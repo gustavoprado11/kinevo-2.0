@@ -437,7 +437,7 @@ function NotificationsTab() {
                 <EmptyState label="Nenhum item concluído ainda" />
             ) : (
                 completedItems.map((item, index) => (
-                    <SwipeableInboxCard key={item.id} item={item} onPress={handleOpenItem} index={index + pendingItems.length} showSwipe={true} />
+                    <SwipeableInboxCard key={item.id} item={item} onPress={handleOpenItem} index={index + pendingItems.length} showSwipe={false} />
                 ))
             )}
         </ScrollView>
