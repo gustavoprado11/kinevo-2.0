@@ -5,6 +5,9 @@ import { AsaasApiError } from '@/lib/asaas'
 import { getDecryptedApiKey, WalletAuthError } from '@/lib/asaas/wallet-service'
 import { reconcilePaymentLinkContract } from '@/lib/asaas/charge-reconcile'
 import { ensureSubaccountWebhook } from '@/lib/asaas/webhook-setup'
+import { logContractEvent } from '@/lib/contract-events'
+import { insertTrainerNotification } from '@/lib/trainer-notifications'
+import { sendTrainerPush } from '@/lib/push-notifications'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -105,6 +108,118 @@ export async function GET(request: Request) {
         }
     }
 
+    // 1b. FIN4 (auditoria 11/jul): RENOVAÇÃO PERDIDA — contrato Asaas ATIVO com
+    //     current_period_end vencido há mais de 1 dia (folga p/ latência de
+    //     webhook). O reconcile recupera ciclo novo pago cujo webhook se perdeu
+    //     (avança o período — P8); se o período CONTINUAR vencido depois, não há
+    //     pagamento novo no gateway → past_due (entra na carência do gate da
+    //     migração 242 e no bloqueio do cron 241). Antes, um PAYMENT_OVERDUE
+    //     perdido deixava o contrato ativo PARA SEMPRE (classe do incidente de
+    //     abril/2026 — webhook desabilitado por 9 dias).
+    const overdueBuffer = new Date(now - 24 * 60 * 60 * 1000).toISOString()
+    let renewalsRecovered = 0
+    let markedPastDue = 0
+
+    const { data: expiredActive } = await supabaseAdmin
+        .from('student_contracts')
+        .select('id, trainer_id, student_id, current_period_end')
+        .eq('status', 'active')
+        .like('billing_type', 'asaas%')
+        .not('asaas_payment_link_id', 'is', null)
+        .not('current_period_end', 'is', null)
+        .lt('current_period_end', overdueBuffer)
+        .order('current_period_end', { ascending: true })
+        .limit(20)
+
+    const expiredByTrainer = new Map<string, { id: string; student_id: string | null }[]>()
+    for (const c of expiredActive ?? []) {
+        const list = expiredByTrainer.get(c.trainer_id) ?? []
+        list.push({ id: c.id, student_id: c.student_id })
+        expiredByTrainer.set(c.trainer_id, list)
+    }
+
+    for (const [trainerId, contracts] of expiredByTrainer) {
+        let apiKey: string
+        try {
+            apiKey = await getDecryptedApiKey(trainerId)
+        } catch (err) {
+            if (!(err instanceof WalletAuthError)) {
+                console.error('[cron:reconcile-asaas] key error (renewal sweep) trainer', trainerId, err)
+            }
+            continue
+        }
+
+        for (const contract of contracts) {
+            try {
+                await reconcilePaymentLinkContract({ contractId: contract.id, trainerId, apiKey, via: 'cron' })
+
+                // Re-lê: o reconcile avança current_period_end quando encontra
+                // ciclo novo pago no gateway (webhook perdido → recuperado).
+                const { data: fresh } = await supabaseAdmin
+                    .from('student_contracts')
+                    .select('status, current_period_end, student_id')
+                    .eq('id', contract.id)
+                    .maybeSingle()
+                if (!fresh || fresh.status !== 'active') continue
+                if (fresh.current_period_end && fresh.current_period_end >= overdueBuffer) {
+                    renewalsRecovered++
+                    console.log(`[cron:reconcile-asaas] renovação recuperada do gateway: contract=${contract.id}`)
+                    continue
+                }
+
+                // Sem pagamento novo → past_due (guardado por status; o webhook
+                // PAYMENT_OVERDUE, se chegar depois, encontra o estado já certo).
+                const { data: transitioned } = await supabaseAdmin
+                    .from('student_contracts')
+                    .update({ status: 'past_due' })
+                    .eq('id', contract.id)
+                    .eq('status', 'active')
+                    .select('id')
+                if (!transitioned?.length) continue
+                markedPastDue++
+
+                if (fresh.student_id) {
+                    await logContractEvent({
+                        studentId: fresh.student_id,
+                        trainerId,
+                        contractId: contract.id,
+                        eventType: 'contract_overdue',
+                        metadata: { via: 'cron', reason: 'renewal_missing', periodEnd: fresh.current_period_end },
+                    })
+
+                    const { data: student } = await supabaseAdmin
+                        .from('students')
+                        .select('name')
+                        .eq('id', fresh.student_id)
+                        .single()
+                    const studentName = student?.name ?? 'Aluno'
+                    const notifId = await insertTrainerNotification({
+                        trainerId,
+                        type: 'financial_alert',
+                        title: 'Renovação Asaas vencida',
+                        message: `A renovação de ${studentName} venceu e não há pagamento novo na Asaas. O contrato ficou inadimplente.`,
+                        metadata: { student_id: fresh.student_id, contract_id: contract.id, period_end: fresh.current_period_end },
+                    })
+                    sendTrainerPush({
+                        trainerId,
+                        type: 'payment_overdue',
+                        title: 'Renovação Asaas vencida',
+                        body: `${studentName} está com a renovação vencida.`,
+                        notificationId: notifId ?? undefined,
+                        data: { type: 'payment_overdue', student_id: fresh.student_id, contract_id: contract.id },
+                    })
+                }
+            } catch (err) {
+                failures++
+                if (err instanceof AsaasApiError) {
+                    console.error(`[cron:reconcile-asaas] renewal sweep Asaas error contract=${contract.id}:`, err.status, err.body)
+                } else {
+                    console.error(`[cron:reconcile-asaas] renewal sweep error contract=${contract.id}:`, err)
+                }
+            }
+        }
+    }
+
     // 2. Saúde dos webhooks das subcontas aprovadas (self-heal se sumiu;
     //    drift vira log de erro — visível nos runtime errors do Vercel).
     const needsRepair: string[] = []
@@ -138,13 +253,15 @@ export async function GET(request: Request) {
     }
 
     console.log(
-        `[cron:reconcile-asaas] scanned=${candidates?.length ?? 0} synced=${synced} pending=${stillPending} failures=${failures} webhooks=${webhooksChecked} needsRepair=${needsRepair.length}`,
+        `[cron:reconcile-asaas] scanned=${candidates?.length ?? 0} synced=${synced} pending=${stillPending} renewalsRecovered=${renewalsRecovered} markedPastDue=${markedPastDue} failures=${failures} webhooks=${webhooksChecked} needsRepair=${needsRepair.length}`,
     )
 
     return NextResponse.json({
         scanned: candidates?.length ?? 0,
         synced,
         stillPending,
+        renewalsRecovered,
+        markedPastDue,
         failures,
         webhooksChecked,
         needsRepair,
