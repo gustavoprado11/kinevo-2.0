@@ -240,6 +240,25 @@ shared **330 passed** (42/42 na projeção).
   246** (aplicada em prod, validada ao vivo) aponta o filtro para `inactive` e
   a UI diz "Mostrar inativos"/"Inativo".
 
+## 13. EXECUÇÃO — backlog MÉDIO/BAIXO (12/jul, tarde)
+
+24 achados dos §2–§6 aplicados em 5 lotes (evitando deliberadamente os
+arquivos do financeiro em edição por outra sessão — CS10 e FIN* ficaram lá):
+
+- **Lote A (conta/web)**: AC3 signOut escopado (só PGRST116 desloga; transitório lança), AC6 /checkout-bridge no middleware, AC8 erros de e-mail em PT, AC9 checkout reusa customer Stripe (fim dos órfãos), AC11 cap no client_name do DCR, AC12 SVG fora do branding. + remoção de 2 arquivos mortos (AG11/CS12).
+- **Lote B (agenda/web)**: AG4 dia-de-hoje em SP nos dois cores, AG6 exceções órfãs limpas no reschedule de `once` (fim do fantasma A→B→A), AG5 "semana x/y" por ocorrências, AG8 catches visíveis (chat + modal), AG9 fim do setState-em-useMemo da biblioteca.
+- **Lote C (consistência)**: CS4 MCP com getISOWeekRange/SP, CS2 notificações com semana de segunda, CS9 rollback dos otimistas.
+- **Lote D (mobile)**: MB4 notification-settings 100% tokens v2 (dark ok), MB5 pares dark corrigidos (feedback do inbox, role-select, STATUS_CONFIG do contrato→rgba), MB13 SectionLabel temático, MB8 requestSeq na agenda, MB9 res.ok + revert por chave, MB14 guard do m.volume.
+- **Lote E (perf)**: PF7 cache de signed URL por path no chat, PF8 biblioteca memoizada (digitação sem re-render das células), PF9 perfil sem assinar o store inteiro, PF11 −2 roundtrips no students/[id].
+
+**Deferidos com motivo**: MB11 (LayoutAnimation→Reanimated) e PF10 (resize de
+avatar) — mudanças visuais/upload que pedem validação em device (janela do
+1.5.7); CS10 + FIN1/FIN4/FIN5 — território do financeiro, em edição por outra
+sessão neste momento.
+
+Validação: web `tsc` 0 · vitest **1419/0** · mobile `tsc` 0 · **375/0** ·
+shared **330/330**. Commits `b53b06a…f4e5cf6`.
+
 ### Ressalvas conhecidas (deliberadas, p/ seu teste)
 
 1. **Presença × remarcada**: marcar concluído/faltou numa ocorrência REMARCADA sobrescreve `new_date` (a ocorrência volta ao slot original com o status) — comportamento herdado do `markOccurrenceStatusCore`, idêntico ao MCP. Corrigir exige preservar `new_date` no core + projeção respeitá-lo em completed/no_show. Deixado fora por disciplina cirúrgica — decidir na próxima mexida na agenda.
