@@ -2,16 +2,17 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Lock, AlertCircle, RefreshCw } from 'lucide-react'
+import { Check, Lock, AlertCircle, RefreshCw } from 'lucide-react'
+import { PAID_TIER_DISPLAY } from '@/lib/billing/tiers'
+import type { AiTier } from '@/lib/auth/get-ai-tier'
 
 const stateConfig = {
     no_subscription: {
         icon: <Lock size={28} className="text-violet-400" />,
         title: 'Complete sua assinatura',
-        description: 'Para acessar o modo treinador completo, ative sua assinatura.',
-        buttonText: 'Assinar agora',
+        description: 'Para acessar o modo treinador completo, escolha um plano.',
+        buttonText: 'Assinar',
         action: 'checkout' as const,
-        showPrice: true,
     },
     past_due: {
         icon: <AlertCircle size={28} className="text-amber-400" />,
@@ -19,15 +20,13 @@ const stateConfig = {
         description: 'Seu último pagamento falhou. Atualize seu método de pagamento para restaurar o acesso ao Kinevo.',
         buttonText: 'Atualizar pagamento',
         action: 'portal' as const,
-        showPrice: false,
     },
     canceled: {
         icon: <RefreshCw size={28} className="text-violet-400" />,
         title: 'Assinatura cancelada',
-        description: 'Sua assinatura foi cancelada. Reative para continuar gerenciando seus alunos e treinos no Kinevo.',
-        buttonText: 'Reativar assinatura',
+        description: 'Sua assinatura foi cancelada. Escolha um plano para voltar a gerenciar seus alunos e treinos.',
+        buttonText: 'Reativar',
         action: 'checkout' as const,
-        showPrice: true,
     },
 }
 
@@ -39,23 +38,33 @@ interface BlockedClientProps {
 export function BlockedClient({ trainerName, state }: BlockedClientProps) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    // Default no plano em destaque (Pro IA) — a tela de reativação é ponto de
+    // conversão; vender só o Essencial legado desperdiçava upgrade (AC5).
+    const [selectedTier, setSelectedTier] = useState<AiTier>(
+        () => PAID_TIER_DISPLAY.find((t) => t.featured)?.tier ?? PAID_TIER_DISPLAY[0].tier,
+    )
 
     const config = stateConfig[state]
+    const isCheckout = config.action === 'checkout'
+    const selectedPlan = PAID_TIER_DISPLAY.find((t) => t.tier === selectedTier)
 
     const handleAction = async () => {
         setLoading(true)
         setError(null)
 
-        const endpoint = config.action === 'checkout'
-            ? '/api/stripe/checkout'
-            : '/api/stripe/portal'
-
         try {
-            const res = await fetch(endpoint, { method: 'POST' })
+            const res = isCheckout
+                ? await fetch('/api/stripe/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    // AC5: tier explícito — o POST sem body caía no price legado.
+                    body: JSON.stringify({ tier: selectedTier }),
+                })
+                : await fetch('/api/stripe/portal', { method: 'POST' })
             const json = await res.json()
 
             if (!res.ok || !json.url) {
-                setError('Erro ao processar. Tente novamente.')
+                setError(json?.error || 'Erro ao processar. Tente novamente.')
                 setLoading(false)
                 return
             }
@@ -75,7 +84,7 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-surface-bg px-6">
+        <div className="min-h-screen flex items-center justify-center bg-surface-bg px-6 py-10">
             {/* Background glows */}
             <div className="fixed top-0 -left-1/4 w-1/2 h-1/2 bg-violet-600/5 blur-[120px] rounded-full pointer-events-none" />
             <div className="fixed bottom-0 -right-1/4 w-1/2 h-1/2 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
@@ -102,7 +111,55 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
 
                     <h1 className="text-2xl font-black text-white tracking-tight mb-2">{config.title}</h1>
                     <p className="text-k-text-tertiary mb-1">Olá, {trainerName}.</p>
-                    <p className="text-k-text-tertiary mb-8">{config.description}</p>
+                    <p className="text-k-text-tertiary mb-6">{config.description}</p>
+
+                    {/* Seleção de plano (AC5: antes era 1 botão fixo no price legado
+                        prometendo um trial que não existe mais) */}
+                    {isCheckout && (
+                        <div className="space-y-2 mb-6 text-left">
+                            {PAID_TIER_DISPLAY.map((plan) => {
+                                const selected = plan.tier === selectedTier
+                                return (
+                                    <button
+                                        key={plan.tier}
+                                        type="button"
+                                        onClick={() => setSelectedTier(plan.tier)}
+                                        aria-pressed={selected}
+                                        className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 transition-all ${
+                                            selected
+                                                ? 'border-violet-500 bg-violet-500/10'
+                                                : 'border-k-border-subtle bg-glass-bg hover:border-k-border-primary'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`h-4 w-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                                                selected ? 'border-violet-400 bg-violet-500' : 'border-k-border-primary'
+                                            }`}
+                                        >
+                                            {selected && <Check size={10} className="text-white" strokeWidth={3} />}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="flex items-center gap-2">
+                                                <span className="text-sm font-bold text-white">{plan.name}</span>
+                                                {plan.featured && (
+                                                    <span className="text-[9px] font-black uppercase tracking-wider text-violet-300 bg-violet-500/20 px-1.5 py-0.5 rounded">
+                                                        Popular
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className="block text-[11px] text-k-text-quaternary truncate">
+                                                {plan.credits}
+                                            </span>
+                                        </span>
+                                        <span className="text-sm font-bold text-white whitespace-nowrap">
+                                            {plan.price}
+                                            <span className="text-[10px] font-medium text-k-text-quaternary">{plan.priceSuffix}</span>
+                                        </span>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )}
 
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm mb-4">
@@ -115,12 +172,16 @@ export function BlockedClient({ trainerName, state }: BlockedClientProps) {
                         disabled={loading}
                         className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/50 disabled:cursor-not-allowed text-white text-[11px] font-black rounded-xl transition-all shadow-lg shadow-violet-600/20 hover:shadow-violet-500/30"
                     >
-                        {loading ? 'Processando...' : config.buttonText}
+                        {loading
+                            ? 'Processando...'
+                            : isCheckout && selectedPlan
+                                ? `${config.buttonText} ${selectedPlan.name} — ${selectedPlan.price}${selectedPlan.priceSuffix}`
+                                : config.buttonText}
                     </button>
 
-                    {config.showPrice && (
-                        <p className="text-k-text-quaternary text-sm mt-4">
-                            R$ 39,90/mês {state === 'no_subscription' ? 'após o período de teste' : ''}
+                    {isCheckout && (
+                        <p className="text-k-text-quaternary text-xs mt-4">
+                            Cobrança imediata no cartão · Cancele quando quiser
                         </p>
                     )}
                 </div>
