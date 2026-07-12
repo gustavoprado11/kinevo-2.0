@@ -37,6 +37,18 @@ export async function createPlanCore(
     let stripeProductId: string | null = null
     let stripePriceId: string | null = null
 
+    // Asaas-first (decisão 11/jul): NÃO cria mais Product/Price novos no
+    // Stripe Connect a menos que o treinador tenha ligado explicitamente o modo
+    // legado (show_stripe_legacy). Planos-Stripe EXISTENTES continuam sendo
+    // espelhados no updatePlanCore (leitura/manutenção de legado intactas).
+    if (input.hasStripeConnect) {
+        const { getFinancialSettings } = await import('@/lib/financial/settings')
+        const financialSettings = await getFinancialSettings(trainerId)
+        if (!financialSettings.showStripeLegacy) {
+            input = { ...input, hasStripeConnect: false }
+        }
+    }
+
     if (input.hasStripeConnect) {
         const { data: settings } = await supabaseAdmin
             .from('payment_settings')

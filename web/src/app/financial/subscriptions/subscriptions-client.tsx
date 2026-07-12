@@ -58,6 +58,7 @@ interface SubscriptionsClientProps {
     students: Student[]
     plans: Plan[]
     hasStripeConnect: boolean
+    showStripeLegacy?: boolean
     walletStatus: KinevoWalletStatus
     sellToStudentId?: string
 }
@@ -140,6 +141,7 @@ export function SubscriptionsClient({
     students,
     plans,
     hasStripeConnect,
+    showStripeLegacy = false,
     walletStatus,
     sellToStudentId,
 }: SubscriptionsClientProps) {
@@ -819,6 +821,7 @@ export function SubscriptionsClient({
                 onSuccess={handleSuccess}
                 student={configModalState.student}
                 hasStripeConnect={hasStripeConnect}
+                showStripeLegacy={showStripeLegacy}
                 allStudents={modalStudents}
                 plans={modalPlans}
                 mode={configModalState.mode}

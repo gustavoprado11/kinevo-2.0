@@ -27,6 +27,8 @@ interface ConfigureBillingModalProps {
     allStudents?: { id: string; name: string; email: string }[]
     plans: Plan[]
     hasStripeConnect: boolean
+    /** Asaas-first (11/jul): trilho Stripe legado só aparece com opt-in explícito. */
+    showStripeLegacy?: boolean
     mode: 'new' | 'migrate'
 }
 
@@ -71,6 +73,7 @@ export function ConfigureBillingModal({
     allStudents,
     plans,
     hasStripeConnect,
+    showStripeLegacy = false,
     mode,
 }: ConfigureBillingModalProps) {
     const [step, setStep] = useState<ModalStep>('type')
@@ -322,7 +325,8 @@ export function ConfigureBillingModal({
                     {/* Type Selection Step */}
                     {step === 'type' && (
                         <div className="p-8 space-y-3">
-                            {/* Stripe Auto */}
+                            {/* Stripe Auto — legado; escondido por padrão (Asaas-first, 11/jul) */}
+                            {showStripeLegacy && (
                             <button
                                 onClick={() => hasStripeConnect ? handleSelectType('stripe_auto') : undefined}
                                 className={`w-full text-left rounded-2xl border p-4 transition-all ${
@@ -360,6 +364,7 @@ export function ConfigureBillingModal({
                                     </div>
                                 </div>
                             </button>
+                            )}
 
                             {/* Manual */}
                             <button

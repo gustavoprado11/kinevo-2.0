@@ -1,4 +1,5 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
+import { getFinancialSettings } from '@/lib/financial/settings'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { syncManualOverdue } from '@/actions/financial/sync-manual-overdue'
 import { getWalletRow, summarizeWallet } from '@/lib/asaas/wallet-service'
@@ -55,6 +56,10 @@ export default async function SubscriptionsPage({
 
     const hasStripeConnect = !!(paymentSettings?.stripe_connect_id && paymentSettings.charges_enabled)
 
+    // Asaas-first (11/jul): opção "Cobrar via Stripe" só com opt-in legado.
+    const financialSettings = await getFinancialSettings(trainer.id)
+    const showStripeLegacy = financialSettings.showStripeLegacy
+
     // Estado da Carteira Asaas pra decidir qual modal usar no fluxo de venda
     const walletRow = await getWalletRow(trainer.id)
     const walletStatus = summarizeWallet(walletRow).status
@@ -66,6 +71,7 @@ export default async function SubscriptionsPage({
             students={students ?? []}
             plans={(plans ?? []).map(p => ({ ...p, interval: p.interval ?? 'month' }))}
             hasStripeConnect={hasStripeConnect}
+            showStripeLegacy={showStripeLegacy}
             walletStatus={walletStatus}
             sellToStudentId={sellToStudentId}
         />

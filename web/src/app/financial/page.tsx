@@ -1,5 +1,6 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { createClient } from '@/lib/supabase/server'
+import { getFinancialSettings } from '@/lib/financial/settings'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { syncManualOverdue } from '@/actions/financial/sync-manual-overdue'
 import { AsaasApiError, getBalance, tryEnsureSubaccountWebhook } from '@/lib/asaas'
@@ -240,6 +241,11 @@ export default async function FinancialPage() {
         .limit(1)
     const hasStripeLegacyContracts = (legacyStripeContracts?.length ?? 0) > 0
 
+    // Asaas-first (decisão 11/jul): o bloco Stripe legado só aparece se o
+    // treinador ligou "Mostrar contratos Stripe legados" nas configurações.
+    const financialSettings = await getFinancialSettings(trainer.id)
+    const showStripeLegacy = hasStripeLegacyContracts && financialSettings.showStripeLegacy
+
     const showOnboarding = !paymentSettings && (!plans || plans.length === 0)
 
     // Fetch students + active plans for "Nova Assinatura" modal
@@ -297,7 +303,7 @@ export default async function FinancialPage() {
             walletBalance={walletBalance}
             pendingRelease={{ total: pendingReleaseTotal, nextDate: pendingReleaseNextDate }}
             walletRejectionReason={walletSummary.rejectionReason ?? null}
-            hasStripeLegacyContracts={hasStripeLegacyContracts}
+            hasStripeLegacyContracts={showStripeLegacy}
             awaitingAuthPayouts={awaitingAuthPayouts}
         />
     )
