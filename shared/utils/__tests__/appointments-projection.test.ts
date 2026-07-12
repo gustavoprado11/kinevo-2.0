@@ -394,6 +394,57 @@ describe('getOccurrencesForDay', () => {
 })
 
 // ---------------------------------------------------------------------------
+// expandAppointments — presença preserva remarcação (D1)
+// ---------------------------------------------------------------------------
+
+describe('expandAppointments — presença numa remarcada fica no dia REAL (D1)', () => {
+    it('remarcada + CONCLUÍDA na mesma semana: aparece no dia remarcado com status completed', () => {
+        const rule = makeRule()
+        const exc = makeException({
+            kind: 'completed',
+            occurrence_date: '2026-04-14',
+            new_date: '2026-04-15',
+            new_start_time: '09:00',
+        })
+        const out = expandAppointments([rule], [exc], d('2026-04-12'), d('2026-04-18'))
+        expect(out).toHaveLength(1)
+        expect(out[0]).toMatchObject({
+            date: '2026-04-15',
+            startTime: '09:00',
+            status: 'completed',
+            originalDate: '2026-04-14',
+        })
+    })
+
+    it('remarcada cross-week + FALTOU: materializa na semana de destino com status no_show', () => {
+        const rule = makeRule()
+        const exc = makeException({
+            kind: 'no_show',
+            occurrence_date: '2026-04-14',
+            new_date: '2026-04-22',
+        })
+        const out = expandAppointments([rule], [exc], d('2026-04-19'), d('2026-04-25'))
+        const moved = out.find((o) => o.originalDate === '2026-04-14')
+        expect(moved).toMatchObject({ date: '2026-04-22', status: 'no_show' })
+        // e some da semana original
+        const original = expandAppointments([rule], [exc], d('2026-04-12'), d('2026-04-18'))
+        expect(original).toHaveLength(0)
+    })
+
+    it('presença SEM remarcação continua no slot original', () => {
+        const rule = makeRule()
+        const exc = makeException({
+            kind: 'completed',
+            occurrence_date: '2026-04-14',
+            new_date: null,
+        })
+        const out = expandAppointments([rule], [exc], d('2026-04-12'), d('2026-04-18'))
+        expect(out).toHaveLength(1)
+        expect(out[0]).toMatchObject({ date: '2026-04-14', startTime: '07:00', status: 'completed' })
+    })
+})
+
+// ---------------------------------------------------------------------------
 // expandAppointments — recorrência mensal em dia 29–31 (CS6)
 // ---------------------------------------------------------------------------
 

@@ -664,6 +664,17 @@ export async function markOccurrenceStatusCore(
         return { success: false, error: 'Sem permissão' }
     }
 
+    // D1: presença numa ocorrência REMARCADA preserva a remarcação — antes o
+    // upsert zerava new_date/new_start_time e o atendimento "voltava" pro dia
+    // original com o status (histórico no dia errado). A projeção posiciona
+    // completed/no_show em new_date quando presente.
+    const { data: existingExc } = await supabase
+        .from('appointment_exceptions')
+        .select('new_date, new_start_time')
+        .eq('recurring_appointment_id', payload.recurringAppointmentId)
+        .eq('occurrence_date', payload.occurrenceDate)
+        .maybeSingle()
+
     const { error: upsertError } = await supabase
         .from('appointment_exceptions')
         .upsert(
@@ -672,8 +683,8 @@ export async function markOccurrenceStatusCore(
                 trainer_id: trainerId,
                 occurrence_date: payload.occurrenceDate,
                 kind: payload.status,
-                new_date: null,
-                new_start_time: null,
+                new_date: existingExc?.new_date ?? null,
+                new_start_time: existingExc?.new_start_time ?? null,
                 notes: payload.notes ?? null,
             },
             { onConflict: 'recurring_appointment_id,occurrence_date' },

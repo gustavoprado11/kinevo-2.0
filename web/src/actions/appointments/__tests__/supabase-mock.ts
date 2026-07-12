@@ -30,6 +30,8 @@ export interface TableResponses {
     delete?: Resolved
     /** Used when `.single()` terminates an existence-check chain. */
     single?: Resolved
+    /** Used when `.maybeSingle()` terminates a lookup chain. */
+    maybeSingle?: Resolved
 }
 
 export interface MockOptions {
@@ -82,6 +84,11 @@ function buildChain(table: string, responses: TableResponses) {
             if (lastOp === 'update' && responses.update) return responses.update
             if (lastOp === 'upsert' && responses.upsert) return responses.upsert
             if (lastOp === 'delete' && responses.delete) return responses.delete
+            if (responses.single) return responses.single
+            return responses.select ?? { data: null, error: null }
+        }),
+        maybeSingle: vi.fn(async () => {
+            if (responses.maybeSingle) return responses.maybeSingle
             if (responses.single) return responses.single
             return responses.select ?? { data: null, error: null }
         }),

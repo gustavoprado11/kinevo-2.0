@@ -123,10 +123,12 @@ export function expandAppointments(
 
             if (exc.kind === 'canceled') continue
 
-            if (exc.kind === 'rescheduled') {
-                const effectiveDate = exc.new_date ?? originalKey
-                const effectiveDateObj = parseDateKey(effectiveDate)
-                // Only include if the rescheduled date still falls in range
+            // D1: exceção com new_date vive na data EFETIVA — vale para
+            // rescheduled e também para completed/no_show de uma ocorrência
+            // que foi remarcada antes (a presença preserva a remarcação).
+            if (exc.new_date) {
+                const effectiveDateObj = parseDateKey(exc.new_date)
+                // Only include if the effective date still falls in range
                 if (
                     effectiveDateObj.getTime() < start.getTime() ||
                     effectiveDateObj.getTime() > end.getTime()
@@ -137,7 +139,7 @@ export function expandAppointments(
                 continue
             }
 
-            // completed | no_show: keep at original slot with computed status
+            // completed | no_show sem remarcação: keep at original slot
             emit(buildOccurrence(rule, originalKey, exc))
         }
     }
@@ -149,7 +151,8 @@ export function expandAppointments(
     // (new_date) dentro do range.
     const rulesById = new Map(recurring.map((r) => [r.id, r]))
     for (const exc of exceptions) {
-        if (exc.kind !== 'rescheduled' || !exc.new_date) continue
+        // D1: também completed/no_show com new_date (remarcada + presença).
+        if (exc.kind === 'canceled' || !exc.new_date) continue
 
         const landing = parseDateKey(exc.new_date)
         if (
@@ -331,11 +334,15 @@ function buildOccurrence(
     let status: OccurrenceStatus = 'scheduled'
 
     if (exc) {
-        if (exc.kind === 'rescheduled') {
-            date = exc.new_date ?? originalDateKey
+        // D1: new_date reposiciona a ocorrência independente do kind — uma
+        // remarcada que depois vira concluída/faltou fica no dia REAL.
+        if (exc.new_date) {
+            date = exc.new_date
             startTime = exc.new_start_time
                 ? normalizeTime(exc.new_start_time)
                 : normalizeTime(rule.start_time)
+        }
+        if (exc.kind === 'rescheduled') {
             status = 'rescheduled'
         } else if (exc.kind === 'completed') {
             status = 'completed'

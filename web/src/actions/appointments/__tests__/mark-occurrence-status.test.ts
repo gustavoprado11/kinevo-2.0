@@ -33,7 +33,11 @@ describe('markOccurrenceStatus', () => {
                     error: null,
                 },
             },
-            appointment_exceptions: { upsert: { data: null, error: null } },
+            appointment_exceptions: {
+                // Lookup da exceção existente (D1) — default: sem exceção prévia.
+                maybeSingle: { data: null, error: null },
+                upsert: { data: null, error: null },
+            },
         })
     })
 
@@ -55,6 +59,47 @@ describe('markOccurrenceStatus', () => {
             status: 'no_show',
         })
         expect(result.success).toBe(true)
+    })
+
+    it('D1: presença numa REMARCADA preserva new_date/new_start_time', async () => {
+        mockSupabase = createSupabaseMock({
+            trainers: { single: { data: { id: 'trainer-1' }, error: null } },
+            recurring_appointments: {
+                single: {
+                    data: { id: RULE_ID, trainer_id: 'trainer-1', student_id: 'student-1' },
+                    error: null,
+                },
+            },
+            appointment_exceptions: {
+                maybeSingle: {
+                    data: { new_date: '2026-04-20', new_start_time: '10:00' },
+                    error: null,
+                },
+                upsert: { data: null, error: null },
+            },
+        })
+
+        const { markOccurrenceStatus } = await import('../mark-occurrence-status')
+        const result = await markOccurrenceStatus({
+            recurringAppointmentId: RULE_ID,
+            occurrenceDate: '2026-04-14',
+            status: 'completed',
+        })
+        expect(result.success).toBe(true)
+
+        // O upsert NÃO pode zerar a remarcação (antes gravava new_date: null).
+        const from = mockSupabase.from as ReturnType<typeof vi.fn>
+        const excChains = from.mock.results
+            .filter((_, i) => from.mock.calls[i][0] === 'appointment_exceptions')
+            .map((r) => r.value)
+        const upsertPayload = excChains.flatMap(
+            (c) => (c.upsert as ReturnType<typeof vi.fn>).mock.calls,
+        )[0]?.[0]
+        expect(upsertPayload).toMatchObject({
+            kind: 'completed',
+            new_date: '2026-04-20',
+            new_start_time: '10:00',
+        })
     })
 
     it('rejeita status inválido via Zod', async () => {
