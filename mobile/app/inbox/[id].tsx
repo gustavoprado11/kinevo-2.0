@@ -448,7 +448,10 @@ export default function InboxItemDetailScreen() {
                                 >
                                     <View
                                         style={{
-                                            backgroundColor: '#f0fdf9',
+                                            // MB5: par semantic (bg claro fixo + fg escuro fixo) —
+                                            // antes o corpo usava text.primary (quase branco em dark)
+                                            // sobre menta claro: ilegível.
+                                            backgroundColor: colors.semantic.success.bg,
                                             borderRadius: 20,
                                             padding: 20,
                                             borderWidth: 1,
@@ -478,7 +481,7 @@ export default function InboxItemDetailScreen() {
                                         <Text style={{ color: colors.semantic.success.fg, fontWeight: "700", fontSize: 14, marginBottom: 8 }}>
                                             Feedback do treinador
                                         </Text>
-                                        <Text style={{ color: colors.text.primary, lineHeight: 22, fontSize: 15 }}>
+                                        <Text style={{ color: colors.semantic.success.fg, lineHeight: 22, fontSize: 15 }}>
                                             {submission?.trainer_feedback?.message ||
                                                 item.payload?.feedback_preview ||
                                                 "Novo feedback disponível."}

@@ -61,6 +61,10 @@ export function useAgendaOccurrences({
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const mountedRef = useRef(true);
+    // MB8: navegar vários dias em sequência dispara fetches concorrentes — uma
+    // resposta ANTIGA (janela de outro dia) podia resolver por último e
+    // sobrescrever a atual. Só a resposta do fetch mais recente aplica estado.
+    const requestSeqRef = useRef(0);
 
     const rangeStartKey = useMemo(() => toDateKey(rangeStart), [rangeStart]);
     const rangeEndKey = useMemo(() => toDateKey(rangeEnd), [rangeEnd]);
@@ -74,6 +78,7 @@ export function useAgendaOccurrences({
 
     const fetchData = useCallback(async () => {
         if (!trainerId) return;
+        const seq = ++requestSeqRef.current;
 
         const { data: rulesRows, error: rulesError } = await supabase
             .from("recurring_appointments")
@@ -140,7 +145,7 @@ export function useAgendaOccurrences({
             frequency: ruleFrequencyById.get(o.recurringAppointmentId) ?? "weekly",
         }));
 
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || seq !== requestSeqRef.current) return;
         setOccurrences(enriched);
         setStudents(studentMap);
         setError(null);

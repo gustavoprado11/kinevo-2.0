@@ -5,7 +5,6 @@ import { useRouter } from "expo-router";
 import { Calendar, ChevronLeft } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { supabase } from "../lib/supabase";
-import { colors } from "@/theme";
 import { useV2Colors } from "../hooks/useV2Colors";
 import {
     useTrainerNotificationPreferences,
@@ -89,11 +88,19 @@ export default function NotificationSettingsScreen() {
         setPreferences(updated);
         setIsSaving(true);
 
+        // MB9: revert FUNCIONAL por chave — o revert por closure inteira
+        // desfazia também um segundo toggle feito enquanto este salvava.
+        const revert = () =>
+            setPreferences((prev) => ({ ...prev, [key]: preferences[key] }));
+
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) return;
+            if (!session?.access_token) {
+                revert();
+                return;
+            }
 
-            await fetch(`${API_URL}/api/notifications/preferences`, {
+            const res = await fetch(`${API_URL}/api/notifications/preferences`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -101,10 +108,14 @@ export default function NotificationSettingsScreen() {
                 },
                 body: JSON.stringify({ preferences: updated }),
             });
+            // MB9: um 401/500 mantinha o switch trocado divergindo do servidor.
+            if (!res.ok) {
+                if (__DEV__) console.error("[notification-settings] Save failed:", res.status);
+                revert();
+            }
         } catch (err) {
             if (__DEV__) console.error("[notification-settings] Save error:", err);
-            // Revert on error
-            setPreferences(preferences);
+            revert();
         } finally {
             setIsSaving(false);
         }
@@ -139,7 +150,7 @@ export default function NotificationSettingsScreen() {
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: v2colors.surface.canvas }} edges={["top"]}>
             {/* Header */}
             <View
                 style={{
@@ -156,10 +167,10 @@ export default function NotificationSettingsScreen() {
                     accessibilityLabel="Voltar"
                     hitSlop={12}
                 >
-                    <ChevronLeft size={24} color={colors.text.primary} />
+                    <ChevronLeft size={24} color={v2colors.text.primary} />
                 </TouchableOpacity>
 
-                <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text.primary }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: v2colors.text.primary }}>
                     Notificações
                 </Text>
 
@@ -176,7 +187,7 @@ export default function NotificationSettingsScreen() {
                     contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 60 }}
                     showsVerticalScrollIndicator={false}
                 >
-                    <Text style={{ fontSize: 13, color: "#64748b", lineHeight: 20, marginBottom: 20, paddingHorizontal: 4 }}>
+                    <Text style={{ fontSize: 13, color: v2colors.text.secondary, lineHeight: 20, marginBottom: 20, paddingHorizontal: 4 }}>
                         Escolha quais notificações push você deseja receber no seu dispositivo.
                     </Text>
 
@@ -185,7 +196,7 @@ export default function NotificationSettingsScreen() {
                         style={{
                             fontSize: 11,
                             fontWeight: "700",
-                            color: "#94a3b8",
+                            color: v2colors.text.tertiary,
                             textTransform: "uppercase",
                             letterSpacing: 1.5,
                             marginBottom: 8,
@@ -196,7 +207,7 @@ export default function NotificationSettingsScreen() {
                     </Text>
                     <View
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: v2colors.surface.card,
                             borderRadius: 16,
                             overflow: "hidden",
                             borderWidth: 1,
@@ -226,17 +237,17 @@ export default function NotificationSettingsScreen() {
                                 <Calendar size={16} color={v2colors.purple[600]} />
                             </View>
                             <View style={{ flex: 1, marginRight: 12 }}>
-                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: v2colors.text.primary }}>
                                     Receber lembretes
                                 </Text>
-                                <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                                <Text style={{ fontSize: 12, color: v2colors.text.tertiary, marginTop: 2 }}>
                                     Aviso antes de cada atendimento
                                 </Text>
                             </View>
                             <Switch
                                 value={appointmentRemindersEnabled}
                                 onValueChange={handleToggleAppointmentReminders}
-                                trackColor={{ false: "#e2e8f0", true: v2colors.purple[600] }}
+                                trackColor={{ false: v2colors.border.default, true: v2colors.purple[600] }}
                                 thumbColor="#fff"
                                 disabled={isSavingAppt}
                             />
@@ -244,12 +255,12 @@ export default function NotificationSettingsScreen() {
 
                         {appointmentRemindersEnabled && (
                             <>
-                                <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
+                                <View style={{ height: 1, backgroundColor: v2colors.border.subtle, marginHorizontal: 20 }} />
                                 <View style={{ paddingVertical: 14, paddingHorizontal: 20 }}>
-                                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
+                                    <Text style={{ fontSize: 14, fontWeight: "500", color: v2colors.text.primary }}>
                                         Antecedência
                                     </Text>
-                                    <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                                    <Text style={{ fontSize: 12, color: v2colors.text.tertiary, marginTop: 2 }}>
                                         Quanto tempo antes do horário marcado
                                     </Text>
                                     <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
@@ -264,16 +275,16 @@ export default function NotificationSettingsScreen() {
                                                         paddingVertical: 10,
                                                         borderRadius: 10,
                                                         alignItems: "center",
-                                                        backgroundColor: selected ? v2colors.purple[600] : "#f8fafc",
+                                                        backgroundColor: selected ? v2colors.purple[600] : v2colors.surface.card2,
                                                         borderWidth: 1,
-                                                        borderColor: selected ? v2colors.purple[600] : "#e2e8f0",
+                                                        borderColor: selected ? v2colors.purple[600] : v2colors.border.default,
                                                     }}
                                                 >
                                                     <Text
                                                         style={{
                                                             fontSize: 13,
                                                             fontWeight: "600",
-                                                            color: selected ? "#ffffff" : "#0f172a",
+                                                            color: selected ? "#ffffff" : v2colors.text.primary,
                                                         }}
                                                     >
                                                         {opt === 60 ? "1 hora" : `${opt} min`}
@@ -282,7 +293,7 @@ export default function NotificationSettingsScreen() {
                                             );
                                         })}
                                     </View>
-                                    <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 10 }}>
+                                    <Text style={{ fontSize: 11, color: v2colors.text.tertiary, marginTop: 10 }}>
                                         Você receberá um lembrete {appointmentReminderMinutes === 60 ? "1 hora" : `${appointmentReminderMinutes} min`} antes de cada agendamento.
                                     </Text>
                                 </View>
@@ -294,7 +305,7 @@ export default function NotificationSettingsScreen() {
                         style={{
                             fontSize: 11,
                             fontWeight: "700",
-                            color: "#94a3b8",
+                            color: v2colors.text.tertiary,
                             textTransform: "uppercase",
                             letterSpacing: 1.5,
                             marginBottom: 8,
@@ -305,7 +316,7 @@ export default function NotificationSettingsScreen() {
                     </Text>
                     <View
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: v2colors.surface.card,
                             borderRadius: 16,
                             overflow: "hidden",
                             borderWidth: 1,
@@ -315,7 +326,7 @@ export default function NotificationSettingsScreen() {
                         {PREF_LABELS.map((item, index) => (
                             <React.Fragment key={item.key}>
                                 {index > 0 && (
-                                    <View style={{ height: 1, backgroundColor: "#f1f5f9", marginHorizontal: 20 }} />
+                                    <View style={{ height: 1, backgroundColor: v2colors.border.subtle, marginHorizontal: 20 }} />
                                 )}
                                 <View
                                     style={{
@@ -326,17 +337,17 @@ export default function NotificationSettingsScreen() {
                                     }}
                                 >
                                     <View style={{ flex: 1, marginRight: 12 }}>
-                                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0f172a" }}>
+                                        <Text style={{ fontSize: 14, fontWeight: "500", color: v2colors.text.primary }}>
                                             {item.label}
                                         </Text>
-                                        <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                                        <Text style={{ fontSize: 12, color: v2colors.text.tertiary, marginTop: 2 }}>
                                             {item.description}
                                         </Text>
                                     </View>
                                     <Switch
                                         value={preferences[item.key]}
                                         onValueChange={() => togglePreference(item.key)}
-                                        trackColor={{ false: "#e2e8f0", true: v2colors.purple[600] }}
+                                        trackColor={{ false: v2colors.border.default, true: v2colors.purple[600] }}
                                         thumbColor="#fff"
                                         disabled={isSaving}
                                     />
@@ -348,7 +359,7 @@ export default function NotificationSettingsScreen() {
                     {isSaving && (
                         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 16, gap: 8 }}>
                             <ActivityIndicator size="small" color={v2colors.purple[600]} />
-                            <Text style={{ fontSize: 12, color: "#94a3b8" }}>Salvando...</Text>
+                            <Text style={{ fontSize: 12, color: v2colors.text.tertiary }}>Salvando...</Text>
                         </View>
                     )}
                 </ScrollView>

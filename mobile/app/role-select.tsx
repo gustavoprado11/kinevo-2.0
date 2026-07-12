@@ -48,7 +48,7 @@ export default function RoleSelectScreen() {
                         onPress={handleStudent}
                         pressScale={0.97}
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 20,
                             padding: 24,
                             marginBottom: 16,
@@ -93,7 +93,7 @@ export default function RoleSelectScreen() {
                         onPress={handleTrainer}
                         pressScale={0.97}
                         style={{
-                            backgroundColor: "#ffffff",
+                            backgroundColor: colors.surface.card,
                             borderRadius: 20,
                             padding: 24,
                             borderWidth: 1,

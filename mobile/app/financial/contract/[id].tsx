@@ -38,15 +38,17 @@ import { parseAnchoredDate } from "@kinevo/shared/utils/format-br-date";
 
 const API_URL = process.env.EXPO_PUBLIC_WEB_URL || "https://www.kinevoapp.com";
 
+// MB5: rgba translúcido (mesmo STATUS_CONFIG do ContractCard) — os pastéis
+// light fixos viravam blocos claros destoantes em dark mode.
 const STATUS_CONFIG: Record<DisplayStatus, { bg: string; text: string; label: string }> = {
-    courtesy: { bg: "#eff6ff", text: "#3b82f6", label: "Cortesia" },
-    awaiting_payment: { bg: "#f0f9ff", text: "#0ea5e9", label: "Aguardando" },
-    active: { bg: "#f0fdf4", text: "#16a34a", label: "Ativo" },
-    grace_period: { bg: "#fff7ed", text: "#f97316", label: "Vence hoje" },
-    canceling: { bg: "#fffbeb", text: "#f59e0b", label: "Cancelando" },
-    overdue: { bg: "#fef2f2", text: "#ef4444", label: "Inadimplente" },
-    canceled: { bg: "#f1f5f9", text: "#64748b", label: "Encerrado" },
-    expired: { bg: "#fef2f2", text: "#ef4444", label: "Expirado" },
+    courtesy: { bg: "rgba(59,130,246,0.12)", text: "#3b82f6", label: "Cortesia" },
+    awaiting_payment: { bg: "rgba(14,165,233,0.12)", text: "#0ea5e9", label: "Aguardando" },
+    active: { bg: "rgba(34,197,94,0.12)", text: "#16a34a", label: "Ativo" },
+    grace_period: { bg: "rgba(249,115,22,0.12)", text: "#f97316", label: "Vence hoje" },
+    canceling: { bg: "rgba(245,158,11,0.12)", text: "#f59e0b", label: "Cancelando" },
+    overdue: { bg: "rgba(239,68,68,0.12)", text: "#ef4444", label: "Inadimplente" },
+    canceled: { bg: "rgba(148,163,184,0.16)", text: "#94a3b8", label: "Encerrado" },
+    expired: { bg: "rgba(239,68,68,0.12)", text: "#ef4444", label: "Expirado" },
 };
 
 const BILLING_LABELS: Record<string, string> = {

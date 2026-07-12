@@ -430,12 +430,15 @@ function ClassicDashboard() {
 }
 
 function SectionLabel({ children }: { children: string }) {
+    // MB13: paleta via hook — a desestruturação module-level é sempre LIGHT e
+    // os títulos de seção ficavam com cor errada em dark mode.
+    const themed = useV2Colors();
     return (
         <Text
             style={{
                 fontFamily: "PlusJakartaSans_700Bold",
                 fontSize: 11,
-                color: colors.text.tertiary,
+                color: themed.text.tertiary,
                 letterSpacing: 1.4,
                 textTransform: "uppercase",
                 marginBottom: spacing[3],

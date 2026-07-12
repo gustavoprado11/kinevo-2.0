@@ -484,6 +484,9 @@ export default function ReportScreen() {
                         // Carga média / série: peso médio LEVANTADO por set
                         // (service ignora corporal). Fallback pra tonelagem/sets
                         // preserva o KPI em relatórios cacheados antigos.
+                        // MB14: metrics_json antigo pode não ter `volume` —
+                        // todas as outras seções guardam; sem isto a tela caía.
+                        if (!m.volume) return null;
                         const avgLoad: number | null = (() => {
                             if (typeof m.volume.avg_weight_per_set_kg === "number") {
                                 return m.volume.avg_weight_per_set_kg;
