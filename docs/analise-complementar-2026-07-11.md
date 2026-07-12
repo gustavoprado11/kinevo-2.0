@@ -221,6 +221,25 @@ validado; working tree aguardando commit.
 Validação: web `tsc` 0 · **vitest 1419 passed, 0 failed** · mobile `tsc` 0 ·
 shared **330 passed** (42/42 na projeção).
 
+### QA E2E das decisões (12/jul, browser real — conta QA descartável, removida 0/0/0)
+
+- **D1 6/6**: remarcou dom 05/jul → qua 08/jul, marcou **Concluído** na remarcada
+  e a ocorrência **FICOU na quarta** com o badge (não voltou ao dia original);
+  semana original permaneceu vazia.
+- **D2 2/2**: trocou o e-mail no modal → `auth.users.email` sincronizou e o
+  aluno **logou com o e-mail novo** (senha preservada).
+- **D3 8/8**: estado canceled renderiza os 3 planos com "Popular" no Pro IA,
+  copy "Cobrança imediata no cartão", **zero menção a trial**; selecionar
+  Premium/Essencial atualiza o CTA com nome e preço (checkout não foi clicado
+  para não criar session/customer no Stripe live).
+- **D4 7/7**: pending aparece com badge "Pendente"; inativo oculto por padrão;
+  "Mostrar inativos" revela com badge "Inativo" e "Ocultar" esconde de volta.
+- **Bônus do QA — bug real encontrado e corrigido**: `students.status` é CHECK
+  `active/inactive/pending` — **'archived' não existe** (o offboard zera
+  `coach_id` e sai do roster). A 245 filtrava um status impossível; **migration
+  246** (aplicada em prod, validada ao vivo) aponta o filtro para `inactive` e
+  a UI diz "Mostrar inativos"/"Inativo".
+
 ### Ressalvas conhecidas (deliberadas, p/ seu teste)
 
 1. **Presença × remarcada**: marcar concluído/faltou numa ocorrência REMARCADA sobrescreve `new_date` (a ocorrência volta ao slot original com o status) — comportamento herdado do `markOccurrenceStatusCore`, idêntico ao MCP. Corrigir exige preservar `new_date` no core + projeção respeitá-lo em completed/no_show. Deixado fora por disciplina cirúrgica — decidir na próxima mexida na agenda.
