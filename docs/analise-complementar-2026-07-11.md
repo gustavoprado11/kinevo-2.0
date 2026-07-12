@@ -271,10 +271,13 @@ treinador) → 27 achados. **Corrigido e commitado o lote FUNCIONAL + top dark-m
 
 ### Restante organizado
 
-**Próximo lote de código (seguro, sem aparelho):**
-- Estado de erro (vez de "lista vazia") em planos/templates mobile.
-- Dark mode mecânico: chips da Sala de Treino, botões de ação do contrato (pastéis→rgba), cluster de bordas `rgba(0,0,0,.0x)`, preview de mensagens (`neutral[N]`→tokens de texto), builder/preview (`SafeAreaView` do core→safe-area-context + tokens).
-- Teclado no formulário do inbox; a11y na agenda (voltar + FAB "Novo agendamento") e no botão de enviar do chat; guards de unmount no aluno; emoji 🔑 nos leads; `Linking.openURL` sem catch (2 sites); reset de draft no builder; deps do markAsRead realtime; swipe-to-delete morto no inbox do aluno (remover affordance); virtualizar notificações do inbox.
+**Próximo lote de código — CORRIGIDO E PUSHADO** (`84aa172` dark/a11y/teclado, `ed9fd80` robustez):
+- ✅ Dark mode mecânico: chips da Sala de Treino, botões de ação do contrato (pastéis→rgba) + bordas, preview de mensagens (`neutral[N]`→tokens), builder/preview (`SafeAreaView` do core→safe-area-context + StatusBar adaptativo + tokens), cluster de bordas `rgba(0,0,0,.0x)` (report/student/contract/mensagens).
+- ✅ Teclado no formulário do inbox; a11y na agenda (voltar + FAB) e no botão de enviar do chat; `Linking.openURL` com catch (2 sites); emoji 🔑→ícone Lucide.
+
+**Sobra (menor valor / mais cuidado — próxima rodada de código):**
+- Estado de erro (vez de "lista vazia") em planos (precisa expor `error` no hook) e templates mobile (hook já expõe — só a tela ler).
+- Swipe-to-delete morto no inbox do aluno (remover a affordance ou ligar a ação); virtualizar notificações do inbox; guards de unmount (logs/inbox aluno); reset de draft no `saveAndAssign` do builder; deps stale do markAsRead realtime; segmented control (logs/inbox) no dark.
 
 **Precisa de olho no aparelho (QA do simulador, junto do build):**
 - Teclado na Sala de Treino ao vivo (KeyboardAvoidingView — ajustar no device).
