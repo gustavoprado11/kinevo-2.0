@@ -259,6 +259,30 @@ sessão neste momento.
 Validação: web `tsc` 0 · vitest **1419/0** · mobile `tsc` 0 · **375/0** ·
 shared **330/330**. Commits `b53b06a…f4e5cf6`.
 
+## 14. Varredura profunda pré-build 1.5.7 (12/jul) — polir o mobile
+
+Decisão do Gustavo: sem pressa de lançar, deixar o app mobile o mais pronto
+possível antes do próximo build. Dois auditores profundos (app do aluno + modo
+treinador) → 27 achados. **Corrigido e commitado o lote FUNCIONAL + top dark-mode**
+(`6ed23e5` aluno, `9888bc8` treinador; mobile tsc 0, 375 testes):
+
+- Aluno: banner de pagamento ilegível no dark, ActionCard âmbar sumindo, histórico com fundos claros escondendo a carga, histórico que ficava stale (refetch on-focus), 2 arquivos de calendário mortos removidos (mata metade do MB11), emoji fora.
+- Treinador: **gotcha do Pressable** — 3 botões que ficavam invisíveis/quebrados (pílula "Hoje" da agenda, steppers +/−, linha do picker de aluno); crash do payout com status desconhecido; thread de mensagem que girava pra sempre; falha silenciosa no toggle/excluir de planos; labels de acessibilidade.
+
+### Restante organizado
+
+**Próximo lote de código (seguro, sem aparelho):**
+- Estado de erro (vez de "lista vazia") em planos/templates mobile.
+- Dark mode mecânico: chips da Sala de Treino, botões de ação do contrato (pastéis→rgba), cluster de bordas `rgba(0,0,0,.0x)`, preview de mensagens (`neutral[N]`→tokens de texto), builder/preview (`SafeAreaView` do core→safe-area-context + tokens).
+- Teclado no formulário do inbox; a11y na agenda (voltar + FAB "Novo agendamento") e no botão de enviar do chat; guards de unmount no aluno; emoji 🔑 nos leads; `Linking.openURL` sem catch (2 sites); reset de draft no builder; deps do markAsRead realtime; swipe-to-delete morto no inbox do aluno (remover affordance); virtualizar notificações do inbox.
+
+**Precisa de olho no aparelho (QA do simulador, junto do build):**
+- Teclado na Sala de Treino ao vivo (KeyboardAvoidingView — ajustar no device).
+- Migração dark do fluxo de Avaliações (resultado/captura — esforço L, várias telas; validar visual).
+- Reanimated no reorder de chips da Sala e no expand do HistoryCard (**MB11** — tradeoff de perf só observável rodando).
+- Segmented control (logs/inbox) no dark — julgamento visual.
+- **PF10** resize de avatar — caminho limpo precisa de lib nativa nova (só valida com build).
+
 ### Ressalvas conhecidas (deliberadas, p/ seu teste)
 
 1. **Presença × remarcada**: marcar concluído/faltou numa ocorrência REMARCADA sobrescreve `new_date` (a ocorrência volta ao slot original com o status) — comportamento herdado do `markOccurrenceStatusCore`, idêntico ao MCP. Corrigir exige preservar `new_date` no core + projeção respeitá-lo em completed/no_show. Deixado fora por disciplina cirúrgica — decidir na próxima mexida na agenda.
