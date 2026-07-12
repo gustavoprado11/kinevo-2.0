@@ -264,12 +264,12 @@ function StudentChip({
                                 width: 28,
                                 height: 28,
                                 borderRadius: 14,
-                                backgroundColor: isActive ? toRgba(colors.brand.primary, 0.15) : '#f1f5f9',
+                                backgroundColor: isActive ? toRgba(colors.brand.primary, 0.15) : colors.surface.card2,
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}
                         >
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? colors.brand.primary : '#64748b' }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: isActive ? colors.brand.primary : colors.text.tertiary }}>
                                 {session.studentName.charAt(0).toUpperCase()}
                             </Text>
                         </View>
@@ -278,7 +278,7 @@ function StudentChip({
                         style={{
                             fontSize: 13,
                             fontWeight: '600',
-                            color: isActive ? colors.brand.primary : '#334155',
+                            color: isActive ? colors.brand.primary : colors.text.secondary,
                             maxWidth: 72,
                         }}
                         numberOfLines={1}
@@ -288,7 +288,7 @@ function StudentChip({
                     {hasProgress && (
                         <View
                             style={{
-                                backgroundColor: isActive ? toRgba(colors.brand.primary, 0.15) : '#f1f5f9',
+                                backgroundColor: isActive ? toRgba(colors.brand.primary, 0.15) : colors.surface.card2,
                                 borderRadius: 8,
                                 paddingHorizontal: 5,
                                 paddingVertical: 1,
@@ -298,7 +298,7 @@ function StudentChip({
                                 style={{
                                     fontSize: 10,
                                     fontWeight: '700',
-                                    color: isActive ? colors.brand.primary : '#64748b',
+                                    color: isActive ? colors.brand.primary : colors.text.tertiary,
                                     fontVariant: ['tabular-nums'],
                                 }}
                             >
@@ -1063,7 +1063,7 @@ export default function TrainingRoomScreen() {
                                         padding: 14,
                                         marginBottom: 16,
                                         borderWidth: 1,
-                                        borderColor: '#f1f5f9',
+                                        borderColor: colors.border.subtle,
                                     }}
                                 >
                                     {activeSession.studentAvatarUrl ? (

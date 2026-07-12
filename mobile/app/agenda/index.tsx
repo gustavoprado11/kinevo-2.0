@@ -74,6 +74,8 @@ export default function AgendaScreen() {
                     <Pressable
                         onPress={handleBack}
                         hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Voltar"
                         style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                     >
                         {/* Layout numa View interna: flex props em style-função de
@@ -128,6 +130,8 @@ export default function AgendaScreen() {
                 <PressableScale
                     onPress={handleCreatePress}
                     hapticStyle={Haptics.ImpactFeedbackStyle.Medium}
+                    accessibilityRole="button"
+                    accessibilityLabel="Novo agendamento"
                     style={{
                         position: "absolute",
                         right: 20,

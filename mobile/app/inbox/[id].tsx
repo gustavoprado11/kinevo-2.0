@@ -404,7 +404,11 @@ export default function InboxItemDetailScreen() {
                     <Text style={{ color: colors.text.tertiary }}>Item não encontrado.</Text>
                 </View>
             ) : (
-                <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}>
+                <ScrollView
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }}
+                    keyboardShouldPersistTaps="handled"
+                    automaticallyAdjustKeyboardInsets
+                >
                     {/* Title card */}
                     <Animated.View
                         entering={FadeInUp.delay(50).duration(300).easing(Easing.out(Easing.cubic))}

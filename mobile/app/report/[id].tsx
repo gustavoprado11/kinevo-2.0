@@ -694,7 +694,7 @@ export default function ReportScreen() {
                                 justifyContent: "center",
                                 gap: 8,
                                 borderWidth: 1,
-                                borderColor: "rgba(0,0,0,0.08)",
+                                borderColor: "rgba(128,128,128,0.22)",
                                 opacity: isRegenerating ? 0.6 : 1,
                             }}
                         >
@@ -747,7 +747,7 @@ export default function ReportScreen() {
                                 justifyContent: "center",
                                 gap: 8,
                                 borderWidth: 1,
-                                borderColor: "rgba(0,0,0,0.08)",
+                                borderColor: "rgba(128,128,128,0.22)",
                             }}
                         >
                             <Text style={{ fontSize: 15, fontWeight: "500", color: COLORS.red }}>
@@ -891,7 +891,7 @@ function BarChart({
                                     width: "100%",
                                     maxWidth: 32,
                                     height: Math.max(barHeight, val > 0 ? 4 : 1),
-                                    backgroundColor: val > 0 ? color : "rgba(0,0,0,0.04)",
+                                    backgroundColor: val > 0 ? color : "rgba(128,128,128,0.14)",
                                     borderRadius: 4,
                                 }}
                             />

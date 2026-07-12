@@ -221,7 +221,7 @@ export default function TrainerChatScreen() {
                 paddingHorizontal: 16, paddingVertical: 10,
                 paddingTop: insets.top + 10,
                 backgroundColor: colors.surface.card,
-                borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.06)',
+                borderBottomWidth: 1, borderBottomColor: colors.border.default,
             }}>
                 <Pressable onPress={() => router.back()} hitSlop={12}>
                     <ChevronLeft size={24} color={colors.text.primary} />
@@ -330,6 +330,9 @@ export default function TrainerChatScreen() {
                     <Pressable
                         onPress={handleSend}
                         disabled={!canSend}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Enviar mensagem"
                         style={{
                             width: 36, height: 36, borderRadius: 18,
                             backgroundColor: canSend ? colors.purple[600] : colors.border.default,

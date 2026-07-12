@@ -323,7 +323,7 @@ export default function StudentProfileScreen({
                 </ScrollView>
 
                 {/* Tab bar */}
-                <View style={{ flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "rgba(0,0,0,0.06)" }}>
+                <View style={{ flexDirection: "row", borderTopWidth: 0.5, borderTopColor: "rgba(128,128,128,0.2)" }}>
                     {(["overview", "programs", "forms"] as ProfileTab[]).map((tab) => {
                         const isActive = activeTab === tab;
                         const labels: Record<ProfileTab, string> = {

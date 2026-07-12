@@ -283,7 +283,7 @@ function ConversationRow({
                                         ? 'PlusJakartaSans_700Bold'
                                         : 'PlusJakartaSans_500Medium',
                                     fontSize: 12,
-                                    color: isUnread ? colors.purple[600] : colors.neutral[500],
+                                    color: isUnread ? colors.purple[600] : colors.text.tertiary,
                                 }}
                             >
                                 {relativeTimestamp(lastMessage.created_at)}
@@ -299,13 +299,13 @@ function ConversationRow({
                         }}
                     >
                         {hasImage ? (
-                            <ImageIcon size={12} color={colors.neutral[500]} strokeWidth={2.2} />
+                            <ImageIcon size={12} color={colors.text.tertiary} strokeWidth={2.2} />
                         ) : null}
                         <Text
                             style={{
                                 fontFamily: 'PlusJakartaSans_500Medium',
                                 fontSize: 13,
-                                color: isUnread ? colors.neutral[700] : colors.neutral[500],
+                                color: isUnread ? colors.text.secondary : colors.text.tertiary,
                                 flex: 1,
                             }}
                             numberOfLines={1}
@@ -352,7 +352,7 @@ function MessagesEmpty({ searching }: { searching: boolean }) {
                     width: 56,
                     height: 56,
                     borderRadius: radius.pill,
-                    backgroundColor: colors.neutral[100],
+                    backgroundColor: colors.surface.card2,
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: 16,

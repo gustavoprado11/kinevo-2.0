@@ -437,7 +437,7 @@ export default function ContractDetailScreen() {
                             padding: 20,
                             marginBottom: 16,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.04)",
+                            borderColor: colors.border.subtle,
                         }}
                     >
                         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
@@ -561,7 +561,7 @@ export default function ContractDetailScreen() {
                                     label="Marcar como pago"
                                     icon={DollarSign}
                                     color="#16a34a"
-                                    bg="#f0fdf4"
+                                    bg="rgba(34,197,94,0.12)"
                                     loading={actionLoading === "mark-paid"}
                                     onPress={handleMarkPaid}
                                 />
@@ -580,7 +580,7 @@ export default function ContractDetailScreen() {
                                         label="Já paguei? Verificar"
                                         icon={DollarSign}
                                         color="#0ea5e9"
-                                        bg="#f0f9ff"
+                                        bg="rgba(14,165,233,0.12)"
                                         loading={actionLoading === "sync"}
                                         onPress={handleSyncAsaas}
                                     />
@@ -601,7 +601,7 @@ export default function ContractDetailScreen() {
                                     label="Contatar via WhatsApp"
                                     icon={MessageCircle}
                                     color="#16a34a"
-                                    bg="#f0fdf4"
+                                    bg="rgba(34,197,94,0.12)"
                                     loading={false}
                                     onPress={handleWhatsApp}
                                 />
@@ -649,7 +649,7 @@ export default function ContractDetailScreen() {
                             borderRadius: 16,
                             padding: 16,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.04)",
+                            borderColor: colors.border.subtle,
                         }}
                     >
                         <ContractTimeline events={events} isLoading={isLoading} />

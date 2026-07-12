@@ -5,15 +5,14 @@ import {
     ScrollView,
     TouchableOpacity,
     StyleSheet,
-    SafeAreaView,
     StatusBar,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { ChevronLeft, Eye } from 'lucide-react-native';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { useProgramBuilderStore } from '@/stores/program-builder-store';
-import { useV2Colors } from '@/hooks/useV2Colors';
+import { useV2Colors, useIsDark } from '@/hooks/useV2Colors';
 import { hydrateSetPrescriptions } from '@/lib/hydrateWorkoutSets';
 import { toRgba } from '@/lib/brandColor';
 import { expandSchemeByRounds } from '@kinevo/shared/lib/prescription/set-scheme';
@@ -66,6 +65,7 @@ function groupItemsForPreview(items: WorkoutItem[]): PreviewItem[] {
 
 export default function ProgramBuilderPreviewScreen() {
     const colors = useV2Colors();
+    const isDark = useIsDark();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const draft = useProgramBuilderStore((s) => s.draft);
@@ -86,7 +86,7 @@ export default function ProgramBuilderPreviewScreen() {
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
-            <StatusBar barStyle="dark-content" />
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }}>
                 {/* Header */}
                 <View
@@ -97,7 +97,7 @@ export default function ProgramBuilderPreviewScreen() {
                         paddingHorizontal: 16,
                         paddingVertical: 12,
                         borderBottomWidth: StyleSheet.hairlineWidth,
-                        borderBottomColor: '#e2e8f0',
+                        borderBottomColor: colors.border.default,
                         backgroundColor: colors.surface.card,
                     }}
                 >
@@ -167,9 +167,9 @@ export default function ProgramBuilderPreviewScreen() {
                                         paddingVertical: 8,
                                         minHeight: 34,
                                         borderRadius: 999,
-                                        backgroundColor: active ? colors.purple[600] : '#ffffff',
+                                        backgroundColor: active ? colors.purple[600] : colors.surface.card2,
                                         borderWidth: 1,
-                                        borderColor: active ? colors.purple[600] : '#e2e8f0',
+                                        borderColor: active ? colors.purple[600] : colors.border.default,
                                         justifyContent: 'center',
                                     }}
                                 >
@@ -178,7 +178,7 @@ export default function ProgramBuilderPreviewScreen() {
                                             fontSize: 13,
                                             lineHeight: 17,
                                             fontWeight: '600',
-                                            color: active ? '#ffffff' : '#475569',
+                                            color: active ? '#ffffff' : colors.text.secondary,
                                             includeFontPadding: false,
                                             textAlignVertical: 'center',
                                         }}
