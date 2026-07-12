@@ -82,6 +82,10 @@ export interface ActiveSession {
     scheduledDays?: number[] | null
     weeklyCompleted?: number
     weeklyExpected?: number
+    /** T3: id da workout_session in_progress no SERVIDOR (persistência
+     *  incremental — espelho do padrão mobile). Setado pelo motor de sync;
+     *  o finish (RPC 245) reata esta mesma sessão. */
+    serverSessionId?: string | null
 }
 
 export interface SessionSetupData {
@@ -150,6 +154,15 @@ interface TrainingRoomStore {
     // Rest timer
     startRestTimer: (studentId: string, durationSeconds: number) => void
     clearRestTimer: (studentId: string) => void
+
+    // T3: vínculo com a sessão persistida no servidor
+    setServerSessionId: (studentId: string, sessionId: string | null) => void
+    /** T3: aplica set_logs vindos do servidor (recuperação) sem sobrescrever
+     *  progresso local já marcado. */
+    applyServerSetLogs: (
+        studentId: string,
+        logs: Array<{ assigned_workout_item_id: string; set_number: number; weight: number; reps_completed: number; is_completed: boolean }>,
+    ) => void
 
     // Cleanup
     finishSession: (studentId: string) => void
@@ -553,6 +566,58 @@ export const useTrainingRoomStore = create<TrainingRoomStore>()(
                                 restTimerEnd: null,
                                 restTimerDuration: null,
                             },
+                        },
+                    }
+                })
+            },
+
+            applyServerSetLogs(studentId, logs) {
+                set((state) => {
+                    const session = state.sessions[studentId]
+                    if (!session) return state
+                    // Recuperação (T3): aplica séries já persistidas no servidor
+                    // (pós-crash / registradas pelo aluno no celular) sobre sets
+                    // locais ainda NÃO concluídos — o que o treinador já marcou
+                    // nesta aba vence.
+                    const byItem = new Map<string, Map<number, { weight: number; reps_completed: number }>>()
+                    for (const log of logs) {
+                        if (!log.is_completed) continue
+                        const inner = byItem.get(log.assigned_workout_item_id) ?? new Map()
+                        inner.set(log.set_number, { weight: log.weight, reps_completed: log.reps_completed })
+                        byItem.set(log.assigned_workout_item_id, inner)
+                    }
+                    if (byItem.size === 0) return state
+                    const exercises = session.exercises.map((ex) => {
+                        const inner = byItem.get(ex.id)
+                        if (!inner) return ex
+                        const setsData = ex.setsData.map((s, i) => {
+                            const server = inner.get(i + 1)
+                            if (!server || s.completed) return s
+                            return {
+                                weight: server.weight > 0 ? String(server.weight) : s.weight,
+                                reps: server.reps_completed > 0 ? String(server.reps_completed) : s.reps,
+                                completed: true,
+                            }
+                        })
+                        return { ...ex, setsData }
+                    })
+                    return {
+                        sessions: {
+                            ...state.sessions,
+                            [studentId]: { ...session, exercises },
+                        },
+                    }
+                })
+            },
+
+            setServerSessionId(studentId, sessionId) {
+                set((state) => {
+                    const session = state.sessions[studentId]
+                    if (!session) return state
+                    return {
+                        sessions: {
+                            ...state.sessions,
+                            [studentId]: { ...session, serverSessionId: sessionId },
                         },
                     }
                 })

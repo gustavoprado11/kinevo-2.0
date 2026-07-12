@@ -16,6 +16,7 @@ import { RestTimerOverlay } from '@/components/training-room/rest-timer-overlay'
 import { WarmupCardioCard } from '@/components/training-room/warmup-cardio-card'
 import { WorkoutFormInline } from '@/components/training-room/workout-form-inline'
 import { finishTrainingRoomWorkout } from '@/actions/training-room/finish-training-room-workout'
+import { useTrainingRoomPersistence } from '@/components/training-room/use-training-room-persistence'
 import { getStudentTodayWorkout } from '@/actions/training-room/get-student-today-workout'
 import type { SubstituteOption } from '@/actions/training-room/get-substitute-exercises'
 import { useOnboardingStore } from '@/stores/onboarding-store'
@@ -26,6 +27,8 @@ interface TrainingRoomClientProps {
 }
 
 export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
+    // T3: espelha o progresso da Sala no servidor série-a-série (crash-safe).
+    useTrainingRoomPersistence()
     const sessions = useTrainingRoomStore((s) => s.sessions)
     const activeStudentId = useTrainingRoomStore((s) => s.activeStudentId)
     const clearExpiredSessions = useTrainingRoomStore((s) => s.clearExpiredSessions)
