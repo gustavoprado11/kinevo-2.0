@@ -275,9 +275,14 @@ treinador) → 27 achados. **Corrigido e commitado o lote FUNCIONAL + top dark-m
 - ✅ Dark mode mecânico: chips da Sala de Treino, botões de ação do contrato (pastéis→rgba) + bordas, preview de mensagens (`neutral[N]`→tokens), builder/preview (`SafeAreaView` do core→safe-area-context + StatusBar adaptativo + tokens), cluster de bordas `rgba(0,0,0,.0x)` (report/student/contract/mensagens).
 - ✅ Teclado no formulário do inbox; a11y na agenda (voltar + FAB) e no botão de enviar do chat; `Linking.openURL` com catch (2 sites); emoji 🔑→ícone Lucide.
 
-**Sobra (menor valor / mais cuidado — próxima rodada de código):**
-- Estado de erro (vez de "lista vazia") em planos (precisa expor `error` no hook) e templates mobile (hook já expõe — só a tela ler).
-- Swipe-to-delete morto no inbox do aluno (remover a affordance ou ligar a ação); virtualizar notificações do inbox; guards de unmount (logs/inbox aluno); reset de draft no `saveAndAssign` do builder; deps stale do markAsRead realtime; segmented control (logs/inbox) no dark.
+**Sobra — segunda leva CORRIGIDA E PUSHADA** (`0caa3fd` erro-states, `7c2188b` swipe):
+- ✅ Estado de erro (vez de "lista vazia") em planos (P16 no hook + expõe `error` + ErrorState) e templates (tela passou a ler o `error` do hook).
+- ✅ Swipe-to-delete morto no inbox do aluno removido (affordance enganosa desligada).
+
+**Sobra final (BAIXO — próxima rodada, sem urgência):**
+- Virtualizar notificações do inbox (ScrollView.map → FlatList); guards de unmount (logs `PublishedReportsSection`, inbox aluno); reset de draft no `saveAndAssign` do builder; deps stale do markAsRead realtime; segmented control (logs/inbox) tokenizar no dark.
+
+**Precisa de aparelho (QA do simulador, junto do build 1.5.7):** teclado na Sala ao vivo, migração dark do fluxo de Avaliações (L), Reanimated no reorder de chips + expand do HistoryCard (MB11), PF10 resize de avatar (lib nativa).
 
 **Precisa de olho no aparelho (QA do simulador, junto do build):**
 - Teclado na Sala de Treino ao vivo (KeyboardAvoidingView — ajustar no device).
