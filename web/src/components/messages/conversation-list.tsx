@@ -123,7 +123,7 @@ export function ConversationList({
                     }`}
                 >
                     <Archive size={12} strokeWidth={1.5} />
-                    {showArchived ? 'Ocultar arquivados' : 'Mostrar arquivados'}
+                    {showArchived ? 'Ocultar inativos' : 'Mostrar inativos'}
                 </button>
             </div>
 
@@ -186,9 +186,9 @@ export function ConversationList({
                                             <span className={`text-sm truncate ${hasUnread ? 'font-bold text-[#1D1D1F] dark:text-white' : 'font-medium text-[#1D1D1F] dark:text-white'}`}>
                                                 {conv.student.name}
                                             </span>
-                                            {conv.student.status === 'archived' && (
+                                            {conv.student.status === 'inactive' && (
                                                 <span className="flex-shrink-0 text-[9px] font-semibold uppercase tracking-wide text-[#86868B] dark:text-k-text-quaternary bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 rounded">
-                                                    Arquivado
+                                                    Inativo
                                                 </span>
                                             )}
                                             {conv.student.status === 'pending' && (
