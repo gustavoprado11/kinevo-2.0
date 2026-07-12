@@ -1,9 +1,17 @@
 # P9 — Máquina de renovação para PIX mensal (spec para decisão)
 
 ## Status
-- [x] Spec escrita (12/jul/2026) — aguardando DECISÃO do Gustavo
-- [ ] Decidida
-- [ ] Implementada
+- [x] Spec escrita (12/jul/2026)
+- [x] DECIDIDA (12/jul/2026): **opção (a) — só manual por ora.** PIX mensal usa o rail
+  manual_recurring + "Marcar pago" (máquina existente: período, carência, inadimplência,
+  bloqueio). Nenhum cron gerador de cobrança. Reavaliar (c) se o volume de treinadores
+  reclamando do trabalho manual justificar.
+- [x] Cohort NULL RESOLVIDO (12/jul/2026): os 3 contratos eram TESTES do próprio Gustavo —
+  cancelados via kinevo_cancel_contract (core com limpeza Asaas). Zero contratos asaas_auto
+  ativos restantes; sem backfill necessário.
+- Decisões-irmãs da mesma rodada: P6 = chargeback→past_due imediato + refund só notifica
+  (implementado no webhook); P12 = taxa oficial 0% por ora (alarme de env só no estado
+  incoerente pct-sem-wallet; copy/simulador já corretos).
 
 ## Contexto (o problema)
 

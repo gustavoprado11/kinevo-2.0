@@ -738,6 +738,45 @@ async function handlePaymentChargeback(event: AsaasWebhookEvent, scopedTrainerId
     if (scopedTrainerId) q = q.eq('coach_id', scopedTrainerId)
     await q
 
+    // P6 (decisão 12/jul): chargeback é hostil — o contrato vai a past_due na
+    // hora (entra no funil carência→bloqueio das migrações 242/241); reembolso
+    // emitido pelo treinador segue só notificando (handlePaymentRefunded).
+    // Se a contestação for ganha e o dinheiro voltar, o caminho de pagamento
+    // (webhook/reconcile) reativa o contrato — o filtro de status deles já
+    // inclui past_due.
+    if (event.event !== 'PAYMENT_AWAITING_CHARGEBACK_REVERSAL') {
+        type ContractRef = { id: string; trainer_id: string; student_id: string }
+        let matchedContract: ContractRef | null = null
+        let cq = supabaseAdmin
+            .from('student_contracts')
+            .update({ status: 'past_due' })
+            .eq('asaas_payment_id', payment.id)
+            .in('status', ['active', 'pending_payment'])
+        if (scopedTrainerId) cq = cq.eq('trainer_id', scopedTrainerId)
+        const { data: byPay } = await cq.select('id, trainer_id, student_id')
+        if (byPay && byPay.length > 0) {
+            matchedContract = byPay[0] as ContractRef
+        } else if (payment.paymentLink) {
+            let lq = supabaseAdmin
+                .from('student_contracts')
+                .update({ status: 'past_due' })
+                .eq('asaas_payment_link_id', payment.paymentLink)
+                .in('status', ['active', 'pending_payment'])
+            if (scopedTrainerId) lq = lq.eq('trainer_id', scopedTrainerId)
+            const { data: byLink } = await lq.select('id, trainer_id, student_id')
+            if (byLink && byLink.length > 0) matchedContract = byLink[0] as ContractRef
+        }
+        if (matchedContract) {
+            await logContractEvent({
+                studentId: matchedContract.student_id,
+                trainerId: matchedContract.trainer_id,
+                contractId: matchedContract.id,
+                eventType: 'contract_overdue',
+                metadata: { provider: 'asaas', reason: 'chargeback', amount: payment.value, paymentId: payment.id },
+            })
+        }
+    }
+
     const reversed = event.event === 'PAYMENT_AWAITING_CHARGEBACK_REVERSAL'
     const trainerId = await resolveTrainerByAsaasPayment(payment.id, payment.paymentLink)
     if (trainerId) {

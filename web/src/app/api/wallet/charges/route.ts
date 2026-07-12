@@ -152,15 +152,13 @@ export async function POST(request: NextRequest) {
         const apiKey = await getDecryptedApiKey(trainer.id)
 
         // 3. Take rate Kinevo via split (se configurado)
+        // P12 (decisão 12/jul): a taxa oficial é 0% por ora — env ausente/zerada
+        // é estado LEGÍTIMO (copy do settings e simulador dizem 0% e estão
+        // CORRETOS; não loga erro). O alarme fica só para o estado incoerente:
+        // pct LIGADO sem wallet, que derrubaria em silêncio uma taxa ativa.
         const kinevoWalletId = getKinevoWalletId()
         const takeRatePct = Number(process.env.KINEVO_TAKE_RATE_PCT ?? '0')
-        if (!(takeRatePct > 0) && process.env.NODE_ENV === 'production') {
-            // Env ausente/inválida zeraria a taxa da plataforma em silêncio.
-            console.error('[wallet/charges] KINEVO_TAKE_RATE_PCT ausente ou inválida — cobrança criada SEM split Kinevo')
-        }
         if (takeRatePct > 0 && !kinevoWalletId) {
-            // Pct configurado mas ASAAS_KINEVO_WALLET_ID ausente: o split cai
-            // SEM nenhum log — pior que taxa zero, porque parece ligada.
             console.error('[wallet/charges] KINEVO_TAKE_RATE_PCT setado mas ASAAS_KINEVO_WALLET_ID ausente — split descartado')
         }
         const split: AsaasSplit[] | undefined =
