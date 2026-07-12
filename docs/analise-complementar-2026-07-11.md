@@ -206,6 +206,21 @@ do hook, e o teste visual em device já era pré-requisito do EAS 1.5.7); sync
 GCal com conta Google real (exige conexão ativa — rota e lógica cobertas por
 cron-test + unit); registro dos crons no Vercel acontece no primeiro deploy.
 
+## 12. EXECUÇÃO — pacote de decisões de produto (12/jul)
+
+Gustavo decidiu as 4 pendências (todas na recomendação). Implementado e
+validado; working tree aguardando commit.
+
+| Decisão | Implementação |
+|---|---|
+| **D1 — Presença preserva remarcação** | `markOccurrenceStatusCore` lê a exceção existente e preserva `new_date/new_start_time`; a projeção posiciona completed/no_show na data EFETIVA (incl. resgate cross-week). A ressalva do §9 deixa de existir. +3 testes shared, +1 web (mock ganhou `maybeSingle`). |
+| **D2 — E-mail sincroniza login** | Server action `updateStudent` (posse via RLS → `auth.admin.updateUserById` + `students` juntos, erros em PT); modal de edição migrou do update client-side (some o `@ts-ignore`). Aluno criado sem conta (sem auth) só atualiza contato. |
+| **D3 — Reativação honesta com tiers** | `/subscription/blocked` agora lista os 3 planos de `PAID_TIER_DISPLAY` (default no Pro IA, "Popular"), envia `{tier}` no checkout e diz "Cobrança imediata no cartão · Cancele quando quiser" — sem promessa de trial. `past_due` (portal) inalterado. |
+| **D4 — Conversas pending + arquivados** | **Migration 245 (APLICADA em prod, smoke ok)**: RPC v2 com `p_include_archived` default false (DROP+CREATE pra não criar overload); pending entra SEMPRE. Web: toggle "Mostrar arquivados" + badges Pendente/Arquivado na lista; mobile herda pending automaticamente. |
+
+Validação: web `tsc` 0 · **vitest 1419 passed, 0 failed** · mobile `tsc` 0 ·
+shared **330 passed** (42/42 na projeção).
+
 ### Ressalvas conhecidas (deliberadas, p/ seu teste)
 
 1. **Presença × remarcada**: marcar concluído/faltou numa ocorrência REMARCADA sobrescreve `new_date` (a ocorrência volta ao slot original com o status) — comportamento herdado do `markOccurrenceStatusCore`, idêntico ao MCP. Corrigir exige preservar `new_date` no core + projeção respeitá-lo em completed/no_show. Deixado fora por disciplina cirúrgica — decidir na próxima mexida na agenda.
