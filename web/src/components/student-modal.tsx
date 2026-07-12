@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { createStudent } from '@/actions/create-student'
+import { updateStudent } from '@/actions/update-student'
 import Link from 'next/link'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
 import { StudentAccessDialog } from '@/components/students'
@@ -112,29 +112,25 @@ export function StudentModal({
         setLoading(true)
 
         if (initialData) {
-            // mode: EDIT - Continue using client-side update for simple details
-            const supabase = createClient()
-            const { data, error: updateError } = await supabase
-                .from('students')
-                .update({
-                    name: name.trim(),
-                    email: email.trim().toLowerCase(),
-                    phone: phone.trim() || null,
-                    // @ts-ignore - modality field mismatch in types
-                    modality: modality
-                })
-                .eq('id', initialData.id)
-                .select()
-                .single()
+            // mode: EDIT — server action: valida posse e, se o e-mail mudou,
+            // sincroniza o e-mail de LOGIN junto (D2/AC7 — o update client-side
+            // antigo só tocava students.email e o aluno seguia logando no velho).
+            const result = await updateStudent({
+                studentId: initialData.id,
+                name: name.trim(),
+                email: email.trim().toLowerCase(),
+                phone: phone.trim(),
+                modality,
+            })
 
-            if (updateError) {
-                setError(updateError.message)
+            if (!result.success) {
+                setError(result.error || 'Erro ao atualizar aluno')
                 setLoading(false)
                 return
             }
 
             setLoading(false)
-            onStudentUpdated?.(data as unknown as Student)
+            onStudentUpdated?.(result.student as unknown as Student)
             onClose()
         } else {
             // mode: CREATE - Use the new Server Action with Auth creation
