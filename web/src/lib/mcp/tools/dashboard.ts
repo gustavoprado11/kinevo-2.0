@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getISOWeekRange } from '@kinevo/shared/utils/schedule-projection'
 import { mcpSuccess, mcpError } from '../types'
 
 export function registerDashboardReadTools(server: McpServer, trainerId: string) {
@@ -14,11 +15,11 @@ export function registerDashboardReadTools(server: McpServer, trainerId: string)
       const now = new Date()
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-      // Start of current week (Monday)
-      const dayOfWeek = now.getDay()
-      const startOfWeek = new Date(now)
-      startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-      startOfWeek.setHours(0, 0, 0, 0)
+      // CS4: semana em America/Sao_Paulo via helper compartilhado — getDay()
+      // cru usava o fuso do SERVIDOR (UTC na Vercel) e "sessões esta semana"
+      // divergia do dashboard web entre 21h e 00h BRT (e virava a semana mais
+      // cedo no domingo à noite).
+      const startOfWeek = getISOWeekRange(now, 'America/Sao_Paulo').start
 
       // Start of current month
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)

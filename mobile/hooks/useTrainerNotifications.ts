@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { getWeekRange } from '@kinevo/shared/utils/schedule-projection';
 import { supabase } from '../lib/supabase';
 import { useNotificationStore } from '../stores/notification-store';
 
@@ -31,8 +32,9 @@ export interface NotificationSection {
 function groupIntoSections(notifications: TrainerNotification[]): NotificationSection[] {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(todayStart);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Sunday
+    // CS2: semana começa na SEGUNDA (regra do produto; helper compartilhado) —
+    // a versão dom-based jogava seg–sáb em "Anteriores" quando era domingo.
+    const weekStart = getWeekRange(now).start;
 
     const today: TrainerNotification[] = [];
     const thisWeek: TrainerNotification[] = [];
@@ -122,20 +124,35 @@ export function useTrainerNotifications() {
             p_notification_id: id,
         });
 
-        if (error && __DEV__) {
-            console.error('[notifications] Mark read error:', error.message);
+        if (error) {
+            if (__DEV__) console.error('[notifications] Mark read error:', error.message);
+            // CS9: reverte o otimista — sem isto o contador "zerava" e
+            // ressuscitava no próximo fetch, sem nenhum feedback.
+            setNotifications((prev) =>
+                prev.map((n) => (n.id === id ? { ...n, is_read: false } : n))
+            );
+            setUnreadCount(unreadCount);
         }
     }, [unreadCount, setUnreadCount]);
 
     const markAllAsRead = useCallback(async () => {
-        // Optimistic update
-        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+        // Optimistic update (guarda os não-lidos pra reverter em falha — CS9)
+        let unreadIds: string[] = [];
+        setNotifications((prev) => {
+            unreadIds = prev.filter((n) => !n.is_read).map((n) => n.id);
+            return prev.map((n) => ({ ...n, is_read: true }));
+        });
         setUnreadCount(0);
 
         const { error } = await (supabase as any).rpc('mark_all_notifications_read');
 
-        if (error && __DEV__) {
-            console.error('[notifications] Mark all read error:', error.message);
+        if (error) {
+            if (__DEV__) console.error('[notifications] Mark all read error:', error.message);
+            const failedIds = new Set(unreadIds);
+            setNotifications((prev) =>
+                prev.map((n) => (failedIds.has(n.id) ? { ...n, is_read: false } : n))
+            );
+            setUnreadCount(failedIds.size);
         }
     }, [setUnreadCount]);
 
