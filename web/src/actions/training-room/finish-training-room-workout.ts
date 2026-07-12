@@ -69,34 +69,8 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
         }
     }
 
-    // 1. Insert workout_sessions via supabaseAdmin (bypasses RLS)
-    const { data: session, error: sessionError } = await supabaseAdmin
-        .from('workout_sessions')
-        .insert({
-            student_id: payload.studentId,
-            trainer_id: payload.trainerId,
-            assigned_workout_id: payload.assignedWorkoutId,
-            assigned_program_id: payload.assignedProgramId,
-            status: 'completed',
-            started_at: new Date(payload.startedAt).toISOString(),
-            completed_at: new Date().toISOString(),
-            duration_seconds: Math.floor((Date.now() - payload.startedAt) / 1000),
-            sync_status: 'synced',
-            rpe: payload.rpe,
-            feedback: payload.feedback,
-            pre_workout_submission_id: payload.preWorkoutSubmissionId,
-            post_workout_submission_id: payload.postWorkoutSubmissionId,
-            scheduled_date: scheduledDate,
-            program_week: programWeek,
-        })
-        .select('id')
-        .single()
-
-    if (sessionError || !session) {
-        return { sessionId: null, error: sessionError?.message || 'Erro ao criar sessão' }
-    }
-
-    // 2. Build set_logs — only completed sets
+    // 1. Build set_logs — only completed sets (workout_session_id é preenchido
+    // pela RPC, que decide entre reatar a sessão do aluno ou criar uma nova)
     const setLogs: any[] = []
 
     for (const exercise of payload.exercises) {
@@ -112,7 +86,6 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
                 intervals: config.intervals,
             })
             setLogs.push({
-                workout_session_id: session.id,
                 assigned_workout_item_id: exercise.id,
                 planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
                 executed_exercise_id: exercise.exercise_id,
@@ -136,7 +109,6 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
             const set = exercise.setsData[i]
             if (set.completed) {
                 setLogs.push({
-                    workout_session_id: session.id,
                     assigned_workout_item_id: exercise.id,
                     planned_exercise_id: exercise.planned_exercise_id || exercise.exercise_id,
                     executed_exercise_id: exercise.exercise_id,
@@ -153,21 +125,32 @@ export async function finishTrainingRoomWorkout(payload: FinishPayload): Promise
         }
     }
 
-    if (setLogs.length > 0) {
-        const { error: logsError } = await supabaseAdmin
-            .from('set_logs')
-            .insert(setLogs)
+    // 2. T2+T4 (migração 245): RPC TRANSACIONAL — sessão + séries num commit
+    // só (sem sessão-fantasma nem duplicata no retry) e, se o aluno tem uma
+    // sessão in_progress recente (<12h) deste treino no celular, o finish REATA
+    // essa sessão em vez de criar outra (histórico único; séries que só o aluno
+    // logou são preservadas, colisões a Sala vence).
+    const { data: sessionId, error: rpcError } = await supabaseAdmin.rpc(
+        'finish_training_room_session' as never,
+        {
+            p_trainer_id: payload.trainerId,
+            p_student_id: payload.studentId,
+            p_assigned_workout_id: payload.assignedWorkoutId,
+            p_assigned_program_id: payload.assignedProgramId,
+            p_started_at: new Date(payload.startedAt).toISOString(),
+            p_rpe: payload.rpe,
+            p_feedback: payload.feedback,
+            p_pre_submission_id: payload.preWorkoutSubmissionId,
+            p_post_submission_id: payload.postWorkoutSubmissionId,
+            p_scheduled_date: scheduledDate,
+            p_program_week: programWeek,
+            p_set_logs: setLogs,
+        } as never,
+    )
 
-        if (logsError) {
-            // Compensação: sem as séries, a sessão 'completed' recém-criada vira
-            // um fantasma (0 séries no histórico) e o retry do treinador criaria
-            // uma SEGUNDA sessão concluída. Remove a sessão; o retry recomeça
-            // limpo. (O insert das séries é um statement único — ou entra tudo,
-            // ou nada; não há parcial pra preservar.)
-            await supabaseAdmin.from('workout_sessions').delete().eq('id', session.id)
-            return { sessionId: null, error: logsError.message }
-        }
+    if (rpcError || !sessionId) {
+        return { sessionId: null, error: rpcError?.message || 'Erro ao concluir treino' }
     }
 
-    return { sessionId: session.id, error: null }
+    return { sessionId: sessionId as unknown as string, error: null }
 }
