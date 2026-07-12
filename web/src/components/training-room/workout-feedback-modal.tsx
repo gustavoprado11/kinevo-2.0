@@ -12,17 +12,20 @@ interface WorkoutFeedbackModalProps {
     onCancel: () => void
 }
 
+// Escala PSE sem emojis (feedback do Gustavo 12/jul + regra do design system:
+// ícones = Lucide, nunca emoji). Pills numeradas com preenchimento progressivo
+// — a leitura de intensidade vem do fill, não de carinhas.
 const RPE_OPTIONS = [
-    { value: 1, label: 'Muito fácil', emoji: '😌' },
-    { value: 2, label: 'Fácil', emoji: '😊' },
-    { value: 3, label: 'Leve', emoji: '🙂' },
-    { value: 4, label: 'Moderado-', emoji: '😐' },
-    { value: 5, label: 'Moderado', emoji: '😤' },
-    { value: 6, label: 'Moderado+', emoji: '😮‍💨' },
-    { value: 7, label: 'Difícil', emoji: '😰' },
-    { value: 8, label: 'Muito difícil', emoji: '😫' },
-    { value: 9, label: 'Extremo', emoji: '🥵' },
-    { value: 10, label: 'Máximo', emoji: '💀' },
+    { value: 1, label: 'Muito fácil' },
+    { value: 2, label: 'Fácil' },
+    { value: 3, label: 'Leve' },
+    { value: 4, label: 'Moderado-' },
+    { value: 5, label: 'Moderado' },
+    { value: 6, label: 'Moderado+' },
+    { value: 7, label: 'Difícil' },
+    { value: 8, label: 'Muito difícil' },
+    { value: 9, label: 'Extremo' },
+    { value: 10, label: 'Máximo' },
 ]
 
 export function WorkoutFeedbackModal({
@@ -70,31 +73,33 @@ export function WorkoutFeedbackModal({
                         <p className="text-[11px] font-semibold text-[#86868B] dark:text-muted-foreground/60 mb-3">
                             Percepção de Esforço (PSE)
                         </p>
-                        <div className="grid grid-cols-5 gap-1.5">
+                        <div className="grid grid-cols-10 gap-1">
                             {RPE_OPTIONS.map((option) => (
                                 <button
                                     key={option.value}
                                     onClick={() =>
                                         setSelectedRpe(selectedRpe === option.value ? null : option.value)
                                     }
-                                    className={`flex flex-col items-center gap-0.5 rounded-xl p-2 text-center transition-all ${
+                                    aria-label={`PSE ${option.value} — ${option.label}`}
+                                    className={`h-9 rounded-lg text-[13px] font-bold transition-all ${
                                         selectedRpe === option.value
-                                            ? 'bg-[#7C3AED]/10 dark:bg-violet-600/20 border-2 border-[#7C3AED] dark:border-violet-500/40 scale-105'
-                                            : 'bg-[#F5F5F7] dark:bg-glass-bg border border-[#E8E8ED] dark:border-transparent hover:bg-[#ECECF0] dark:hover:bg-glass-bg-hover'
+                                            ? 'bg-[#7C3AED] dark:bg-violet-600 text-white scale-110 shadow-sm'
+                                            : selectedRpe && option.value < selectedRpe
+                                                ? 'bg-[#7C3AED]/15 dark:bg-violet-500/20 text-[#6D28D9] dark:text-violet-300'
+                                                : 'bg-[#F5F5F7] dark:bg-glass-bg border border-[#E8E8ED] dark:border-transparent text-[#6E6E73] dark:text-muted-foreground hover:bg-[#ECECF0] dark:hover:bg-glass-bg-hover'
                                     }`}
                                 >
-                                    <span className="text-lg">{option.emoji}</span>
-                                    <span className="text-[10px] font-bold text-[#1D1D1F] dark:text-foreground">
-                                        {option.value}
-                                    </span>
+                                    {option.value}
                                 </button>
                             ))}
                         </div>
-                        {selectedRpe && (
-                            <p className="mt-2 text-center text-xs text-[#7C3AED] dark:text-violet-400">
-                                {RPE_OPTIONS[selectedRpe - 1].label}
-                            </p>
-                        )}
+                        <div className="mt-1.5 flex items-baseline justify-between text-[10px] text-[#AEAEB2] dark:text-muted-foreground/50">
+                            <span>Muito fácil</span>
+                            <span className="min-h-4 text-xs font-semibold text-[#7C3AED] dark:text-violet-400">
+                                {selectedRpe ? RPE_OPTIONS[selectedRpe - 1].label : ''}
+                            </span>
+                            <span>Máximo</span>
+                        </div>
                     </div>
 
                     {/* Feedback text */}
