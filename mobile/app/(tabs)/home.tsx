@@ -554,16 +554,19 @@ export default function HomeScreen() {
                     >
                         <CreditCard size={20} color={colors.semantic.warning.fg} />
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text.primary }}>
+                            {/* Textos em warning.fg (fixo escuro) — o fundo é warning.bg
+                                (âmbar claro fixo); text.primary/secondary viram brancos
+                                no dark e sumiam sobre o âmbar (padrão MB5). */}
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.semantic.warning.fg }}>
                                 {pendingCharge.status === "past_due" ? "Pagamento atrasado" : "Você tem uma cobrança"}
                             </Text>
-                            <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 1 }}>
+                            <Text style={{ fontSize: 12, color: colors.semantic.warning.fg, opacity: 0.85, marginTop: 1 }}>
                                 {pendingCharge.amount != null
                                     ? `${pendingCharge.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — toque para pagar pelo app`
                                     : "Toque para pagar pelo app"}
                             </Text>
                         </View>
-                        <ChevronRight size={18} color={colors.text.tertiary} />
+                        <ChevronRight size={18} color={colors.semantic.warning.fg} />
                     </TouchableOpacity>
                 )}
 

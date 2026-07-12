@@ -213,7 +213,7 @@ export function ActionCard({
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.cardTitle}>{workout.name}</Text>
-                                <Text style={{ fontSize: 12, fontWeight: '500', color: '#92400e' }}>
+                                <Text style={{ fontSize: 12, fontWeight: '500', color: colors.semantic.warning.fg }}>
                                     Realizado em outro dia desta semana
                                 </Text>
                             </View>
@@ -447,7 +447,7 @@ export function ActionCard({
                     <View style={{ marginTop: 16 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                             <AlertCircle size={14} color="#f59e0b" strokeWidth={2} />
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400e', marginLeft: 6 }}>
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.semantic.warning.fg, marginLeft: 6 }}>
                                 {remaining === 1 ? 'Resta 1 treino esta semana' : `Restam ${remaining} treinos esta semana`}
                             </Text>
                         </View>
@@ -521,7 +521,7 @@ export function ActionCard({
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
                     <AlertCircle size={16} color="#f59e0b" strokeWidth={2} />
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#92400e', marginLeft: 8 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.semantic.warning.fg, marginLeft: 8 }}>
                         {pending.length === 1
                             ? 'Você tem 1 treino pendente'
                             : `Você tem ${pending.length} treinos pendentes`}
@@ -543,7 +543,7 @@ export function ActionCard({
                             </View>
                         </View>
                         <Text style={styles.heroTitle}>{nextPending.workoutName}</Text>
-                        <Text style={{ fontSize: 13, color: '#92400e', marginBottom: 16 }}>
+                        <Text style={{ fontSize: 13, color: colors.semantic.warning.fg, marginBottom: 16 }}>
                             era para {nextPending.originalDay} ({nextPending.missedDate})
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
@@ -578,7 +578,7 @@ export function ActionCard({
                             <PartyPopper size={24} color="#10b981" strokeWidth={1.5} />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle}>Semana completa! 🎉</Text>
+                            <Text style={styles.cardTitle}>Semana completa!</Text>
                             <Text style={styles.cardSubtitle}>
                                 Todos os {weeklyProgress?.expectedCount || 0} treinos foram concluídos.
                             </Text>

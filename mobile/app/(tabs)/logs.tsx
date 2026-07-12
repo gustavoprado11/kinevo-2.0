@@ -198,7 +198,20 @@ export default function LogsScreen() {
     const [filter, setFilter] = useState<HistoryFilter>(
         params.filter === 'strava' ? 'strava' : 'all',
     );
-    const { history, stats, isLoading } = useWorkoutHistory();
+    const { history, stats, isLoading, refetch } = useWorkoutHistory();
+    // Aba fica montada: ao concluir um treino (router.replace pra Home) e voltar
+    // em Logs, a sessão nova só aparecia matando o app. Re-busca ao focar (pula
+    // o foco inicial, que o fetch do mount já cobre).
+    const didFocusOnce = React.useRef(false);
+    useFocusEffect(
+        useCallback(() => {
+            if (!didFocusOnce.current) {
+                didFocusOnce.current = true;
+                return;
+            }
+            refetch();
+        }, [refetch]),
+    );
     const { activities: stravaActivities } = useStravaActivities(120);
     const { weeklyProgress } = useActiveProgram();
     // Meta semanal do programa ativo; fallback 5 (sem programa).
@@ -625,7 +638,7 @@ function ExerciseSetsView({ name, sets }: { name: string; sets: { id: string; we
                         key={set.id}
                         style={{
                             flexDirection: 'row', alignItems: 'center',
-                            justifyContent: 'space-between', backgroundColor: '#f8fafc',
+                            justifyContent: 'space-between', backgroundColor: 'rgba(148,163,184,0.10)',
                             paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10,
                         }}
                     >
@@ -651,7 +664,7 @@ function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFi
         const label = config?.warmup_type ? (WARMUP_TYPE_LABELS[config.warmup_type] || 'Aquecimento') : 'Aquecimento';
         return (
             <View style={{ ...separator as any }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff7ed', borderRadius: 12, padding: 12, gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(245,158,11,0.10)', borderRadius: 12, padding: 12, gap: 10 }}>
                     <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(234,88,12,0.1)', alignItems: 'center', justifyContent: 'center' }}>
                         <Flame size={16} color="#ea580c" />
                     </View>
@@ -681,7 +694,7 @@ function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFi
 
         return (
             <View style={{ ...separator as any }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', borderRadius: 12, padding: 12, gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(59,130,246,0.10)', borderRadius: 12, padding: 12, gap: 10 }}>
                     <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(59,130,246,0.1)', alignItems: 'center', justifyContent: 'center' }}>
                         <Dumbbell size={16} color="#3b82f6" />
                     </View>
@@ -702,7 +715,7 @@ function HistoryItemRenderer({ item, isFirst }: { item: HistoryWorkoutItem; isFi
     if (item.itemType === 'note' && item.notes) {
         return (
             <View style={{ ...separator as any }}>
-                <View style={{ backgroundColor: '#f8fafc', borderRadius: 10, padding: 10 }}>
+                <View style={{ backgroundColor: 'rgba(148,163,184,0.10)', borderRadius: 10, padding: 10 }}>
                     <Text style={{ fontSize: 12, color: colors.text.tertiary, fontStyle: 'italic' }}>{item.notes}</Text>
                 </View>
             </View>
