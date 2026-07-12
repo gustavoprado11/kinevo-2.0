@@ -109,9 +109,14 @@ export default async function StudentsPage() {
 
         let expectedPerWeek = 0
         if (program?.assigned_workouts) {
-            const uniqueDays = new Set<number>()
-            ;(program.assigned_workouts as any[]).forEach((w: any) => w.scheduled_days?.forEach((d: number) => uniqueDays.add(d)))
-            expectedPerWeek = uniqueDays.size
+            // AG5: conta OCORRÊNCIAS agendadas (soma dos scheduled_days por
+            // treino), não dias únicos — alinhado com o dashboard/ranking e a
+            // página do aluno (aluno com 2 treinos no mesmo dia mostrava 3/3
+            // aqui e 3/4 no resto do app).
+            expectedPerWeek = (program.assigned_workouts as any[]).reduce(
+                (sum: number, w: any) => sum + (w.scheduled_days?.length ?? 0),
+                0,
+            )
         }
 
         return {

@@ -279,6 +279,11 @@ export function CreateAppointmentModal({
                 return
             }
             setError(result.error ?? 'Erro ao criar pacote')
+        } catch (err) {
+            // AG8: exceção da server action (rede) morria sem feedback — o
+            // trainer clicava e nada acontecia.
+            console.error('[create-appointment-modal] submit error:', err)
+            setError('Erro de conexão ao criar. Tente novamente.')
         } finally {
             setLoading(false)
         }

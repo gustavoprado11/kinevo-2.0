@@ -65,6 +65,9 @@ export function ChatPanel({ studentId, studentName, studentAvatar, onBack }: Cha
             markMessagesAsRead(studentId).catch(() => {})
             // Scroll to bottom after render
             setTimeout(() => bottomRef.current?.scrollIntoView(), 50)
+        }).catch(() => {
+            // AG8: rejeição (rede/action) deixava o spinner girando pra sempre.
+            setIsLoading(false)
         })
     }, [studentId])
 

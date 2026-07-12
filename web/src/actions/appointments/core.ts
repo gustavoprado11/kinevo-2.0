@@ -102,7 +102,10 @@ function dayOfWeekFromDateKey(dateKey: string): number {
     return new Date(Date.UTC(y, m - 1, d)).getUTCDay()
 }
 function todayDateKey(): string {
-    return toDateKey(new Date())
+    // AG4: "hoje" do NEGÓCIO é São Paulo — toDateKey(new Date()) usava o fuso
+    // do runtime (UTC na Vercel): encerrar uma rotina entre 21h e 00h BRT
+    // gravava ends_on de AMANHÃ e deixava 1 dia extra de treinos ativos.
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 }
 
 // ----------------------------------------------------------------------------
@@ -408,6 +411,19 @@ export async function rescheduleOccurrenceCore(
                 if (updateRuleError) {
                     console.error('[rescheduleOccurrenceCore only_this once] update rule error:', updateRuleError)
                     return
+                }
+                // AG6: a regra `once` MOVE starts_on — a exceção rescheduled
+                // recém-upsertada (e as de remarcações anteriores) vira órfã e,
+                // se o trainer remarcar de volta pra data original, a exceção
+                // velha redirecionava a ocorrência de novo (A→B→A reaparecia
+                // em B). Regra movida = exceções antigas não fazem sentido.
+                const { error: cleanupError } = await supabaseAdmin
+                    .from('appointment_exceptions')
+                    .delete()
+                    .eq('recurring_appointment_id', payload.recurringAppointmentId)
+                    .eq('kind', 'rescheduled')
+                if (cleanupError) {
+                    console.error('[rescheduleOccurrenceCore only_this once] exception cleanup error:', cleanupError)
                 }
                 const { syncUpdateAppointment } = await import('@/lib/google-calendar/sync-service')
                 await syncUpdateAppointment(payload.recurringAppointmentId).catch((err) => {

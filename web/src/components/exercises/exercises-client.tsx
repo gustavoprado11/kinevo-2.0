@@ -135,7 +135,11 @@ export function ExercisesClient({
 }: ExercisesClientProps) {
     const router = useRouter()
     const { toast } = useToast()
-    const [exercises, setExercises] = useState(initialExercises)
+    // AG9: sem estado espelho — `initialExercises` já muda via router.refresh().
+    // O antigo setState dentro de useMemo era side effect em render e, com o
+    // React Compiler assumindo o corpo puro, podia ser descartado ("arquivar
+    // não fazia nada").
+    const exercises = initialExercises
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
     const [selectedPatterns, setSelectedPatterns] = useState<string[]>([])
@@ -166,10 +170,6 @@ export function ExercisesClient({
     const [editingExercise, setEditingExercise] = useState<ExerciseWithDetails | null>(null)
     const [trainerVideosMap, setTrainerVideosMap] = useState<Record<string, TrainerVideoData>>(initialTrainerVideosMap)
     const [videoModalExercise, setVideoModalExercise] = useState<ExerciseWithDetails | null>(null)
-
-    useMemo(() => {
-        setExercises(initialExercises)
-    }, [initialExercises])
 
     // Hook for muscle groups (Single Source of Truth)
     const muscleGroupsManager = useMuscleGroups(currentTrainerId)

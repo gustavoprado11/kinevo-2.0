@@ -17,11 +17,9 @@ export interface CancelAllForStudentResult {
 }
 
 function todayDateKey(): string {
-    const now = new Date()
-    const y = now.getUTCFullYear()
-    const m = String(now.getUTCMonth() + 1).padStart(2, '0')
-    const d = String(now.getUTCDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
+    // AG4: "hoje" do negócio é São Paulo — a versão UTC encerrava com 1 dia
+    // extra entre 21h e 00h BRT.
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 }
 
 /**
