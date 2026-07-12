@@ -30,16 +30,19 @@ import { useV2Colors } from "../../hooks/useV2Colors";
 
 
 
-function SwipeableExerciseCard({
+// PF8: memoizado + callbacks ESTÁVEIS por item (o card chama com o próprio
+// exercise) — renderItem inline recriava as arrows a cada tecla da busca e
+// re-renderizava todas as células montadas (500+ exercícios, Swipeable+sombras).
+const SwipeableExerciseCard = React.memo(function SwipeableExerciseCard({
     exercise,
-    onPress,
+    onPressItem,
     isOwner,
-    onDelete,
+    onDeleteItem,
 }: {
     exercise: Exercise;
-    onPress: () => void;
+    onPressItem: (id: string) => void;
     isOwner: boolean;
-    onDelete: () => void;
+    onDeleteItem: (exercise: Exercise) => void;
 }) {
     const colors = useV2Colors();
     const swipeableRef = useRef<Swipeable>(null);
@@ -52,7 +55,7 @@ function SwipeableExerciseCard({
             <TouchableOpacity
                 onPress={() => {
                     swipeableRef.current?.close();
-                    onDelete();
+                    onDeleteItem(exercise);
                 }}
                 activeOpacity={0.7}
                 accessibilityLabel="Excluir exercício"
@@ -76,7 +79,7 @@ function SwipeableExerciseCard({
     };
 
     const card = (
-        <PressableScale onPress={onPress} pressScale={0.98}>
+        <PressableScale onPress={() => onPressItem(exercise.id)} pressScale={0.98}>
             <View
                 style={{
                     backgroundColor: colors.surface.card,
@@ -132,7 +135,7 @@ function SwipeableExerciseCard({
             {card}
         </Swipeable>
     );
-}
+});
 
 export default function ExercisesListScreen() {
     const colors = useV2Colors();
@@ -194,6 +197,25 @@ export default function ExercisesListScreen() {
             ]
         );
     }, [deleteExercise]);
+
+    // PF8: identidades estáveis — digitar na busca re-renderiza o parent, mas
+    // com renderItem/callbacks estáveis o FlatList não re-renderiza as células
+    // montadas (React Compiler está DESLIGADO no mobile; memo manual importa).
+    const handlePressItem = useCallback(
+        (id: string) => router.push({ pathname: "/exercises/[id]", params: { id } }),
+        [router],
+    );
+    const renderExercise = useCallback(
+        ({ item }: { item: Exercise }) => (
+            <SwipeableExerciseCard
+                exercise={item}
+                isOwner={!!trainerId && item.owner_id === trainerId}
+                onPressItem={handlePressItem}
+                onDeleteItem={handleDelete}
+            />
+        ),
+        [trainerId, handlePressItem, handleDelete],
+    );
 
     return (
         <>
@@ -377,14 +399,7 @@ export default function ExercisesListScreen() {
                         data={exercises}
                         keyExtractor={(item) => item.id}
                         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-                        renderItem={({ item }) => (
-                            <SwipeableExerciseCard
-                                exercise={item}
-                                isOwner={!!trainerId && item.owner_id === trainerId}
-                                onPress={() => router.push({ pathname: "/exercises/[id]", params: { id: item.id } })}
-                                onDelete={() => handleDelete(item)}
-                            />
-                        )}
+                        renderItem={renderExercise}
                         onRefresh={refresh}
                         refreshing={isLoading}
                     />

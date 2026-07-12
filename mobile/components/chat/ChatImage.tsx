@@ -3,8 +3,28 @@ import { View, Text, Image } from 'react-native';
 import { ImageOff } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 
-// Signed URLs live long enough for a chat session; regenerated on every mount.
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24; // 24h
+
+// PF7: cache module-level de signed URL por path. Cada mount gerava uma URL
+// NOVA (assinatura diferente) — o cache de imagens do RN é chaveado por URL,
+// então TODAS as fotos eram re-baixadas a cada abertura do chat (20 fotos =
+// 20 requests de assinatura + re-download integral, em rede móvel).
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+const CACHE_SAFETY_MS = 60 * 60 * 1000; // renova 1h antes de expirar
+
+async function getSignedUrl(path: string): Promise<string | null> {
+    const cached = signedUrlCache.get(path);
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
+    const { data } = await supabase.storage
+        .from('messages')
+        .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+    if (!data?.signedUrl) return null;
+    signedUrlCache.set(path, {
+        url: data.signedUrl,
+        expiresAt: Date.now() + SIGNED_URL_TTL_SECONDS * 1000 - CACHE_SAFETY_MS,
+    });
+    return data.signedUrl;
+}
 
 /**
  * Renders a chat message image. When an `image_path` is present it resolves a
@@ -34,11 +54,9 @@ export function ChatImage({
             return;
         }
         let active = true;
-        supabase.storage
-            .from('messages')
-            .createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
-            .then(({ data }) => {
-                if (active && data?.signedUrl) setUri(data.signedUrl);
+        getSignedUrl(path)
+            .then((url) => {
+                if (active && url) setUri(url);
             })
             .catch(() => {
                 /* keep fallback */

@@ -86,16 +86,20 @@ export default function StudentProfileScreen({
 
     const { archiveStudent, isArchiving } = useArchiveStudent();
 
-    // Training room store for "Start Training Room" action
-    const { sessions, addStudent, setActiveStudent } = useTrainingRoomStore();
+    // PF9: NADA de assinatura reativa do training-room store aqui — o
+    // destructure sem selector re-renderizava esta tela inteira (gráficos,
+    // heatmap, tabs) a cada toque de série na Sala de Treino (visível lado a
+    // lado no iPad). Action com identidade estável via selector; `sessions`
+    // só é lido no MOMENTO do clique, via getState().
+    const setActiveStudent = useTrainingRoomStore((s) => s.setActiveStudent);
 
     const handleStartTrainingRoom = useCallback(async () => {
         if (!data) return;
 
         const student = data.student;
-        const existingSession = Object.values(sessions).find(
-            (s) => s.studentId === student.id
-        );
+        const existingSession = Object.values(
+            useTrainingRoomStore.getState().sessions,
+        ).find((s) => s.studentId === student.id);
 
         if (existingSession) {
             // Student already in session, just navigate and select
@@ -116,7 +120,7 @@ export default function StudentProfileScreen({
             pathname: "/(trainer-tabs)/training-room",
             params: { studentId: student.id },
         } as any);
-    }, [data, sessions, setActiveStudent, router]);
+    }, [data, setActiveStudent, router]);
 
     /**
      * Single entry point — replaces "Atribuir Programa" / "Prescrever IA" /

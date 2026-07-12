@@ -37,6 +37,8 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         { data: formTemplatesData },
         { data: formSchedulesData },
         { data: draftProgramsRaw },
+        { data: aiDraftsRaw },
+        presencialRes,
     ] = await Promise.all([
         supabase
             .from('students')
@@ -190,20 +192,26 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .eq('student_id', id)
             .eq('status', 'draft')
             .order('created_at', { ascending: false }),
+
+        // PF11: dependem só do `id` do param — estavam SERIAIS depois dos
+        // estágios paralelos (+2 roundtrips de TTFB pdx1↔us-west-2).
+        supabase
+            .from('prescription_generations')
+            .select('id, created_at')
+            .eq('student_id', id)
+            .eq('status', 'pending_review')
+            .order('created_at', { ascending: false }),
+
+        getAssessmentSessionList({
+            studentId: id,
+            filter: 'completed',
+            limit: 1,
+        }),
     ])
 
     if (!student) {
         redirect('/students')
     }
-
-    // Rascunhos gerados pela IA (geração pendente de revisão) — surfacing no dashboard
-    // para o treinador abrir/editar no builder. Artefato distinto do assigned_programs draft.
-    const { data: aiDraftsRaw } = await supabase
-        .from('prescription_generations')
-        .select('id, created_at')
-        .eq('student_id', id)
-        .eq('status', 'pending_review')
-        .order('created_at', { ascending: false })
 
     const activeProgram = programCandidates?.[0] ?? null
     const calendarInitialSessions = (monthSessions || []) as { id: string; assigned_workout_id: string; started_at: string; completed_at: string | null; status: string; rpe: number | null; assigned_program_id: string | null }[]
@@ -451,13 +459,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         form_template_title: s.form_templates?.title ?? 'Formulário',
     }))
 
-    // M4 — Latest completed in-person assessment for this student.
-    // Drives the "Avaliação Presencial" block in AssessmentSidebarCard.
-    const presencialRes = await getAssessmentSessionList({
-        studentId: student.id,
-        filter: 'completed',
-        limit: 1,
-    })
+    // M4 — Latest completed in-person assessment (fetched in Stage 1 — PF11).
     const latestPresencialSession =
         presencialRes.success && presencialRes.data && presencialRes.data.length > 0
             ? presencialRes.data[0]
