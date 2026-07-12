@@ -11,13 +11,14 @@ export type UpdateTrainerBrandingResult = {
     brandLogoUrl?: string | null
 }
 
-const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'svg']
+// AC12: SVG removido — pode embutir <script> e o bucket de branding é público
+// (stored XSS na origem do storage). O avatar já era raster-only; alinhado.
+const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 const ALLOWED_CONTENT_TYPES: Record<string, string> = {
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
     png: 'image/png',
     webp: 'image/webp',
-    svg: 'image/svg+xml',
 }
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/

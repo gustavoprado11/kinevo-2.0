@@ -11,13 +11,18 @@ export default async function ApiKeysPage() {
 
   if (!user) redirect('/login')
 
-  const { data: trainer } = await supabase
+  const { data: trainer, error: trainerError } = await supabase
     .from('trainers')
     .select('id, name, email, avatar_url, theme')
     .eq('auth_user_id', user.id)
     .single()
 
   if (!trainer) {
+    // AC3: só desloga (escopo global!) quando o registro NÃO existe;
+    // erro transitório lança pro error boundary.
+    if (trainerError && trainerError.code !== 'PGRST116') {
+      throw new Error(`api-keys: falha ao carregar trainer (${trainerError.code ?? trainerError.message})`)
+    }
     await supabase.auth.signOut()
     redirect('/login')
   }

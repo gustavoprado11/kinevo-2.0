@@ -23,13 +23,18 @@ export default async function SettingsPage() {
 
     if (!user) redirect('/login')
 
-    const { data: trainer } = await supabase
+    const { data: trainer, error: trainerError } = await supabase
         .from('trainers')
         .select('id, name, email, avatar_url, landing_cref, theme, auto_publish_reports, brand_name, brand_color, brand_logo_url, brand_show_powered_by')
         .eq('auth_user_id', user.id)
         .single()
 
     if (!trainer) {
+        // AC3: só desloga (escopo global!) quando o registro NÃO existe;
+        // erro transitório lança pro error boundary.
+        if (trainerError && trainerError.code !== 'PGRST116') {
+            throw new Error(`settings: falha ao carregar trainer (${trainerError.code ?? trainerError.message})`)
+        }
         await supabase.auth.signOut()
         redirect('/login')
     }

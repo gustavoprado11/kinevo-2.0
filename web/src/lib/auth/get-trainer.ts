@@ -85,7 +85,13 @@ export async function getTrainerWithSubscription(userId?: string) {
     }
 
     if (!trainer) {
-        // Trainer record doesn't exist — force logout
+        // AC3: signOut() default é escopo GLOBAL — revoga TODAS as sessões
+        // (inclusive o app mobile). Só force logout quando o registro
+        // comprovadamente não existe (PGRST116 = 0 rows); erro transitório de
+        // rede/PostgREST lança pro error boundary em vez de derrubar tudo.
+        if (e1 && e1.code !== 'PGRST116') {
+            throw new Error(`getTrainer: falha transitória ao carregar trainer (${e1.code ?? e1.message})`)
+        }
         await supabase.auth.signOut()
         redirect('/login')
     }

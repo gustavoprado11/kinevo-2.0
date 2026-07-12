@@ -40,7 +40,11 @@ async function handleRegister(request: Request): Promise<Response> {
     return Response.json({ error: 'invalid_request' }, { status: 400 })
   }
 
-  const clientName = typeof body.client_name === 'string' ? body.client_name : 'MCP Client'
+  // AC11: nome exibido na tela de consentimento — cap + trim (sem isto dava
+  // pra registrar nomes gigantes/enganosos mostrados ao trainer).
+  const clientName = (typeof body.client_name === 'string' && body.client_name.trim()
+    ? body.client_name.trim().slice(0, 100)
+    : 'MCP Client')
   const redirectUris = Array.isArray(body.redirect_uris)
     ? body.redirect_uris.filter((u): u is string => typeof u === 'string')
     : []

@@ -83,15 +83,26 @@ export async function POST(request: NextRequest) {
     let stripeCustomerId = existingSub?.stripe_customer_id
 
     if (!stripeCustomerId) {
-        const customer = await stripe.customers.create({
-            email: trainer.email,
-            name: trainer.name,
-            metadata: {
-                trainer_id: trainer.id,
-                supabase_auth_uid: user.id,
-            },
-        })
-        stripeCustomerId = customer.id
+        // AC9: sem linha em subscriptions, cada tentativa de checkout criava um
+        // customer NOVO no Stripe (abrir 3× sem concluir = 3 órfãos). Reusa o
+        // customer já criado pra este trainer numa tentativa anterior.
+        const existing = await stripe.customers.list({ email: trainer.email, limit: 10 })
+        const match = existing.data.find(
+            (c) => c.metadata?.trainer_id === trainer.id,
+        ) ?? existing.data[0]
+        if (match) {
+            stripeCustomerId = match.id
+        } else {
+            const customer = await stripe.customers.create({
+                email: trainer.email,
+                name: trainer.name,
+                metadata: {
+                    trainer_id: trainer.id,
+                    supabase_auth_uid: user.id,
+                },
+            })
+            stripeCustomerId = customer.id
+        }
     }
 
     const session = await stripe.checkout.sessions.create({

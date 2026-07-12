@@ -69,7 +69,18 @@ export async function createStudentCore(
 
         if (authError) {
             console.error('[createStudentCore] auth error:', authError)
-            return { success: false, error: authError.message }
+            // AC8: erro cru do Supabase em inglês chegava intacto na UI num
+            // fluxo central — mapeia os comuns pra PT com orientação.
+            if (/already been registered|already registered|already exists/i.test(authError.message)) {
+                return {
+                    success: false,
+                    error: 'Este e-mail já tem uma conta no Kinevo (pode ser aluno de outro treinador). Use outro e-mail ou peça ao aluno o e-mail correto.',
+                }
+            }
+            if (/invalid.*email/i.test(authError.message)) {
+                return { success: false, error: 'E-mail inválido. Confira e tente de novo.' }
+            }
+            return { success: false, error: 'Não foi possível criar a conta do aluno. Tente novamente.' }
         }
 
         const userId = authUser.user.id

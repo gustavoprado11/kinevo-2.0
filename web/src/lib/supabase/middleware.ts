@@ -72,6 +72,10 @@ export async function updateSession(request: NextRequest) {
         !request.nextUrl.pathname.startsWith('/api/messages/notify-student') &&
         !request.nextUrl.pathname.startsWith('/api/stripe/portal') &&
         !request.nextUrl.pathname.startsWith('/subscription') &&
+        // AC6: retorno do Stripe Checkout do MOBILE — redirecionador puro pro
+        // deep link kinevo://; sem cookie (navegação privada/cookies limpos
+        // durante o pagamento) o pagante caía em /login em vez de voltar ao app.
+        !request.nextUrl.pathname.startsWith('/checkout-bridge') &&
         request.nextUrl.pathname !== '/'
     ) {
         // Preserve the originally-requested path (+query) so the login page can
