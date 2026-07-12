@@ -17,6 +17,7 @@ import { useTrainerPlans, TrainerPlan } from "../../../hooks/useTrainerPlans";
 import { PlanCard } from "../../../components/financial/PlanCard";
 import { PlanFormSheet } from "../../../components/financial/PlanFormSheet";
 import { EmptyState } from "../../../components/shared/EmptyState";
+import { ErrorState } from "../../../components/shared/ErrorState";
 import { useV2Colors } from "../../../hooks/useV2Colors";
 
 export default function PlansScreen() {
@@ -28,6 +29,7 @@ export default function PlansScreen() {
         isLoading,
         isRefreshing,
         refresh,
+        error,
         togglePlan,
         deletePlan,
         createPlan,
@@ -162,6 +164,8 @@ export default function PlansScreen() {
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <ActivityIndicator color={colors.purple[600]} size="large" />
                     </View>
+                ) : error && plans.length === 0 ? (
+                    <ErrorState message={error} onRetry={() => refresh()} />
                 ) : (
                     <FlatList
                         data={filteredPlans}

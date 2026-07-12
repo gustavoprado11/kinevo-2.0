@@ -34,6 +34,7 @@ export function useTrainerPlans() {
     const [plans, setPlans] = useState<TrainerPlan[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchData = useCallback(async (refreshing = false) => {
         if (!trainerId) return;
@@ -43,10 +44,14 @@ export function useTrainerPlans() {
 
         try {
             // Fetch plans
-            const { data: plansData } = await supabase
+            const { data: plansData, error: plansError } = await supabase
                 .from("trainer_plans" as any)
                 .select("*")
                 .order("created_at", { ascending: false });
+
+            // supabase-js resolve { data:null, error } sem lançar — sem esta
+            // checagem a falha de rede virava "lista vazia" numa tela de dinheiro.
+            if (plansError) throw new Error(plansError.message);
 
             // Fetch usage counts per plan
             const { data: contractsData } = await supabase
@@ -69,8 +74,10 @@ export function useTrainerPlans() {
             }));
 
             setPlans(enriched);
+            setError(null);
         } catch (err) {
             if (__DEV__) console.error("[useTrainerPlans] error:", err);
+            setError("Não foi possível carregar os planos.");
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
@@ -209,6 +216,7 @@ export function useTrainerPlans() {
         activePlans,
         isLoading,
         isRefreshing,
+        error,
         refresh,
         togglePlan,
         deletePlan,

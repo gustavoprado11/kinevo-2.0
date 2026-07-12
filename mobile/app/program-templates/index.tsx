@@ -14,6 +14,7 @@ import { Search, Plus, ChevronLeft, LayoutTemplate } from "lucide-react-native";
 import Animated, { FadeInUp, Easing, FadeIn } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { ProgramTemplateLibraryCard } from "@/components/trainer/program-templates/ProgramTemplateLibraryCard";
 import { openProgramTemplateActionsMenu } from "@/components/trainer/program-templates/ProgramTemplateActionsMenu";
 import { AssignTemplateToStudentSheet } from "@/components/trainer/program-templates/AssignTemplateToStudentSheet";
@@ -26,7 +27,7 @@ import { matchesSearch } from "@kinevo/shared/utils/search-text";
 export default function ProgramTemplatesScreen() {
     const colors = useV2Colors();
     const router = useRouter();
-    const { templates, isLoading, refetch } = useTrainerProgramTemplates();
+    const { templates, isLoading, error, refetch } = useTrainerProgramTemplates();
     const { deleteTemplate, duplicateTemplate } = useProgramTemplateActions();
     const [search, setSearch] = useState("");
     const [refreshing, setRefreshing] = useState(false);
@@ -176,6 +177,8 @@ export default function ProgramTemplatesScreen() {
                     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
                         <ActivityIndicator size="large" color={colors.purple[600]} />
                     </View>
+                ) : error && templates.length === 0 ? (
+                    <ErrorState message={error} onRetry={() => refetch()} />
                 ) : filtered.length === 0 ? (
                     <EmptyState
                         icon={<LayoutTemplate size={40} color={colors.text.tertiary} />}
