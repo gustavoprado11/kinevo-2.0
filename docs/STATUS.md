@@ -1,7 +1,26 @@
 # STATUS DAS FRENTES — quadro vivo
 
-> Atualize este arquivo ao fechar/abrir uma frente. Última atualização: **07/jul/2026**.
+> Atualize este arquivo ao fechar/abrir uma frente. Última atualização: **12/jul/2026**.
 > Convenção: ✅ concluído · 🔧 corrigido no working tree (NÃO commitado) · ⏳ pendente de decisão/ação · 🚧 em andamento.
+
+## 📍 Estado 12/jul — o que fechou nesta semana e o que resta
+
+**Tudo commitado e em prod (working tree limpo).** Semana intensa; código essencialmente em dia.
+
+Fechado (11–12/jul):
+- **Análise complementar web+mobile** (`docs/analise-complementar-2026-07-11.md`, §9–§13): 60 achados → agenda crítica (remarcação sumia), presença, sync GCal garantido + cron, RPC de conversas (migr 244/245/246), reset de senha, fusos, ~30 fixes MÉDIO/BAIXO. QA E2E em browser real, tudo verde.
+- **4 decisões de produto** (§12): presença preserva remarcação, e-mail do aluno sincroniza login, reativação com escolha de plano + copy honesta, conversas incluem pending/inativos.
+- **Sala de Treino**: finish transacional que reata a sessão do aluno (T2/T4) + persistência incremental à prova de crash (T3) + escala RPE sem emoji.
+- **Financeiro**: chargeback derruba acesso + taxa 0% oficial (P6/P12), sweep de renovação perdida (FIN4), Stripe Connect recolhido atrás do opt-in legado, spec do PIX mensal (P9).
+
+⏳ **EM ABERTO — o gargalo é o build mobile:**
+- **Build EAS 1.5.7 (PRIORIDADE)**: app em prod-web mas TODO o mobile desta semana (dark mode, sino, financeiro, cache de imagem, saúde F1/F2, composer do assistente, redesign de treino, RPE) só chega ao usuário via binário novo — sem OTA. Android builda/submete pelo terminal; iOS precisa de 1 setup interativo de credencial + aceite de contrato Apple (titular). Bump 1.5.6 → 1.5.7.
+- **Money-path residual** (território do financeiro): FIN1 (unique `stripe_invoice_id` + upsert no webhook Connect), FIN5 (unificar carência hardcoded 3d). Conferir se já foram fechados antes de mexer.
+- **M1/M4**: claim atômico contra push duplicado (M2/M3 já fechados). Baixo/médio.
+- **Higiene**: colisão de numeração — dois arquivos `245_*.sql` (conversas + finish RPC); ambos aplicados em prod sem conflito, mas renumerar um evita ambiguidade em setup do zero.
+- **Deferidos p/ device (entram no QA do 1.5.7)**: MB11 (LayoutAnimation→Reanimated no HistoryCard/troca de mês), PF10 (resize de avatar no upload).
+
+---
 
 ## ⚠️ Estado do working tree (07/jul, fim do dia)
 
