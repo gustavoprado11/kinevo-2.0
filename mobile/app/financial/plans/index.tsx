@@ -48,8 +48,11 @@ export default function PlansScreen() {
     const handleToggle = async (planId: string) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setTogglingId(planId);
-        await togglePlan(planId);
+        const ok = await togglePlan(planId);
         setTogglingId(null);
+        // Falha de rede fazia revert otimista SEM avisar — o treinador achava
+        // que nada tinha acontecido (superfície de dinheiro).
+        if (!ok) Alert.alert("Erro", "Não foi possível atualizar o plano. Tente novamente.");
     };
 
     const handleDelete = (planId: string) => {
@@ -64,8 +67,9 @@ export default function PlansScreen() {
                     onPress: async () => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                         setDeletingId(planId);
-                        await deletePlan(planId);
+                        const ok = await deletePlan(planId);
                         setDeletingId(null);
+                        if (!ok) Alert.alert("Erro", "Não foi possível excluir o plano. Tente novamente.");
                     },
                 },
             ]

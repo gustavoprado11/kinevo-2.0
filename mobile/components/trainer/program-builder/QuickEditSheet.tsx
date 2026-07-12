@@ -270,19 +270,24 @@ function Stepper({
             <Pressable
                 onPress={dec}
                 disabled={value <= min}
-                style={({ pressed }) => ({
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: pressed ? colors.surface.canvas : colors.surface.card2,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: value <= min ? 0.4 : 1,
-                })}
+                style={({ pressed }) => ({ opacity: value <= min ? 0.4 : pressed ? 0.6 : 1 })}
                 accessibilityRole="button"
                 accessibilityLabel="Diminuir"
             >
-                <Minus size={16} color={colors.text.secondary} />
+                {/* bg/layout em View interna: style-função de Pressable não pinta
+                    backgroundColor (gotcha) — o quadrado cinza sumia. */}
+                <View
+                    style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        backgroundColor: colors.surface.card2,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <Minus size={16} color={colors.text.secondary} />
+                </View>
             </Pressable>
             <Text
                 style={{
@@ -299,19 +304,22 @@ function Stepper({
             <Pressable
                 onPress={inc}
                 disabled={value >= max}
-                style={({ pressed }) => ({
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: pressed ? colors.surface.canvas : colors.surface.card2,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: value >= max ? 0.4 : 1,
-                })}
+                style={({ pressed }) => ({ opacity: value >= max ? 0.4 : pressed ? 0.6 : 1 })}
                 accessibilityRole="button"
                 accessibilityLabel="Aumentar"
             >
-                <Plus size={16} color={colors.text.secondary} />
+                <View
+                    style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        backgroundColor: colors.surface.card2,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <Plus size={16} color={colors.text.secondary} />
+                </View>
             </Pressable>
         </View>
     );

@@ -159,21 +159,29 @@ export function AgendaDayView({
                     {!isToday && (
                         <Pressable
                             onPress={goToday}
-                            style={({ pressed }) => ({
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 6,
-                                backgroundColor: colors.purple[600],
-                                paddingHorizontal: 14,
-                                paddingVertical: 8,
-                                borderRadius: 100,
-                                opacity: pressed ? 0.85 : 1,
-                            })}
+                            accessibilityRole="button"
+                            accessibilityLabel="Ir para hoje"
+                            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
                         >
-                            <CalendarIcon size={14} color="#ffffff" />
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>
-                                Hoje
-                            </Text>
+                            {/* Layout+bg numa View interna: style-função de Pressable
+                                não pinta backgroundColor nem aplica flex (gotcha do
+                                projeto) — a pílula roxa ficava invisível. */}
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    backgroundColor: colors.purple[600],
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 8,
+                                    borderRadius: 100,
+                                }}
+                            >
+                                <CalendarIcon size={14} color="#ffffff" />
+                                <Text style={{ fontSize: 13, fontWeight: "600", color: "#ffffff" }}>
+                                    Hoje
+                                </Text>
+                            </View>
                         </Pressable>
                     )}
                 </View>

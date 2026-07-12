@@ -210,7 +210,8 @@ function PayoutHistoryRow({ payout, colors, toneColor }: {
     colors: ReturnType<typeof useV2Colors>;
     toneColor: (tone: "success" | "warning" | "danger" | "neutral") => { bg: string; fg: string; default: string };
 }) {
-    const meta = STATUS_META[payout.status];
+    // Guard: status fora do union (backend novo) não pode derrubar a linha.
+    const meta = STATUS_META[payout.status] ?? STATUS_META.requested;
     const tone = toneColor(meta.tone);
     const reais = payout.amount_cents / 100;
     const date = new Date(payout.requested_at).toLocaleDateString("pt-BR");

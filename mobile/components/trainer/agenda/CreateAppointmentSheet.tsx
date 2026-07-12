@@ -408,15 +408,14 @@ export function CreateAppointmentSheet({
                                                     Haptics.selectionAsync();
                                                     setStudentId(s.id);
                                                 }}
-                                                style={({ pressed }) => ({
-                                                    flexDirection: "row",
-                                                    alignItems: "center",
-                                                    paddingVertical: 8,
-                                                    paddingHorizontal: 8,
-                                                    borderRadius: 8,
-                                                    opacity: pressed ? 0.6 : 1,
-                                                })}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`Selecionar ${s.name}`}
+                                                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                                             >
+                                                {/* layout em View interna: flex em style-função
+                                                    de Pressable não aplica (gotcha) — a linha
+                                                    empilhava e o nome (flex:1) sumia. */}
+                                                <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 8, borderRadius: 8 }}>
                                                 {s.avatar_url ? (
                                                     <Image
                                                         source={{ uri: s.avatar_url }}
@@ -441,6 +440,7 @@ export function CreateAppointmentSheet({
                                                 )}
                                                 <Text style={{ fontSize: 13, color: colors.text.primary, flex: 1 }}>{s.name}</Text>
                                                 <ChevronRight size={14} color={colors.text.quaternary} />
+                                                </View>
                                             </Pressable>
                                         ))
                                     )}

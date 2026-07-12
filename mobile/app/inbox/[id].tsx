@@ -90,7 +90,13 @@ export default function InboxItemDetailScreen() {
                 .select("id")
                 .eq("auth_user_id", user.id)
                 .single();
-            if (data?.id) setStudentId(data.id);
+            if (data?.id) {
+                setStudentId(data.id);
+            } else {
+                // Sem isto o spinner ficava eterno: fetchData só roda com
+                // studentId, e nunca desligava o loading se o lookup falhasse.
+                setIsLoading(false);
+            }
         })();
     }, [user]);
 
