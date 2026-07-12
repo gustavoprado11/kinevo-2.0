@@ -323,7 +323,7 @@ export default function ContractDetailScreen() {
             return;
         }
         const phone = student.phone.replace(/\D/g, "");
-        Linking.openURL(`https://wa.me/${phone}`);
+        Linking.openURL(`https://wa.me/${phone}`).catch(() => {});
     }, [student]);
 
     if (isLoading || !student) {

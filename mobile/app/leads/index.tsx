@@ -26,6 +26,7 @@ import {
     Sparkles,
     Copy,
     Check,
+    Key,
 } from "lucide-react-native";
 import Animated, { FadeIn, FadeInUp, Easing } from "react-native-reanimated";
 import { v2 } from "@kinevo/shared/tokens";
@@ -447,7 +448,7 @@ function LeadDetail({
     };
 
     const openWhatsApp = () => {
-        void Linking.openURL(whatsappLink(lead.whatsapp, firstName));
+        Linking.openURL(whatsappLink(lead.whatsapp, firstName)).catch(() => {});
         if (lead.status === "new" || lead.status === "read") {
             onUpdateStatus("contacted");
         }
@@ -761,7 +762,7 @@ function CredentialsView({
                         gap: spacing[3],
                     }}
                 >
-                    <Text style={{ fontSize: 14 }}>🔑</Text>
+                    <Key size={15} color={colors.text.tertiary} />
                     <Text
                         style={{
                             flex: 1,
