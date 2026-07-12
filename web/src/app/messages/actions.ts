@@ -82,17 +82,23 @@ interface ConversationSummaryRow {
     unread_count: number | null
 }
 
-export async function getConversations(): Promise<Conversation[]> {
+export async function getConversations(
+    includeArchived = false,
+): Promise<Conversation[]> {
     const auth = await getAuthenticatedTrainer()
     if (!auth) return []
 
-    // PF3: agregação no BANCO (migration 244). Antes baixávamos TODAS as
+    // PF3: agregação no BANCO (migrations 244/245). Antes baixávamos TODAS as
     // mensagens de todos os alunos, sem limit, só pra achar a última por
     // aluno — payload O(histórico) a cada abertura E a cada INSERT realtime,
     // com preview errado acima do cap de 1000 linhas do PostgREST.
+    // D4: pending entra sempre; arquivados sob demanda.
     const { data, error } = await supabaseAdmin.rpc(
         'get_trainer_conversations' as never,
-        { p_trainer_id: auth.trainer.id } as never,
+        {
+            p_trainer_id: auth.trainer.id,
+            p_include_archived: includeArchived,
+        } as never,
     )
 
     if (error) {

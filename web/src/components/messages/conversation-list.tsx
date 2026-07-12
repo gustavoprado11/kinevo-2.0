@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Search, MessageCircle } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Archive, Search, MessageCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getConversations } from '@/app/messages/actions'
 import type { Conversation } from '@/types/messages'
@@ -39,6 +39,13 @@ export function ConversationList({
     trainerId,
 }: ConversationListProps) {
     const [search, setSearch] = useState('')
+    // D4: arquivados sob demanda (pending entra sempre via RPC 245).
+    const [showArchived, setShowArchived] = useState(false)
+    const showArchivedRef = useRef(showArchived)
+    useEffect(() => {
+        showArchivedRef.current = showArchived
+        getConversations(showArchived).then(onConversationsUpdate).catch(() => {})
+    }, [showArchived, onConversationsUpdate])
 
     // Realtime: listen for new messages to update list.
     // PF3: o refetch agora é a RPC agregada (barata) e com debounce — antes
@@ -59,7 +66,7 @@ export function ConversationList({
                 () => {
                     if (debounce) clearTimeout(debounce)
                     debounce = setTimeout(() => {
-                        getConversations().then(onConversationsUpdate).catch(() => {})
+                        getConversations(showArchivedRef.current).then(onConversationsUpdate).catch(() => {})
                     }, 400)
                 }
             )
@@ -103,6 +110,21 @@ export function ConversationList({
                         className="w-full pl-8 pr-3 py-2.5 text-sm bg-white dark:bg-glass-bg rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/40 focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/10 transition-all"
                     />
                 </div>
+
+                {/* D4: histórico de arquivados sob demanda */}
+                <button
+                    type="button"
+                    onClick={() => setShowArchived(v => !v)}
+                    aria-pressed={showArchived}
+                    className={`mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium transition-colors ${
+                        showArchived
+                            ? 'text-[#7C3AED] dark:text-violet-400'
+                            : 'text-[#86868B] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-tertiary'
+                    }`}
+                >
+                    <Archive size={12} strokeWidth={1.5} />
+                    {showArchived ? 'Ocultar arquivados' : 'Mostrar arquivados'}
+                </button>
             </div>
 
             {/* List */}
@@ -113,7 +135,7 @@ export function ConversationList({
                             <MessageCircle size={18} strokeWidth={1.5} className="text-[#86868B] dark:text-k-text-quaternary" />
                         </div>
                         <p className="text-xs text-[#86868B] dark:text-k-text-quaternary text-center">
-                            {search ? 'Nenhum aluno encontrado.' : 'Nenhum aluno ativo.'}
+                            {search ? 'Nenhum aluno encontrado.' : 'Nenhuma conversa ainda.'}
                         </p>
                     </div>
                 ) : (
@@ -160,8 +182,20 @@ export function ConversationList({
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
-                                        <span className={`text-sm truncate ${hasUnread ? 'font-bold text-[#1D1D1F] dark:text-white' : 'font-medium text-[#1D1D1F] dark:text-white'}`}>
-                                            {conv.student.name}
+                                        <span className="flex items-center gap-1.5 min-w-0">
+                                            <span className={`text-sm truncate ${hasUnread ? 'font-bold text-[#1D1D1F] dark:text-white' : 'font-medium text-[#1D1D1F] dark:text-white'}`}>
+                                                {conv.student.name}
+                                            </span>
+                                            {conv.student.status === 'archived' && (
+                                                <span className="flex-shrink-0 text-[9px] font-semibold uppercase tracking-wide text-[#86868B] dark:text-k-text-quaternary bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 rounded">
+                                                    Arquivado
+                                                </span>
+                                            )}
+                                            {conv.student.status === 'pending' && (
+                                                <span className="flex-shrink-0 text-[9px] font-semibold uppercase tracking-wide text-[#B45309] dark:text-amber-400 bg-[#FEF3C7] dark:bg-amber-500/10 px-1.5 py-0.5 rounded">
+                                                    Pendente
+                                                </span>
+                                            )}
                                         </span>
                                         {conv.lastMessage && (
                                             <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary flex-shrink-0">
