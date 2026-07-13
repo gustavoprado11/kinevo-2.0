@@ -929,7 +929,9 @@ export default function WorkoutPlayerScreen() {
                     type: 'superset',
                     exercises: group,
                     supersetId: exercise.supersetId,
-                    supersetRestSeconds: exercise.supersetRestSeconds || 60,
+                    // `?? 60` (não `|| 60`): 0 = emenda direto, escolha do treinador —
+                    // o rodapé mostra "Sem descanso entre rodadas" em vez de mentir 60s.
+                    supersetRestSeconds: exercise.supersetRestSeconds ?? 60,
                     globalIndices: group.map((e) => e._globalIndex),
                     orderIndex: groupOrderIndex,
                 });

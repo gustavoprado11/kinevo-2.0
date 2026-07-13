@@ -138,7 +138,9 @@ export const SupersetGroup = React.memo(function SupersetGroup({
             }}>
                 <Clock size={12} color={colors.purple[500]} />
                 <Text style={{ color: colors.purple[600], fontSize: 11, fontWeight: '500' }}>
-                    Descanso entre rodadas: {supersetRestSeconds}s
+                    {supersetRestSeconds > 0
+                        ? `Descanso entre rodadas: ${supersetRestSeconds}s`
+                        : 'Sem descanso entre rodadas'}
                 </Text>
             </View>
         </View>

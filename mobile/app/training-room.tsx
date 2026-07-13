@@ -47,6 +47,7 @@ import { ExerciseSwapModal } from '../components/workout/ExerciseSwapModal';
 import { RestTimerOverlay } from '../components/workout/RestTimerOverlay';
 import { TrainingRoomSettingsSheet } from '../components/trainer/TrainingRoomSettingsSheet';
 import { useTrainingRoomPreferencesStore } from '../stores/trainingRoomPreferencesStore';
+import { resolveRestSeconds, effectiveRestSeconds } from '@kinevo/shared/lib/rest-timer';
 import { useV2Colors } from '../hooks/useV2Colors';
 import { toRgba } from '../lib/brandColor';
 
@@ -649,28 +650,21 @@ export default function TrainingRoomScreen() {
     const handleToggleSetComplete = useCallback(
         (exerciseIndex: number, setIndex: number) => {
             if (!activeStudentId || !activeSession) return;
+
+            // Regra do descanso: fonte única compartilhada com a Sala web e com a
+            // mesma semântica do app do aluno (superset descansa POR EXERCÍCIO;
+            // 0 = emenda direto; null = duração padrão do treinador). A Sala usava
+            // o descanso do superset-PAI a cada série — modelo antigo, abandonado
+            // em 24/jun. `activeSession` ainda é o snapshot pré-toggle.
+            const rest = resolveRestSeconds(activeSession.exercises, exerciseIndex, setIndex, {
+                restTimerAuto,
+                defaultRestSeconds,
+            });
+
             toggleSetComplete(activeStudentId, exerciseIndex, setIndex);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-            // Auto-start rest timer on set completion — respeita a preferência do
-            // treinador (Configurações da Sala). Quando ligado: não dispara na
-            // última série do exercício, e usa a duração padrão quando o exercício
-            // não tem descanso prescrito (antes era um fixo de 60s).
-            if (!restTimerAuto) return;
-            const exercise = activeSession.exercises[exerciseIndex];
-            if (exercise) {
-                const setData = exercise.setsData[setIndex];
-                if (!setData?.completed) {
-                    // Set was just completed (toggle makes it true).
-                    const hasRemainingSets = exercise.setsData.some(
-                        (s, i) => i !== setIndex && !s.completed,
-                    );
-                    if (hasRemainingSets) {
-                        const restSeconds = exercise.supersetRestSeconds || exercise.rest_seconds || defaultRestSeconds;
-                        startRestTimer(activeStudentId, restSeconds);
-                    }
-                }
-            }
+            if (rest !== null) startRestTimer(activeStudentId, rest);
         },
         [activeStudentId, activeSession, toggleSetComplete, startRestTimer, restTimerAuto, defaultRestSeconds],
     );
@@ -843,7 +837,13 @@ export default function TrainingRoomScreen() {
                         <SupersetGroup
                             key={exercise.supersetId}
                             exercises={group}
-                            supersetRestSeconds={exercise.supersetRestSeconds || 60}
+                            // Descanso da rodada = descanso do ÚLTIMO filho (modelo
+                            // por exercício). Lido do filho direto, não do pai, que
+                            // pode estar dessincronizado em programas antigos.
+                            supersetRestSeconds={effectiveRestSeconds(
+                                group[group.length - 1]?.rest_seconds,
+                                { defaultRestSeconds },
+                            )}
                             onSetChange={(globalIdx, setIdx, field, value) => {
                                 if (activeStudentId) updateSet(activeStudentId, globalIdx, setIdx, field, value);
                             }}
