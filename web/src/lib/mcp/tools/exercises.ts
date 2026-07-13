@@ -59,9 +59,10 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
 
   server.tool(
     'kinevo_list_exercises',
-    "Search the exercise catalog. Returns exercises available to this trainer (system exercises + trainer's custom exercises). Filter by muscle group, equipment, or name. When PLANNING A PROGRAM, fetch ALL the muscle groups you need in ONE call via muscle_groups (e.g. muscle_groups: ['Peito','Costas','Ombros','Quadríceps','Posterior de Coxa','Glúteo'], limit: 100) — the result comes BALANCED per group; NEVER call this tool once per group. Results are ordered with PRIMARY/COMPOUND movements FIRST (is_primary_movement=true, session_position='first' — e.g. squat, deadlift, row, pulldown, bench, press): use those as the MAIN lift at the start of each session, and the accessories/isolation that follow to add volume. Prefer compound staples over obscure isolation/mobility variants.",
+    "Search the exercise catalog. Returns exercises available to this trainer (system exercises + trainer's custom exercises). Filter by muscle group, equipment, or name. When PLANNING A PROGRAM, fetch ALL the muscle groups you need in ONE call via muscle_groups (e.g. muscle_groups: ['Peito','Costas','Ombros','Quadríceps','Posterior de Coxa','Glúteo'], limit: 100) — the result comes BALANCED per group; NEVER call this tool once per group. To look up SPECIFIC exercises by name, pass ALL the names in ONE call via searches (e.g. searches: ['Stiff','Hip Thrust','Remada Curvada']) — NEVER call once per name; each extra call re-sends your whole context. Results are ordered with PRIMARY/COMPOUND movements FIRST (is_primary_movement=true, session_position='first' — e.g. squat, deadlift, row, pulldown, bench, press): use those as the MAIN lift at the start of each session, and the accessories/isolation that follow to add volume. Prefer compound staples over obscure isolation/mobility variants.",
     {
-      search: z.string().optional().describe('Search by exercise name (partial match)'),
+      search: z.string().optional().describe('Search by ONE exercise name (partial match). For several names, use searches instead.'),
+      searches: z.array(z.string().min(2)).min(1).max(20).optional().describe("BATCH name search: ALL the specific exercise names you want to look up, in ONE call (e.g. ['Stiff','Hip Thrust','Búlgaro']). Returns matches grouped per term. ALWAYS prefer this over calling once per name. Takes precedence over the other filters."),
       muscle_group: z.string().optional().describe("Filter by ONE muscle group name (e.g., 'Peito', 'Quadríceps', 'Bíceps'). For several groups, use muscle_groups instead."),
       muscle_groups: z.array(z.string()).min(1).max(12).optional().describe("BATCH filter: ALL the muscle groups you need, in ONE call (e.g. every group of the split you are planning). The result is balanced per group, compounds first. ALWAYS prefer this over calling once per group."),
       equipment: z.string().optional().describe("Filter by equipment (e.g., 'Barra', 'Halter', 'Maquina', 'Cabo')"),
@@ -69,8 +70,61 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
       offset: z.number().min(0).default(0),
     },
     { title: 'Listar exercícios', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    async ({ search, muscle_group, muscle_groups, equipment, limit, offset }) => {
+    async ({ search, searches, muscle_group, muscle_groups, equipment, limit, offset }) => {
       const supabaseAdmin = createAdminClient()
+
+      // Lote de buscas NOMINAIS (searches[]): resolve TODOS os termos numa única
+      // chamada. O padrão de prod era 6–16 buscas seriais por build — cada uma
+      // re-paga o contexto inteiro do turno, e builds morriam no teto de passos
+      // sem criar nada (visto em 2026-07-07). Precedência sobre os demais filtros.
+      if (searches?.length) {
+        const perTerm = await Promise.all(
+          searches.map(async term => {
+            const { data, error } = await supabaseAdmin
+              .from('exercises')
+              .select('id, name, equipment, difficulty_level, movement_pattern, is_primary_movement, session_position, owner_id, exercise_muscle_groups(muscle_groups(name))')
+              .eq('is_archived', false)
+              .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
+              .ilike('name', `%${term}%`)
+              .order('is_primary_movement', { ascending: false })
+              .order('name')
+              .limit(6)
+            if (error) return { term, error: error.message, exercises: null }
+            const exercises = (data ?? []).map(e => {
+              const emgs = e.exercise_muscle_groups as unknown as Array<{ muscle_groups: { name: string } | null }>
+              return {
+                id: e.id,
+                name: e.name,
+                equipment: e.equipment,
+                muscle_groups: emgs?.map(emg => emg.muscle_groups?.name).filter((n): n is string => !!n) ?? [],
+                movement_pattern: e.movement_pattern,
+                is_primary_movement: e.is_primary_movement,
+                is_custom: e.owner_id === trainerId,
+              }
+            })
+            return { term, error: null, exercises }
+          })
+        )
+        const failed = perTerm.filter(r => r.error !== null)
+        if (failed.length === perTerm.length) {
+          return mcpError(`Erro ao buscar exercícios: ${failed[0].error}`)
+        }
+        const missing = perTerm
+          .filter(r => r.exercises !== null && r.exercises.length === 0)
+          .map(r => r.term)
+        const results: Record<string, unknown> = {}
+        for (const r of perTerm) {
+          if (r.exercises !== null) results[r.term] = r.exercises
+        }
+        return mcpSuccess({
+          results_by_search: results,
+          message:
+            (missing.length > 0
+              ? `Termos SEM resultado: ${missing.join(', ')} — use uma variação do nome ou escolha um equivalente do catálogo por grupo. `
+              : '') +
+            'Buscas resolvidas em lote. Você já tem o que pediu — monte/edite o programa agora, SEM novas buscas.',
+        })
+      }
 
       // Filtro por grupo(s): nomes pedidos → grupos reais via resolveGroupNames
       // (insensível a acento/caixa, substring bidirecional — o ilike antigo era

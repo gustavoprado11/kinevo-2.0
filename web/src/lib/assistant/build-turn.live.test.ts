@@ -176,7 +176,7 @@ describe.skipIf(!RUN)('LIVE — turno de build cria o programa dentro do teto de
         // As tools do turno ficam no trace (o `executed` do retorno filtra leituras).
         const { data: traces } = await seeded.admin
             .from('assistant_turn_traces')
-            .select('tools, model, output')
+            .select('tools, model, output, steps, input_tokens, cached_input_tokens, output_tokens, cost_usd_micros')
             .eq('trainer_id', seeded.trainerId)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -194,6 +194,14 @@ describe.skipIf(!RUN)('LIVE — turno de build cria o programa dentro do teto de
 
         const report = {
             model: traces?.[0]?.model,
+            // Instrumentação (migr 250): passos reais + cache do provider + custo.
+            usage: {
+                steps: traces?.[0]?.steps ?? null,
+                inputTokens: traces?.[0]?.input_tokens ?? null,
+                cachedInputTokens: traces?.[0]?.cached_input_tokens ?? null,
+                outputTokens: traces?.[0]?.output_tokens ?? null,
+                costUsd: traces?.[0]?.cost_usd_micros != null ? traces[0].cost_usd_micros / 1e6 : null,
+            },
             toolsInOrder: tools.map((t) => `${t.toolName}${t.ok ? '' : ' (FALHOU)'}`),
             listExerciseArgs: listCalls.map((t) => t.args ?? null),
             listExerciseCalls: listCalls.length,

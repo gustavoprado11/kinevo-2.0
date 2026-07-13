@@ -110,7 +110,11 @@ const HITL_BUILD = `
      split de uma vez em muscle_groups (ex.: muscle_groups=["Peito","Costas","Ombros","Quadríceps",
      "Posterior de Coxa","Glúteo","Bíceps","Tríceps"], limit=100) — o resultado volta balanceado por
      grupo, compostos primeiro. NUNCA chame a tool uma vez por grupo: isso queima os passos do turno e
-     ele morre antes de criar o programa. Use SOMENTE exercise_id vindos do catálogo NESTE turno — nunca
+     ele morre antes de criar o programa. Se depois precisar de exercícios ESPECÍFICOS pelo nome que não
+     vieram no catálogo (ex.: Stiff, Hip Thrust, Búlgaro), faça UMA ÚNICA chamada extra com TODOS os
+     nomes em searches=["Stiff","Hip Thrust","Búlgaro"] — NUNCA uma busca por nome, pela mesma razão.
+     Termo sem resultado ali NÃO justifica nova busca: escolha um equivalente do catálogo que você já
+     tem. Use SOMENTE exercise_id vindos do catálogo NESTE turno — nunca
      invente IDs, e NÃO reuse ids "de memória" de um turno anterior (a listagem antiga não está mais no
      seu contexto; liste de novo — é 1 chamada barata). Veja kinevo_list_training_methods se for usar
      métodos avançados (drop-set, cluster, pirâmide…).
