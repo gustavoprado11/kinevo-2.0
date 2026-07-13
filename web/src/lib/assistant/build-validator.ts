@@ -127,7 +127,9 @@ export function validateBuildArgs(
     }
     if (unknown.size > 0) {
         errors.push(
-            `exercise_id fora do catálogo: ${[...unknown].join(', ')}. Use SOMENTE ids retornados por kinevo_list_exercises.`,
+            `exercise_id fora do catálogo: ${[...unknown].join(', ')}. IDs de turnos ANTERIORES não valem — ` +
+                `chame kinevo_list_exercises AGORA (uma chamada com muscle_groups=[todos os grupos do split]) ` +
+                `e recrie com os ids retornados.`,
         )
     }
 
@@ -283,8 +285,10 @@ export function buildQualityCorrective(v: BuildValidation): Record<string, unkno
         ...(v.warnings.length > 0 ? { quality_warnings: v.warnings } : {}),
         message:
             'O programa NÃO foi criado — viola regras de prescrição. Corrija os pontos em quality_errors ' +
-            '(mantendo o resto do programa) e chame a MESMA tool de novo com o programa completo corrigido. ' +
-            'NÃO pergunte ao treinador; ajuste você mesmo.',
+            '(mantendo o resto do programa) e chame a MESMA tool de novo com o programa completo corrigido, ' +
+            'NESTE MESMO TURNO. NÃO pergunte ao treinador; ajuste você mesmo. JAMAIS responda prometendo ' +
+            'corrigir depois ("aguarde um momento", "vou refazer") — o turno TERMINA na sua resposta e ' +
+            'nada mais executa; ou você recria agora, ou admite que não conseguiu.',
     }
 }
 

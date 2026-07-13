@@ -6,6 +6,28 @@ import { firstNameOf } from '@/lib/assistant/ambiguity'
 // TODO: usar o timezone por treinador quando existir coluna no schema (trainers.timezone).
 const DEFAULT_TZ = 'America/Sao_Paulo'
 
+/**
+ * "semana N de M (iniciado em DD/MM)" — a semana ATUAL do programa, computada de
+ * started_at. Passada do fim: "além da duração planejada". Sem started_at (ex.:
+ * agendado): só a duração. Exportada p/ teste.
+ */
+export function describeProgramWeek(
+    startedAt: string | null,
+    durationWeeks: number | null,
+    now: Date = new Date(),
+): string {
+    const dur = durationWeeks ? `${durationWeeks} semanas` : 'duração não definida'
+    if (!startedAt) return dur
+    const start = new Date(startedAt)
+    if (Number.isNaN(start.getTime()) || start > now) return dur
+    const week = Math.floor((now.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1
+    const startStr = start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: DEFAULT_TZ })
+    if (durationWeeks && week > durationWeeks) {
+        return `${durationWeeks} semanas — JÁ PASSOU da duração planejada (está na semana ${week}; iniciado em ${startStr})`
+    }
+    return `semana ${week} de ${durationWeeks ?? '?'}; iniciado em ${startStr}`
+}
+
 /** Linha "Data e hora atuais" — o agente precisa disso para resolver "hoje/amanhã/quinta". */
 function nowLine(tz: string = DEFAULT_TZ): string {
     const formatted = new Date().toLocaleString('pt-BR', {
@@ -253,8 +275,11 @@ export async function buildChatContext(
             ? `Nível: ${snapshot.profile.training_level} | Objetivo: ${snapshot.profile.goal} | Duração sessão: ${snapshot.profile.session_duration_minutes}min${medicalStr}`
             : 'Perfil de prescrição não preenchido'
 
+        // Semana atual COMPUTADA (started_at → hoje): sem ela o modelo não sabe
+        // responder "é a última semana?" e improvisa aritmética errada com o nº
+        // de sessões (visto em prod 13/jul). Dado que já buscamos, entregamos.
         const programStr = snapshot.activeProgram
-            ? `Programa ativo: "${snapshot.activeProgram.name}" (${snapshot.activeProgram.duration_weeks || '?'} semanas)\nTreinos:\n${snapshot.activeProgram.workouts.map(w => `  - ${w.name}: ${w.exercises.join(', ')}`).join('\n')}`
+            ? `Programa ativo: "${snapshot.activeProgram.name}" (${describeProgramWeek(snapshot.activeProgram.started_at, snapshot.activeProgram.duration_weeks)})\nTreinos:\n${snapshot.activeProgram.workouts.map(w => `  - ${w.name}: ${w.exercises.join(', ')}`).join('\n')}`
             : 'Sem programa ativo'
 
         const progressionStr = snapshot.enriched.load_progression.length > 0

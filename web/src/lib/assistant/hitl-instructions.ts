@@ -95,8 +95,10 @@ const HITL_BUILD = `
      split de uma vez em muscle_groups (ex.: muscle_groups=["Peito","Costas","Ombros","Quadríceps",
      "Posterior de Coxa","Glúteo","Bíceps","Tríceps"], limit=100) — o resultado volta balanceado por
      grupo, compostos primeiro. NUNCA chame a tool uma vez por grupo: isso queima os passos do turno e
-     ele morre antes de criar o programa. Use SOMENTE exercise_id vindos do catálogo — nunca invente
-     IDs. Veja kinevo_list_training_methods se for usar métodos avançados (drop-set, cluster, pirâmide…).
+     ele morre antes de criar o programa. Use SOMENTE exercise_id vindos do catálogo NESTE turno — nunca
+     invente IDs, e NÃO reuse ids "de memória" de um turno anterior (a listagem antiga não está mais no
+     seu contexto; liste de novo — é 1 chamada barata). Veja kinevo_list_training_methods se for usar
+     métodos avançados (drop-set, cluster, pirâmide…).
   4) PROJETE COMO UM PROFISSIONAL — o programa precisa parecer feito por um treinador experiente, NÃO
      "N dias do grupo enfatizado". As regras abaixo são RESTRIÇÕES, não sugestões:
      a) SPLIT DE VERDADE pela frequência. A frequência define um split que treina o CORPO TODO ao longo da
