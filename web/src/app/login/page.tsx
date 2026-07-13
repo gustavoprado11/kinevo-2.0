@@ -3,7 +3,9 @@
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
+import { fetchTrainerThemePreference } from '@/lib/theme/seed-theme'
 import { translateAuthError } from '@/lib/translate-auth-error'
 import { AuthLayout } from '@/components/auth/auth-layout'
 
@@ -19,6 +21,7 @@ function safeRedirect(raw: string | null): string {
 
 function LoginForm() {
     const router = useRouter()
+    const { setTheme } = useTheme()
     const searchParams = useSearchParams()
     const redirectTo = safeRedirect(searchParams.get('redirect'))
     const [email, setEmail] = useState('')
@@ -33,7 +36,7 @@ function LoginForm() {
 
         const supabase = createClient()
 
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
         })
@@ -42,6 +45,15 @@ function LoginForm() {
             setError(translateAuthError(error.message))
             setLoading(false)
             return
+        }
+
+        // Aplica o tema do treinador ANTES de navegar: num navegador novo o
+        // next-themes não tem nada no localStorage e a área logada pintava clara
+        // até o ThemeSync corrigir (flash). O /login é forçado light, então o
+        // setTheme aqui não muda esta tela — só o destino. Ver seed-theme.ts.
+        if (data.user) {
+            const trainerTheme = await fetchTrainerThemePreference(supabase, data.user.id)
+            if (trainerTheme) setTheme(trainerTheme)
         }
 
         router.push(redirectTo)
