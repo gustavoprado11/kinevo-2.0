@@ -830,35 +830,105 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             return { text, steps, totalUsage, toolCalls }
         }
 
-        // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para. Se o
-        //    modelo de BUILD falhar, NÃO derruba o turno: degrada para o modelo padrão
-        //    (gpt-4.1-mini). Captura o erro num trace — o console.error dentro do
-        //    ReadableStream NÃO aparece nos logs do Vercel. Abort (Stop do treinador)
-        //    propaga: quem trata é a rota (nada a persistir/cobrar).
-        let result: Awaited<ReturnType<typeof runGen>>
-        try {
-            result = await runGen(turnModel)
-        } catch (genErr) {
-            if ((genErr as Error)?.name === 'AbortError') throw genErr
-            if (!buildTurn || turnModel === ASSISTANT_MODEL) throw genErr
-            const msg = genErr instanceof Error ? genErr.message : String(genErr)
-            await recordTurnTrace(admin, {
-                trainerId,
-                studentId: opts.studentId,
-                kind: 'turn',
-                surface,
-                input,
-                output: `[build-model-fallback] ${turnModel} falhou: ${msg}`.slice(0, 500),
-                model: turnModel,
-                intents,
-            }).catch(() => {})
-            turnModel = ASSISTANT_MODEL
-            // O modelo que falhou pode ter emitido texto parcial: o cliente descarta.
-            opts.onTextReset?.()
-            // O fallback começa sem os tool-results do modelo que falhou — libera
-            // o dedup de leituras para as re-consultas legítimas dele.
-            resetReadGuard()
-            result = await runGen(turnModel)
+        // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para.
+        //    Cadeia de tentativas do BUILD (o turno normal segue com 1 tentativa):
+        //      1ª: modelo de build; 2ª: MESMO modelo (flakiness — ver leak abaixo);
+        //      3ª: modelo padrão (gpt-4.1-mini). Erros vão ao trace — console.error
+        //    dentro do ReadableStream NÃO aparece nos logs do Vercel. Abort (Stop
+        //    do treinador) propaga: quem trata é a rota (nada a persistir/cobrar).
+        //
+        //    LEAK DO GEMINI (visto em prod/QA, ~1 em 4 builds): em vez de emitir a
+        //    function call gigante do create, o modelo despeja o thinking + o JSON
+        //    dos args como TEXTO e o turno "termina" sem criar nada. Detectamos o
+        //    padrão e tratamos como falha → re-tenta. Se um write JÁ aconteceu no
+        //    turno, NÃO re-rodamos (duplicaria a ação): só saneamos o texto.
+        const leakedToolJsonText = (text: string): boolean => {
+            const head = (text ?? '').slice(0, 4000)
+            if (/^\s*thought\b/i.test(head)) return true
+            // Resposta legítima nunca contém JSON de args de tool (regra do prompt).
+            return /"exercise_id"\s*:/.test(head) || /"sessions"\s*:\s*\[/.test(head)
+        }
+        const hasSuccessfulWrite = (r: Awaited<ReturnType<typeof runGen>>): boolean => {
+            const steps = r.steps as unknown as Array<{
+                toolResults: Array<{ toolName: string; output?: unknown }>
+            }>
+            return steps.some((s) =>
+                s.toolResults.some(
+                    (tr) => !READ_TOOLS.has(tr.toolName) && toolResultOk(tr.output),
+                ),
+            )
+        }
+
+        const modelChain =
+            buildTurn && turnModel !== ASSISTANT_MODEL
+                ? [turnModel, turnModel, ASSISTANT_MODEL]
+                : [turnModel]
+        let result: Awaited<ReturnType<typeof runGen>> | null = null
+        let sanitizeLeakedText = false
+        let lastErr: unknown = null
+        for (let attempt = 0; attempt < modelChain.length; attempt++) {
+            turnModel = modelChain[attempt]
+            try {
+                const r = await runGen(turnModel)
+                if (buildTurn && leakedToolJsonText(r.text)) {
+                    if (hasSuccessfulWrite(r)) {
+                        // Ação aterrissou; só o texto veio corrompido — não re-rodar.
+                        result = r
+                        sanitizeLeakedText = true
+                        lastErr = null
+                        break
+                    }
+                    const e = new Error('Gemini vazou a tool-call como texto (thinking leak).')
+                    e.name = 'LeakedToolJsonError'
+                    throw e
+                }
+                // Outro sabor da mesma flakiness: o build termina VAZIO — sem texto,
+                // sem write e sem pergunta/proposta/card. É perda total garantida
+                // (viraria o fallback "não consegui") — re-tentar é sempre melhor.
+                if (buildTurn && !r.text.trim() && !hasSuccessfulWrite(r)) {
+                    const rawCalls = r.toolCalls as unknown as Array<{ toolName: string }>
+                    const askedOrPaused = rawCalls.some(
+                        (tc) =>
+                            tc.toolName === 'perguntar_treinador' ||
+                            tc.toolName === 'propor_ao_treinador' ||
+                            CONFIRM_TOOLS.has(tc.toolName),
+                    )
+                    if (!askedOrPaused) {
+                        const e = new Error('Turno de build terminou vazio (sem texto, write ou pergunta).')
+                        e.name = 'EmptyBuildTurnError'
+                        throw e
+                    }
+                }
+                result = r
+                lastErr = null
+                break
+            } catch (genErr) {
+                if ((genErr as Error)?.name === 'AbortError') throw genErr
+                lastErr = genErr
+                const msg = genErr instanceof Error ? genErr.message : String(genErr)
+                await recordTurnTrace(admin, {
+                    trainerId,
+                    studentId: opts.studentId,
+                    kind: 'turn',
+                    surface,
+                    input,
+                    output: `[build-retry ${attempt + 1}/${modelChain.length}] ${turnModel} falhou: ${msg}`.slice(0, 500),
+                    model: turnModel,
+                    intents,
+                }).catch(() => {})
+                // O modelo que falhou pode ter emitido texto parcial: o cliente
+                // descarta; e a tentativa seguinte começa sem os tool-results deste
+                // — libera o dedup de leituras para as re-consultas legítimas.
+                opts.onTextReset?.()
+                resetReadGuard()
+            }
+        }
+        if (!result) throw lastErr ?? new Error('Turno falhou sem resultado.')
+        if (sanitizeLeakedText) {
+            result = {
+                ...result,
+                text: 'Montei o programa e ele já está salvo como rascunho no perfil do aluno, pronto para a sua revisão. (Tive um problema ao redigir o resumo — me pergunte se quiser os detalhes.)',
+            }
         }
 
         // 4. Coleta o executado (crédito) e a confirmação pendente (HITL).

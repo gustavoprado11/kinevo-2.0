@@ -155,7 +155,13 @@ async function buildGeneralSnapshot(trainerId: string): Promise<GeneralSnapshot>
             .select('student_id, completed_at')
             .eq('trainer_id', trainerId)
             .eq('status', 'completed')
-            .order('completed_at', { ascending: false }),
+            .order('completed_at', { ascending: false })
+            // Só a sessão MAIS RECENTE de cada aluno importa aqui; sem teto a query
+            // crescia com o histórico inteiro do treinador. 3000 recentes cobrem
+            // meses para qualquer carteira; aluno cuja última sessão é mais antiga
+            // que isso aparece como "nunca treinou" — impreciso, mas o sinal
+            // operacional (sumiu há muito tempo) continua o mesmo.
+            .limit(3000),
 
         supabaseAdmin
             .from('assistant_insights')
