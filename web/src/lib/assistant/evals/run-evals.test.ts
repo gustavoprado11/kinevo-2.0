@@ -177,6 +177,10 @@ describe.runIf(RUN_LIVE)('eval comportamental (LLM real + trainer de staging)', 
 
             const input = applyNameTemplate(c.input, anyRef?.name)
             const studentId = resolveStudent(fx, c.studentRef)?.id // undefined p/ leads
+            const history = c.history?.map((m) => ({
+                role: m.role,
+                content: applyNameTemplate(m.content, anyRef?.name),
+            }))
 
             const turn = await runTurn({
                 admin: fx.admin,
@@ -187,6 +191,7 @@ describe.runIf(RUN_LIVE)('eval comportamental (LLM real + trainer de staging)', 
                 periodType: 'month',
                 route: c.route,
                 studentId,
+                history,
             })
 
             const grade = gradeTurn(c, turn)

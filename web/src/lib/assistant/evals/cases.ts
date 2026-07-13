@@ -50,6 +50,9 @@ export interface EvalCase {
     route?: string
     /** Apelido do aluno (resolvido p/ UUID nas fixtures). */
     studentRef?: string
+    /** Histórico prévio da conversa (turnos multi-passo, ex.: aprovação de
+     *  proposta). `{name}` também é substituído aqui. */
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>
     expect: EvalExpectation
 }
 
@@ -518,6 +521,54 @@ export const EVAL_CASES: EvalCase[] = [
             // o treinador confirmava achando que todos receberiam. Coletivo = SEMPRE batch.
             confirmation: 'kinevo_send_message_batch',
             judge: 'Um único card agregado (send_message_batch) cobrindo os alunos ativos; jamais kinevo_send_message individual para pedido coletivo.',
+        },
+    },
+
+    // ─────────── REGRESSÕES DE PROD (13/jul) — renovação de programa ───────────
+    // A conversa real que motivou build-signals/escalada/1b: "planejar o próximo
+    // programa" rodava como turno comum e o create truncava; o assistente
+    // interrogava frequência/divisão que já estavam no programa ativo.
+    {
+        id: 'prescricao-renovacao-01',
+        domain: 'prescricao',
+        surface: 'workspace',
+        input: 'Me ajude a planejar o próximo programa de treinos de {name}',
+        studentRef: 'joao',
+        expect: {
+            noWrite: true,
+            mustNotCall: ['kinevo_create_student_draft_program', 'kinevo_create_program_template'],
+            judge:
+                'Age como consultor de renovação: analisa o programa ATUAL (estrutura/aderência/progresso, que estão no contexto) e propõe a evolução — via proposta ou texto com raciocínio. NÃO pergunta a frequência nem a divisão que já constam do programa ativo; no máximo pergunta o que realmente muda (ênfase/duração).',
+        },
+    },
+    {
+        id: 'prescricao-renovacao-aprovacao-02',
+        domain: 'prescricao',
+        surface: 'workspace',
+        input:
+            'Aprovado. Valores finais — Divisão: Push / Pull / Inferior A / Inferior B / Upper (5x); Foco principal: quebra de platôs (Stiff, Costas); Duração do ciclo: 4 semanas; Volume semanal: 12-18 séries por grupo.',
+        studentRef: 'joao',
+        history: [
+            { role: 'user', content: 'Me ajude a planejar o próximo programa de treinos de {name}' },
+            { role: 'assistant', content: 'Aprova a proposta abaixo?' },
+        ],
+        expect: {
+            // O turno da aprovação MATERIALIZA o rascunho — era o que truncava em prod.
+            callsTool: ['kinevo_create_student_draft_program'],
+            judge:
+                'Cria o programa como RASCUNHO no perfil do aluno honrando os valores aprovados (divisão 5x, foco em quebra de platôs) e explica em poucas frases o que foi criado, sem despejar JSON/IDs.',
+        },
+    },
+    {
+        id: 'alunos-semana-programa-03',
+        domain: 'alunos',
+        surface: 'workspace',
+        input: 'Essa é a última semana do programa de treinos de {name}?',
+        studentRef: 'joao',
+        expect: {
+            noWrite: true,
+            judge:
+                'Responde usando a SEMANA ATUAL do programa que está no contexto ("semana N de M" ou o aviso de que passou da duração) — sem improvisar aritmética a partir do número de sessões e sem pedir permissão para "verificar".',
         },
     },
 ]
