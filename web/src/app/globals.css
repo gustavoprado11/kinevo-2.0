@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* O dark mode do Kinevo é por CLASSE (next-themes com attribute="class" +
+   trainers.theme), não pela preferência do sistema operacional. Sem esta
+   declaração o Tailwind v4 liga as utilities `dark:` no
+   `@media (prefers-color-scheme: dark)` — o padrão dele — e o app renderizava
+   misturado sempre que o SO discordava do tema escolhido: com o SO claro e o app
+   em escuro, os tokens (`bg-surface-*`) viravam escuros mas todo `dark:*` era
+   ignorado (sidebar e modais brancos sobre fundo escuro). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Kinevo design tokens (auto-generated from @kinevo/shared/tokens v2).
    Adds `--k-*` vars used pelos componentes V2 (Fase 1+).
    Não sobrescreve nenhuma var existente — Shield Strategy preservada. */
