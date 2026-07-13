@@ -43,6 +43,7 @@ import type { ToolConfirmationRequest, QuestionRequest, ProposalRequest } from '
 import { buildChatContext } from '@/lib/assistant/context-builder'
 import { buildInstructions, PROMPT_VERSION } from '@/lib/assistant/system-prompt'
 import { buildMcpHitlInstructions } from '@/lib/assistant/hitl-instructions'
+import { isBuildTurn, historyText } from '@/lib/assistant/build-signals'
 import { recordTurnTrace, toolResultOk } from '@/lib/assistant/turn-trace'
 import { validateConfirmArgs } from '@/lib/assistant/arg-validation'
 import { ambiguousStudentTarget, withAmbiguityGuard, type StudentRef } from '@/lib/assistant/ambiguity'
@@ -100,24 +101,8 @@ function providerFor(model: string) {
     return model.startsWith('claude') ? anthropic(model) : openai(model)
 }
 
-// Detecta conversa de CRIAÇÃO de programa (input + histórico recente). Num turno de
-// build, o LLM emite UMA chamada grande (kinevo_create_program_template com o programa
-// inteiro), então damos mais tokens de saída e um teto de passos um pouco maior — sem
-// trocar de modelo: o mini é bom numa única saída estruturada (como no smart-v2).
-const PROGRAM_BUILD_RE = /\b(cri|mont|gera|elabor|prescrev|monta|faz|fa[çc]a|nov[oa])\w*\b[\s\S]{0,40}\b(programa|treino|prescri|ficha|periodiz|split|divis[ãa]o)\b/i
-/** Texto legível de uma mensagem do histórico (nativa pode ter content em array). */
-function historyText(m: AssistantHistoryMessage): string {
-    if (typeof m.content === 'string') return m.content
-    return m.content
-        .map((p) => (p.type === 'text' ? p.text : ''))
-        .filter(Boolean)
-        .join(' ')
-}
-function isBuildTurn(input: string, history: AssistantHistoryMessage[]): boolean {
-    if (PROGRAM_BUILD_RE.test(input)) return true
-    const recent = history.slice(-5).map(historyText).join('  ')
-    return PROGRAM_BUILD_RE.test(recent)
-}
+// Detecção de turno de build (modelo/orçamentos/retry) vive em build-signals.ts
+// — módulo leve, testável, com os modos de falha de prod documentados.
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -743,6 +728,10 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         // já foi calculado no passo 1 (afeta o subset de tools). O modelo do build é
         // configurável (qualidade-crítico) — ver resolveBuildModel.
         let turnModel: string = buildTurn ? resolveBuildModel() : ASSISTANT_MODEL
+        // Grau de BUILD do turno (orçamentos/thinking/retry). Começa na detecção
+        // (build-signals) e pode ESCALAR em runtime: um turno "comum" que trunca a
+        // saída sem concluir era um build não detectado — re-roda em grau de build.
+        let buildGrade = buildTurn
 
         // U-STREAM (Onda 1 — 2026-07-01): o turno usa streamText e consome o
         // fullStream — deltas de texto vão ao cliente via onTextDelta (canal
@@ -758,7 +747,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 // Build: 12000 (era 8000) — no Gemini o thinking consome do orçamento
                 // de saída; a chamada create_*_program sozinha já é grande, e truncar
                 // no meio do JSON perde o turno inteiro.
-                maxOutputTokens: buildTurn ? 12000 : 1500,
+                maxOutputTokens: buildGrade ? 12000 : 1500,
                 temperature: 0.3,
                 // stopWhen é o TETO de passos. O build agora é: contexto (já injetado)
                 // → perguntar/propor → 1 list_exercises em LOTE (muscle_groups[]) →
@@ -769,7 +758,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 // agenda a sessão") não cabiam em 5 — o turno morria no meio. O
                 // anti-loop (read-guard) e o teto de créditos (MAX_TURN_CREDITS)
                 // seguram o caso patológico.
-                stopWhen: stepCountIs(buildTurn ? 16 : 8),
+                stopWhen: stepCountIs(buildGrade ? 16 : 8),
                 tools,
                 abortSignal: opts.abortSignal,
                 // P1 do plano do harness (13/jul): thinking do Gemini nos turnos de
@@ -778,28 +767,34 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 // de modelo). Budget explícito p/ custo/latência previsíveis; só é
                 // enviado quando o modelo do turno é Gemini (outros providers ignoram
                 // a chave `google`, mas nem a recebem).
-                ...(model.startsWith('gemini') && buildTurn
+                ...(model.startsWith('gemini') && buildGrade
                     ? { providerOptions: { google: { thinkingConfig: { thinkingBudget: 4096 } } } }
                     : {}),
             })
             let streamError: unknown = null
             let aborted = false
             let lastLabel = ''
-            let sawText = false
+            // NARRAÇÃO PROGRESSIVA (13/jul): o texto dos passos INTERMEDIÁRIOS
+            // ("Achei o aluno, agora vou puxar o programa…") era DESCARTADO — o
+            // treinador via só rótulos genéricos e a resposta final, enquanto o
+            // mesmo fluxo via MCP externo narra o raciocínio e parece vivo. Agora
+            // acumulamos TODOS os deltas (com parágrafo entre passos) e o texto
+            // final do turno é a narração completa — o que o cliente viu em
+            // streaming é exatamente o que persiste (sem reset no meio).
+            let narration = ''
+            let sawTextInStep = false
             for await (const part of stream.fullStream) {
                 if (part.type === 'text-delta') {
                     if (part.text) {
-                        sawText = true
+                        sawTextInStep = true
+                        narration += part.text
                         opts.onTextDelta?.(part.text)
                     }
                 } else if (part.type === 'start-step') {
-                    // Texto de passo INTERMEDIÁRIO (antes de um tool-call) não é a
-                    // resposta final (result.text = último passo): novo passo após
-                    // texto → o cliente descarta o parcial p/ o preview bater com o
-                    // que será persistido.
-                    if (sawText) {
-                        sawText = false
-                        opts.onTextReset?.()
+                    if (sawTextInStep) {
+                        sawTextInStep = false
+                        narration += '\n\n'
+                        opts.onTextDelta?.('\n\n')
                     }
                 } else if (part.type === 'tool-input-start') {
                     const label = progressLabel(part.toolName)
@@ -821,13 +816,13 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             if (streamError) {
                 throw streamError instanceof Error ? streamError : new Error(String(streamError))
             }
-            const [text, steps, totalUsage, toolCalls] = await Promise.all([
-                stream.text,
+            const [steps, totalUsage, toolCalls, finishReason] = await Promise.all([
                 stream.steps,
                 stream.totalUsage,
                 stream.toolCalls,
+                stream.finishReason,
             ])
-            return { text, steps, totalUsage, toolCalls }
+            return { text: narration.trim(), steps, totalUsage, toolCalls, finishReason }
         }
 
         // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para.
@@ -870,7 +865,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             turnModel = modelChain[attempt]
             try {
                 const r = await runGen(turnModel)
-                if (buildTurn && leakedToolJsonText(r.text)) {
+                if (buildGrade && leakedToolJsonText(r.text)) {
                     if (hasSuccessfulWrite(r)) {
                         // Ação aterrissou; só o texto veio corrompido — não re-rodar.
                         result = r
@@ -885,7 +880,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 // Outro sabor da mesma flakiness: o build termina VAZIO — sem texto,
                 // sem write e sem pergunta/proposta/card. É perda total garantida
                 // (viraria o fallback "não consegui") — re-tentar é sempre melhor.
-                if (buildTurn && !r.text.trim() && !hasSuccessfulWrite(r)) {
+                if (buildGrade && !r.text.trim() && !hasSuccessfulWrite(r)) {
                     const rawCalls = r.toolCalls as unknown as Array<{ toolName: string }>
                     const askedOrPaused = rawCalls.some(
                         (tc) =>
@@ -898,6 +893,19 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                         e.name = 'EmptyBuildTurnError'
                         throw e
                     }
+                }
+                // ESCALADA POR TRUNCAMENTO (rede de segurança da detecção de build):
+                // um turno "comum" que estourou o orçamento de saída SEM concluir um
+                // write era um build não detectado — o create truncou no meio do JSON
+                // (visto em prod 13/jul: "planejar o próximo programa" não casava com
+                // a regex e o turno da aprovação morreu em 1500 tokens). Re-roda UMA
+                // vez em grau de build (orçamento 12000, 16 passos, modelo de build).
+                if (!buildGrade && r.finishReason === 'length' && !hasSuccessfulWrite(r)) {
+                    buildGrade = true
+                    modelChain.push(resolveBuildModel())
+                    const e = new Error('Saída truncada sem concluir — escalando para grau de build.')
+                    e.name = 'TruncatedTurnError'
+                    throw e
                 }
                 result = r
                 lastErr = null
