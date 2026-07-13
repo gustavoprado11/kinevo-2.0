@@ -11,6 +11,7 @@ import {
     Dumbbell,
     Pencil,
 } from 'lucide-react-native';
+import { LineChart } from 'lucide-react-native';
 import type { MethodKey } from '@kinevo/shared/types/prescription';
 import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels';
 import { ExerciseBody, computeRoundLayout } from './ExerciseBody';
@@ -65,6 +66,9 @@ interface ExerciseCardProps {
     rounds?: number;
     /** Read-only rendering for the builder preview. */
     readOnly?: boolean;
+    /** Abre o histórico do exercício (ícone no header + coluna "Anterior").
+     *  Ausente onde não há aluno definido (preview do builder). */
+    onHistoryPress?: () => void;
 }
 
 function buildSchemeSummary(scheme: SetPrescription[]): { reps: string; rest: number } {
@@ -96,6 +100,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
     previousSets,
     onVideoPress,
     onSwapPress,
+    onHistoryPress,
     isSwapped,
     notes,
     supersetBadge,
@@ -252,6 +257,16 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                     {notes ? <TrainerNote note={notes} /> : null}
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {!readOnly && onHistoryPress && (
+                        <TouchableOpacity
+                            onPress={onHistoryPress}
+                            accessibilityRole="button"
+                            accessibilityLabel="Ver histórico do exercício"
+                            style={{ padding: 8, borderRadius: 20, backgroundColor: toRgba(colors.purple[600], 0.1) }}
+                        >
+                            <LineChart size={18} color={colors.purple[600]} />
+                        </TouchableOpacity>
+                    )}
                     {!readOnly && (
                         <TouchableOpacity
                             onPress={handleSwapPress}
@@ -282,6 +297,7 @@ export const ExerciseCard = React.memo(function ExerciseCard({
                 readOnly={readOnly}
                 onSetChange={handleSetChange}
                 onToggleSetComplete={handleToggleSetComplete}
+                onHistoryPress={onHistoryPress}
             />
         </BlurView>
     );

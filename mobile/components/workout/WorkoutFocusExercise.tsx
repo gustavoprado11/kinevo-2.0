@@ -8,7 +8,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { ArrowRightLeft, Info } from 'lucide-react-native';
+import { ArrowRightLeft, Info, LineChart } from 'lucide-react-native';
 import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels';
 import { ExerciseBody } from './ExerciseBody';
 import { FocusVideoCard } from './FocusVideoCard';
@@ -26,11 +26,13 @@ interface WorkoutFocusExerciseProps {
     onToggleSetCompleteGlobal: (globalIndex: number, setIndex: number) => void;
     onSwapPressGlobal: (globalIndex: number) => void;
     onVideoPress: (url: string) => void;
+    /** Abre o histórico do exercício (pílula no topo + coluna "Anterior"). */
+    onHistoryPress?: (globalIndex: number) => void;
 }
 
 export const WorkoutFocusExercise = React.memo(function WorkoutFocusExercise({
     exercise, position, total, globalIndex,
-    onSetChangeGlobal, onToggleSetCompleteGlobal, onSwapPressGlobal, onVideoPress,
+    onSetChangeGlobal, onToggleSetCompleteGlobal, onSwapPressGlobal, onVideoPress, onHistoryPress,
 }: WorkoutFocusExerciseProps) {
     const colors = useV2Colors();
     const methodChip = getMethodChipLabel(exercise.methodKey);
@@ -44,16 +46,30 @@ export const WorkoutFocusExercise = React.memo(function WorkoutFocusExercise({
                 <Text style={{ fontSize: 11, fontWeight: '700', color: colors.purple[700], letterSpacing: 0.8, textTransform: 'uppercase' }}>
                     Exercício {position} de {total}
                 </Text>
-                <Pressable
-                    onPress={() => { Haptics.selectionAsync(); onSwapPressGlobal(globalIndex); }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Trocar exercício"
-                    hitSlop={6}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: toRgba(colors.purple[600], 0.1), paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 }}
-                >
-                    <ArrowRightLeft size={13} color={colors.purple[700]} strokeWidth={2.2} />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.purple[700] }}>Trocar</Text>
-                </Pressable>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {onHistoryPress ? (
+                        <Pressable
+                            onPress={() => { Haptics.selectionAsync(); onHistoryPress(globalIndex); }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Ver histórico do exercício"
+                            hitSlop={6}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: toRgba(colors.purple[600], 0.1), paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 }}
+                        >
+                            <LineChart size={13} color={colors.purple[700]} strokeWidth={2.2} />
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.purple[700] }}>Histórico</Text>
+                        </Pressable>
+                    ) : null}
+                    <Pressable
+                        onPress={() => { Haptics.selectionAsync(); onSwapPressGlobal(globalIndex); }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Trocar exercício"
+                        hitSlop={6}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: toRgba(colors.purple[600], 0.1), paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 }}
+                    >
+                        <ArrowRightLeft size={13} color={colors.purple[700]} strokeWidth={2.2} />
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.purple[700] }}>Trocar</Text>
+                    </Pressable>
+                </View>
             </View>
 
             {/* Nome + meta */}
@@ -96,6 +112,7 @@ export const WorkoutFocusExercise = React.memo(function WorkoutFocusExercise({
                     previousSets={exercise.previousSets}
                     onSetChange={(setIndex, field, value) => onSetChangeGlobal(globalIndex, setIndex, field, value)}
                     onToggleSetComplete={(setIndex) => onToggleSetCompleteGlobal(globalIndex, setIndex)}
+                    onHistoryPress={onHistoryPress ? () => onHistoryPress(globalIndex) : undefined}
                 />
             </View>
         </View>

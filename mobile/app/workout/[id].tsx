@@ -13,6 +13,7 @@ import * as Haptics from 'expo-haptics';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { ExerciseCard } from '../../components/workout/ExerciseCard';
 import { SupersetGroup } from '../../components/workout/SupersetGroup';
+import { ExerciseHistorySheet } from '../../components/workout/ExerciseHistorySheet';
 import { WorkoutNoteCard } from '../../components/workout/WorkoutNoteCard';
 import { WarmupCard } from '../../components/workout/WarmupCard';
 import { CardioCard } from '../../components/workout/CardioCard';
@@ -109,6 +110,8 @@ export default function WorkoutPlayerScreen() {
     // C1: aviso transitório (não-bloqueante) quando uma série é marcada sem
     // carga/reps e sem alvo/histórico pra herdar.
     const [emptySetNotice, setEmptySetNotice] = React.useState(false);
+    // Histórico do exercício: guarda o índice global; o exercício sai do estado vivo.
+    const [historyExerciseIndex, setHistoryExerciseIndex] = React.useState<number | null>(null);
     const emptyNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const onEmptySetLogged = useCallback(() => {
@@ -255,6 +258,11 @@ export default function WorkoutPlayerScreen() {
             ensureSession();
         }
     }, [isLoading, triggersLoading, preWorkoutTrigger, preCheckinState, readinessDecided]);
+
+    // Exercício cujo histórico está aberto. Derivado do índice para não guardar
+    // uma cópia no estado (a lista muda a cada série concluída).
+    const historyExercise =
+        historyExerciseIndex !== null ? (exercises[historyExerciseIndex] ?? null) : null;
 
     // Keep a ref to exercises for the onSetComplete callback
     const exercisesRef = useRef(exercises);
@@ -407,6 +415,10 @@ export default function WorkoutPlayerScreen() {
     );
     const onVideoPressStable = useCallback((url: string) => {
         setVideoModalUrl(url);
+    }, []);
+
+    const openHistoryStable = useCallback((globalIndex: number) => {
+        setHistoryExerciseIndex(globalIndex);
     }, []);
 
     const openSwapModal = useCallback(async (exerciseIndex: number) => {
@@ -1147,6 +1159,7 @@ export default function WorkoutPlayerScreen() {
                                             onToggleSetCompleteGlobal={onToggleSetCompleteStable}
                                             onSwapPressGlobal={openSwapModal}
                                             onVideoPress={onVideoPressStable}
+                                            onHistoryPress={openHistoryStable}
                                         />
                                     );
                                 }
@@ -1161,6 +1174,7 @@ export default function WorkoutPlayerScreen() {
                                                 onToggleSetComplete={onToggleSetCompleteStable}
                                                 onVideoPress={onVideoPressStable}
                                                 onSwapPress={openSwapModal}
+                                                onHistoryPress={openHistoryStable}
                                                 globalIndices={item.globalIndices}
                                             />
                                         </View>
@@ -1336,6 +1350,7 @@ export default function WorkoutPlayerScreen() {
                                         onToggleSetCompleteGlobal={onToggleSetCompleteStable}
                                         onSwapPressGlobal={openSwapModal}
                                         onVideoPress={onVideoPressStable}
+                                        onHistoryPress={() => openHistoryStable(item.globalIndex)}
                                         isSwapped={item.exercise.swap_source !== 'none'}
                                         notes={item.exercise.notes}
                                         setScheme={item.exercise.setScheme}
@@ -1361,6 +1376,7 @@ export default function WorkoutPlayerScreen() {
                                     onToggleSetCompleteGlobal={onToggleSetCompleteStable}
                                     onSwapPressGlobal={openSwapModal}
                                     onVideoPress={onVideoPressStable}
+                                    onHistoryPress={openHistoryStable}
                                 />
                             );
                         }
@@ -1501,6 +1517,15 @@ export default function WorkoutPlayerScreen() {
                 visible={videoModalUrl !== null}
                 onClose={() => setVideoModalUrl(null)}
                 videoUrl={videoModalUrl}
+            />
+
+            {/* Histórico do exercício — o aluno vê as próprias execuções. */}
+            <ExerciseHistorySheet
+                visible={historyExercise !== null}
+                onClose={() => setHistoryExerciseIndex(null)}
+                exerciseName={historyExercise?.name ?? ''}
+                exerciseId={historyExercise?.exercise_id}
+                studentId={profile?.id}
             />
             <ExerciseSwapModal
                 visible={swapModalVisible}

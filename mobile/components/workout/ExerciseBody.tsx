@@ -85,6 +85,9 @@ interface ExerciseBodyProps {
     /** Callbacks JÁ resolvidos pelo container (ligados ao globalIndex). */
     onSetChange: (setIndex: number, field: 'weight' | 'reps', value: string) => void;
     onToggleSetComplete: (setIndex: number) => void;
+    /** Abre o histórico do exercício ao tocar na coluna "Anterior". Ausente em
+     *  telas sem aluno (preview do builder). */
+    onHistoryPress?: () => void;
 }
 
 export const ExerciseBody = React.memo(function ExerciseBody({
@@ -96,6 +99,7 @@ export const ExerciseBody = React.memo(function ExerciseBody({
     readOnly = false,
     onSetChange,
     onToggleSetComplete,
+    onHistoryPress,
 }: ExerciseBodyProps) {
     const colors = useV2Colors();
     const hasScheme = Array.isArray(setScheme) && setScheme.length > 0;
@@ -187,6 +191,7 @@ export const ExerciseBody = React.memo(function ExerciseBody({
                                                 rirTarget={prescription?.rir ?? null}
                                                 tempoTarget={prescription?.tempo ?? null}
                                                 readOnly={readOnly}
+                                                onHistoryPress={onHistoryPress}
                                             />
                                             <RestConnector
                                                 restSeconds={prescription?.rest_seconds ?? 0}
@@ -227,6 +232,7 @@ export const ExerciseBody = React.memo(function ExerciseBody({
                                     rirTarget={prescription?.rir ?? null}
                                     tempoTarget={prescription?.tempo ?? null}
                                     readOnly={readOnly}
+                                    onHistoryPress={onHistoryPress}
                                 />
                                 <RestConnector
                                     restSeconds={restForConnector}

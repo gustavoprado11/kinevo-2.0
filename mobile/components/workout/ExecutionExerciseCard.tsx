@@ -16,7 +16,7 @@
 import React from 'react';
 import { View, Text, Pressable, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { ArrowRightLeft, Play } from 'lucide-react-native';
+import { ArrowRightLeft, Play, LineChart } from 'lucide-react-native';
 import { getMethodChipLabel } from '@kinevo/shared/lib/prescription/method-labels';
 import { ExerciseBody } from './ExerciseBody';
 import { ExerciseSummaryRow, type ExerciseStatus } from './ExerciseSummaryRow';
@@ -44,6 +44,8 @@ interface ExecutionExerciseCardProps {
     onToggleSetCompleteGlobal: (globalIndex: number, setIndex: number) => void;
     onSwapPressGlobal: (globalIndex: number) => void;
     onVideoPress: (url: string) => void;
+    /** Abre o histórico do exercício (pílula "Histórico" + coluna "Anterior"). */
+    onHistoryPress?: (globalIndex: number) => void;
 }
 
 function buildMeta(exercise: ExerciseData, status: ExerciseStatus): string {
@@ -81,6 +83,7 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
     onToggleSetCompleteGlobal,
     onSwapPressGlobal,
     onVideoPress,
+    onHistoryPress,
 }: ExecutionExerciseCardProps) {
     const colors = useV2Colors();
     const methodChip = getMethodChipLabel(exercise.methodKey);
@@ -129,6 +132,9 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
                         ) : null}
                     </View>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
+                        {onHistoryPress ? (
+                            <ActionPill icon={LineChart} label="Histórico" onPress={() => onHistoryPress(globalIndex)} />
+                        ) : null}
                         <ActionPill icon={ArrowRightLeft} label="Trocar" onPress={() => onSwapPressGlobal(globalIndex)} />
                         <ActionPill icon={Play} label="Vídeo" onPress={handleVideo} />
                     </View>
@@ -150,6 +156,7 @@ export const ExecutionExerciseCard = React.memo(function ExecutionExerciseCard({
                     previousSets={exercise.previousSets}
                     onSetChange={(setIndex, field, value) => onSetChangeGlobal(globalIndex, setIndex, field, value)}
                     onToggleSetComplete={(setIndex) => onToggleSetCompleteGlobal(globalIndex, setIndex)}
+                    onHistoryPress={onHistoryPress ? () => onHistoryPress(globalIndex) : undefined}
                 />
             </CollapsibleSection>
         </View>

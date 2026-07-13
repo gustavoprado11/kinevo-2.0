@@ -45,6 +45,7 @@ import { WarmupCardioCard } from '../components/workout/WarmupCardioCard';
 import { ExerciseVideoModal } from '../components/workout/ExerciseVideoModal';
 import { ExerciseSwapModal } from '../components/workout/ExerciseSwapModal';
 import { RestTimerOverlay } from '../components/workout/RestTimerOverlay';
+import { ExerciseHistorySheet } from '../components/workout/ExerciseHistorySheet';
 import { TrainingRoomSettingsSheet } from '../components/trainer/TrainingRoomSettingsSheet';
 import { useTrainingRoomPreferencesStore } from '../stores/trainingRoomPreferencesStore';
 import { resolveRestSeconds, effectiveRestSeconds } from '@kinevo/shared/lib/rest-timer';
@@ -377,6 +378,8 @@ export default function TrainingRoomScreen() {
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    // Histórico do exercício: guarda o índice; o exercício sai do snapshot ativo.
+    const [historyExerciseIndex, setHistoryExerciseIndex] = useState<number | null>(null);
 
     // Vindo do detalhe do aluno: abre o picker já com o aluno pré-selecionado (one-shot).
     const { studentId: presetStudentId } = useLocalSearchParams<{ studentId?: string }>();
@@ -498,6 +501,11 @@ export default function TrainingRoomScreen() {
     }, []);
 
     const activeSession = activeStudentId ? sessions[activeStudentId] : null;
+
+    // Exercício cujo histórico está aberto. Derivado do índice para não guardar
+    // uma cópia do exercício no estado (o snapshot muda a cada série concluída).
+    const historyExercise =
+        historyExerciseIndex !== null ? (activeSession?.exercises[historyExerciseIndex] ?? null) : null;
 
     // Clear expired sessions on mount and offer restoration
     const hasShownRestorationRef = useRef(false);
@@ -852,6 +860,7 @@ export default function TrainingRoomScreen() {
                             }}
                             onVideoPress={handleVideoPress}
                             onSwapPress={(globalIdx) => openSwapModal(globalIdx)}
+                            onHistoryPress={(globalIdx) => setHistoryExerciseIndex(globalIdx)}
                             globalIndices={group.map((e) => e._gi)}
                         />
                     ),
@@ -871,6 +880,7 @@ export default function TrainingRoomScreen() {
                             onToggleSetComplete={(setIdx) => handleToggleSetComplete(ei, setIdx)}
                             onVideoPress={handleVideoPress}
                             onSwapPress={() => openSwapModal(ei)}
+                            onHistoryPress={() => setHistoryExerciseIndex(ei)}
                             videoUrl={exercise.video_url}
                             previousLoad={exercise.previousLoad}
                             previousSets={exercise.previousSets}
@@ -1190,6 +1200,16 @@ export default function TrainingRoomScreen() {
             <TrainingRoomSettingsSheet
                 visible={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
+            />
+
+            {/* Histórico do exercício — do ALUNO ATIVO da sala. */}
+            <ExerciseHistorySheet
+                visible={historyExercise !== null}
+                onClose={() => setHistoryExerciseIndex(null)}
+                exerciseName={historyExercise?.name ?? ''}
+                exerciseId={historyExercise?.exercise_id}
+                studentId={activeStudentId}
+                studentName={activeSession?.studentName}
             />
 
             <StudentPickerModal

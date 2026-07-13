@@ -13,6 +13,8 @@ interface SupersetGroupProps {
     onToggleSetComplete: (globalExerciseIndex: number, setIndex: number) => void;
     onVideoPress?: (url: string) => void;
     onSwapPress?: (globalExerciseIndex: number) => void;
+    /** Abre o histórico do exercício do grupo (índice global). */
+    onHistoryPress?: (globalExerciseIndex: number) => void;
     globalIndices: number[];
 }
 
@@ -38,6 +40,7 @@ export const SupersetGroup = React.memo(function SupersetGroup({
     onToggleSetComplete,
     onVideoPress,
     onSwapPress,
+    onHistoryPress,
     globalIndices,
 }: SupersetGroupProps) {
     const colors = useV2Colors();
@@ -102,6 +105,7 @@ export const SupersetGroup = React.memo(function SupersetGroup({
                             onToggleSetComplete={(setIndex) => onToggleSetComplete(globalIdx, setIndex)}
                             onVideoPress={onVideoPress}
                             onSwapPress={() => onSwapPress?.(globalIdx)}
+                            onHistoryPress={onHistoryPress ? () => onHistoryPress(globalIdx) : undefined}
                             isSwapped={exercise.swap_source !== 'none'}
                             notes={exercise.notes}
                             supersetBadge={`Exercício ${localIdx + 1} de ${exercises.length}`}

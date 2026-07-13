@@ -36,6 +36,9 @@ interface SetRowProps {
     tempoTarget?: string | null;
     /** When true, hides inputs / check button — preview / read-only rendering. */
     readOnly?: boolean;
+    /** Abre o histórico do exercício. Ausente = coluna "Anterior" não é tocável
+     *  (preview do builder, telas sem aluno). */
+    onHistoryPress?: () => void;
 }
 
 const isClusterReps = (reps: string) => reps.includes('+');
@@ -59,8 +62,15 @@ export const SetRow = React.memo(function SetRow({
     rirTarget,
     tempoTarget,
     readOnly = false,
+    onHistoryPress,
 }: SetRowProps) {
     const colors = useV2Colors();
+
+    const handleHistoryPress = () => {
+        if (!onHistoryPress) return;
+        Haptics.selectionAsync();
+        onHistoryPress();
+    };
 
     const handleToggle = () => {
         if (!isCompleted) {
@@ -168,19 +178,38 @@ export const SetRow = React.memo(function SetRow({
                 ) : null}
 
                 {/* Previous set data — coluna mais estreita quando há badge
-                 *  com label, pra absorver os ~50px extras do chip. */}
-                <View style={{ width: setType !== 'normal' ? 32 : 58, alignItems: 'center', marginRight: 6 }}>
+                 *  com label, pra absorver os ~50px extras do chip.
+                 *  Tocável quando a tela sabe de quem é o histórico: abre as
+                 *  últimas execuções do exercício (o número que está aqui é só
+                 *  a última). */}
+                <TouchableOpacity
+                    disabled={!onHistoryPress}
+                    onPress={handleHistoryPress}
+                    accessibilityRole={onHistoryPress ? 'button' : undefined}
+                    accessibilityLabel={onHistoryPress ? 'Ver histórico do exercício' : undefined}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                    style={{
+                        width: setType !== 'normal' ? 32 : 58,
+                        alignItems: 'center',
+                        marginRight: 6,
+                        paddingVertical: 2,
+                        borderRadius: 7,
+                        borderWidth: onHistoryPress ? 1 : 0,
+                        borderStyle: 'dashed',
+                        borderColor: onHistoryPress ? toRgba(colors.purple[600], 0.35) : 'transparent',
+                    }}
+                >
                     <Text style={{
                         fontSize: 12,
                         fontWeight: '500',
-                        color: colors.text.quaternary,
+                        color: onHistoryPress ? colors.purple[500] : colors.text.quaternary,
                         fontVariant: ['tabular-nums'],
                     }}>
                         {hasPrevious
                             ? `${Number.isInteger(previousWeight) ? previousWeight : previousWeight!.toFixed(1)}×${previousReps}`
                             : '—'}
                     </Text>
-                </View>
+                </TouchableOpacity>
 
                 {/* Weight cell — stacks "Meta: …" label above the input when prescribed. */}
                 <View style={{ flex: 1, marginRight: 6 }}>
