@@ -863,6 +863,16 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             // Resposta legítima nunca contém JSON de args de tool (regra do prompt).
             return /"exercise_id"\s*:/.test(head) || /"sessions"\s*:\s*\[/.test(head)
         }
+        // Tentativa falha de build é COBRADA pelo provider mas o usage dela se
+        // perdia (o metering só vê a vencedora → COGS real subestimado). O erro
+        // sintético carrega o usage p/ o trace de retry registrar o custo.
+        type UsageLike = { inputTokens?: number; outputTokens?: number; cachedInputTokens?: number }
+        const failAttempt = (message: string, name: string, usage: UsageLike): never => {
+            const e = new Error(message) as Error & { usage?: UsageLike }
+            e.name = name
+            e.usage = usage
+            throw e
+        }
         const hasSuccessfulWrite = (r: Awaited<ReturnType<typeof runGen>>): boolean => {
             const steps = r.steps as unknown as Array<{
                 toolResults: Array<{ toolName: string; output?: unknown }>
@@ -893,9 +903,11 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                         lastErr = null
                         break
                     }
-                    const e = new Error('Gemini vazou a tool-call como texto (thinking leak).')
-                    e.name = 'LeakedToolJsonError'
-                    throw e
+                    failAttempt(
+                        'Gemini vazou a tool-call como texto (thinking leak).',
+                        'LeakedToolJsonError',
+                        r.totalUsage,
+                    )
                 }
                 // Outro sabor da mesma flakiness: o build termina VAZIO — sem texto,
                 // sem write e sem pergunta/proposta/card. É perda total garantida
@@ -909,9 +921,11 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                             CONFIRM_TOOLS.has(tc.toolName),
                     )
                     if (!askedOrPaused) {
-                        const e = new Error('Turno de build terminou vazio (sem texto, write ou pergunta).')
-                        e.name = 'EmptyBuildTurnError'
-                        throw e
+                        failAttempt(
+                            'Turno de build terminou vazio (sem texto, write ou pergunta).',
+                            'EmptyBuildTurnError',
+                            r.totalUsage,
+                        )
                     }
                 }
                 // ESCALADA POR TRUNCAMENTO (rede de segurança da detecção de build):
@@ -923,9 +937,11 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 if (!buildGrade && r.finishReason === 'length' && !hasSuccessfulWrite(r)) {
                     buildGrade = true
                     modelChain.push(resolveBuildModel())
-                    const e = new Error('Saída truncada sem concluir — escalando para grau de build.')
-                    e.name = 'TruncatedTurnError'
-                    throw e
+                    failAttempt(
+                        'Saída truncada sem concluir — escalando para grau de build.',
+                        'TruncatedTurnError',
+                        r.totalUsage,
+                    )
                 }
                 result = r
                 lastErr = null
@@ -934,6 +950,10 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 if ((genErr as Error)?.name === 'AbortError') throw genErr
                 lastErr = genErr
                 const msg = genErr instanceof Error ? genErr.message : String(genErr)
+                // Usage da tentativa falha (quando o erro sintético o carrega):
+                // o provider cobrou esses tokens — ficam visíveis no trace mesmo
+                // sem entrar no metering de créditos (só a vencedora cobra).
+                const failedUsage = (genErr as { usage?: UsageLike }).usage
                 await recordTurnTrace(admin, {
                     trainerId,
                     studentId: opts.studentId,
@@ -943,6 +963,16 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                     output: `[build-retry ${attempt + 1}/${modelChain.length}] ${turnModel} falhou: ${msg}`.slice(0, 500),
                     model: turnModel,
                     intents,
+                    inputTokens: failedUsage?.inputTokens ?? null,
+                    cachedInputTokens: failedUsage?.cachedInputTokens ?? null,
+                    outputTokens: failedUsage?.outputTokens ?? null,
+                    costMicros: failedUsage
+                        ? turnCostMicros(turnModel, {
+                              inputTokens: failedUsage.inputTokens ?? 0,
+                              cachedInputTokens: failedUsage.cachedInputTokens ?? 0,
+                              outputTokens: failedUsage.outputTokens ?? 0,
+                          })
+                        : null,
                 }).catch(() => {})
                 // O modelo que falhou pode ter emitido texto parcial: o cliente
                 // descarta; e a tentativa seguinte começa sem os tool-results deste
@@ -1108,8 +1138,13 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             const digest = digestToolResult(e.toolName, redactSensitive(e.result))
             if (digest) memory.push({ toolName: e.toolName, digest })
         }
+        // Cache do provider (OpenAI/Gemini reportam automático). undefined =
+        // não reportado → NULL no registro (≠ 0 medido) e 0 na conta de custo
+        // (o custo registrado vira TETO conservador, nunca subestimativa).
+        const cachedInputTokens = result.totalUsage.cachedInputTokens
         const costMicros = turnCostMicros(turnModel, {
             inputTokens: (result.totalUsage.inputTokens ?? 0),
+            cachedInputTokens: cachedInputTokens ?? 0,
             outputTokens: (result.totalUsage.outputTokens ?? 0),
         })
 
@@ -1121,6 +1156,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 ? {
                       model: turnModel,
                       inputTokens: (result.totalUsage.inputTokens ?? 0),
+                      cachedInputTokens,
                       outputTokens: (result.totalUsage.outputTokens ?? 0),
                       costMicros,
                   }
@@ -1133,6 +1169,7 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 surface,
                 model: turnModel,
                 inputTokens: (result.totalUsage.inputTokens ?? 0),
+                cachedInputTokens,
                 outputTokens: (result.totalUsage.outputTokens ?? 0),
                 costMicros,
             })
@@ -1178,8 +1215,10 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 intents,
                 credits,
                 inputTokens: (result.totalUsage.inputTokens ?? 0),
+                cachedInputTokens: cachedInputTokens ?? null,
                 outputTokens: (result.totalUsage.outputTokens ?? 0),
                 costMicros,
+                steps: steps.length,
             })
         } catch (e) {
             console.error('[runAssistantTurn] metering/summary/trace best-effort falhou', e)

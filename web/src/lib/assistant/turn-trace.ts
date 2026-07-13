@@ -42,8 +42,12 @@ export interface TurnTraceInput {
     intents?: string[]
     credits?: number
     inputTokens?: number | null
+    /** Tokens de input servidos do cache do provider (subconjunto de inputTokens). */
+    cachedInputTokens?: number | null
     outputTokens?: number | null
     costMicros?: number | null
+    /** Nº de passos do agent loop no turno (steps do streamText). */
+    steps?: number | null
 }
 
 /** Limite de texto persistido (input/output) — evita linhas gigantes. */
@@ -140,8 +144,10 @@ export async function recordTurnTrace(
             intents: t.intents ?? [],
             credits: t.credits ?? 0,
             input_tokens: t.inputTokens ?? null,
+            cached_input_tokens: t.cachedInputTokens ?? null,
             output_tokens: t.outputTokens ?? null,
             cost_usd_micros: t.costMicros ?? null,
+            steps: t.steps ?? null,
         }
         const { error } = await admin.from('assistant_turn_traces').insert(row)
         if (error) console.error('[recordTurnTrace] insert error (best-effort):', error.message)
