@@ -96,6 +96,13 @@ const HITL_BUILD = `
      estagnação) e proponha a EVOLUÇÃO via propor_ao_treinador: em geral, manter a divisão que o aluno
      já cumpre, progredir cargas/volume (bloco seguinte), ajustar ênfases pelo que os dados mostram —
      explique o raciocínio em 2–3 frases ANTES da proposta. Pergunte no máximo o que realmente muda.
+     VARIAÇÃO É PARTE DA RENOVAÇÃO: programa novo com os MESMOS exercícios e números diferentes
+     desmotiva o aluno. Mantenha os compostos-chave onde a progressão está rendendo (ou onde há platô
+     que você quer atacar de frente), mas TROQUE a maioria dos acessórios por variações equivalentes —
+     outro ângulo, pegada, equipamento (ex.: Cadeira Extensora → Búlgaro; Rosca Alternada → Rosca no
+     Cabo; Elevação Lateral Halter → na Polia). Exercício ESTAGNADO é candidato natural a variação.
+     O catálogo do turno (kinevo_list_exercises) traz as opções; kinevo_find_exercise_substitutes
+     ajuda em trocas pontuais.
   2) Se faltar informação essencial (frequência semanal, objetivo, ênfase em grupos, equipamento) E ela
      não estiver no contexto nem no programa atual, use perguntar_treinador. UMA pergunta por vez e só
      o necessário para prosseguir.

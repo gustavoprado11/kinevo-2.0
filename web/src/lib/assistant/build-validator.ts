@@ -101,14 +101,21 @@ const ABSOLUTE_GROUP_MAX = STYLE_VOLUME_CEILINGS.emphasized.max // 20 — "JAMAI
 const SESSION_MAX_EXERCISES = 9
 const SESSION_MIN_FOR_COMPOUND_RULE = 4
 
+/** Sobreposição new∩prev/new a partir da qual a renovação vira aviso: repetir
+ *  o programa anterior com números novos desmotiva o aluno (feedback 13/jul). */
+const RENEWAL_OVERLAP_WARN = 0.6
+
 /**
  * Valida os args de um create transacional. Puro (o catálogo já vem resolvido).
  * `style` só ajusta AVISOS (faixa de exercícios/sessão); os tetos são absolutos.
+ * `previousExerciseIds` (exercícios do programa ATIVO do aluno) liga o aviso de
+ * renovação repetida — W7.
  */
 export function validateBuildArgs(
     args: BuildProgramArgs,
     catalog: ReadonlyMap<string, CatalogEntry>,
     style: PrescriptionStyle | null = null,
+    previousExerciseIds: ReadonlySet<string> | null = null,
 ): BuildValidation {
     const errors: string[] = []
     const warnings: string[] = []
@@ -220,6 +227,26 @@ export function validateBuildArgs(
         )
     }
 
+    // W7: renovação repetida — o programa novo reusa a maior parte dos exercícios
+    // do programa ATIVO do aluno. Aviso (não erro): repetir compostos-chave em
+    // progressão é legítimo; repetir o programa INTEIRO com números novos, não.
+    if (previousExerciseIds && previousExerciseIds.size > 0) {
+        const newIds = new Set<string>()
+        for (const s of sessions) for (const ex of flatExercises(s)) newIds.add(ex.exercise_id)
+        if (newIds.size > 0) {
+            const repeated = [...newIds].filter((id) => previousExerciseIds.has(id))
+            const overlap = repeated.length / newIds.size
+            if (overlap >= RENEWAL_OVERLAP_WARN) {
+                warnings.push(
+                    `${repeated.length} de ${newIds.size} exercícios repetem o programa ATUAL do aluno ` +
+                        `(${Math.round(overlap * 100)}%). Renovação pede VARIAÇÃO: mantenha os compostos-chave ` +
+                        `em progressão, mas troque acessórios por variações equivalentes (ângulo/pegada/equipamento) ` +
+                        `— novo estímulo motiva o aluno.`,
+                )
+            }
+        }
+    }
+
     // W1: mesmo exercício em 3+ sessões distintas.
     for (const [id, inSessions] of sessionsByExercise) {
         if (inSessions.size >= 3) {
@@ -274,6 +301,34 @@ export async function loadBuildCatalog(
         })
     }
     return map
+}
+
+/** Exercícios do programa ATIVO do aluno (para o aviso de renovação repetida,
+ *  W7). Best-effort: erro/inexistente → set vazio (aviso simplesmente não roda). */
+export async function loadActiveProgramExerciseIds(
+    admin: SupabaseClient,
+    studentId: string,
+): Promise<Set<string>> {
+    const ids = new Set<string>()
+    try {
+        const { data } = await admin
+            .from('assigned_programs')
+            .select('assigned_workouts(assigned_workout_items(exercise_id))')
+            .eq('student_id', studentId)
+            .eq('status', 'active')
+            .limit(1)
+        const workouts = (data?.[0] as
+            | { assigned_workouts?: Array<{ assigned_workout_items?: Array<{ exercise_id: string | null }> }> }
+            | undefined)?.assigned_workouts
+        for (const w of workouts ?? []) {
+            for (const it of w.assigned_workout_items ?? []) {
+                if (it.exercise_id) ids.add(it.exercise_id)
+            }
+        }
+    } catch {
+        /* best-effort */
+    }
+    return ids
 }
 
 /** Corretivo devolvido ao modelo quando o gate bloqueia (mesma família do

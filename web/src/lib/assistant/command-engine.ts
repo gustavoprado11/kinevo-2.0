@@ -55,6 +55,7 @@ import { runStyleInterviewTurn } from '@/lib/assistant/style-interview'
 import {
     validateBuildArgs,
     loadBuildCatalog,
+    loadActiveProgramExerciseIds,
     buildQualityCorrective,
     annotateResultWithWarnings,
     type BuildProgramArgs,
@@ -416,12 +417,16 @@ function withBuildQualityGate(
             execute: (async (args, options) => {
                 let verdict: BuildValidation | null = null
                 try {
-                    const buildArgs = args as BuildProgramArgs
-                    const [catalog, style] = await Promise.all([
+                    const buildArgs = args as BuildProgramArgs & { student_id?: string }
+                    const [catalog, style, prevIds] = await Promise.all([
                         loadBuildCatalog(admin, buildArgs),
                         loadTrainerStyle(admin, trainerId),
+                        // W7 (renovação repetida): só o caminho de draft tem aluno.
+                        buildArgs.student_id
+                            ? loadActiveProgramExerciseIds(admin, buildArgs.student_id)
+                            : Promise.resolve(null),
                     ])
-                    verdict = validateBuildArgs(buildArgs, catalog, style)
+                    verdict = validateBuildArgs(buildArgs, catalog, style, prevIds)
                 } catch (err) {
                     console.error('[build-quality-gate] gate indisponível — criação segue sem validação', err)
                     verdict = null

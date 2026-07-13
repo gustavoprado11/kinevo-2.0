@@ -192,6 +192,20 @@ describe('warnings (não bloqueiam)', () => {
         const v = validateBuildArgs(OK_PROGRAM, CATALOG, style) // sessões têm 4
         expect(v.warnings.some((w) => w.includes('6–8'))).toBe(true)
     })
+
+    it('W7: renovação que repete a maioria dos exercícios do programa ativo vira aviso', () => {
+        // OK_PROGRAM usa sq,hip,abd,lat,sup,rem,rosca,triceps (8 distintos).
+        // 6/8 vindos do programa anterior = 75% de sobreposição → aviso.
+        const prev = new Set(['sq', 'hip', 'abd', 'lat', 'sup', 'rem'])
+        const v = validateBuildArgs(OK_PROGRAM, CATALOG, null, prev)
+        expect(v.errors).toEqual([])
+        expect(v.warnings.some((w) => w.includes('6 de 8') && w.includes('VARIAÇÃO'))).toBe(true)
+
+        // Sobreposição baixa (só os compostos-chave) NÃO gera aviso.
+        const fewPrev = new Set(['sq', 'hip'])
+        const v2 = validateBuildArgs(OK_PROGRAM, CATALOG, null, fewPrev)
+        expect(v2.warnings.some((w) => w.includes('VARIAÇÃO'))).toBe(false)
+    })
 })
 
 describe('corretivo e anotação', () => {
