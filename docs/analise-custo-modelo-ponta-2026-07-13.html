@@ -1,0 +1,339 @@
+<title>Kinevo — Vale a pena um modelo de ponta no assistente?</title>
+<style>
+  :root {
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --bar: #2a78d6; --bar-soft: #9ec5f4;
+    --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+    --good-ink: #006300; --critical-ink: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+      --bar: #3987e5; --bar-soft: #1c5cab; --good-ink: #0ca30c;
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --bar: #2a78d6; --bar-soft: #9ec5f4; --good-ink: #006300;
+  }
+  :root[data-theme="dark"] {
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --bar: #3987e5; --bar-soft: #1c5cab; --good-ink: #0ca30c;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6; font-size: 16px; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  header { border-bottom: 1px solid var(--border); padding-bottom: 28px; margin-bottom: 40px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+  h1 { font-size: 34px; line-height: 1.2; margin: 0 0 14px; letter-spacing: -0.02em; }
+  .sub { color: var(--ink-2); margin: 0; font-size: 17px; max-width: 62ch; }
+
+  h2 { font-size: 22px; margin: 56px 0 6px; letter-spacing: -0.01em; }
+  h2 .n { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 10px; font-weight: 400; }
+  p { color: var(--ink-2); max-width: 68ch; }
+  strong { color: var(--ink); font-weight: 600; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; color: var(--ink); }
+
+  .verdict { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--bar); border-radius: 10px; padding: 22px 24px; margin: 28px 0; }
+  .verdict p { margin: 0 0 10px; color: var(--ink); }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict.alert { border-left-color: var(--critical); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin: 28px 0; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .tile .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .tile .val { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+  .tile .note { font-size: 13px; color: var(--ink-2); margin-top: 6px; }
+
+  figure { margin: 28px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px 18px; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--grid); }
+  .fig-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .fig-sub { font-size: 13px; color: var(--ink-2); margin-bottom: 20px; }
+  .panel-title { font-size: 13px; font-weight: 600; margin: 22px 0 2px; }
+  .panel-note { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+
+  .bars { position: relative; }
+  .row { display: grid; grid-template-columns: 158px 1fr; align-items: center; gap: 12px; margin-bottom: 7px; }
+  .row .name { font-size: 12.5px; color: var(--ink-2); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .name.me { color: var(--ink); font-weight: 600; }
+  .track { position: relative; height: 20px; }
+  .bar { height: 20px; background: var(--bar); border-radius: 0 4px 4px 0; display: flex; align-items: center; min-width: 2px; }
+  .bar.dim { background: var(--bar-soft); }
+  .bar .v { font-size: 12px; color: var(--ink); margin-left: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .refline { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 1px dashed var(--critical); z-index: 2; }
+  .axis { border-top: 1px solid var(--axis); margin-top: 10px; display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding-top: 4px; font-variant-numeric: tabular-nums; }
+
+  .tbl-scroll { overflow-x: auto; margin: 22px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 560px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--grid); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--axis); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.me td { background: color-mix(in srgb, var(--bar) 8%, transparent); }
+  tr.me td:first-child { font-weight: 600; color: var(--ink); }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill::before { content: ""; width: 8px; height: 8px; border-radius: 2px; flex: none; }
+  .pill.ok::before { background: var(--good); }
+  .pill.warn::before { background: var(--warning); }
+  .pill.bad::before { background: var(--critical); }
+  .pill.ok { color: var(--good-ink); }
+  .pill.warn { color: var(--ink-2); }
+  .pill.bad { color: var(--critical-ink); }
+
+  ol, ul { color: var(--ink-2); max-width: 68ch; }
+  li { margin-bottom: 9px; }
+  li strong { color: var(--ink); }
+  .foot { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Kinevo · Custo de inferência do assistente · 13 jul 2026</p>
+  <h1>Vale a pena rodar um modelo de ponta pra montar treino?</h1>
+  <p class="sub">Resposta curta: <strong>sim — e por menos do que você paga hoje.</strong> Mas não trocando o modelo. Trocando o prompt primeiro. Do jeito que o build está montado agora, um modelo de ponta multiplica uma conta que já está no vermelho.</p>
+</header>
+
+<div class="verdict alert">
+  <p><strong>O que eu não esperava encontrar.</strong> O build de treino já é deficitário hoje, com o modelo “barato”. Um build real de 13/jul consumiu <strong>320 mil tokens de input</strong> e custou <strong>$0,51 (R$ 2,81)</strong>. Ele é cobrado como <strong>6 créditos</strong> — ou seja, <strong>R$ 0,47 de custo por crédito</strong>. No plano Pro IA você vende crédito a R$ 0,27, e no Premium a R$ 0,13.</p>
+  <p><strong>Cada treino montado por um assinante Pro ou Premium dá prejuízo hoje.</strong> Antes de discutir GPT-5.5, é isso que precisa ser consertado — e a boa notícia é que o conserto é o mesmo que torna o modelo de ponta acessível.</p>
+</div>
+
+<h2><span class="n">01</span>O que você paga hoje</h2>
+<p>Números de produção, não estimativa: vieram de <code>assistant_turn_traces</code> e <code>ai_usage_events</code> (projeto <code>lylksbtgrihzepbteest</code>), consultados hoje, janela de 17/jun a 13/jul.</p>
+
+<div class="tiles">
+  <div class="tile">
+    <div class="label">Input · 1 turno de build</div>
+    <div class="val">320.269</div>
+    <div class="note">tokens · build real de 13/jul</div>
+  </div>
+  <div class="tile">
+    <div class="label">Custo desse turno</div>
+    <div class="val">$0,51</div>
+    <div class="note">R$ 2,81 · gemini-3.5-flash</div>
+  </div>
+  <div class="tile">
+    <div class="label">Custo por crédito</div>
+    <div class="val">R$ 0,47</div>
+    <div class="note">build = 6 créditos</div>
+  </div>
+  <div class="tile">
+    <div class="label">Turno de conversa</div>
+    <div class="val">$0,007</div>
+    <div class="note">mediana · gpt-4.1-mini</div>
+  </div>
+</div>
+
+<p>A arquitetura é a de <code>command-engine.ts</code>: a conversa roda em <strong>gpt-4.1-mini</strong> e, quando <code>build-signals.ts</code> detecta que o turno vai construir um programa, ele escala para <strong>gemini-3.5-flash</strong> com <code>stepCountIs(16)</code>, <code>maxOutputTokens: 12000</code> e 4.096 tokens de <em>thinking budget</em>. É esse turno que carrega o custo inteiro.</p>
+
+<div class="tbl-scroll">
+<table>
+  <thead>
+    <tr><th>Turno real em produção</th><th class="num">Input</th><th class="num">Output</th><th class="num">Tool calls</th><th class="num">Custo</th></tr>
+  </thead>
+  <tbody>
+    <tr class="me"><td>13/jul · build aprovado (5 divisões)</td><td class="num">320.269</td><td class="num">3.401</td><td class="num">8</td><td class="num">$0,511</td></tr>
+    <tr><td>07/jul · build “Qualidade de vida”</td><td class="num">288.216</td><td class="num">257</td><td class="num">12</td><td class="num">$0,435</td></tr>
+    <tr><td>23/jun · build p/ Marina (4×/sem)</td><td class="num">326.750</td><td class="num">619</td><td class="num">11</td><td class="num">$0,496</td></tr>
+    <tr><td>20/jun · build em claude-sonnet-4-6</td><td class="num">293.191</td><td class="num">4.043</td><td class="num">13</td><td class="num">$0,940</td></tr>
+    <tr><td>Conversa comum (gpt-4.1-mini, mediana)</td><td class="num">15.966</td><td class="num">136</td><td class="num">0–2</td><td class="num">$0,007</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>Um build custa o mesmo que 70 turnos de conversa.</strong> Toda decisão de modelo que importa é sobre esse turno — mexer no modelo do chat é ruído estatístico. E o número acima é o caso <em>bom</em>: a cadeia de retry é <code>[gemini, gemini, gpt-4.1-mini]</code>, e o Gemini vaza <em>thinking</em> em cerca de 1 a cada 4 builds, o que dobra a conta.</p>
+
+<h2><span class="n">02</span>Por que 320 mil tokens</h2>
+<p>Não é o treino que é grande — a saída tem 3,4 mil tokens. O input infla por três motivos que se multiplicam:</p>
+<ol>
+  <li><strong>O catálogo inteiro de tools vai em todo passo.</strong> São <strong>62 tools ≈ 16 mil tokens</strong> de schema. Num turno de 10 passos, isso é <strong>160 mil tokens só de definição de ferramenta</strong> — inclusive as de financeiro, agenda e leads, num turno que só monta treino. O subsetting por intenção existia e <strong>foi removido hoje</strong> (<code>command-engine.ts:606-614</code>), com a justificativa de que “o catálogo completo é barato”. A medição não sustenta isso: ele é o custo.</li>
+  <li><strong>O loop reenvia tudo a cada passo.</strong> Teto de 16 passos, 8–20 tool calls. Os 320k não são uma janela de 320k — são a soma de ~10 passos de ~30k, com o mesmo prefixo cobrado de novo em cada um.</li>
+  <li><strong>O cache não é aproveitado — e, pior, não é medido.</strong> Não existe <code>cache_control</code>, <code>cachedContent</code> nem leitura de <code>cachedInputTokens</code> em lugar nenhum do repo: o metering (<code>command-engine.ts:1112</code>) grava só input e output. Por isso <code>cached_input_tokens</code> é nulo em 100% dos eventos. <strong>Isso não prova que o cache nunca acerta — prova que você está cego para ele.</strong> O $0,51 registrado assume zero cache: é o teto, e o custo real está em algum ponto entre os painéis A e B do gráfico abaixo.</li>
+</ol>
+<p>Os três se resolvem sem trocar de modelo. É exatamente isso que torna a pergunta do modelo respondível.</p>
+
+<h2><span class="n">03</span>Preços de mercado — julho 2026</h2>
+<p>Verificados hoje nas páginas oficiais. US$ por 1M de tokens.</p>
+
+<div class="tbl-scroll">
+<table>
+  <thead>
+    <tr><th>Modelo</th><th class="num">Input</th><th class="num">Cacheado</th><th class="num">Output</th><th>Observação</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>gpt-4.1-mini</td><td class="num">0,40</td><td class="num">0,10</td><td class="num">1,60</td><td>conversa do assistente hoje</td></tr>
+    <tr><td>gemini-3-flash</td><td class="num">0,50</td><td class="num">0,05</td><td class="num">3,00</td><td>—</td></tr>
+    <tr><td>gpt-5.4-mini</td><td class="num">0,75</td><td class="num">0,075</td><td class="num">4,50</td><td>—</td></tr>
+    <tr><td>gpt-5.6-luna</td><td class="num">1,00</td><td class="num">0,10</td><td class="num">6,00</td><td>tier leve da linha 5.6</td></tr>
+    <tr class="me"><td>gemini-3.5-flash</td><td class="num">1,50</td><td class="num">0,15</td><td class="num">9,00</td><td><strong>build do Kinevo hoje</strong></td></tr>
+    <tr><td>Claude Sonnet 5</td><td class="num">2,00</td><td class="num">0,20</td><td class="num">10,00</td><td>promocional até 31/ago; depois 3,00 / 15,00</td></tr>
+    <tr><td>gpt-5.6-terra</td><td class="num">2,50</td><td class="num">0,25</td><td class="num">15,00</td><td>—</td></tr>
+    <tr><td>Claude Opus 4.8</td><td class="num">5,00</td><td class="num">0,50</td><td class="num">25,00</td><td>topo de linha Anthropic</td></tr>
+    <tr><td>GPT-5.5</td><td class="num">5,00</td><td class="num">0,50</td><td class="num">30,00</td><td>topo de linha OpenAI</td></tr>
+    <tr><td>GPT-5.5-pro</td><td class="num">30,00</td><td class="num">—</td><td class="num">180,00</td><td>fora de cogitação para este uso</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Duas coisas saltam à vista. <strong>O Gemini 3.5 Flash não é um modelo barato</strong>: a $1,50/$9,00 ele custa ~4× o gpt-4.1-mini e está mais perto do Sonnet 5 do que do Flash comum — e o output a $9,00 é especialmente ruim para um turno que gera 12 mil tokens com thinking. E <strong>todo modelo de ponta tem cache a 90% de desconto</strong>. Num workload que é quase todo input repetido, o preço do cache é o preço que importa — e é justamente o que não está sendo usado.</p>
+
+<h2><span class="n">04</span>Quanto custaria cada modelo</h2>
+<p>Todos os painéis usam o mesmo turno de build medido em produção — <strong>320k de input, 3,4k de saída</strong>. Só a arquitetura do prompt muda.</p>
+
+<figure>
+  <div class="fig-title">Custo de um build de treino, por modelo</div>
+  <div class="fig-sub">Mesma escala nos três painéis. A linha tracejada é o que você paga hoje ($0,51).</div>
+
+  <div class="panel-title">A · Arquitetura de hoje — sem cache, 62 tools por passo</div>
+  <div class="panel-note">320k de input novo · 3,4k de saída</div>
+  <div class="bars">
+    <div class="row"><div class="name">gpt-4.1-mini</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:7.2%"><span class="v">$0,13</span></div></div></div>
+    <div class="row"><div class="name">gemini-3-flash</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:9.2%"><span class="v">$0,17</span></div></div></div>
+    <div class="row"><div class="name">gpt-5.4-mini</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:13.8%"><span class="v">$0,26</span></div></div></div>
+    <div class="row"><div class="name">gpt-5.6-luna</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:18.4%"><span class="v">$0,34</span></div></div></div>
+    <div class="row"><div class="name me">gemini-3.5-flash · hoje</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar" style="width:27.6%"><span class="v">$0,51</span></div></div></div>
+    <div class="row"><div class="name">Claude Sonnet 5</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:36.4%"><span class="v">$0,67</span></div></div></div>
+    <div class="row"><div class="name">gpt-5.6-terra</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:46.0%"><span class="v">$0,85</span></div></div></div>
+    <div class="row"><div class="name">Claude Opus 4.8</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:91.1%"><span class="v">$1,69</span></div></div></div>
+    <div class="row"><div class="name">GPT-5.5</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:92.0%"><span class="v">$1,70</span></div></div></div>
+  </div>
+
+  <div class="panel-title">B · Só ligando prompt caching</div>
+  <div class="panel-note">256k cacheado (80%) · 64k novo · 3,4k de saída. Nenhuma mudança no prompt.</div>
+  <div class="bars">
+    <div class="row"><div class="name">gpt-4.1-mini</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:3.1%"><span class="v">$0,06</span></div></div></div>
+    <div class="row"><div class="name">gpt-5.4-mini</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:4.5%"><span class="v">$0,08</span></div></div></div>
+    <div class="row"><div class="name">gpt-5.6-luna</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:5.9%"><span class="v">$0,11</span></div></div></div>
+    <div class="row"><div class="name me">gemini-3.5-flash · hoje</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar" style="width:8.9%"><span class="v">$0,17</span></div></div></div>
+    <div class="row"><div class="name">Claude Sonnet 5</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:11.5%"><span class="v">$0,21</span></div></div></div>
+    <div class="row"><div class="name">gpt-5.6-terra</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:14.9%"><span class="v">$0,28</span></div></div></div>
+    <div class="row"><div class="name">Claude Opus 4.8</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:28.8%"><span class="v">$0,53</span></div></div></div>
+    <div class="row"><div class="name">GPT-5.5</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:29.7%"><span class="v">$0,55</span></div></div></div>
+  </div>
+
+  <div class="panel-title">C · Cache + prompt enxuto</div>
+  <div class="panel-note">65k de input total (52k cacheado / 13k novo) · 3,4k de saída. Tools por intenção, catálogo de exercícios filtrado, teto de passos menor.</div>
+  <div class="bars">
+    <div class="row"><div class="name">gpt-4.1-mini</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:0.9%"><span class="v">$0,016</span></div></div></div>
+    <div class="row"><div class="name">gpt-5.4-mini</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:1.6%"><span class="v">$0,029</span></div></div></div>
+    <div class="row"><div class="name">gpt-5.6-luna</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:2.1%"><span class="v">$0,039</span></div></div></div>
+    <div class="row"><div class="name me">gemini-3.5-flash</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar" style="width:3.1%"><span class="v">$0,058</span></div></div></div>
+    <div class="row"><div class="name">Claude Sonnet 5</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:3.8%"><span class="v">$0,070</span></div></div></div>
+    <div class="row"><div class="name">gpt-5.6-terra</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:5.2%"><span class="v">$0,097</span></div></div></div>
+    <div class="row"><div class="name">Claude Opus 4.8</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:9.5%"><span class="v">$0,176</span></div></div></div>
+    <div class="row"><div class="name">GPT-5.5</div><div class="track"><div class="refline" style="left:27.6%"></div><div class="bar dim" style="width:10.4%"><span class="v">$0,193</span></div></div></div>
+  </div>
+
+  <div class="axis"><span>$0</span><span>$0,46</span><span>$0,92</span><span>$1,38</span><span>$1,85</span></div>
+  <figcaption>Fórmula: <code>(novo × preço_in + cacheado × preço_cache + saída × preço_out) ÷ 1e6</code>. O painel A reproduz o custo real medido em produção ($0,511) com 0,2% de erro — é a validação de que o modelo de cálculo bate com a realidade.</figcaption>
+</figure>
+
+<div class="verdict">
+  <p><strong>A leitura que importa:</strong> o <strong>GPT-5.5 no painel C ($0,19) é 2,6× mais barato que o Gemini Flash no painel A ($0,51)</strong> — que é a sua situação de hoje. Dá para subir para o melhor modelo do mercado <em>e</em> gastar menos. O que não dá é subir de modelo sem mexer no prompt: aí o mesmo GPT-5.5 custa $1,70 e a conta triplica.</p>
+</div>
+
+<h2><span class="n">05</span>A conta na moeda do produto: créditos</h2>
+<p>O Kinevo já vende IA por créditos, e um build custa <strong>6 créditos</strong> (<code>tool-policy.ts:187-197</code>). Então a pergunta certa não é “% do ARPU” — é <strong>quanto custa um crédito para produzir vs. por quanto ele é vendido</strong>:</p>
+
+<div class="tbl-scroll">
+<table>
+  <thead>
+    <tr><th>Plano</th><th class="num">Preço/mês</th><th class="num">Créditos</th><th class="num">Receita / crédito</th><th class="num">Builds que a cota permite</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Essencial</td><td class="num">R$ 39,90</td><td class="num">20</td><td class="num">R$ 2,00</td><td class="num">3</td></tr>
+    <tr><td>Pro IA <em>(featured)</em></td><td class="num">R$ 79,90</td><td class="num">300</td><td class="num">R$ 0,27</td><td class="num">50</td></tr>
+    <tr><td>Premium IA</td><td class="num">R$ 129,90</td><td class="num">1.000</td><td class="num">R$ 0,13</td><td class="num">166</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Cruzando com o custo de produzir um crédito de build (custo do build ÷ 6, a R$ 5,50/US$):</p>
+
+<div class="tbl-scroll">
+<table>
+  <thead>
+    <tr><th>Cenário</th><th class="num">Custo / crédito</th><th>Essencial (R$ 2,00)</th><th>Pro IA (R$ 0,27)</th><th>Premium IA (R$ 0,13)</th></tr>
+  </thead>
+  <tbody>
+    <tr class="me">
+      <td>Gemini 3.5 Flash — <strong>hoje</strong></td><td class="num">R$ 0,47</td>
+      <td><span class="pill ok">+77%</span></td>
+      <td><span class="pill bad">−74%</span></td>
+      <td><span class="pill bad">−262%</span></td>
+    </tr>
+    <tr>
+      <td>GPT-5.5, arquitetura de hoje</td><td class="num">R$ 1,56</td>
+      <td><span class="pill warn">+22%</span></td>
+      <td><span class="pill bad">−478%</span></td>
+      <td><span class="pill bad">−1100%</span></td>
+    </tr>
+    <tr>
+      <td>GPT-5.5, cache + prompt enxuto</td><td class="num">R$ 0,18</td>
+      <td><span class="pill ok">+91%</span></td>
+      <td><span class="pill ok">+34%</span></td>
+      <td><span class="pill bad">−36%</span></td>
+    </tr>
+    <tr>
+      <td>Claude Opus 4.8, cache + prompt enxuto</td><td class="num">R$ 0,16</td>
+      <td><span class="pill ok">+92%</span></td>
+      <td><span class="pill ok">+40%</span></td>
+      <td><span class="pill bad">−24%</span></td>
+    </tr>
+    <tr>
+      <td>Claude Sonnet 5, cache + prompt enxuto</td><td class="num">R$ 0,064</td>
+      <td><span class="pill ok">+97%</span></td>
+      <td><span class="pill ok">+76%</span></td>
+      <td><span class="pill ok">+51%</span></td>
+    </tr>
+    <tr>
+      <td>gpt-4.1-mini, cache + prompt enxuto</td><td class="num">R$ 0,015</td>
+      <td><span class="pill ok">+99%</span></td>
+      <td><span class="pill ok">+94%</span></td>
+      <td><span class="pill ok">+89%</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>Três conclusões saem daqui, e nenhuma é sobre o preço dos modelos:</p>
+<ul>
+  <li><strong>O prejuízo já existe.</strong> Um Pro IA que usar a cota inteira montando treinos (50 builds) gera R$ 79,90 de receita e <strong>R$ 140 de custo</strong>. O Premium é pior. Isso não aparece no extrato porque a base ativa é minúscula — 26 treinadores, 8 assinaturas, todas no Essencial, e apenas 3 builds em Gemini em um mês. <strong>É um prejuízo que só se materializa quando o produto der certo.</strong></li>
+  <li><strong>Corrigido o prompt, o modelo de ponta cabe</strong> — em Essencial e Pro. GPT-5.5 e Opus 4.8 pós-conserto ficam com margem positiva nos dois planos que respondem por toda a receita atual.</li>
+  <li><strong>O Premium IA está mal precificado</strong>, não importa o modelo. A R$ 0,13/crédito, só o gpt-4.1-mini e o Sonnet 5 fecham. Se você quer GPT-5.5 no Premium, o caminho é <strong>subir o peso do build de 6 para ~9 créditos</strong> — que, aliás, já era a recomendação nº 1 do doc de 07/jul.</li>
+</ul>
+
+<h2><span class="n">06</span>Recomendação</h2>
+<ol>
+  <li><strong>Medir o cache antes de tudo.</strong> Ler <code>cachedInputTokens</code> do <code>providerMetadata</code> e gravar no metering (<code>command-engine.ts:1112</code>). É uma linha, e hoje você não sabe se paga $0,51 ou $0,25 por build. Nenhuma decisão de modelo deveria ser tomada às cegas sobre a variável que domina o custo.</li>
+  <li><strong>Ligar o caching de verdade.</strong> Prefixo estável (instruções + tools primeiro; contexto dinâmico <em>depois</em> — hoje o dinâmico fica no meio do system e pode estar quebrando o prefixo cacheável), <code>cache_control</code> explícito na Anthropic, contexto explícito no Gemini. Maior retorno por linha de código do projeto: corta ~67% do custo sem tocar em modelo nem em qualidade.</li>
+  <li><strong>Devolver o subsetting de tools.</strong> A remoção de hoje (“o catálogo completo é barato”) custa ~16k tokens por passo, ~160k por build. Não é barato — é a maior linha da conta.</li>
+  <li><strong>Só então trocar o modelo, e só no turno de build.</strong> Feito o de cima, o upgrade sai quase de graça. Eu iria de <strong>Claude Sonnet 5 como default de build</strong> — fecha margem nos três planos, custa menos que o Gemini de hoje e lidera tool-calling, que é literalmente o trabalho do build. <strong>GPT-5.5 ou Opus 4.8 como tier premium</strong>, atrás do gate de plano, se o head-to-head mostrar prescrição melhor.</li>
+  <li><strong>Deixar a conversa no gpt-4.1-mini.</strong> $0,007 por turno. Não há dinheiro nem qualidade a ganhar ali.</li>
+</ol>
+
+<div class="verdict">
+  <p><strong>Se for pra fazer uma coisa só:</strong> ligue e meça o cache. Ele paga o modelo de ponta sozinho — e sem ele nenhum modelo, caro ou barato, fecha a conta do Pro e do Premium.</p>
+</div>
+
+<h2><span class="n">07</span>Premissas e o que não verifiquei</h2>
+<ul>
+  <li><strong>80% de taxa de cache</strong> (painéis B e C) é premissa, não medição — e é justamente o que a recomendação nº 1 existe para descobrir. Se o hit real for 60%, os números do painel C sobem ~30%; a conclusão não muda de sinal.</li>
+  <li><strong>65k de input no painel C</strong> é meta, não medição. Vem de cortar tools por intenção (16k → ~3k por passo) e filtrar o catálogo de exercícios. Não foi implementado nem medido.</li>
+  <li><strong>Câmbio R$ 5,50/US$.</strong> As margens em reais escalam proporcionalmente.</li>
+  <li><strong>Amostra pequena.</strong> Só existem 8 turnos de build em Gemini registrados em produção. Os $0,51 são de um build real e batem com outros três, mas não é uma distribuição.</li>
+  <li><strong>Qualidade não foi medida.</strong> Esta análise responde “quanto custa”, não “prescreve melhor”. Que GPT-5.5 e Opus 4.8 montem treinos melhores que o Flash é hipótese plausível — e o jeito de resolver é um head-to-head nos evals que já existem em <code>lib/assistant/evals/</code>. Um modelo de ponta que erra menos e precisa de menos retry pode se pagar só nisso.</li>
+  <li><strong>O portão LGPD continua aberto.</strong> Prescrição toca dado de saúde e não há nenhuma configuração de zero-retention/no-training em nenhum provider do repo. Trocar de modelo sem resolver isso troca a exposição de lugar, não a reduz.</li>
+</ul>
+
+<p class="foot">
+  Dados: <code>assistant_turn_traces</code> e <code>ai_usage_events</code> (produção, 13/07/2026) · <code>lib/assistant/command-engine.ts</code> · <code>lib/assistant/build-signals.ts</code> · <code>lib/ai-usage/metering.ts</code> · <code>lib/assistant/tool-policy.ts</code> · <code>lib/billing/tiers.ts</code> · <code>docs/analise-mcp-assistente-custos.md</code> (15/jun) · <code>docs/analise-assistente-lancamento-2026-07-07.md</code>. Preços verificados em developers.openai.com, platform.claude.com e ai.google.dev em 13/07/2026.
+</p>
+
+</div>
