@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
     Sparkles, Send, Loader2, ChevronDown, ChevronRight, Globe, Check,
-    Wallet, Users, Dumbbell, MessageCircle, Coins, UserPlus,
+    Wallet, Users, Dumbbell, MessageCircle, Coins, UserPlus, Wand2,
 } from 'lucide-react'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AttentionItem } from '@/lib/assistant/home-data'
@@ -73,11 +73,15 @@ interface Props {
     onStarter: (prompt: string) => void
     onFocusStudent: (id: string | null) => void
     onOpenConversation: (id: string) => void
+    /** Treinador ainda não configurou o estilo de prescrição → mostra o convite. */
+    showStyleInvite: boolean
+    onStartStyleInterview: () => void
 }
 
 export function AssistantHome({
     trainerName, summary, attention, recents, focusedStudentId, students, hasStudents, input, sending, banner,
     onDismissBanner, onInput, onSend, onStarter, onFocusStudent, onOpenConversation,
+    showStyleInvite, onStartStyleInterview,
 }: Props) {
     const firstName = (trainerName ?? '').split(' ')[0] || 'treinador'
     const composerRef = useRef<HTMLTextAreaElement>(null)
@@ -272,6 +276,44 @@ export function AssistantHome({
                                 )
                             })}
                         </div>
+                    </section>
+                )}
+
+                {/* Estilo já configurado: sinal discreto de que os builds seguem o
+                    treinador (com o caminho para revisar). */}
+                {!showStyleInvite && (
+                    <section className="mt-9">
+                        <Link
+                            href="/settings#estilo"
+                            className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.06)] px-3.5 py-[7px] text-[12.5px] font-semibold text-[#7C3AED] transition hover:bg-[rgba(124,58,237,0.12)] dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-300"
+                        >
+                            <Wand2 className="h-[13px] w-[13px]" strokeWidth={2.2} />
+                            Seu estilo está ativo — eu monto os treinos do seu jeito
+                        </Link>
+                    </section>
+                )}
+
+                {/* Convite: configurar o estilo de prescrição (some depois de configurado) */}
+                {showStyleInvite && (
+                    <section className="mt-9">
+                        <button
+                            onClick={onStartStyleInterview}
+                            disabled={sending}
+                            className="group flex w-full items-center gap-3.5 rounded-[14px] border border-[rgba(124,58,237,0.25)] bg-[rgba(124,58,237,0.04)] py-[14px] pl-4 pr-4 text-left transition hover:bg-[rgba(124,58,237,0.08)] disabled:opacity-60 dark:border-violet-400/25 dark:bg-violet-500/[0.07] dark:hover:bg-violet-500/[0.12]"
+                        >
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px]" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
+                                <Wand2 className="h-[19px] w-[19px] text-white" strokeWidth={1.9} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                                <b className="block text-[14.5px] font-semibold tracking-[-.01em] text-[#1D1D1F] dark:text-foreground">
+                                    Ensine o seu estilo de prescrição
+                                </b>
+                                <span className="mt-0.5 block text-[12.5px] text-[#6E6E73] dark:text-muted-foreground">
+                                    Eu leio os programas que você já montou e pergunto só o resto. Depois, monto os treinos do seu jeito. Leva ~3 min.
+                                </span>
+                            </span>
+                            <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[#7C3AED] dark:text-violet-400" strokeWidth={2} />
+                        </button>
                     </section>
                 )}
 

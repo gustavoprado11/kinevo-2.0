@@ -34,9 +34,11 @@ interface Props {
     trainerName: string | null
     trainerEmail: string | null
     trainerAvatarUrl: string | null
+    /** Treinador já configurou o estilo de prescrição (trainers.prescription_style). */
+    hasPrescriptionStyle: boolean
 }
 
-export function AssistantWorkspace({ initialSummary, initialConversations, students, attention, trainerName, trainerEmail, trainerAvatarUrl }: Props) {
+export function AssistantWorkspace({ initialSummary, initialConversations, students, attention, trainerName, trainerEmail, trainerAvatarUrl, hasPrescriptionStyle }: Props) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [segment, setSegment] = useState<'alunos' | 'conversas'>('alunos')
@@ -54,6 +56,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
         selectConversation, selectStudent, goHome, newConversation,
         deleteConversation, renameActive,
         send, sendVoice, stop, starter, fillInput, recordConfirmation,
+        startStyleInterview,
     } = useAssistantThread({ initialSummary, initialConversations, students })
 
     // Alunos do rail: pinta de âmbar quem tem insight ativo (precisa de atenção).
@@ -177,7 +180,9 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     useEffect(() => {
         const c = searchParams.get('c')
         const s = searchParams.get('s')
-        const key = c ? `c:${c}` : s ? `s:${s}` : null
+        // ?estilo=1 → abre a entrevista de estilo direto (vem do painel de Configurações).
+        const estilo = searchParams.get('estilo') === '1'
+        const key = c ? `c:${c}` : s ? `s:${s}` : estilo ? 'estilo' : null
         if (!key || handledParamRef.current === key) return
         let alive = true
         Promise.resolve().then(() => {
@@ -188,9 +193,10 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
             handledParamRef.current = key
             if (c) selectConversation(c)
             else if (s) { selectStudent(s); setSegment('alunos') }
+            else if (estilo) startStyleInterview()
         })
         return () => { alive = false }
-    }, [searchParams, selectConversation, selectStudent])
+    }, [searchParams, selectConversation, selectStudent, startStyleInterview])
 
     return (
         <div className="kv-mode-in flex h-[100dvh] overflow-hidden bg-[#F5F5F7] text-[#1D1D1F] dark:bg-background dark:text-foreground">
@@ -257,6 +263,8 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     onStarter={fillInput}
                     onFocusStudent={setFocusedStudentId}
                     onOpenConversation={selectConversation}
+                    showStyleInvite={!hasPrescriptionStyle}
+                    onStartStyleInterview={startStyleInterview}
                 />
             )}
 

@@ -86,6 +86,10 @@ export function useAssistantThread({ initialSummary = null, initialConversations
         } catch { /* otimista; já removida localmente */ }
     }, [activeId])
 
+    // Próxima conversa a ser criada é a ENTREVISTA DE ESTILO (o card-convite da
+    // home liga isto e dispara a primeira mensagem no mesmo gesto).
+    const styleInterviewRef = useRef(false)
+
     const send = useCallback(async (override?: string, opts?: { voice?: boolean }): Promise<AssistantMessage | null> => {
         const text = (override ?? input).trim()
         if (!text || sending) return null
@@ -101,9 +105,19 @@ export function useAssistantThread({ initialSummary = null, initialConversations
         let convId = activeId
         try {
             if (!convId) {
+                const styleInterview = styleInterviewRef.current
+                styleInterviewRef.current = false
                 const res = await fetch('/api/assistant/conversations', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(focusedStudentId ? { studentId: focusedStudentId } : {}),
+                    // A criação da entrevista roda a MINERAÇÃO no servidor — o primeiro
+                    // turno já chega sabendo o que não precisa perguntar.
+                    body: JSON.stringify(
+                        styleInterview
+                            ? { kind: 'style_interview' }
+                            : focusedStudentId
+                              ? { studentId: focusedStudentId }
+                              : {},
+                    ),
                     signal: ac.signal,
                 })
                 if (!res.ok) {
@@ -264,7 +278,15 @@ export function useAssistantThread({ initialSummary = null, initialConversations
 
     const dismissBanner = useCallback(() => { setError(null); setCreditWarnDismissed(true) }, [])
 
+    /** Abre a entrevista de estilo: cria a conversa (com mineração) e já dispara o
+     *  primeiro turno, que faz a primeira pergunta do roteiro. */
+    const startStyleInterview = useCallback(() => {
+        styleInterviewRef.current = true
+        void send('Quero configurar o meu estilo de prescrição.')
+    }, [send])
+
     return {
+        startStyleInterview,
         summary, setSummary,
         conversations, setConversations,
         activeId, active,

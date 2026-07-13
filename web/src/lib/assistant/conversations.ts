@@ -54,6 +54,10 @@ export interface ConversationRow {
     message_count: number
     archived_at: string | null
     created_at: string
+    /** 'style_interview' = entrevista de estilo de prescrição (migration 248). */
+    kind: 'default' | 'style_interview'
+    /** Rascunho da entrevista (StyleState). Null fora dela, ou quando o estilo já foi salvo. */
+    style_state: unknown
 }
 
 export interface ConversationListItem extends ConversationRow {
@@ -69,7 +73,8 @@ export interface AssistantMessage {
     created_at: string
 }
 
-const CONVERSATION_COLS = 'id, student_id, title, last_message_at, message_count, archived_at, created_at'
+const CONVERSATION_COLS =
+    'id, student_id, title, last_message_at, message_count, archived_at, created_at, kind, style_state'
 const MESSAGE_COLS = 'id, role, content, parts, credits_cost, created_at'
 const TITLE_MAX = 70
 
@@ -102,6 +107,8 @@ export async function listConversations(
             message_count: row.message_count as number,
             archived_at: (row.archived_at as string | null) ?? null,
             created_at: row.created_at as string,
+            kind: ((row.kind as string) ?? 'default') as 'default' | 'style_interview',
+            style_state: row.style_state ?? null,
             studentName: student?.name ?? null,
         }
     })
@@ -111,11 +118,19 @@ export async function listConversations(
 export async function createConversation(
     sb: SupabaseClient,
     trainerId: string,
-    opts: { studentId?: string | null; title?: string } = {},
+    opts: {
+        studentId?: string | null
+        title?: string
+        kind?: 'default' | 'style_interview'
+        /** Rascunho inicial da entrevista (mineração já rodada). */
+        styleState?: unknown
+    } = {},
 ): Promise<ConversationRow> {
     const insert: Record<string, unknown> = { trainer_id: trainerId }
     if (opts.studentId) insert.student_id = opts.studentId
     if (opts.title) insert.title = deriveTitle(opts.title)
+    if (opts.kind) insert.kind = opts.kind
+    if (opts.styleState !== undefined) insert.style_state = opts.styleState
     const { data, error } = await sb
         .from('ai_conversations')
         .insert(insert)
@@ -156,6 +171,8 @@ export async function getConversationWithMessages(
         message_count: conv.message_count,
         archived_at: conv.archived_at ?? null,
         created_at: conv.created_at,
+        kind: conv.kind ?? 'default',
+        style_state: conv.style_state ?? null,
         studentName: student?.name ?? null,
     }
     const messages: AssistantMessage[] = (msgs ?? []).map((m: Record<string, unknown>) => ({

@@ -27,11 +27,12 @@ export default async function AssistentePage() {
     const { trainer, tier } = await getTrainerWithSubscription(user.id)
     if (!ASSISTANT_TIERS.has(tier)) redirect('/settings')
 
-    const [summary, conversations, studentsRes, attention] = await Promise.all([
+    const [summary, conversations, studentsRes, attention, styleRes] = await Promise.all([
         getAiUsageSummary(supabaseAdmin, trainer.id),
         listConversations(supabaseAdmin, trainer.id),
         supabase.from('students').select('id, name, status, avatar_url').eq('coach_id', trainer.id).order('name', { ascending: true }),
         getAttentionInsights(supabaseAdmin, trainer.id),
+        supabaseAdmin.from('trainers').select('prescription_style').eq('id', trainer.id).single(),
     ])
 
     const students = (studentsRes.data ?? []).map((s) => ({
@@ -50,6 +51,7 @@ export default async function AssistentePage() {
             trainerName={trainer.name}
             trainerEmail={trainer.email}
             trainerAvatarUrl={trainer.avatar_url}
+            hasPrescriptionStyle={Boolean((styleRes.data as { prescription_style?: unknown } | null)?.prescription_style)}
         />
     )
 }

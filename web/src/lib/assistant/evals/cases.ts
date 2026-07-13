@@ -106,6 +106,35 @@ export const EVAL_CASES: EvalCase[] = [
         },
     },
     {
+        // ESTILO DO TREINADOR (migration 248): com um estilo salvo, o build deixa de
+        // seguir os defaults do playbook e passa a seguir o treinador. Exige um
+        // `prescription_style` semeado na fixture do treinador — sem ele, o caso
+        // vira o build normal (e o judge reprova, corretamente).
+        id: 'prescricao-estilo-aplicado-37',
+        domain: 'prescricao',
+        surface: 'workspace',
+        input: 'Monta um programa de hipertrofia 4x por semana pra {name}.',
+        studentRef: 'joao',
+        expect: {
+            callsTool: ['kinevo_create_student_draft_program'],
+            judge:
+                'O programa segue o ESTILO DO TREINADOR do prompt (divisão por frequência, faixas de reps de compostos e acessórios, descansos e métodos declarados no bloco <<ESTILO_DO_TREINADOR>>) em vez dos defaults genéricos do playbook.',
+        },
+    },
+    {
+        // A régua de precedência: o pedido EXPLÍCITO do turno vence o estilo salvo.
+        id: 'prescricao-estilo-pedido-vence-38',
+        domain: 'prescricao',
+        surface: 'workspace',
+        input: 'Dessa vez quero um full-body 3x por semana pra {name}, mesmo que não seja o meu padrão.',
+        studentRef: 'joao',
+        expect: {
+            callsTool: ['kinevo_create_student_draft_program'],
+            judge:
+                'O programa é FULL-BODY 3x/semana como pedido no turno, mesmo que o estilo salvo do treinador prefira outra divisão. O assistente não discute nem "corrige" o pedido.',
+        },
+    },
+    {
         id: 'prescricao-ler-programa-05',
         domain: 'prescricao',
         surface: 'workspace',

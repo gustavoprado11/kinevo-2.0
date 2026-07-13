@@ -9,6 +9,8 @@ import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { ProfileForm } from '@/components/settings/profile-form'
 import { ThemeSelector } from '@/components/settings/theme-selector'
 import { ReportsPreferencesSection } from '@/components/settings/reports-preferences-section'
+import { PrescriptionStyleSection } from '@/components/settings/prescription-style-section'
+import type { PrescriptionStyle } from '@kinevo/shared/types/prescription'
 import { BrandingSection } from '@/components/settings/branding-section'
 import { EquipeSection } from '@/components/settings/equipe-section'
 import { SettingsSection } from '@/components/settings/settings-section'
@@ -25,7 +27,7 @@ export default async function SettingsPage() {
 
     const { data: trainer, error: trainerError } = await supabase
         .from('trainers')
-        .select('id, name, email, avatar_url, landing_cref, theme, auto_publish_reports, brand_name, brand_color, brand_logo_url, brand_show_powered_by')
+        .select('id, name, email, avatar_url, landing_cref, theme, auto_publish_reports, brand_name, brand_color, brand_logo_url, brand_show_powered_by, prescription_style')
         .eq('auth_user_id', user.id)
         .single()
 
@@ -229,6 +231,11 @@ export default async function SettingsPage() {
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 items-stretch">
                     <ThemeSelector initialTheme={trainer.theme as 'light' | 'dark' | 'system' | null} />
                     <ReportsPreferencesSection initialAutoPublish={trainer.auto_publish_reports ?? false} />
+                </div>
+                <div className="mt-6">
+                    <PrescriptionStyleSection
+                        style={((trainer as { prescription_style?: unknown }).prescription_style as PrescriptionStyle | null) ?? null}
+                    />
                 </div>
             </SettingsSection>
 

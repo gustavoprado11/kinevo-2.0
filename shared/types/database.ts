@@ -105,9 +105,11 @@ export type Database = {
           archived_at: string | null
           created_at: string
           id: string
+          kind: string
           last_message_at: string
           message_count: number
           student_id: string | null
+          style_state: Json | null
           title: string
           trainer_id: string
         }
@@ -115,9 +117,11 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           id?: string
+          kind?: string
           last_message_at?: string
           message_count?: number
           student_id?: string | null
+          style_state?: Json | null
           title?: string
           trainer_id: string
         }
@@ -125,9 +129,11 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           id?: string
+          kind?: string
           last_message_at?: string
           message_count?: number
           student_id?: string | null
+          style_state?: Json | null
           title?: string
           trainer_id?: string
         }
@@ -4449,6 +4455,7 @@ export type Database = {
           onboarding_state: Json | null
           prescription_patterns: Json | null
           prescription_preferences: Json | null
+          prescription_style: Json | null
           public_slug: string | null
           smart_v2_enabled: boolean
           theme: string
@@ -4493,6 +4500,7 @@ export type Database = {
           onboarding_state?: Json | null
           prescription_patterns?: Json | null
           prescription_preferences?: Json | null
+          prescription_style?: Json | null
           public_slug?: string | null
           smart_v2_enabled?: boolean
           theme?: string
@@ -4537,6 +4545,7 @@ export type Database = {
           onboarding_state?: Json | null
           prescription_patterns?: Json | null
           prescription_preferences?: Json | null
+          prescription_style?: Json | null
           public_slug?: string | null
           smart_v2_enabled?: boolean
           theme?: string
@@ -5079,6 +5088,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      abandon_stale_workout_sessions: {
+        Args: never
+        Returns: {
+          session_id: string
+          started_at: string
+          student_id: string
+        }[]
+      }
       activate_draft_program: { Args: { p_program_id: string }; Returns: Json }
       assign_form_to_students:
         | {
@@ -5218,10 +5235,12 @@ export type Database = {
           student_name: string
         }[]
       }
-      duplicate_program_template: {
-        Args: { p_template_id: string }
-        Returns: string
-      }
+      duplicate_program_template:
+        | { Args: { p_template_id: string }; Returns: string }
+        | {
+            Args: { p_template_id: string; p_trainer_id: string }
+            Returns: string
+          }
       finalize_assessment_session:
         | {
             Args: {
@@ -5240,6 +5259,23 @@ export type Database = {
             }
             Returns: Json
           }
+      finish_training_room_session: {
+        Args: {
+          p_assigned_program_id: string
+          p_assigned_workout_id: string
+          p_feedback: string
+          p_post_submission_id: string
+          p_pre_submission_id: string
+          p_program_week: number
+          p_rpe: number
+          p_scheduled_date: string
+          p_set_logs: Json
+          p_started_at: string
+          p_student_id: string
+          p_trainer_id: string
+        }
+        Returns: string
+      }
       get_active_workout_triggers: {
         Args: { p_assigned_program_id: string }
         Returns: Json
@@ -5265,6 +5301,17 @@ export type Database = {
             Returns: Json
           }
       get_contract_events: { Args: { p_contract_id: string }; Returns: Json }
+      get_exercise_history: {
+        Args: { p_exercise_id: string; p_limit?: number; p_student_id: string }
+        Returns: {
+          completed_at: string
+          reps: number
+          session_id: string
+          set_number: number
+          weight: number
+          workout_name: string
+        }[]
+      }
       get_financial_dashboard: { Args: never; Returns: Json }
       get_financial_students: {
         Args: { p_trainer_id: string }
@@ -5372,6 +5419,20 @@ export type Database = {
       get_student_today_workout_for_trainer: {
         Args: { p_assigned_workout_id: string; p_student_id: string }
         Returns: Json
+      }
+      get_trainer_conversations: {
+        Args: { p_include_archived?: boolean; p_trainer_id: string }
+        Returns: {
+          avatar_url: string
+          last_content: string
+          last_created_at: string
+          last_image_url: string
+          last_sender_type: string
+          student_id: string
+          student_name: string
+          student_status: string
+          unread_count: number
+        }[]
       }
       get_trainer_daily_activity: { Args: never; Returns: Json }
       get_trainer_form_submissions: { Args: never; Returns: Json }

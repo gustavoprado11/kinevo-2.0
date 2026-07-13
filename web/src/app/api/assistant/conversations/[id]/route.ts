@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { gateAssistant, runAssistantTurn, UUID_RE } from '@/lib/assistant/command-engine'
 import { limitTurn } from '@/lib/assistant/rate-limits'
+import { parseStyleState, saveStyleState, type StyleState } from '@/lib/assistant/style-state'
 import { assistantErrorResponse } from '@/lib/assistant/errors'
 import {
     getConversationWithMessages,
@@ -171,14 +172,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             return NextResponse.json({ error: 'rate_limited', message: rl.error }, { status: 429 })
         }
 
-        const gate = await gateAssistant(supabaseAdmin, trainer.id)
-        if (!gate.allowed) {
+        const existing = await getConversationWithMessages(supabaseAdmin, trainer.id, id)
+        if (!existing) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+
+        // Entrevista de estilo: configurar o estilo é investimento do treinador na
+        // plataforma, não uso — não passa pelo gate de cota nem consome crédito (D5),
+        // e vale inclusive no free. O rate-limit acima continua valendo.
+        const isStyleInterview = existing.conversation.kind === 'style_interview'
+
+        const gate = isStyleInterview ? null : await gateAssistant(supabaseAdmin, trainer.id)
+        if (gate && !gate.allowed) {
             const { status, ...err } = gate
             return NextResponse.json(err, { status })
         }
-
-        const existing = await getConversationWithMessages(supabaseAdmin, trainer.id, id)
-        if (!existing) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
         // C4: idempotência do turno. Re-envio (mesma client_message_id) NÃO re-roda o
         // turno — devolve a resposta já gerada (anti rascunho/cobrança duplicados).
@@ -194,6 +200,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                     message: reply ? stripInternalParts(reply) : null,
                     summary: null,
                 })
+            }
+        }
+
+        // A ROTA é a fonte de verdade do progresso da entrevista (D2): a mensagem
+        // que chega agora é a resposta do slot que a última pergunta cobriu. O
+        // modelo nunca decide o que já foi respondido — ele lê o roteiro do estado.
+        let styleState: StyleState | null = null
+        if (isStyleInterview) {
+            styleState = parseStyleState(existing.conversation.style_state)
+            if (styleState.pendingSlot) {
+                styleState.answers[styleState.pendingSlot] = input
+                styleState.pendingSlot = null
             }
         }
 
@@ -244,11 +262,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                         trainerName: trainer.name,
                         input,
                         surface: isVoiceTurn ? 'voice' : 'workspace',
-                        periodType: gate.period,
-                        tier: gate.tier,
+                        periodType: gate?.period ?? 'month',
+                        tier: gate?.tier,
                         history,
                         studentId: existing.conversation.student_id ?? undefined,
                         programFocus,
+                        ...(styleState ? { styleInterview: { conversationId: id, state: styleState } } : {}),
                         onProgress: (label) => emit({ type: 'progress', label }),
                         onTextDelta: (delta) => emit({ type: 'text', delta }),
                         onTextReset: () => emit({ type: 'text_reset' }),
@@ -264,6 +283,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                     if (turn.proposal) parts.push({ type: 'proposal', request: turn.proposal, status: 'pending' })
                     // Memória do turno (Onda 2): interna — persiste, mas não vai ao cliente.
                     for (const m of turn.memory) parts.push({ type: 'context', toolName: m.toolName, digest: m.digest })
+
+                    // Entrevista: guarda qual slot a pergunta deste turno cobre, para a
+                    // PRÓXIMA mensagem do treinador ser gravada nele. Quando o estilo é
+                    // salvo, a própria tool já apagou o rascunho.
+                    if (styleState && !turn.styleSaved) {
+                        styleState.pendingSlot = turn.styleSlot ?? null
+                        await saveStyleState(supabaseAdmin, id, styleState)
+                    }
 
                     const assistantMessage = await appendMessage(supabaseAdmin, {
                         conversationId: id, trainerId: trainer.id, role: 'assistant',

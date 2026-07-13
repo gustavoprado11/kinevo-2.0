@@ -13,6 +13,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAiTierForTrainer } from '@/lib/auth/get-ai-tier'
 import { ASSISTANT_TIERS, UUID_RE } from '@/lib/assistant/command-engine'
 import { listConversations, createConversation } from '@/lib/assistant/conversations'
+import { mineTrainerStyle, MIN_PROGRAMS_TO_MINE } from '@/lib/assistant/style-miner'
+import type { StyleState } from '@/lib/assistant/style-state'
 
 async function resolveTrainer(): Promise<{ id: string } | NextResponse> {
     const supabase = await createClient()
@@ -49,6 +51,26 @@ export async function POST(req: NextRequest) {
         if (!ASSISTANT_TIERS.has(tier)) return NextResponse.json({ error: 'tier_locked' }, { status: 403 })
 
         const body = await req.json().catch(() => null)
+
+        // Entrevista de estilo: a MINERAÇÃO roda aqui, na criação — quando o
+        // primeiro turno chega, o roteiro já sabe o que não precisa perguntar.
+        if (body?.kind === 'style_interview') {
+            const mining = await mineTrainerStyle(supabaseAdmin, trainer.id)
+            const state: StyleState = {
+                mined: mining.programsAnalyzed >= MIN_PROGRAMS_TO_MINE ? mining.style : null,
+                minedSlots: mining.minedSlots,
+                programsAnalyzed: mining.programsAnalyzed,
+                answers: {},
+                pendingSlot: null,
+            }
+            const conversation = await createConversation(supabaseAdmin, trainer.id, {
+                kind: 'style_interview',
+                title: 'Meu estilo de prescrição',
+                styleState: state,
+            })
+            return NextResponse.json({ conversation })
+        }
+
         const rawStudentId: unknown = body?.studentId
         let studentId: string | null = null
         if (typeof rawStudentId === 'string' && UUID_RE.test(rawStudentId)) {

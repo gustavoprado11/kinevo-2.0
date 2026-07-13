@@ -714,3 +714,87 @@ export interface TrainerPatterns {
     analyzed_prescriptions: number
     last_analyzed_at: string
 }
+
+// ============================================================================
+// ESTILO DE PRESCRIÇÃO DO TREINADOR (trainers.prescription_style)
+// ============================================================================
+// Como ESTE treinador prescreve — minerado dos programas que ele já montou e
+// completado por uma entrevista roteirizada no /assistente. O Assistente injeta
+// o estilo nos turnos de build, e ele vence os defaults do playbook. NUNCA vence
+// os tetos de volume (STYLE_VOLUME_CEILINGS) nem as restrições do aluno.
+// Spec: web/specs/active/assistente-estilo-prescricao.md
+
+export interface StyleRange {
+    min: number
+    max: number
+}
+
+/**
+ * Tetos de séries/semana por grupo muscular. Os MESMOS números que o playbook de
+ * build do assistente enuncia em texto (command-engine, "VOLUME COM TETO").
+ * Existem aqui como constante porque o save do estilo CLAMPA nestes valores — sem
+ * isso, prompt e validação derivariam com o tempo e um estilo poderia pedir 30
+ * séries num grupo.
+ */
+export const STYLE_VOLUME_CEILINGS = {
+    emphasized: { min: 4, max: 20 },
+    principal: { min: 4, max: 14 },
+    small: { min: 4, max: 10 },
+} as const
+
+/** Limites de sanidade do estilo (aplicados no save; ver sanitizeStyle). */
+export const STYLE_LIMITS = {
+    exercisesPerSession: { min: 3, max: 10 },
+    restSeconds: { min: 20, max: 300 },
+    maxStringLength: 200,
+    maxArrayItems: 10,
+    /** Máx. de grupos musculares com favoritos, e de exercícios por grupo. */
+    maxFavoriteGroups: 5,
+    maxFavoritesPerGroup: 4,
+} as const
+
+export type StyleSource = 'mined' | 'interview' | 'hybrid'
+
+export type StyleSupersetUsage = 'frequente' | 'ocasional' | 'raro'
+
+/** Perfil de prescrição aprovado pelo treinador. Todo campo de dose é OPCIONAL:
+ *  `null` = "sem preferência" → o Assistente usa os defaults do playbook. */
+export interface PrescriptionStyle {
+    version: 1
+    source: StyleSource
+    /** ISO. */
+    updated_at: string
+    mined: { programs_analyzed: number; last_mined_at: string } | null
+
+    // ── Estrutura ──
+    /** Split preferido por frequência semanal. Ex.: { "5": "PPL + Upper/Lower" } */
+    splits_by_frequency: Partial<Record<'2' | '3' | '4' | '5' | '6', string>>
+    /** Convenção de nomes de sessão. Ex.: 'Letras (Treino A/B/C)' */
+    session_naming: string | null
+    exercises_per_session: StyleRange | null
+
+    // ── Dose ──
+    reps_compound: string | null
+    reps_accessory: string | null
+    rest_compound_seconds: StyleRange | null
+    rest_accessory_seconds: StyleRange | null
+    /** Séries/semana típicas. SEMPRE clampadas em STYLE_VOLUME_CEILINGS. */
+    weekly_sets_emphasized: StyleRange | null
+    weekly_sets_principal: StyleRange | null
+    weekly_sets_small: StyleRange | null
+
+    // ── Ferramentas ──
+    /** method_keys reais (SYSTEM_PRESETS) — 'standard'/'custom' não são métodos aqui. */
+    methods_used: string[]
+    methods_avoided: string[]
+    superset_usage: StyleSupersetUsage | null
+    favorite_exercises: Array<{ group: string; names: string[] }>
+    avoided_exercises: string[]
+    equipment_notes: string | null
+
+    // ── Filosofia (entrevista) ──
+    progression: string | null
+    warmup: string | null
+    special_populations: string | null
+    notes: string | null
+}
