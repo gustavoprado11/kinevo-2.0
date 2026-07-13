@@ -77,7 +77,9 @@ audit/
 /_kinevo-uxui-figures/
 /EXERCISE_ITEM_CARD_BEFORE_REFACTOR.txt
 docs/prd/PROMPT_claude_code_preferencias.md
-.claude/commands/
+.claude/commands/*
+# …exceto comandos PERMANENTES do repo (análises reproduzíveis):
+!.claude/commands/analise-custo-modelo.md
 
 # Expo / iOS build artifacts on root (em caso de invocação errada
 # do `expo run:ios` da raiz em vez de `cd mobile`)
