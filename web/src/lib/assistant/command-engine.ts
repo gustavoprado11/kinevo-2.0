@@ -44,6 +44,7 @@ import { buildChatContext } from '@/lib/assistant/context-builder'
 import { buildInstructions, PROMPT_VERSION } from '@/lib/assistant/system-prompt'
 import { buildMcpHitlInstructions } from '@/lib/assistant/hitl-instructions'
 import { isBuildTurn, historyText } from '@/lib/assistant/build-signals'
+import { projectMcpResultForLlm } from '@/lib/assistant/llm-projection'
 import { recordTurnTrace, toolResultOk } from '@/lib/assistant/turn-trace'
 import { validateConfirmArgs } from '@/lib/assistant/arg-validation'
 import { ambiguousStudentTarget, withAmbiguityGuard, type StudentRef } from '@/lib/assistant/ambiguity'
@@ -620,8 +621,22 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         const bridge = await buildMcpTools(trainerId)
         bridgeClose = bridge.close
 
+        // Projeção lossless dos READS p/ o LLM (P7): tira null/vazio do payload
+        // (~30% de um get_program real) antes de entrar no contexto. Aplica na
+        // CAMADA MAIS INTERNA — digests/memória/cards derivam do mesmo resultado
+        // enxuto (parseiam igual; campo ausente = campo null).
+        const projectedTools: ToolSet = { ...bridge.tools }
+        for (const [name, t] of Object.entries(projectedTools)) {
+            const orig = t.execute
+            if (!READ_TOOLS.has(name) || typeof orig !== 'function') continue
+            projectedTools[name] = {
+                ...t,
+                execute: (async (a, o) => projectMcpResultForLlm(await orig(a, o))) as typeof t.execute,
+            }
+        }
+
         // Guard anti-loop nas leituras (dedup por tool+args no turno).
-        const { tools: readGuardedTools, reset: resetReadGuard } = withReadGuard(bridge.tools)
+        const { tools: readGuardedTools, reset: resetReadGuard } = withReadGuard(projectedTools)
         // Aluno em foco: o modelo já TEM o aluno (UUID + perfil no contexto) e não
         // precisa "listar alunos". Em prod ele entrava em loop justamente aqui
         // (kinevo_list_students 12x → estourava maxSteps sem concluir). Removemos a
