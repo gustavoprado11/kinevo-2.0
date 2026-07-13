@@ -426,6 +426,21 @@ npm run gen:types              # Regenerar tipos compartilhados
 
 ---
 
+## Versionamento — iOS e Android seguem séries DIFERENTES
+
+| | Onde vive | Série | Como incrementa |
+|---|---|---|---|
+| **Android** (Play Store) | `app.json` → `expo.version` (versionName) | **1.5.x** | Bump manual por release. O `versionCode` é **remoto** (EAS `autoIncrement`) — nunca escreva `android.versionCode`. |
+| **iOS** (App Store) | projeto nativo: `ios/Kinevo/Info.plist` + `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` no pbxproj | **2.0.x** | Bump manual nos 3 targets. Build via **Xcode** (Archive), não EAS. |
+
+**Por que divergem:** a App Store publicou 1.0 → … → 2.0.3, enquanto o binário gerado pelo `app.json` ficava em 1.5.x. A Apple exige que a próxima versão da loja seja **maior que a última publicada** (hoje 2.0.4), então o iOS não pode voltar para a série 1.5.x. Foram alinhados em 13/07/2026: binário e loja agora dizem **2.0.4** (build 36).
+
+**Gotcha do `expo prebuild` (foi o que criou a divergência):** o Expo tem **uma única** `version` para as duas plataformas. Um `expo prebuild` regenera `ios/` a partir do `app.json` e sobrescreve o `MARKETING_VERSION` com a versão do **Android** (1.5.x). O `ios/` é gitignored, então isso passa despercebido. **Depois de qualquer prebuild do iOS, reaplique a versão da App Store nos 3 targets** (app, `watchkitapp`, `WorkoutActivity` — a Apple rejeita o upload se as versões dos targets não casarem entre si).
+
+**Antes de subir um build iOS,** confira o último `CFBundleVersion` já enviado no App Store Connect (a chave da ASC API está em `credentials/`) e use o próximo número — build repetido dentro da mesma versão é rejeitado no upload.
+
+---
+
 ## Referências
 
 - `APPLE_WATCH.md` — Guia completo da integração Apple Watch.
