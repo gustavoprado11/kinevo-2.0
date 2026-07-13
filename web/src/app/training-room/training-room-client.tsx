@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, ArrowLeft, Play, Square, Trash2, X } from 'lucide-react'
+import { Plus, ArrowLeft, Play, Square, Trash2, X, Settings2 } from 'lucide-react'
 import { useTrainingRoomStore } from '@/stores/training-room-store'
+import { useTrainingRoomPreferencesStore } from '@/stores/training-room-preferences-store'
+import { resolveRestSeconds } from '@/lib/training-room/rest-timer'
 import { StudentPickerModal } from '@/components/training-room/student-picker-modal'
 import { ExerciseCard } from '@/components/training-room/exercise-card'
 import { SupersetGroup } from '@/components/training-room/superset-group'
@@ -13,6 +15,7 @@ import { WorkoutFeedbackModal } from '@/components/training-room/workout-feedbac
 import { ExerciseSwapModal } from '@/components/training-room/exercise-swap-modal'
 import { ExerciseVideoModal } from '@/components/training-room/exercise-video-modal'
 import { RestTimerOverlay } from '@/components/training-room/rest-timer-overlay'
+import { TrainingRoomSettingsModal } from '@/components/training-room/training-room-settings-modal'
 import { WarmupCardioCard } from '@/components/training-room/warmup-cardio-card'
 import { WorkoutFormInline } from '@/components/training-room/workout-form-inline'
 import { finishTrainingRoomWorkout } from '@/actions/training-room/finish-training-room-workout'
@@ -49,9 +52,14 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
     const completePostCheckin = useTrainingRoomStore((s) => s.completePostCheckin)
     const skipCheckin = useTrainingRoomStore((s) => s.skipCheckin)
 
+    // Preferências do treinador (Configurações da Sala) — globais, por navegador.
+    const restTimerAuto = useTrainingRoomPreferencesStore((s) => s.restTimerAuto)
+    const defaultRestSeconds = useTrainingRoomPreferencesStore((s) => s.defaultRestSeconds)
+
     const { toast } = useToast()
     const [isPickerOpen, setIsPickerOpen] = useState(false)
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Swap modal state
@@ -197,21 +205,35 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
     const handleToggleSetComplete = useCallback(
         (exerciseIdx: number, setIdx: number) => {
             if (!activeStudentId || !activeSession) return
-            const exercise = activeSession.exercises[exerciseIdx]
-            const setData = exercise?.setsData[setIdx]
+            // `activeSession` é o snapshot PRÉ-toggle — é o que resolveRestSeconds espera.
+            const rest = resolveRestSeconds(activeSession.exercises[exerciseIdx], setIdx, {
+                restTimerAuto,
+                defaultRestSeconds,
+            })
 
             toggleSetComplete(activeStudentId, exerciseIdx, setIdx)
 
-            // Start rest timer when completing a set (not uncompleting).
-            // Per-set vence o agregado: prescrições avançadas (drop-set,
-            // cluster, descansos por série) usam o rest daquela série.
-            const restForSet = exercise.setScheme?.[setIdx]?.rest_seconds ?? exercise.rest_seconds
-            if (setData && !setData.completed && restForSet > 0) {
-                startRestTimer(activeStudentId, restForSet)
+            if (rest !== null) {
+                startRestTimer(activeStudentId, rest)
             }
         },
-        [activeStudentId, activeSession, toggleSetComplete, startRestTimer],
+        [
+            activeStudentId,
+            activeSession,
+            toggleSetComplete,
+            startRestTimer,
+            restTimerAuto,
+            defaultRestSeconds,
+        ],
     )
+
+    // Desligar o timer nas Configurações não pode deixar um descanso em curso na
+    // tela — limpa o de todas as sessões abertas (a Sala roda vários alunos).
+    const handleRestTimerDisabled = useCallback(() => {
+        for (const studentId of Object.keys(useTrainingRoomStore.getState().sessions)) {
+            clearRestTimer(studentId)
+        }
+    }, [clearRestTimer])
 
     const completedSetsTotal = activeSession
         ? activeSession.exercises.reduce(
@@ -251,13 +273,23 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                             Adicione alunos para iniciar sessões de treino presenciais.
                             Os dados serão salvos no histórico do aluno.
                         </p>
-                        <button
-                            onClick={() => setIsPickerOpen(true)}
-                            className="inline-flex items-center gap-2 rounded-full bg-violet-600 dark:bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500 dark:hover:bg-violet-500"
-                        >
-                            <Plus size={18} strokeWidth={2} />
-                            Adicionar Aluno
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                            <button
+                                onClick={() => setIsPickerOpen(true)}
+                                className="inline-flex items-center gap-2 rounded-full bg-violet-600 dark:bg-violet-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500 dark:hover:bg-violet-500"
+                            >
+                                <Plus size={18} strokeWidth={2} />
+                                Adicionar Aluno
+                            </button>
+                            <button
+                                onClick={() => setIsSettingsOpen(true)}
+                                aria-label="Configurações da Sala"
+                                title="Configurações da Sala"
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white dark:bg-glass-bg border border-slate-200 dark:border-transparent text-slate-500 dark:text-muted-foreground transition-colors hover:bg-slate-50 dark:hover:bg-glass-bg-hover hover:text-slate-700 dark:hover:text-foreground"
+                            >
+                                <Settings2 size={18} strokeWidth={2} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             ) : (
@@ -268,13 +300,23 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                         <h1 className="text-xl font-semibold text-slate-900 dark:text-foreground">
                             Sala de Treino
                         </h1>
-                        <button
-                            onClick={() => setIsPickerOpen(true)}
-                            className="inline-flex items-center gap-2 rounded-full bg-white dark:bg-glass-bg border border-slate-200 dark:border-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-foreground transition-colors hover:bg-slate-50 dark:hover:bg-glass-bg-hover"
-                        >
-                            <Plus size={16} strokeWidth={2} />
-                            Adicionar Aluno
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setIsPickerOpen(true)}
+                                className="inline-flex items-center gap-2 rounded-full bg-white dark:bg-glass-bg border border-slate-200 dark:border-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-foreground transition-colors hover:bg-slate-50 dark:hover:bg-glass-bg-hover"
+                            >
+                                <Plus size={16} strokeWidth={2} />
+                                Adicionar Aluno
+                            </button>
+                            <button
+                                onClick={() => setIsSettingsOpen(true)}
+                                aria-label="Configurações da Sala"
+                                title="Configurações da Sala"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-glass-bg border border-slate-200 dark:border-transparent text-slate-500 dark:text-muted-foreground transition-colors hover:bg-slate-50 dark:hover:bg-glass-bg-hover hover:text-slate-700 dark:hover:text-foreground"
+                            >
+                                <Settings2 size={16} strokeWidth={2} />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Student tabs */}
@@ -662,6 +704,13 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                 onClose={() => setVideoUrl(null)}
                 videoUrl={videoUrl}
                 exerciseName={videoExerciseName}
+            />
+
+            {/* Configurações da Sala */}
+            <TrainingRoomSettingsModal
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                onRestTimerDisabled={handleRestTimerDisabled}
             />
         </div>
     )
