@@ -231,6 +231,198 @@ export function toModelHistory(
     return recent.map((m, i) => ({ role: m.role, content: m.content + (blocks.get(i) ?? '') }))
 }
 
+// ── Histórico NATIVO (P2 — 13/jul) ───────────────────────────────────────────
+//
+// O achatamento em texto (<<DADOS_DE_TOOLS>>) era o maior gap do assistente
+// contra o MCP externo: o modelo não via as PRÓPRIAS tool-calls em formato
+// nativo e relia/errava IDs em follow-ups. Aqui as últimas mensagens do
+// assistente viram pares nativos (assistant com tool-call + tool com
+// tool-result), reconstruídos das parts persistidas (`executed` com args,
+// `confirmation` confirmada). O que não vira nativo continua como digest:
+//   - LEITURAS (parts `context`) — só o digest é persistido, por peso/LGPD;
+//   - mensagens fora da janela nativa (orçamento) — degradam pro bloco texto.
+// Question/proposal pendentes NUNCA viram tool-call (call sem result quebra
+// providers); a resposta do treinador já está no turno de texto seguinte.
+
+const NATIVE_WINDOW_MESSAGES = 4
+const NATIVE_RESULT_CAP = 2000
+const NATIVE_TOTAL_BUDGET = 12000
+
+export type NativeModelMessage =
+    | { role: 'user' | 'system'; content: string }
+    | {
+          role: 'assistant'
+          content:
+              | string
+              | Array<
+                    | { type: 'text'; text: string }
+                    | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+                >
+      }
+    | {
+          role: 'tool'
+          content: Array<{
+              type: 'tool-result'
+              toolCallId: string
+              toolName: string
+              output: { type: 'json'; value: unknown } | { type: 'text'; value: string }
+          }>
+      }
+
+interface NativeCall {
+    toolCallId: string
+    toolName: string
+    input: unknown
+    output: { type: 'json'; value: unknown } | { type: 'text'; value: string }
+    chars: number
+}
+
+/** Output nativo de um tool-result: projeção dedicada p/ programas (IDs
+ *  completos, compacta) ou JSON compactado com teto — nunca o payload cru. */
+function nativeOutputFor(
+    toolName: string,
+    result: unknown,
+): { output: NativeCall['output']; chars: number } | null {
+    const payload = parseMcpPayload(result)
+    if (!payload) return null
+    if (PROGRAM_PAYLOAD_TOOLS.has(toolName)) {
+        const prog = digestProgram(payload)
+        if (prog) return { output: { type: 'text', value: prog }, chars: prog.length }
+    }
+    try {
+        const s = JSON.stringify(compactValue(payload, 0)) ?? ''
+        if (!s) return null
+        if (s.length > NATIVE_RESULT_CAP) {
+            const cut = s.slice(0, NATIVE_RESULT_CAP) + '…(truncado)'
+            return { output: { type: 'text', value: cut }, chars: cut.length }
+        }
+        return { output: { type: 'json', value: JSON.parse(s) }, chars: s.length }
+    } catch {
+        return null
+    }
+}
+
+/**
+ * Converte as mensagens persistidas em ModelMessage[] com tool-calls NATIVOS
+ * nas últimas mensagens do assistente. Substitui toModelHistory nos turnos da
+ * aba e do mobile (o achatado permanece p/ compat/testes).
+ */
+export function toNativeModelHistory(
+    messages: AssistantMessage[],
+    opts: { maxMessages?: number; digestBudget?: number; nativeWindow?: number } = {},
+): NativeModelMessage[] {
+    const recent = messages.slice(-(opts.maxMessages ?? HISTORY_MAX_MESSAGES))
+    const nativeWindow = opts.nativeWindow ?? NATIVE_WINDOW_MESSAGES
+
+    // 1. Escolhe as mensagens NATIVAS: as últimas N do assistente com parts
+    //    aproveitáveis, respeitando o orçamento total (mais recente primeiro).
+    const nativeCalls = new Map<number, NativeCall[]>()
+    let nativeBudget = NATIVE_TOTAL_BUDGET
+    let picked = 0
+    for (let i = recent.length - 1; i >= 0 && picked < nativeWindow; i--) {
+        const m = recent[i]
+        if (m.role !== 'assistant' || m.parts.length === 0) continue
+        const calls: NativeCall[] = []
+        let chars = 0
+        for (let j = 0; j < m.parts.length; j++) {
+            const p = m.parts[j]
+            let toolName: string | null = null
+            let input: unknown
+            let result: unknown
+            if (p.type === 'executed') {
+                toolName = p.toolName
+                input = p.args ?? {}
+                result = p.result
+            } else if (p.type === 'confirmation' && p.status === 'confirmed') {
+                toolName = p.request.toolName
+                input = p.request.args
+                result = p.result
+            }
+            if (!toolName) continue
+            const out = nativeOutputFor(toolName, result)
+            if (!out) continue
+            calls.push({
+                toolCallId: `hist_${i}_${j}`,
+                toolName,
+                input,
+                output: out.output,
+                chars: out.chars,
+            })
+            chars += out.chars
+        }
+        if (calls.length === 0) continue
+        if (chars > nativeBudget) break // sem orçamento → esta e as anteriores ficam no digest
+        nativeBudget -= chars
+        nativeCalls.set(i, calls)
+        picked++
+    }
+
+    // 2. Blocos de digest: leituras (`context`) e cancelamentos SEMPRE em texto;
+    //    executed/confirmed só nas mensagens NÃO nativas. Orçamento como antes.
+    let digestBudget = opts.digestBudget ?? DIGEST_BUDGET_CHARS
+    const blocks = new Map<number, string>()
+    for (let i = recent.length - 1; i >= 0; i--) {
+        if (digestBudget <= 0) break
+        const m = recent[i]
+        if (m.role !== 'assistant' || m.parts.length === 0) continue
+        const isNative = nativeCalls.has(i)
+        const lines: string[] = []
+        for (const p of m.parts) {
+            if (p.type === 'context') {
+                lines.push(`- ${p.toolName}: ${p.digest}`)
+            } else if (p.type === 'executed' && !isNative) {
+                const d = digestToolResult(p.toolName, p.result)
+                lines.push(d ? `- ${p.toolName} (executada): ${d}` : `- ${p.toolName} (executada)`)
+            } else if (p.type === 'confirmation' && p.status === 'cancelled') {
+                lines.push(`- ${p.request.toolName} (cancelada pelo treinador)`)
+            } else if (p.type === 'confirmation' && p.status === 'confirmed' && !isNative) {
+                const d = digestToolResult(p.request.toolName, p.result)
+                lines.push(`- ${p.request.toolName} (confirmada e executada)${d ? `: ${d}` : ''}`)
+            }
+        }
+        if (lines.length === 0) continue
+        const block = `\n\n<<DADOS_DE_TOOLS>>\n${lines.join('\n')}\n<<FIM_DADOS_DE_TOOLS>>`
+        if (block.length <= digestBudget) {
+            blocks.set(i, block)
+            digestBudget -= block.length
+        }
+    }
+
+    // 3. Monta a sequência final.
+    const out: NativeModelMessage[] = []
+    for (let i = 0; i < recent.length; i++) {
+        const m = recent[i]
+        const text = m.content + (blocks.get(i) ?? '')
+        const calls = m.role === 'assistant' ? nativeCalls.get(i) : undefined
+        if (!calls) {
+            out.push({ role: m.role, content: text })
+            continue
+        }
+        out.push({
+            role: 'assistant',
+            content: [
+                ...(text.trim() ? [{ type: 'text' as const, text }] : []),
+                ...calls.map((c) => ({
+                    type: 'tool-call' as const,
+                    toolCallId: c.toolCallId,
+                    toolName: c.toolName,
+                    input: c.input,
+                })),
+            ],
+        })
+        out.push({
+            role: 'tool',
+            content: calls.map((c) => ({
+                type: 'tool-result' as const,
+                toolCallId: c.toolCallId,
+                toolName: c.toolName,
+                output: c.output,
+            })),
+        })
+    }
+    return out
+}
+
 // ── Entidade em foco: programa ───────────────────────────────────────────────
 
 export interface ProgramFocus {

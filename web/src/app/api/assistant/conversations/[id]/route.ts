@@ -29,7 +29,7 @@ import {
     type AssistantMessagePart,
 } from '@/lib/assistant/conversations'
 import { redactSensitive } from '@/lib/assistant/redact'
-import { toModelHistory, deriveProgramFocus, stripInternalParts } from '@/lib/assistant/tool-memory'
+import { toNativeModelHistory, deriveProgramFocus, stripInternalParts } from '@/lib/assistant/tool-memory'
 
 // Turno de CONSTRUÇÃO de programa (Sonnet, vários passos) pode passar de 60s; 300s
 // evita timeout/orphan no meio do build (auditoria C5). Rota gated (Assistente).
@@ -217,7 +217,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
         // Onda 2: histórico com memória de tools (blocos <<DADOS_DE_TOOLS>>) +
         // programa em foco derivado da própria conversa.
-        const history = toModelHistory(existing.messages)
+        const history = toNativeModelHistory(existing.messages)
         const programFocus = deriveProgramFocus(existing.messages)
         const isFirstUserMessage = !existing.messages.some((m) => m.role === 'user')
 
@@ -277,6 +277,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
                     const parts: AssistantMessagePart[] = turn.executed.map((e) => ({
                         type: 'executed' as const, toolName: e.toolName, result: redactSensitive(e.result),
+                        ...(e.args ? { args: e.args } : {}),
                     }))
                     if (turn.confirmation) parts.push({ type: 'confirmation', request: turn.confirmation, status: 'pending' })
                     if (turn.question) parts.push({ type: 'question', request: turn.question, status: 'pending' })

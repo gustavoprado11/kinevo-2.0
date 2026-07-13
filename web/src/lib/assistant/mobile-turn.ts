@@ -11,7 +11,7 @@
  * Mantido separado da rota web (streaming) que já funciona.
  */
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { gateAssistant, runAssistantTurn, UUID_RE, type AssistantGate } from '@/lib/assistant/command-engine'
+import { gateAssistant, runAssistantTurn, UUID_RE, type AssistantGate, type AssistantHistoryMessage } from '@/lib/assistant/command-engine'
 import { limitTurn } from '@/lib/assistant/rate-limits'
 import {
     getConversationWithMessages,
@@ -23,7 +23,7 @@ import {
 } from '@/lib/assistant/conversations'
 import { redactSensitive } from '@/lib/assistant/redact'
 import {
-    toModelHistory,
+    toNativeModelHistory,
     deriveProgramFocus,
     stripInternalParts,
     type ProgramFocus,
@@ -44,7 +44,7 @@ export interface MobileTurnContext {
     conversationId: string
     input: string
     gate: AllowedGate
-    history: { role: 'user' | 'assistant'; content: string }[]
+    history: AssistantHistoryMessage[]
     studentId?: string
     /** Programa em foco (Onda 2), derivado da conversa. */
     programFocus?: ProgramFocus | null
@@ -106,7 +106,7 @@ export async function prepareMobileTurn(args: {
     }
 
     // Onda 2: histórico com memória de tools (<<DADOS_DE_TOOLS>>) + programa em foco.
-    const history = toModelHistory(existing.messages)
+    const history = toNativeModelHistory(existing.messages)
     const programFocus = deriveProgramFocus(existing.messages)
     const isFirstUserMessage = !existing.messages.some((m) => m.role === 'user')
 
@@ -181,6 +181,7 @@ export async function finishMobileTurn(
         type: 'executed' as const,
         toolName: e.toolName,
         result: redactSensitive(e.result),
+        ...(e.args ? { args: e.args } : {}),
     }))
     if (turn.confirmation) parts.push({ type: 'confirmation', request: turn.confirmation, status: 'pending' })
     if (turn.question) parts.push({ type: 'question', request: turn.question, status: 'pending' })

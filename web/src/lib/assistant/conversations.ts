@@ -17,7 +17,10 @@ export type AssistantMessageRole = 'user' | 'assistant'
 
 /** Bloco rico de uma mensagem do assistente (reabre mostrando o que a IA fez). */
 export type AssistantMessagePart =
-    | { type: 'executed'; toolName: string; result: unknown }
+    // `args` (P2 — histórico nativo, 13/jul): argumentos da chamada, usados pelo
+    // replay nativo de tool-calls em turnos futuros (toNativeModelHistory).
+    // Opcional: mensagens antigas não têm; clientes ignoram o campo extra.
+    | { type: 'executed'; toolName: string; result: unknown; args?: Record<string, unknown> }
     | {
           type: 'confirmation'
           request: ToolConfirmationRequest

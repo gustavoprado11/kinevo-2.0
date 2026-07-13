@@ -19,6 +19,8 @@ import { describe, it, expect, afterAll } from 'vitest'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { toNativeModelHistory, deriveProgramFocus } from './tool-memory'
+import type { AssistantMessage } from './conversations'
 
 const RUN = process.env.RUN_LIVE_BUILD === '1'
 
@@ -220,5 +222,64 @@ describe.skipIf(!RUN)('LIVE — turno de build cria o programa dentro do teto de
         expect(createCalls.length, `programa não foi criado. tools: ${report.toolsInOrder.join(' → ')} | texto: ${turn.text}`).toBeGreaterThanOrEqual(1)
         expect(programs?.length ?? 0, 'rascunho não está no banco').toBeGreaterThanOrEqual(1)
         expect(programs?.[0]?.status).toBe('draft')
-    }, 300_000)
+
+        // ── TURNO 2 (P2 — histórico NATIVO): follow-up de edição SEM reler ──
+        // Reconstrói o histórico como a rota faria (parts persistidas → pares
+        // nativos) e pede uma troca. Com os item_id no tool-result nativo, o
+        // modelo deve editar DIRETO (update_workout_item) sem kinevo_get_program.
+        const now = new Date().toISOString()
+        const persisted: AssistantMessage[] = [
+            { id: 'm0', role: 'user', content: 'Monta um programa de hipertrofia 5x…', parts: [], credits_cost: 0, created_at: now },
+            {
+                id: 'm1',
+                role: 'assistant',
+                content: turn.text,
+                parts: turn.executed.map((e) => ({
+                    type: 'executed' as const,
+                    toolName: e.toolName,
+                    result: e.result,
+                    ...(e.args ? { args: e.args } : {}),
+                })),
+                credits_cost: 0,
+                created_at: now,
+            },
+        ]
+        const history = toNativeModelHistory(persisted)
+
+        const turn2 = await runAssistantTurn({
+            admin: seeded.admin,
+            trainerId: seeded.trainerId,
+            trainerName: 'QA Build Trainer',
+            input:
+                'Troca o primeiro exercício da primeira sessão desse programa por outro exercício equivalente do mesmo grupo muscular. Decide sozinho, sem me perguntar.',
+            surface: 'workspace',
+            periodType: 'month',
+            studentId: seeded.studentId,
+            history,
+            // Paridade com a rota: o programa em foco também vai como hint.
+            programFocus: deriveProgramFocus(persisted),
+        })
+
+        const { data: traces2 } = await seeded.admin
+            .from('assistant_turn_traces')
+            .select('tools, output')
+            .eq('trainer_id', seeded.trainerId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+        const tools2 = ((traces2?.[0]?.tools ?? []) as Array<{ toolName: string; ok: boolean }>)
+        const report2 = {
+            toolsInOrder: tools2.map((t) => `${t.toolName}${t.ok ? '' : ' (FALHOU)'}`),
+            turnText: turn2.text,
+        }
+        if (out) writeFileSync(out.replace('.json', '-turn2.json'), JSON.stringify(report2, null, 2))
+
+        // A REGRESSÃO travada: follow-up incapaz de editar (flail/releituras em
+        // série). Uma releitura única é capricho tolerável do modelo; o histórico
+        // nativo + programFocus tornam o turno curto e certeiro.
+        const updated = tools2.some((t) => t.toolName === 'kinevo_update_workout_item' && t.ok)
+        const rereads = tools2.filter((t) => t.toolName === 'kinevo_get_program').length
+        expect(updated, `follow-up não editou. tools: ${report2.toolsInOrder.join(' → ')} | ${turn2.text}`).toBe(true)
+        expect(rereads, `releu o programa ${rereads}x. tools: ${report2.toolsInOrder.join(' → ')}`).toBeLessThanOrEqual(1)
+        expect(tools2.length, `turno de edição gastou ${tools2.length} tools. ${report2.toolsInOrder.join(' → ')}`).toBeLessThanOrEqual(5)
+    }, 420_000)
 })
