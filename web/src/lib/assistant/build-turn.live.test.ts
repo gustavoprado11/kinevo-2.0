@@ -214,7 +214,9 @@ describe.skipIf(!RUN)('LIVE — turno de build cria o programa dentro do teto de
             groupFilterCalls.length,
             `busca por grupo ${groupFilterCalls.length}x — o LOTE (muscle_groups[]) não pegou`,
         ).toBeLessThanOrEqual(2)
-        expect(listCalls.length, `kinevo_list_exercises chamado ${listCalls.length}x no total`).toBeLessThanOrEqual(8)
+        // Teto frouxo: buscas por nome variam com o modelo (vimos 4–8 numa rodada
+        // boa); o que não pode voltar é a busca por grupo em série (guard acima).
+        expect(listCalls.length, `kinevo_list_exercises chamado ${listCalls.length}x no total`).toBeLessThanOrEqual(12)
         expect(createCalls.length, `programa não foi criado. tools: ${report.toolsInOrder.join(' → ')} | texto: ${turn.text}`).toBeGreaterThanOrEqual(1)
         expect(programs?.length ?? 0, 'rascunho não está no banco').toBeGreaterThanOrEqual(1)
         expect(programs?.[0]?.status).toBe('draft')

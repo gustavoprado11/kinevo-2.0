@@ -48,8 +48,16 @@ import { ambiguousStudentTarget, withAmbiguityGuard, type StudentRef } from '@/l
 import { digestToolResult, MEMORY_READ_TOOLS, type ProgramFocus } from '@/lib/assistant/tool-memory'
 import { redactSensitive } from '@/lib/assistant/redact'
 import { isAssistantDisabled, ASSISTANT_MAINTENANCE_MESSAGE } from '@/lib/assistant/kill-switch'
-import { loadStyleBlock } from '@/lib/assistant/style-block'
+import { loadStyleBlock, loadTrainerStyle } from '@/lib/assistant/style-block'
 import { runStyleInterviewTurn } from '@/lib/assistant/style-interview'
+import {
+    validateBuildArgs,
+    loadBuildCatalog,
+    buildQualityCorrective,
+    annotateResultWithWarnings,
+    type BuildProgramArgs,
+    type BuildValidation,
+} from '@/lib/assistant/build-validator'
 import type { StyleSlotId } from '@/lib/assistant/style-slots'
 import type { StyleState } from '@/lib/assistant/style-state'
 import type { LLMModel } from '@/lib/prescription/llm-client'
@@ -385,6 +393,58 @@ function withReadGuard(tools: ToolSet): { tools: ToolSet; reset: () => void } {
     return { tools: guarded, reset: () => seen.clear() }
 }
 
+/**
+ * Gate de qualidade da prescrição (P3 — 13/jul). Intercepta os args dos creates
+ * TRANSACIONAIS de programa antes de executar e valida as regras profissionais
+ * do playbook em CÓDIGO (build-validator): violação grave → NÃO executa e
+ * devolve um corretivo `blocked` (mesma família do read-guard/homônimos: não
+ * cobra, não vira card) para o modelo corrigir e re-chamar no mesmo turno;
+ * deslize → executa e anexa quality_warnings ao resultado. Best-effort: uma
+ * falha do PRÓPRIO gate (DB fora etc.) nunca impede a criação.
+ */
+const BUILD_CREATE_TOOLS = [
+    'kinevo_create_student_draft_program',
+    'kinevo_create_program_template',
+] as const
+
+function withBuildQualityGate(
+    tools: ToolSet,
+    admin: SupabaseClient,
+    trainerId: string,
+): ToolSet {
+    const gated: ToolSet = { ...tools }
+    for (const name of BUILD_CREATE_TOOLS) {
+        const t = gated[name]
+        const orig = t?.execute
+        if (!t || typeof orig !== 'function') continue
+        gated[name] = {
+            ...t,
+            execute: (async (args, options) => {
+                let verdict: BuildValidation | null = null
+                try {
+                    const buildArgs = args as BuildProgramArgs
+                    const [catalog, style] = await Promise.all([
+                        loadBuildCatalog(admin, buildArgs),
+                        loadTrainerStyle(admin, trainerId),
+                    ])
+                    verdict = validateBuildArgs(buildArgs, catalog, style)
+                } catch (err) {
+                    console.error('[build-quality-gate] gate indisponível — criação segue sem validação', err)
+                    verdict = null
+                }
+                if (verdict && verdict.errors.length > 0) {
+                    return buildQualityCorrective(verdict)
+                }
+                const result = await orig(args, options)
+                return verdict && verdict.warnings.length > 0
+                    ? annotateResultWithWarnings(result, verdict.warnings)
+                    : result
+            }) as typeof t.execute,
+        }
+    }
+    return gated
+}
+
 // ----------------------------------------------------------------------------
 // Turno do assistente.
 // ----------------------------------------------------------------------------
@@ -575,9 +635,11 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             focusedStudentId: opts.studentId,
             getRoster,
         })
+        // Gate de qualidade da prescrição nos creates transacionais (P3).
+        const qualityGatedTools = withBuildQualityGate(guardedBridgeTools, admin, trainerId)
 
         const tools: ToolSet = {
-            ...guardedBridgeTools,
+            ...qualityGatedTools,
             // "Ask the user": client tool (SEM execute) — o app renderiza as opções
             // como botões clicáveis e a escolha vira o próximo turno.
             perguntar_treinador: tool({
@@ -1131,6 +1193,11 @@ const MCP_HITL_INSTRUCTIONS = `
      Monte o SPLIT definido no passo 4 (uma sessão por dia de treino, focos DISTINTOS, compostos primeiro,
      5–7 exercícios cada), com a frequência pedida. Defina scheduled_days de cada sessão (0=dom … 6=sáb),
      distribuindo os dias de forma coerente (evite treinar o mesmo grupo em dias consecutivos sem motivo).
+  5b) CONTROLE DE QUALIDADE (automático): o app valida as regras do passo 4 em código na hora da criação.
+     Se a resposta vier com quality_errors, o programa NÃO foi criado — corrija EXATAMENTE os pontos
+     apontados (mantendo o resto do programa igual) e chame a MESMA tool de novo, sem perguntar ao
+     treinador. Se um resultado de SUCESSO vier com quality_warnings, o programa FOI criado: avalie os
+     avisos e, se fizer sentido, ajuste com as tools de edição (não recrie).
   6) NÃO ative nem atribua automaticamente (kinevo_assign_program coloca o treino ATIVO na hora, sem revisão;
      o rascunho NÃO é ativo). Ao terminar, diga ao treinador em 1–2 frases que você montou o programa — como
      RASCUNHO no perfil do aluno (caminho com aluno) ou na Biblioteca de Programas (template) — com um resumo

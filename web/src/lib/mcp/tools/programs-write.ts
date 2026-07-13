@@ -284,6 +284,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           reps: z.string().optional().describe("Reps prescription (simple mode, e.g., '12', '8-12', 'AMRAP'). Ignored when set_scheme is provided."),
           rest_seconds: z.number().min(0).max(600).optional().describe('Rest between sets in seconds (simple mode). Defaults to 90.'),
           notes: z.string().optional().describe('Special instructions for this exercise'),
+          exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional().describe('Role of this exercise in the session. Defaults to main.'),
           method_key: z.enum(['standard', 'custom', 'pyramid_down', 'pyramid_up', 'drop_set', 'top_backoff', '5x5', 'cluster']).optional().describe('Training method label. Use with set_scheme.'),
           set_scheme: z.array(setSchemaZod).min(1).optional().describe('Advanced per-set prescription (overrides sets/reps/rest). For drop-set/cluster pass ONE round here and set rounds>1.'),
           rounds: z.number().min(1).max(20).optional().describe('Rounds the set_scheme repeats (compound methods). Defaults to 1.'),
@@ -292,6 +293,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             sets: z.number().min(1).max(20).describe('Number of rounds/sets for this exercise'),
             reps: z.string().describe("Reps prescription (e.g., '10', '8-12')"),
             rest_seconds: z.number().min(0).max(600).optional().describe('Rest after THIS exercise within the round. Default: 0 for intermediates, the item rest_seconds for the last one.'),
+            exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional(),
             notes: z.string().optional(),
           })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds is the rest after each round (carried by the LAST exercise — execution uses per-exercise rest).'),
         })).describe('Ordered list of exercises/supersets in this session.'),
@@ -383,6 +385,10 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
                 reps: c.reps,
                 rest_seconds: childRest(c, ci),
                 notes: c.notes ?? null,
+                // A RPC (migr 234) persiste exercise_function — mas este caminho
+                // não o enviava no payload e TODO item de draft caía como NULL
+                // (o template path sempre enviou). Mesmo default do template.
+                exercise_function: c.exercise_function ?? 'main',
                 ...snap(c.exercise_id),
               })),
             })
@@ -422,6 +428,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             reps: aggregates.reps,
             rest_seconds: aggregates.rest_seconds,
             notes: it.notes ?? null,
+            exercise_function: it.exercise_function ?? 'main',
             method_key: it.method_key ?? null,
             rounds: effectiveRounds,
             set_rows: setRows,

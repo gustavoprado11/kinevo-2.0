@@ -287,6 +287,16 @@ Ao montar programas, siga o estilo acima em vez dos defaults deste playbook. Ré
  * turno, só faz o assistente prescrever sem estilo.
  */
 export async function loadStyleBlock(admin: SupabaseClient, trainerId: string): Promise<string> {
+    const style = await loadTrainerStyle(admin, trainerId)
+    return style ? buildStyleBlock(style) : ''
+}
+
+/** O estilo cru (sanitizado/clampado) — consumido pelo bloco de prompt e pelo
+ *  gate de qualidade do build (build-validator). Best-effort: erro → null. */
+export async function loadTrainerStyle(
+    admin: SupabaseClient,
+    trainerId: string,
+): Promise<PrescriptionStyle | null> {
     try {
         const { data } = await admin
             .from('trainers')
@@ -295,15 +305,14 @@ export async function loadStyleBlock(admin: SupabaseClient, trainerId: string): 
             .single()
 
         const raw = (data as { prescription_style?: unknown } | null)?.prescription_style
-        if (!raw || typeof raw !== 'object') return ''
+        if (!raw || typeof raw !== 'object') return null
 
-        const style = sanitizeStyle(raw, {
+        return sanitizeStyle(raw, {
             source: ((raw as { source?: unknown }).source as PrescriptionStyle['source']) ?? 'interview',
             mined: ((raw as { mined?: unknown }).mined as PrescriptionStyle['mined']) ?? null,
         })
-        return buildStyleBlock(style)
     } catch (err) {
         console.error('[style-block] falha ao carregar o estilo do treinador:', err)
-        return ''
+        return null
     }
 }
