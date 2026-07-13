@@ -3,6 +3,8 @@
 import { Dumbbell, Clock, ChevronDown, ChevronUp, ArrowRightLeft, PlayCircle, Check } from 'lucide-react'
 import { useState } from 'react'
 import type { ExerciseData } from '@/stores/training-room-store'
+import { useTrainingRoomPreferencesStore } from '@/stores/training-room-preferences-store'
+import { displayRestSeconds } from '@/lib/training-room/rest-timer'
 import { SetRow } from './set-row'
 import { TrainerNote } from './trainer-note'
 
@@ -38,6 +40,11 @@ export function ExerciseCard({
     supersetBadge,
 }: ExerciseCardProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
+    const defaultRestSeconds = useTrainingRoomPreferencesStore((s) => s.defaultRestSeconds)
+
+    // Exercício sem descanso prescrito exibe a duração padrão do treinador — a
+    // mesma que o timer usaria.
+    const restSeconds = displayRestSeconds(exercise.rest_seconds, { defaultRestSeconds })
 
     const completedSets = exercise.setsData.filter((s) => s.completed).length
     const totalSets = exercise.setsData.length
@@ -86,7 +93,7 @@ export function ExerciseCard({
                         </div>
                         <div className="flex items-center gap-3 mt-0.5">
                             <span className="text-xs text-slate-500 dark:text-muted-foreground">
-                                {exercise.sets} séries • {exercise.reps} reps • {exercise.rest_seconds}s
+                                {exercise.sets} séries • {exercise.reps} reps • {restSeconds}s
                             </span>
                             {/* Fallback: show aggregate previous load only when per-set data is unavailable */}
                             {!exercise.previousSets?.length && exercise.previousLoad && (

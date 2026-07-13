@@ -171,7 +171,12 @@ export async function getStudentTodayWorkout(
             name: exerciseRef?.name || item.exercise_name || 'Exercício',
             sets: setsCount,
             reps: item.reps || '12',
-            rest_seconds: item.rest_seconds || 60,
+            // 0 = descanso não prescrito. A Sala resolve o fallback com a duração
+            // padrão do treinador (Configurações da Sala) em vez de fixar 60s aqui.
+            // `aggregateRestSeconds` acima mantém o 60 legado de propósito: ele só
+            // alimenta o setScheme quando existem linhas per-set reais, e nesse caso
+            // o agregado nem é usado.
+            rest_seconds: item.rest_seconds ?? 0,
             video_url: trainerVideoMap.get(exerciseId) || exerciseRef?.video_url || undefined,
             substitute_exercise_ids: item.substitute_exercise_ids || [],
             swap_source: 'none' as const,
