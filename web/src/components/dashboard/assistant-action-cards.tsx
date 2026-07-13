@@ -62,11 +62,39 @@ function getActionLabel(insight: InsightItem): string {
     return 'Assistente'
 }
 
-function getActionChip(insight: InsightItem): string | undefined {
+/**
+ * Prompt que entra no COMPOSER do assistente quando o treinador clica no card —
+ * escrito na voz DELE, para ser revisado/editado antes de enviar (o clique não
+ * dispara turno nenhum). Parte do título do insight, que já resume o achado
+ * (aluno, exercícios, tempo), e acrescenta o pedido de ação.
+ */
+function buildActionPrompt(insight: InsightItem): string {
+    const name = insight.student_name || 'o aluno'
+    const first = name.split(' ')[0]
+    const meta = insight.action_metadata || {}
     const key = insight.insight_key || ''
-    if (key.startsWith('program_expiring')) return 'Gere um novo programa para este aluno'
-    if (key.startsWith('stagnation') || key.startsWith('ready_to_progress')) return 'Analise a tendência de progressão deste aluno'
-    return undefined
+    const title = insight.title.replace(/[.\s]+$/, '')
+
+    if (key.startsWith('gap_alert')) {
+        const days = meta.days_since_last
+        const gap = !days || days >= 365
+            ? `${name} ainda não realizou nenhum treino`
+            : `${name} está sem treinar há ${days} dias`
+        return `${gap}. Analise o histórico dele e me diga como retomar — e sugira uma mensagem para reengajar.`
+    }
+    if (key.startsWith('stagnation')) {
+        return `${title}. Analise a progressão de ${first} e sugira como ajustar o programa (carga, volume ou variação de exercício).`
+    }
+    if (key.startsWith('ready_to_progress')) {
+        return `${title}. Analise e sugira como evoluir a prescrição de ${first} (carga, repetições, séries).`
+    }
+    if (key.startsWith('program_expiring')) {
+        return `O programa de ${name} está encerrando. Analise o progresso dele e proponha o próximo programa.`
+    }
+    if (key.startsWith('pain_report')) {
+        return `${name} reportou desconforto no último check-in. Revise os detalhes e sugira ajustes no programa.`
+    }
+    return `${title}. Analise e me diga o que fazer com ${first}.`
 }
 
 /** Returns direct action buttons per insight type (no assistant needed) */
@@ -213,6 +241,7 @@ export function AssistantActionCards({
                 studentName: row.insight.student_name || undefined,
                 insightId: row.insight.insight_key || undefined,
                 initialMessage: buildInitialMessage(row.insight),
+                prefill: buildActionPrompt(row.insight),
             })
         } else if (row.studentId) {
             window.location.href = `/students/${row.studentId}`
@@ -229,7 +258,8 @@ export function AssistantActionCards({
             studentId: insight.student_id || undefined,
             studentName: insight.student_name || undefined,
             insightId: insight.insight_key || undefined,
-            initialMessage: getActionChip(insight) || buildInitialMessage(insight),
+            initialMessage: buildInitialMessage(insight),
+            prefill: buildActionPrompt(insight),
         })
     }, [openChat])
 

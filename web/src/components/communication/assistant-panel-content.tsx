@@ -62,9 +62,9 @@ function chipsForScope(insightId: string | null, studentName: string | null): st
 
 export function AssistantPanelContent() {
     const router = useRouter()
-    const { studentId, studentName, insightId, initialMessage, closePanel } = useCommunicationStore()
+    const { studentId, studentName, insightId, initialMessage, prefill, prefillNonce, closePanel } = useCommunicationStore()
     const [railStudents, setRailStudents] = useState<ThreadStudent[]>([])
-    const inputRef = useRef<HTMLInputElement>(null)
+    const inputRef = useRef<HTMLTextAreaElement>(null)
 
     // O aluno do escopo entra na lista mesmo antes do rail-data responder — é ele
     // que nomeia a conversa otimista criada no primeiro envio.
@@ -148,6 +148,32 @@ export function AssistantPanelContent() {
         const t = setTimeout(() => inputRef.current?.focus(), 300)
         return () => clearTimeout(t)
     }, [])
+
+    // Altura do composer acompanha o conteúdo (uma linha vazio, cresce até o teto).
+    useEffect(() => {
+        const el = inputRef.current
+        if (!el) return
+        el.style.height = 'auto'
+        el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+    }, [input])
+
+    // Prompt vindo de um card do dashboard: entra no COMPOSER (não envia) para o
+    // treinador ler, ajustar e disparar. O nonce reaplica quando ele clica no
+    // mesmo card de novo. Espera a animação do painel antes de focar; o cursor
+    // vai para o fim do texto para editar sem apagar tudo.
+    useEffect(() => {
+        if (!prefill) return
+        setInput(prefill)
+        const t = setTimeout(() => {
+            const el = inputRef.current
+                ?? document.querySelector<HTMLTextAreaElement>('textarea[data-assistant-composer]')
+            if (!el) return
+            el.focus()
+            try { el.setSelectionRange(prefill.length, prefill.length) } catch { /* noop */ }
+        }, 320)
+        return () => clearTimeout(t)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [prefill, prefillNonce])
 
     const openFull = () => {
         closePanel()
@@ -349,14 +375,20 @@ export function AssistantPanelContent() {
 
                     {/* Composer */}
                     <div className="border-t border-border px-4 py-3">
-                        <form onSubmit={submit} className="flex items-center gap-2">
-                            <input
+                        <form onSubmit={submit} className="flex items-end gap-2">
+                            {/* Cresce com o texto (até ~5 linhas): um prompt vindo de um card
+                                do dashboard precisa ser LIDO por inteiro antes de ser enviado. */}
+                            <textarea
                                 ref={inputRef}
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() }
+                                }}
+                                rows={1}
                                 placeholder={scopeName ? `O que fazer com ${scopeName.split(' ')[0]}?` : 'Pergunte ou peça algo…'}
                                 disabled={sending}
-                                className="min-w-0 flex-1 rounded-full border border-border bg-muted px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 disabled:opacity-50"
+                                className="max-h-[120px] min-w-0 flex-1 resize-none overflow-y-auto rounded-[20px] border border-border bg-muted px-4 py-2.5 text-sm leading-relaxed outline-none transition-colors placeholder:text-muted-foreground focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 disabled:opacity-50"
                             />
                             {/* Ditado por voz — o texto entra no campo e o treinador revisa antes de enviar. */}
                             <MicButton

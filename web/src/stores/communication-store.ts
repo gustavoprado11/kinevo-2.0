@@ -9,7 +9,12 @@ interface CommunicationState {
     studentId: string | null
     studentName: string | null
     insightId: string | null
+    /** Cartão de contexto na voz do assistente (não é mensagem persistida). */
     initialMessage: string | null
+    /** Texto que entra no COMPOSER para o treinador revisar antes de enviar. */
+    prefill: string | null
+    /** Muda a cada openChat: reaplica o prefill mesmo quando o texto é idêntico. */
+    prefillNonce: number
 
     // Messages state
     selectedStudentId: string | null
@@ -22,7 +27,7 @@ interface CommunicationState {
     switchTab: (tab: 'assistant' | 'messages') => void
 
     // Assistant actions (backwards-compatible)
-    openChat: (opts?: { studentId?: string; studentName?: string; insightId?: string; initialMessage?: string }) => void
+    openChat: (opts?: { studentId?: string; studentName?: string; insightId?: string; initialMessage?: string; prefill?: string }) => void
     closeChat: () => void
 
     // Messages actions
@@ -41,6 +46,8 @@ export const useCommunicationStore = create<CommunicationState>()((set) => ({
     studentName: null,
     insightId: null,
     initialMessage: null,
+    prefill: null,
+    prefillNonce: 0,
 
     selectedStudentId: null,
     messagesView: 'list',
@@ -52,14 +59,16 @@ export const useCommunicationStore = create<CommunicationState>()((set) => ({
 
     switchTab: (tab) => set({ activeTab: tab }),
 
-    openChat: (opts) => set({
+    openChat: (opts) => set((state) => ({
         isOpen: true,
         activeTab: 'assistant',
         studentId: opts?.studentId ?? null,
         studentName: opts?.studentName ?? null,
         insightId: opts?.insightId ?? null,
         initialMessage: opts?.initialMessage ?? null,
-    }),
+        prefill: opts?.prefill ?? null,
+        prefillNonce: state.prefillNonce + 1,
+    })),
 
     closeChat: () => set({ isOpen: false }),
 
