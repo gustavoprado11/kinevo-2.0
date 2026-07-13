@@ -96,12 +96,27 @@ export async function updateTrainerProfile(formData: FormData): Promise<UpdateTr
                 ? { landing_cref: rawCref.trim().slice(0, 40) || null }
                 : {}
 
+        // Timezone (migr 249): aditivo como o CREF. Valida como IANA de verdade —
+        // um fuso inválido quebraria toLocaleString no contexto do Assistente.
+        const rawTz = formData.get('timezone')
+        let tzUpdate: { timezone?: string } = {}
+        if (typeof rawTz === 'string' && rawTz.trim()) {
+            const tz = rawTz.trim()
+            try {
+                new Intl.DateTimeFormat('pt-BR', { timeZone: tz })
+                tzUpdate = { timezone: tz }
+            } catch {
+                return { success: false, message: 'Fuso horário inválido.' }
+            }
+        }
+
         const { error: updateError } = await supabase
             .from('trainers')
             .update({
                 name,
                 avatar_url: avatarUrl,
                 ...crefUpdate,
+                ...tzUpdate,
             })
             .eq('id', trainer.id)
 

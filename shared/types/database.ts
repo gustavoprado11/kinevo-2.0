@@ -4459,6 +4459,7 @@ export type Database = {
           public_slug: string | null
           smart_v2_enabled: boolean
           theme: string
+          timezone: string
           updated_at: string
         }
         Insert: {
@@ -4504,6 +4505,7 @@ export type Database = {
           public_slug?: string | null
           smart_v2_enabled?: boolean
           theme?: string
+          timezone?: string
           updated_at?: string
         }
         Update: {
@@ -4549,6 +4551,7 @@ export type Database = {
           public_slug?: string | null
           smart_v2_enabled?: boolean
           theme?: string
+          timezone?: string
           updated_at?: string
         }
         Relationships: []

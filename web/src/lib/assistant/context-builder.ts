@@ -3,8 +3,25 @@ import { enrichStudentContext, type EnrichedStudentContext } from '@/lib/prescri
 import { firstNameOf } from '@/lib/assistant/ambiguity'
 
 // ── Contexto temporal ──
-// TODO: usar o timezone por treinador quando existir coluna no schema (trainers.timezone).
+// Fuso POR TREINADOR (migr 249, Configurações → Perfil); default seguro p/ quem
+// nunca configurou. Best-effort: falha na leitura → default (nunca derruba o turno).
 const DEFAULT_TZ = 'America/Sao_Paulo'
+
+async function trainerTimezone(trainerId: string): Promise<string> {
+    try {
+        const { data } = await supabaseAdmin
+            .from('trainers')
+            .select('timezone')
+            .eq('id', trainerId)
+            .single()
+        const tz = (data as { timezone?: string | null } | null)?.timezone
+        if (!tz) return DEFAULT_TZ
+        new Intl.DateTimeFormat('pt-BR', { timeZone: tz }) // valida; inválido → catch
+        return tz
+    } catch {
+        return DEFAULT_TZ
+    }
+}
 
 /**
  * "semana N de M (iniciado em DD/MM)" — a semana ATUAL do programa, computada de
@@ -15,13 +32,14 @@ export function describeProgramWeek(
     startedAt: string | null,
     durationWeeks: number | null,
     now: Date = new Date(),
+    tz: string = DEFAULT_TZ,
 ): string {
     const dur = durationWeeks ? `${durationWeeks} semanas` : 'duração não definida'
     if (!startedAt) return dur
     const start = new Date(startedAt)
     if (Number.isNaN(start.getTime()) || start > now) return dur
     const week = Math.floor((now.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1
-    const startStr = start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: DEFAULT_TZ })
+    const startStr = start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: tz })
     if (durationWeeks && week > durationWeeks) {
         return `${durationWeeks} semanas — JÁ PASSOU da duração planejada (está na semana ${week}; iniciado em ${startStr})`
     }
@@ -259,6 +277,7 @@ export async function buildChatContext(
     studentId?: string,
     opts: ChatContextOptions = {},
 ): Promise<string> {
+    const tz = await trainerTimezone(trainerId)
     if (studentId) {
         const snapshot = await buildStudentSnapshot(trainerId, studentId)
 
@@ -279,7 +298,7 @@ export async function buildChatContext(
         // responder "é a última semana?" e improvisa aritmética errada com o nº
         // de sessões (visto em prod 13/jul). Dado que já buscamos, entregamos.
         const programStr = snapshot.activeProgram
-            ? `Programa ativo: "${snapshot.activeProgram.name}" (${describeProgramWeek(snapshot.activeProgram.started_at, snapshot.activeProgram.duration_weeks)})\nTreinos:\n${snapshot.activeProgram.workouts.map(w => `  - ${w.name}: ${w.exercises.join(', ')}`).join('\n')}`
+            ? `Programa ativo: "${snapshot.activeProgram.name}" (${describeProgramWeek(snapshot.activeProgram.started_at, snapshot.activeProgram.duration_weeks, new Date(), tz)})\nTreinos:\n${snapshot.activeProgram.workouts.map(w => `  - ${w.name}: ${w.exercises.join(', ')}`).join('\n')}`
             : 'Sem programa ativo'
 
         const progressionStr = snapshot.enriched.load_progression.length > 0
@@ -303,7 +322,7 @@ export async function buildChatContext(
             : ''
 
         return `# Contexto
-${nowLine()}
+${nowLine(tz)}
 Treinador: ${trainerName}
 
 ═══ Aluno: ${snapshot.name} ═══
@@ -348,7 +367,7 @@ ${insightsStr}`.trim()
         : ''
 
     return `# Contexto
-${nowLine()}
+${nowLine(tz)}
 Treinador: ${trainerName} — ${snapshot.students.length} alunos ativos
 
 Alunos:
