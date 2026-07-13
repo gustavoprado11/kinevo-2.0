@@ -11,7 +11,8 @@ import {
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
 import { createClient } from '@/lib/supabase/client'
-import { fetchAiAccess, getCachedAiAllowed, getCachedHomeStyle, setCachedHomeStyle, type HomeStyle } from '@/components/assistant/command-bar/command-bar'
+import { setCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
+import { useAiAccessState } from '@/hooks/use-ai-access'
 import { setHomeStyle } from '@/actions/assistant/set-home-style'
 import { MAIN_NAV as navigation, BIBLIOTECA_NAV as bibliotecaItems, type NavItem } from '@/components/layout/nav-items'
 import { ModeToggle } from '@/components/layout/mode-toggle'
@@ -33,32 +34,15 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     const [feedbackOpen, setFeedbackOpen] = useState(false)
     const [bibliotecaOpen, setBibliotecaOpen] = useState(false)
     const [profileOpen, setProfileOpen] = useState(false)
-    // Lazy init do cache: em navegação client-side (ex.: voltar do Assistente)
-    // o toggle já aparece na 1ª pintura. No SSR retorna false (consistente com
-    // o HTML do servidor); o fetch abaixo confirma/atualiza.
-    const [aiAllowed, setAiAllowed] = useState(getCachedAiAllowed)
-    // Modo de Início (classic|assistant): dirige o pill e o destino do "Dashboard".
-    // Lê o cache (síncrono, sem flash) e confirma no fetch abaixo.
-    const [homeStyle, setHomeStyleState] = useState<HomeStyle>(getCachedHomeStyle)
+    // Gate de IA (mostra o item "Assistente IA" e o ModeToggle) + modo de Início
+    // (classic|assistant), que dirige o pill e o destino do "Dashboard". O cache é
+    // aplicado pós-hidratação e confirmado por fetch — ver useAiAccessState.
+    const { aiAllowed, homeStyle, setHomeStyle: setHomeStyleState } = useAiAccessState()
     const [switchingAssistant, startSwitch] = useTransition()
     const profileRef = useRef<HTMLDivElement>(null)
     const openChat = useCommunicationStore(s => s.openChat)
 
     const assistantMode = homeStyle === 'assistant'
-
-    // Item "Assistente" aparece quando o tier tem IA (hoje: todos) — via fetchAiAccess.
-    useEffect(() => {
-        let active = true
-        fetchAiAccess().then((a) => {
-            if (active && a) {
-                setAiAllowed(a.allowed)
-                if (a.homeStyle) setHomeStyleState(a.homeStyle)
-            }
-        })
-        return () => {
-            active = false
-        }
-    }, [])
 
     // Aquece a rota do Assistente p/ a troca de modo ser instantânea.
     useEffect(() => {

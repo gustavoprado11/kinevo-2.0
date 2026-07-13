@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from './sidebar'
 import { AssistantNavSidebar } from './assistant-nav-sidebar'
@@ -24,7 +23,7 @@ const AssistantLauncher = dynamic(
 )
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommunicationStore } from '@/stores/communication-store'
-import { fetchAiAccess, getCachedAiAllowed, getCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
+import { useAiAccessState } from '@/hooks/use-ai-access'
 import type {
     OnboardingState,
     TrainerModalityFocus,
@@ -70,16 +69,11 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
 
     const isAssistantHome = pathname?.startsWith(ASSISTANT_HOME_PREFIX) ?? false
 
-    // Modo de trabalho (classic|assistant). Lê o cache síncrono (sem flash) e
-    // confirma no fetch. Só o ModeToggle altera o homeStyle — aqui é leitura.
-    const [assistantMode, setAssistantMode] = useState(() => getCachedAiAllowed() && getCachedHomeStyle() === 'assistant')
-    useEffect(() => {
-        let active = true
-        fetchAiAccess().then((a) => {
-            if (active && a) setAssistantMode(a.allowed && a.homeStyle === 'assistant')
-        })
-        return () => { active = false }
-    }, [])
+    // Modo de trabalho (classic|assistant). Só o ModeToggle altera o homeStyle —
+    // aqui é leitura. O cache entra pós-hidratação (ver useAiAccessState): ler no
+    // lazy init trocava a sidebar INTEIRA na hidratação, contra o HTML do servidor.
+    const { aiAllowed, homeStyle } = useAiAccessState()
+    const assistantMode = aiAllowed && homeStyle === 'assistant'
 
     // Auto-abertura do dock desativada: no modo Assistente a AssistantNavSidebar
     // (rail persistente em todas as abas) já é a navegação para o chat. O dock
