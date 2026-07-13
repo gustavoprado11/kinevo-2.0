@@ -4,7 +4,7 @@ import { Dumbbell, Clock, ChevronDown, ChevronUp, ArrowRightLeft, PlayCircle, Ch
 import { useState } from 'react'
 import type { ExerciseData } from '@/stores/training-room-store'
 import { useTrainingRoomPreferencesStore } from '@/stores/training-room-preferences-store'
-import { displayRestSeconds } from '@/lib/training-room/rest-timer'
+import { effectiveRestSeconds } from '@kinevo/shared/lib/rest-timer'
 import { SetRow } from './set-row'
 import { TrainerNote } from './trainer-note'
 
@@ -42,9 +42,10 @@ export function ExerciseCard({
     const [isCollapsed, setIsCollapsed] = useState(false)
     const defaultRestSeconds = useTrainingRoomPreferencesStore((s) => s.defaultRestSeconds)
 
-    // Exercício sem descanso prescrito exibe a duração padrão do treinador — a
-    // mesma que o timer usaria.
-    const restSeconds = displayRestSeconds(exercise.rest_seconds, { defaultRestSeconds })
+    // Mostra o descanso que o timer usaria: sem prescrição (null) vira a duração
+    // padrão do treinador; 0 é escolha dele (emenda direto) e aparece como tal.
+    const restSeconds = effectiveRestSeconds(exercise.rest_seconds, { defaultRestSeconds })
+    const restLabel = restSeconds > 0 ? `${restSeconds}s` : 'sem descanso'
 
     const completedSets = exercise.setsData.filter((s) => s.completed).length
     const totalSets = exercise.setsData.length
@@ -93,7 +94,7 @@ export function ExerciseCard({
                         </div>
                         <div className="flex items-center gap-3 mt-0.5">
                             <span className="text-xs text-slate-500 dark:text-muted-foreground">
-                                {exercise.sets} séries • {exercise.reps} reps • {restSeconds}s
+                                {exercise.sets} séries • {exercise.reps} reps • {restLabel}
                             </span>
                             {/* Fallback: show aggregate previous load only when per-set data is unavailable */}
                             {!exercise.previousSets?.length && exercise.previousLoad && (

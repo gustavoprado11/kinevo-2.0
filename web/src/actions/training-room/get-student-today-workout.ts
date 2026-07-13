@@ -83,12 +83,12 @@ export async function getStudentTodayWorkout(
     if (!items?.length) return { data: null, error: 'Nenhum exercício encontrado neste treino' }
 
     // Build superset map and extract workout notes
-    const supersetMap = new Map<string, { rest_seconds: number; order_index: number }>()
+    const supersetMap = new Map<string, { rest_seconds: number | null; order_index: number }>()
     const workoutNotes: WorkoutNote[] = []
 
     for (const item of items) {
         if (item.item_type === 'superset') {
-            supersetMap.set(item.id, { rest_seconds: item.rest_seconds || 60, order_index: item.order_index })
+            supersetMap.set(item.id, { rest_seconds: item.rest_seconds, order_index: item.order_index })
         } else if (item.item_type === 'note' && item.notes?.trim()) {
             workoutNotes.push({ id: item.id, notes: item.notes, order_index: item.order_index })
         }
@@ -171,12 +171,13 @@ export async function getStudentTodayWorkout(
             name: exerciseRef?.name || item.exercise_name || 'Exercício',
             sets: setsCount,
             reps: item.reps || '12',
-            // 0 = descanso não prescrito. A Sala resolve o fallback com a duração
-            // padrão do treinador (Configurações da Sala) em vez de fixar 60s aqui.
-            // `aggregateRestSeconds` acima mantém o 60 legado de propósito: ele só
-            // alimenta o setScheme quando existem linhas per-set reais, e nesse caso
-            // o agregado nem é usado.
-            rest_seconds: item.rest_seconds ?? 0,
+            // Entrega o descanso CRU: null = não prescrito (a Sala usa a duração
+            // padrão do treinador), 0 = sem descanso por decisão dele (emenda do
+            // superset). O antigo `|| 60` colapsava os dois e ressuscitava como 60
+            // o 0 que o treinador tinha escolhido. `aggregateRestSeconds` acima
+            // mantém o 60 legado de propósito: ele só alimenta o setScheme quando
+            // existem linhas per-set reais, e nesse caso o agregado nem é usado.
+            rest_seconds: item.rest_seconds,
             video_url: trainerVideoMap.get(exerciseId) || exerciseRef?.video_url || undefined,
             substitute_exercise_ids: item.substitute_exercise_ids || [],
             swap_source: 'none' as const,

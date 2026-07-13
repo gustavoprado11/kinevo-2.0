@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Plus, ArrowLeft, Play, Square, Trash2, X, Settings2 } from 'lucide-react'
 import { useTrainingRoomStore } from '@/stores/training-room-store'
 import { useTrainingRoomPreferencesStore } from '@/stores/training-room-preferences-store'
-import { resolveRestSeconds } from '@/lib/training-room/rest-timer'
+import { resolveRestSeconds } from '@kinevo/shared/lib/rest-timer'
 import { StudentPickerModal } from '@/components/training-room/student-picker-modal'
 import { ExerciseCard } from '@/components/training-room/exercise-card'
 import { SupersetGroup } from '@/components/training-room/superset-group'
@@ -206,7 +206,9 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
         (exerciseIdx: number, setIdx: number) => {
             if (!activeStudentId || !activeSession) return
             // `activeSession` é o snapshot PRÉ-toggle — é o que resolveRestSeconds espera.
-            const rest = resolveRestSeconds(activeSession.exercises[exerciseIdx], setIdx, {
+            // A lista inteira vai junto porque o superset descansa por exercício e
+            // precisa enxergar os irmãos do grupo (ver shared/lib/rest-timer.ts).
+            const rest = resolveRestSeconds(activeSession.exercises, exerciseIdx, setIdx, {
                 restTimerAuto,
                 defaultRestSeconds,
             })
@@ -539,7 +541,6 @@ export function TrainingRoomClient({ trainerId }: TrainingRoomClientProps) {
                                                     <SupersetGroup
                                                         key={exercise.supersetId}
                                                         exercises={group}
-                                                        supersetRestSeconds={exercise.supersetRestSeconds || 60}
                                                         disabled={disabled}
                                                         onWeightChange={(gi, si, v) =>
                                                             updateSet(activeStudentId!, gi, si, 'weight', v)

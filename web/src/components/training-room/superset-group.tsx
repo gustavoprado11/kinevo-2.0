@@ -2,11 +2,12 @@
 
 import { Link2, Clock } from 'lucide-react'
 import type { ExerciseData } from '@/stores/training-room-store'
+import { useTrainingRoomPreferencesStore } from '@/stores/training-room-preferences-store'
+import { effectiveRestSeconds } from '@kinevo/shared/lib/rest-timer'
 import { ExerciseCard } from './exercise-card'
 
 interface SupersetGroupProps {
     exercises: ExerciseData[]
-    supersetRestSeconds: number
     disabled: boolean
     onWeightChange: (globalIdx: number, setIdx: number, value: string) => void
     onRepsChange: (globalIdx: number, setIdx: number, value: string) => void
@@ -33,7 +34,6 @@ function computeRoundInfo(exercises: ExerciseData[]) {
 
 export function SupersetGroup({
     exercises,
-    supersetRestSeconds,
     disabled,
     onWeightChange,
     onRepsChange,
@@ -42,8 +42,16 @@ export function SupersetGroup({
     onVideoPress,
     globalIndices,
 }: SupersetGroupProps) {
+    const defaultRestSeconds = useTrainingRoomPreferencesStore((s) => s.defaultRestSeconds)
     const { currentRound, totalRounds } = computeRoundInfo(exercises)
     const allDone = currentRound >= totalRounds
+
+    // Descanso por exercício: o do ÚLTIMO filho é o descanso APÓS a rodada (o
+    // descanso do superset-pai é derivado dele no builder — ler o filho direto
+    // evita depender de um pai dessincronizado em programas antigos).
+    const roundRest = effectiveRestSeconds(exercises[exercises.length - 1]?.rest_seconds, {
+        defaultRestSeconds,
+    })
 
     return (
         <div
@@ -87,11 +95,13 @@ export function SupersetGroup({
                 })}
             </div>
 
-            {/* Rest info */}
+            {/* Rest info — o descanso entre exercícios aparece no card de cada um */}
             <div className="flex items-center gap-1.5 mt-2 ml-1 mb-1">
                 <Clock size={12} className="text-violet-600 dark:text-violet-400" />
                 <span className="text-xs text-violet-500/80 dark:text-violet-400/80">
-                    Descanso entre rodadas: {supersetRestSeconds}s
+                    {roundRest > 0
+                        ? `Descanso entre rodadas: ${roundRest}s`
+                        : 'Sem descanso entre rodadas'}
                 </span>
             </div>
         </div>

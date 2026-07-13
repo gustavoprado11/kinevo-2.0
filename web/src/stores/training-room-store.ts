@@ -26,7 +26,10 @@ export interface ExerciseData {
     name: string
     sets: number
     reps: string                         // target reps as string
-    rest_seconds: number
+    /** Descanso prescrito. null = não prescrito (a Sala usa a duração padrão do
+     *  treinador); 0 = sem descanso por decisão dele (emenda do superset,
+     *  drop-set). Nunca colapsar os dois — ver shared/lib/rest-timer.ts. */
+    rest_seconds: number | null
     video_url?: string
     substitute_exercise_ids: string[]    // trainer-approved swaps
     swap_source: 'none' | 'manual' | 'auto'
@@ -35,7 +38,9 @@ export interface ExerciseData {
     previousSets?: PreviousSetData[]     // per-set previous data
     notes?: string | null                // trainer note on exercise
     supersetId?: string | null           // parent_item_id (groups into superset)
-    supersetRestSeconds?: number         // rest_seconds from superset parent
+    /** Descanso do superset-pai. Derivado do último filho no builder (= descanso
+     *  após a rodada); mantido por paridade de dados com o mobile. */
+    supersetRestSeconds?: number | null
     order_index: number                  // global position in workout
     exercise_function?: string | null    // warmup, activation, main, accessory, conditioning
     item_config?: Record<string, any>    // warmup/cardio specific configuration
