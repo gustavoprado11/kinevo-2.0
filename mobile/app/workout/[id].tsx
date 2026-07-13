@@ -17,6 +17,7 @@ import { WorkoutNoteCard } from '../../components/workout/WorkoutNoteCard';
 import { WarmupCard } from '../../components/workout/WarmupCard';
 import { CardioCard } from '../../components/workout/CardioCard';
 import { useWorkoutSession } from '../../hooks/useWorkoutSession';
+import { resolveRestSeconds } from '@kinevo/shared/lib/rest-timer';
 import { useLiveActivity } from '../../hooks/useLiveActivity';
 import { useStudentProfile } from '../../hooks/useStudentProfile';
 import { useWatchConnectivity } from '../../hooks/useWatchConnectivity';
@@ -50,6 +51,12 @@ import { useV2Colors } from '../../hooks/useV2Colors';
 import { usePreWorkoutDecision } from '../../hooks/usePreWorkoutDecision';
 import { useHealthDashboard } from '../../hooks/useHealthDashboard';
 import { PreWorkoutReadinessSheet } from '../../components/health/PreWorkoutReadinessSheet';
+
+/** Descanso do aluno quando o exercício não tem nenhum prescrito. Na prática o
+ *  useWorkoutSession já resolve o null (`?? 60`) antes de chegar na tela — este
+ *  valor só existe porque a regra compartilhada pede um fallback explícito
+ *  (na Sala de Treino ele é configurável pelo treinador). */
+const DEFAULT_STUDENT_REST_SECONDS = 60;
 
 // Unified render list item — built once per [exercises, workoutNotes] change.
 type RenderItem =
@@ -119,52 +126,24 @@ export default function WorkoutPlayerScreen() {
         const exercise = exercisesRef.current[exerciseIndex];
         if (!exercise) return;
 
-        // Superset: descanso POR EXERCÍCIO. Cada exercício usa o próprio
-        // rest_seconds (0 = sem descanso → vai direto pro próximo). No ÚLTIMO
-        // exercício do grupo o descanso é "após a rodada": só dispara se ainda
-        // houver rodada por fazer (evita timer sobrando no fim do superset).
-        if (exercise.supersetId) {
-            const restSeconds = exercise.rest_seconds;
-            if (restSeconds > 0) {
-                const supersetExercises = exercisesRef.current.filter(
-                    (e) => e.supersetId === exercise.supersetId
-                );
-                const isLastInGroup = supersetExercises[supersetExercises.length - 1]?.id === exercise.id;
-                const hasRemainingRounds = supersetExercises.some(
-                    (e) => e.setsData.some((s, i) => i > _setIndex && !s.completed)
-                );
-                // Entre exercícios há sempre um próximo na rodada; no último,
-                // só descansa se houver rodada seguinte.
-                if (!isLastInGroup || hasRemainingRounds) {
-                    liveActivityRef.current?.startRestTimer(exerciseIndex, restSeconds);
-                    setRestTimer({
-                        endTime: Date.now() + restSeconds * 1000,
-                        totalSeconds: restSeconds,
-                        exerciseName: exercise.name,
-                    });
-                }
-            }
-            return;
-        }
+        // Regra do descanso: fonte única, a mesma das Salas de Treino (superset
+        // descansa POR EXERCÍCIO, 0 = emenda direto, descanso por série vence o
+        // agregado). O aluno não tem as preferências do treinador: o timer é
+        // sempre automático e o fallback de exercício sem descanso prescrito
+        // segue os 60s de sempre (na prática o useWorkoutSession já resolve o
+        // null antes de chegar aqui).
+        const restSeconds = resolveRestSeconds(exercisesRef.current, exerciseIndex, _setIndex, {
+            restTimerAuto: true,
+            defaultRestSeconds: DEFAULT_STUDENT_REST_SECONDS,
+        });
 
-        // Normal exercise: usa rest_seconds per-set quando há setScheme
-        // (drop-set/cluster têm descansos diferentes por fase — usar o
-        // agregado dispara timer mesmo quando o trainer prescreveu 0s entre
-        // drops). Fallback pro agregado em programas legados sem scheme.
-        const perSetRest = exercise.setScheme?.[_setIndex]?.rest_seconds;
-        const restSeconds =
-            typeof perSetRest === 'number' ? perSetRest : exercise.rest_seconds;
-
-        if (restSeconds > 0) {
-            const hasRemainingSets = exercise.setsData.some((s, i) => i > _setIndex && !s.completed);
-            if (hasRemainingSets) {
-                liveActivityRef.current?.startRestTimer(exerciseIndex, restSeconds);
-                setRestTimer({
-                    endTime: Date.now() + restSeconds * 1000,
-                    totalSeconds: restSeconds,
-                    exerciseName: exercise.name,
-                });
-            }
+        if (restSeconds !== null) {
+            liveActivityRef.current?.startRestTimer(exerciseIndex, restSeconds);
+            setRestTimer({
+                endTime: Date.now() + restSeconds * 1000,
+                totalSeconds: restSeconds,
+                exerciseName: exercise.name,
+            });
         }
     }, []);
 

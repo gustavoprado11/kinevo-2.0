@@ -455,6 +455,40 @@ describe('handleToggleSetComplete', () => {
         expect(onEmptySetLogged).toHaveBeenCalledWith(0, 0);
     });
 
+    // Contrato do qual a tela de execução depende: ela resolve o descanso com
+    // `resolveRestSeconds` (shared/lib/rest-timer), que só dispara o timer se a
+    // série AINDA não estiver concluída no snapshot recebido. Se o onSetComplete
+    // passasse a ser chamado depois do commit do estado, o aluno perderia TODO
+    // timer de descanso — sem erro nenhum, silenciosamente.
+    it('onSetComplete roda com o snapshot PRÉ-toggle (série ainda não concluída)', async () => {
+        installScenario({ existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' } });
+        const completedAtCallback: (boolean | undefined)[] = [];
+        let snapshot: { setsData: { completed: boolean }[] }[] = [];
+        const onSetComplete = vi.fn((exerciseIndex: number, setIndex: number) => {
+            completedAtCallback.push(snapshot[exerciseIndex]?.setsData[setIndex]?.completed);
+        });
+        const { result } = await renderSession({ deferSessionCreation: true, onSetComplete });
+        snapshot = result.current.exercises; // o mesmo que a tela guarda no exercisesRef
+
+        act(() => result.current.handleToggleSetComplete(0, 0));
+
+        expect(onSetComplete).toHaveBeenCalledWith(0, 0);
+        expect(completedAtCallback).toEqual([false]);
+        expect(result.current.exercises[0].setsData[0].completed).toBe(true);
+    });
+
+    it('desmarcar NÃO chama onSetComplete (sem timer ao desfazer)', async () => {
+        installScenario({
+            existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' },
+            persistedLogs: [{ assigned_workout_item_id: 'item-1', set_number: 1, weight: 50, reps_completed: 8, notes: null }],
+        });
+        const onSetComplete = vi.fn();
+        const { result } = await renderSession({ deferSessionCreation: true, onSetComplete });
+        act(() => result.current.handleToggleSetComplete(0, 0)); // estava completed → desmarca
+        expect(result.current.exercises[0].setsData[0].completed).toBe(false);
+        expect(onSetComplete).not.toHaveBeenCalled();
+    });
+
     it('desmarcar deleta o log persistido (C2)', async () => {
         installScenario({
             existingSession: { id: 'sess-1', started_at: '2026-06-11T10:00:00Z' },
