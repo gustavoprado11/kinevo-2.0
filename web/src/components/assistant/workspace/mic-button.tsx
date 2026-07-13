@@ -28,6 +28,8 @@ interface MicButtonProps {
     onChange: (text: string) => void
     /** UUID do aluno em foco (opcional; passado ao fallback de transcrição). */
     studentId?: string
+    /** Botão redondo — combina com o composer em pílula do dock lateral. */
+    round?: boolean
 }
 
 // ── Web Speech API (não tipada na lib DOM padrão) ──
@@ -66,7 +68,7 @@ function joinBase(base: string, transcript: string): string {
     return [base.trim(), transcript.trim()].filter(Boolean).join(' ')
 }
 
-export function MicButton({ disabled, value, onChange, studentId }: MicButtonProps) {
+export function MicButton({ disabled, value, onChange, studentId, round = false }: MicButtonProps) {
     const [state, setState] = useState<MicState>('idle')
     const [errorTitle, setErrorTitle] = useState<string | null>(null)
 
@@ -241,7 +243,9 @@ export function MicButton({ disabled, value, onChange, studentId }: MicButtonPro
             aria-label={recording ? 'Parar ditado' : 'Ditar por voz'}
             aria-pressed={recording}
             title={errorTitle ?? (recording ? 'Parar ditado' : 'Ditar por voz')}
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] border transition disabled:opacity-50 ${
+            className={`flex h-9 w-9 shrink-0 items-center justify-center border transition disabled:opacity-50 ${
+                round ? 'rounded-full' : 'rounded-[11px]'
+            } ${
                 recording
                     ? 'border-[#7C3AED] bg-[#7C3AED] text-white'
                     : isError

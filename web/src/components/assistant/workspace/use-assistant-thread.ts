@@ -62,7 +62,10 @@ export function useAssistantThread({ initialSummary = null, initialConversations
         void loadMessages(id)
     }, [conversations, loadMessages])
 
-    const selectStudent = useCallback((id: string) => {
+    // Trocar o escopo (aluno ou Geral) abre uma conversa NOVA: o student_id é
+    // fixado na criação da thread no servidor, então mudar de aluno no meio de
+    // uma conversa existente não teria efeito no contexto do turno.
+    const selectStudent = useCallback((id: string | null) => {
         setFocusedStudentId(id)
         setActiveId(null)
         setMessages([])

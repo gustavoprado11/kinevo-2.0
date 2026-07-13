@@ -11,18 +11,24 @@
  *
  * Escopo: quem abre o dock a partir de um aluno/insight (communication-store)
  * já entra com a conversa escopada; o insight vira um cartão de contexto +
- * chips de ação rápida (paridade com o comportamento antigo).
+ * chips de ação rápida (paridade com o comportamento antigo). O treinador
+ * também troca o escopo à mão pelo seletor de aluno do header — mesma paridade
+ * com a home do modo assistente, assim como o ditado por voz no composer.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Send, ExternalLink, MessagesSquare, Loader2 } from 'lucide-react'
+import { Sparkles, Send, ExternalLink, MessagesSquare, Loader2, ChevronDown, Globe, Check } from 'lucide-react'
 import { useCommunicationStore } from '@/stores/communication-store'
 import { AssistantBanner } from '@/components/assistant/workspace/assistant-banner'
 import { ConversationView } from '@/components/assistant/workspace/conversation-view'
+import { MicButton } from '@/components/assistant/workspace/mic-button'
 import { useAssistantThread, type ThreadStudent } from '@/components/assistant/workspace/use-assistant-thread'
 import { fetchAiAccess } from '@/components/assistant/command-bar/command-bar'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
+
+const initialsOf = (name: string) =>
+    name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
 
 // ── Chips de ação rápida por categoria do insight (paridade com o dock antigo) ──
 
@@ -77,10 +83,43 @@ export function AssistantPanelContent() {
         messages, loadingMessages,
         input, setInput,
         sending, liveSteps, liveText, textResetCount,
+        focusedStudentId,
         banner, dismissBanner,
         selectConversation, selectStudent, goHome,
         renameActive, send, sendVoice, stop, starter, recordConfirmation,
     } = thread
+
+    // Seletor de escopo (Geral ⇄ aluno) — mesmo padrão da home do modo assistente.
+    const [scopeOpen, setScopeOpen] = useState(false)
+    const [scopeSearch, setScopeSearch] = useState('')
+    const scopeRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        if (!scopeOpen) return
+        const onClick = (e: MouseEvent) => {
+            if (scopeRef.current && !scopeRef.current.contains(e.target as Node)) setScopeOpen(false)
+        }
+        document.addEventListener('mousedown', onClick)
+        return () => document.removeEventListener('mousedown', onClick)
+    }, [scopeOpen])
+
+    // O aluno em foco é o do THREAD (o que de fato vai pro servidor na criação da
+    // conversa), não o do store — o treinador pode ter trocado no seletor.
+    const focusedStudent = focusedStudentId ? students.find((s) => s.id === focusedStudentId) ?? null : null
+    const scopeName = focusedStudent?.name ?? null
+    // O contexto trazido de fora (insight + cartão de abertura) só vale enquanto o
+    // escopo original estiver intacto; trocar de aluno o descarta.
+    const scopeIntact = focusedStudentId === studentId
+    const filteredStudents = students.filter((s) =>
+        s.name.toLowerCase().includes(scopeSearch.trim().toLowerCase()),
+    )
+
+    const pickStudent = (id: string | null) => {
+        setScopeOpen(false)
+        setScopeSearch('')
+        if (id === focusedStudentId) return // já é o escopo: não descarta a conversa aberta
+        selectStudent(id) // troca o foco e começa uma conversa nova (student_id é fixado na criação)
+        setTimeout(() => inputRef.current?.focus(), 0)
+    }
 
     // Hidratação ao abrir o painel: medidor de créditos + alunos/conversas.
     useEffect(() => {
@@ -115,7 +154,7 @@ export function AssistantPanelContent() {
         router.push(activeId ? `/assistente?c=${activeId}` : '/assistente')
     }
 
-    const chips = chipsForScope(insightId, studentName)
+    const chips = chipsForScope(scopeIntact ? insightId : null, scopeName)
     const recents = conversations.slice(0, 4)
 
     const submit = (e: React.FormEvent) => {
@@ -125,14 +164,75 @@ export function AssistantPanelContent() {
 
     return (
         <div className="flex h-full flex-col">
-            {/* Contexto + continuidade full-screen */}
-            <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-500/10">
-                    <Sparkles className="h-3 w-3 text-violet-500" />
+            {/* Escopo (seletor de aluno) + continuidade full-screen */}
+            <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+                <div className="relative min-w-0 flex-1" ref={scopeRef}>
+                    <button
+                        onClick={() => setScopeOpen((o) => !o)}
+                        aria-expanded={scopeOpen}
+                        aria-haspopup="listbox"
+                        title="Escolher o aluno em contexto"
+                        className="flex max-w-full items-center gap-1.5 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-muted"
+                    >
+                        {focusedStudent ? (
+                            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-blue-500 text-[9px] font-bold text-white">
+                                {initialsOf(focusedStudent.name)}
+                            </span>
+                        ) : (
+                            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-500/10">
+                                <Sparkles className="h-3 w-3 text-violet-500" />
+                            </span>
+                        )}
+                        <span className="min-w-0 truncate text-[11px] font-medium leading-tight text-muted-foreground">
+                            {scopeName ? `Sobre: ${scopeName}` : 'Todos os alunos'}
+                        </span>
+                        <ChevronDown className="h-3 w-3 flex-shrink-0 text-muted-foreground/60" />
+                    </button>
+
+                    {scopeOpen && (
+                        <div className="absolute left-0 top-full z-modal mt-1.5 w-[260px] overflow-hidden rounded-xl border border-border bg-background shadow-xl">
+                            <button
+                                onClick={() => pickStudent(null)}
+                                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+                            >
+                                <Globe className="h-4 w-4 flex-shrink-0 text-violet-500" />
+                                <span className="flex-1 text-left">Geral · todos os alunos</span>
+                                {!focusedStudent && <Check className="h-4 w-4 flex-shrink-0 text-violet-600 dark:text-violet-400" />}
+                            </button>
+                            <div className="border-t border-border" />
+                            <div className="p-2">
+                                <input
+                                    value={scopeSearch}
+                                    onChange={(e) => setScopeSearch(e.target.value)}
+                                    placeholder="Buscar aluno…"
+                                    className="w-full rounded-lg border border-border bg-muted px-3 py-1.5 text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+                                />
+                            </div>
+                            <div className="max-h-[220px] overflow-y-auto pb-1">
+                                {filteredStudents.length === 0 ? (
+                                    <p className="px-3 py-3 text-[12.5px] text-muted-foreground">Nenhum aluno encontrado.</p>
+                                ) : (
+                                    filteredStudents.map((s) => (
+                                        <button
+                                            key={s.id}
+                                            onClick={() => pickStudent(s.id)}
+                                            className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:bg-muted"
+                                        >
+                                            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-blue-500 text-[10px] font-bold text-white">
+                                                {initialsOf(s.name)}
+                                            </span>
+                                            <span className="min-w-0 flex-1 truncate text-left text-foreground">{s.name}</span>
+                                            {focusedStudentId === s.id && (
+                                                <Check className="h-4 w-4 flex-shrink-0 text-violet-600 dark:text-violet-400" />
+                                            )}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
-                <p className="min-w-0 flex-1 truncate text-[11px] leading-tight text-muted-foreground">
-                    {studentName ? `Sobre: ${studentName}` : 'Todos os alunos'}
-                </p>
+
                 <button
                     onClick={openFull}
                     className="flex flex-shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400"
@@ -177,7 +277,7 @@ export function AssistantPanelContent() {
                 <>
                     {/* Home compacta do dock */}
                     <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-                        {initialMessage ? (
+                        {scopeIntact && initialMessage ? (
                             // Contexto do insight que abriu o dock (voz do assistente) —
                             // cartão visual, não mensagem persistida.
                             <div className="flex gap-2">
@@ -194,8 +294,8 @@ export function AssistantPanelContent() {
                                     <Sparkles className="h-6 w-6 text-violet-500" />
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    {studentName
-                                        ? `Pergunte ou peça algo sobre ${studentName}`
+                                    {scopeName
+                                        ? `Pergunte ou peça algo sobre ${scopeName}`
                                         : 'Peça qualquer coisa: analisar alunos, gerar treinos, enviar mensagens…'}
                                 </p>
                                 {recents.length > 0 && (
@@ -254,9 +354,17 @@ export function AssistantPanelContent() {
                                 ref={inputRef}
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                placeholder={studentName ? `O que fazer com ${studentName.split(' ')[0]}?` : 'Pergunte ou peça algo…'}
+                                placeholder={scopeName ? `O que fazer com ${scopeName.split(' ')[0]}?` : 'Pergunte ou peça algo…'}
                                 disabled={sending}
-                                className="flex-1 rounded-full border border-border bg-muted px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 disabled:opacity-50"
+                                className="min-w-0 flex-1 rounded-full border border-border bg-muted px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 disabled:opacity-50"
+                            />
+                            {/* Ditado por voz — o texto entra no campo e o treinador revisa antes de enviar. */}
+                            <MicButton
+                                round
+                                disabled={sending}
+                                value={input}
+                                onChange={setInput}
+                                studentId={focusedStudentId ?? undefined}
                             />
                             <button
                                 type="submit"
