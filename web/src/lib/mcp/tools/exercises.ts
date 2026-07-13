@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mcpSuccess, mcpError } from '../types'
 import { SYSTEM_PRESETS, COMPOUND_METHOD_KEYS } from '@kinevo/shared/lib/prescription/set-scheme-presets'
+import { resolveGroupNames, balanceAcrossGroups } from './exercise-selection'
 
 export function registerExerciseReadTools(server: McpServer, trainerId: string) {
   server.tool(
@@ -58,46 +59,87 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
 
   server.tool(
     'kinevo_list_exercises',
-    "Search the exercise catalog. Returns exercises available to this trainer (system exercises + trainer's custom exercises). Filter by muscle group, equipment, or name. Results are ordered with PRIMARY/COMPOUND movements FIRST (is_primary_movement=true, session_position='first' — e.g. squat, deadlift, row, pulldown, bench, press): use those as the MAIN lift at the start of each session, and the accessories/isolation that follow to add volume. Prefer compound staples over obscure isolation/mobility variants.",
+    "Search the exercise catalog. Returns exercises available to this trainer (system exercises + trainer's custom exercises). Filter by muscle group, equipment, or name. When PLANNING A PROGRAM, fetch ALL the muscle groups you need in ONE call via muscle_groups (e.g. muscle_groups: ['Peito','Costas','Ombros','Quadríceps','Posterior de Coxa','Glúteo'], limit: 100) — the result comes BALANCED per group; NEVER call this tool once per group. Results are ordered with PRIMARY/COMPOUND movements FIRST (is_primary_movement=true, session_position='first' — e.g. squat, deadlift, row, pulldown, bench, press): use those as the MAIN lift at the start of each session, and the accessories/isolation that follow to add volume. Prefer compound staples over obscure isolation/mobility variants.",
     {
       search: z.string().optional().describe('Search by exercise name (partial match)'),
-      muscle_group: z.string().optional().describe("Filter by muscle group name (e.g., 'Peitoral', 'Quadriceps', 'Biceps')"),
+      muscle_group: z.string().optional().describe("Filter by ONE muscle group name (e.g., 'Peito', 'Quadríceps', 'Bíceps'). For several groups, use muscle_groups instead."),
+      muscle_groups: z.array(z.string()).min(1).max(12).optional().describe("BATCH filter: ALL the muscle groups you need, in ONE call (e.g. every group of the split you are planning). The result is balanced per group, compounds first. ALWAYS prefer this over calling once per group."),
       equipment: z.string().optional().describe("Filter by equipment (e.g., 'Barra', 'Halter', 'Maquina', 'Cabo')"),
       limit: z.number().min(1).max(100).default(30),
       offset: z.number().min(0).default(0),
     },
     { title: 'Listar exercícios', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    async ({ search, muscle_group, equipment, limit, offset }) => {
+    async ({ search, muscle_group, muscle_groups, equipment, limit, offset }) => {
       const supabaseAdmin = createAdminClient()
 
-      // If filtering by muscle group, first get matching exercise IDs
-      let muscleFilterIds: string[] | null = null
-      if (muscle_group) {
-        const { data: mgData } = await supabaseAdmin
-          .from('muscle_groups')
-          .select('id')
-          .ilike('name', `%${muscle_group}%`)
+      // Filtro por grupo(s): nomes pedidos → grupos reais via resolveGroupNames
+      // (insensível a acento/caixa, substring bidirecional — o ilike antigo era
+      // sensível a acento e unidirecional: 'Peitoral' devolvia VAZIO contra o
+      // grupo real "Peito", e o modelo re-tentava às cegas queimando passos).
+      const requested = muscle_groups?.length ? muscle_groups : muscle_group ? [muscle_group] : []
+      const batchMode = requested.length > 1
 
-        if (mgData && mgData.length > 0) {
-          const mgIds = mgData.map(mg => mg.id)
-          const { data: emgData } = await supabaseAdmin
-            .from('exercise_muscle_groups')
-            .select('exercise_id')
-            .in('muscle_group_id', mgIds)
+      // Ids dos muscle_groups casados — o filtro da query principal usa ESTES ids
+      // (via !inner join), nunca a lista de exercise_ids: 8 grupos ≈ 455 exercícios,
+      // e 455 UUIDs num .in() estouram o limite de headers do fetch
+      // (UND_ERR_HEADERS_OVERFLOW) — a query falhava e o modelo degradava pro
+      // padrão antigo de uma chamada por grupo.
+      let mgIdList: string[] | null = null
+      // exercise_id → grupos pedidos a que pertence (para o balanceamento do lote).
+      let membership: Map<string, string[]> | null = null
+      let groupOrder: string[] = []
 
-          muscleFilterIds = emgData?.map(e => e.exercise_id) ?? []
-          if (muscleFilterIds.length === 0) {
-            return mcpSuccess({ exercises: [], total: 0 })
+      if (requested.length > 0) {
+        const { data: allGroups } = await supabaseAdmin.from('muscle_groups').select('id, name')
+        const resolved = resolveGroupNames(requested, allGroups ?? [])
+        groupOrder = [...resolved.matches.keys()]
+
+        if (groupOrder.length === 0) {
+          // Feedback acionável em vez de lista vazia muda: o modelo corrige o nome
+          // na PRÓXIMA chamada em vez de re-tentar variações às cegas.
+          const known = (allGroups ?? []).map(g => g.name).join(', ')
+          return mcpSuccess({
+            exercises: [],
+            total: 0,
+            message: `Nenhum grupo muscular corresponde a: ${requested.join(', ')}. Grupos existentes: ${known}.`,
+          })
+        }
+
+        const mgIdToGroup = new Map<string, string>()
+        for (const [group, ids] of resolved.matches) {
+          for (const id of ids) mgIdToGroup.set(id, group)
+        }
+        const { data: emgData } = await supabaseAdmin
+          .from('exercise_muscle_groups')
+          .select('exercise_id, muscle_group_id')
+          .in('muscle_group_id', [...mgIdToGroup.keys()])
+
+        membership = new Map()
+        for (const row of emgData ?? []) {
+          const group = mgIdToGroup.get(row.muscle_group_id)
+          if (!group) continue
+          const groups = membership.get(row.exercise_id)
+          if (groups) {
+            if (!groups.includes(group)) groups.push(group)
+          } else {
+            membership.set(row.exercise_id, [group])
           }
-        } else {
+        }
+        if (membership.size === 0) {
           return mcpSuccess({ exercises: [], total: 0 })
         }
+        mgIdList = [...mgIdToGroup.keys()]
       }
 
+      // Com filtro de grupo, o embed vira !inner e o .in() roda sobre os ids de
+      // MUSCLE_GROUPS (poucos) na tabela embutida — o PostgREST filtra os pais
+      // pelo join. Nunca filtrar por lista de exercise_ids (ver mgIdList acima).
       let query = supabaseAdmin
         .from('exercises')
         .select(
-          'id, name, equipment, difficulty_level, movement_pattern, is_primary_movement, session_position, owner_id, exercise_muscle_groups(muscle_groups(name))',
+          mgIdList
+            ? 'id, name, equipment, difficulty_level, movement_pattern, is_primary_movement, session_position, owner_id, exercise_muscle_groups!inner(muscle_group_id, muscle_groups(name))'
+            : 'id, name, equipment, difficulty_level, movement_pattern, is_primary_movement, session_position, owner_id, exercise_muscle_groups(muscle_groups(name))',
           { count: 'exact' }
         )
         .eq('is_archived', false)
@@ -109,17 +151,20 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
       if (equipment) {
         query = query.ilike('equipment', `%${equipment}%`)
       }
-      if (muscleFilterIds) {
-        query = query.in('id', muscleFilterIds)
+      if (mgIdList) {
+        query = query.in('exercise_muscle_groups.muscle_group_id', mgIdList)
       }
 
       // Ordena COMPOSTOS/PRIMÁRIOS primeiro (is_primary_movement). Antes era
       // alfabético, o que jogava acessórios/mobilidade (Abdução, Avião, Andar
       // Calcanhar…) pro topo e o LLM os escolhia como principais — prescrição ruim.
+      // Lote (2+ grupos): busca AMPLA (o balanceamento por grupo acontece em JS,
+      // sobre o conjunto inteiro — um range estreito deixaria grupos de fora);
+      // offset não se aplica (a resposta balanceada não é paginável).
       query = query
         .order('is_primary_movement', { ascending: false })
         .order('name')
-        .range(offset, offset + limit - 1)
+        .range(batchMode ? 0 : offset, batchMode ? 499 : offset + limit - 1)
 
       const { data, count, error } = await query
 
@@ -145,6 +190,17 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
           is_custom: e.owner_id === trainerId,
         }
       })
+
+      if (batchMode && membership) {
+        const { selected, perGroup } = balanceAcrossGroups(exercises, groupOrder, membership, limit)
+        return mcpSuccess({
+          exercises: selected,
+          total: count ?? 0,
+          balanced_by_group: perGroup,
+          message:
+            'Catálogo balanceado por grupo (compostos primeiro, agrupados na ordem pedida). Você já tem exercícios de TODOS os grupos — monte o programa agora, sem novas buscas.',
+        })
+      }
 
       return mcpSuccess({ exercises, total: count ?? 0 })
     }

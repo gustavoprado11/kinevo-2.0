@@ -48,6 +48,10 @@ import { ambiguousStudentTarget, withAmbiguityGuard, type StudentRef } from '@/l
 import { digestToolResult, MEMORY_READ_TOOLS, type ProgramFocus } from '@/lib/assistant/tool-memory'
 import { redactSensitive } from '@/lib/assistant/redact'
 import { isAssistantDisabled, ASSISTANT_MAINTENANCE_MESSAGE } from '@/lib/assistant/kill-switch'
+import { loadStyleBlock } from '@/lib/assistant/style-block'
+import { runStyleInterviewTurn } from '@/lib/assistant/style-interview'
+import type { StyleSlotId } from '@/lib/assistant/style-slots'
+import type { StyleState } from '@/lib/assistant/style-state'
 import type { LLMModel } from '@/lib/prescription/llm-client'
 
 export const ASSISTANT_MODEL: LLMModel = 'gpt-4.1-mini'
@@ -424,6 +428,9 @@ export interface AssistantTurnInput {
     /** Stop real (U-STOP): abortar aqui cancela o LLM no SERVIDOR (não só o fetch).
      *  As rotas passam request.signal — desconexão/Parar do cliente interrompe o turno. */
     abortSignal?: AbortSignal
+    /** Conversa de ENTREVISTA DE ESTILO (ai_conversations.kind='style_interview').
+     *  Liga um turno roteirizado: sem tools do Kinevo, sem contexto, sem créditos. */
+    styleInterview?: { conversationId: string; state: StyleState }
 }
 
 // Rótulo presente-contínuo p/ o progresso ao vivo (streaming). Fallback genérico.
@@ -469,6 +476,11 @@ export interface AssistantTurnResult {
     /** Medidor atualizado. `null` se o metering/resumo (best-effort) falhou — o
      *  texto do turno já foi gerado e NÃO deve ser derrubado por erro de DB. */
     summary: AiUsageSummary | null
+    /** Entrevista de estilo: slot que a pergunta deste turno cobre (a rota grava a
+     *  resposta seguinte nele). Ausente fora do modo entrevista. */
+    styleSlot?: StyleSlotId | null
+    /** Entrevista de estilo: o estilo foi aprovado e salvo neste turno. */
+    styleSaved?: boolean
 }
 
 const MAX_HISTORY = 20
@@ -481,6 +493,40 @@ const MAX_HISTORY = 20
 export async function runAssistantTurn(opts: AssistantTurnInput): Promise<AssistantTurnResult> {
     const { admin, trainerId, trainerName, input, surface, periodType } = opts
     let bridgeClose: (() => Promise<void>) | null = null
+
+    // MODO ENTREVISTA DE ESTILO: um turno inteiramente diferente — sem ponte MCP,
+    // sem contexto do treinador, sem metering (D5). Sai antes de tudo isso em vez
+    // de desviar de cada peça no caminho. Ver style-interview.ts.
+    if (opts.styleInterview) {
+        const interview = await runStyleInterviewTurn({
+            admin,
+            trainerId,
+            trainerName: trainerName ?? null,
+            conversationId: opts.styleInterview.conversationId,
+            input,
+            state: opts.styleInterview.state,
+            history: opts.history,
+            model: ASSISTANT_MODEL,
+            provider: providerFor,
+            onProgress: opts.onProgress,
+            onTextDelta: opts.onTextDelta,
+            onTextReset: opts.onTextReset,
+            abortSignal: opts.abortSignal,
+        })
+        return {
+            text: interview.text,
+            confirmation: null,
+            question: interview.question,
+            proposal: interview.proposal,
+            executed: [],
+            memory: [],
+            credits: 0,
+            summary: null,
+            styleSlot: interview.slot,
+            styleSaved: interview.saved,
+        }
+    }
+
     try {
         // 1. Subsetting por intenção (corta o input). Num turno de CONSTRUÇÃO de
         //    programa (detectado pelo input OU pelo histórico), garantimos as
@@ -577,6 +623,14 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         const programHint = opts.programFocus
             ? `\nPrograma em foco (o mais recente desta conversa): ${opts.programFocus.name ? `"${opts.programFocus.name}" ` : ''}(program_id: ${opts.programFocus.id}). Para EDITAR esse programa ("troca X por Y", "muda os dias", "ajusta séries/carga"), use DIRETO os workout_id/item_id do bloco <<DADOS_DE_TOOLS>> do histórico nas tools de edição (kinevo_update_workout_item, kinevo_update_workout_session, kinevo_delete_workout_item…). Só chame kinevo_get_program de novo se um ID/dado necessário NÃO estiver no histórico.`
             : ''
+        // Estilo de prescrição do treinador: só carregado quando o turno vai
+        // MONTAR treino (mesma minimização de payload do bloco clínico acima —
+        // num turno de financeiro o estilo é peso morto no prompt).
+        const styleBlock =
+            buildTurn || intents.includes('prescricao')
+                ? await loadStyleBlock(admin, trainerId)
+                : ''
+
         const system =
             buildInstructions(surface) +
             MCP_HITL_INSTRUCTIONS +
@@ -584,7 +638,8 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             dynamicContext +
             routeHint +
             studentHint +
-            programHint
+            programHint +
+            styleBlock
 
         const history = (opts.history ?? []).slice(-MAX_HISTORY)
         const messages = [...history, { role: 'user' as const, content: input }]
@@ -607,17 +662,32 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 model: providerFor(model),
                 system,
                 messages,
-                maxOutputTokens: buildTurn ? 8000 : 1500,
+                // Build: 12000 (era 8000) — no Gemini o thinking consome do orçamento
+                // de saída; a chamada create_*_program sozinha já é grande, e truncar
+                // no meio do JSON perde o turno inteiro.
+                maxOutputTokens: buildTurn ? 12000 : 1500,
                 temperature: 0.3,
-                // stopWhen é o TETO de passos. O build é UMA chamada grande precedida de
-                // leituras (get_student, list_exercises): ~12 passos cobrem e barram loop.
-                // Fora do build, 8 (era 5): pedidos COMPOSTOS legítimos ("cria o aluno,
-                // registra a avaliação e agenda a sessão") não cabiam em 5 — o turno
-                // morria no meio. O anti-loop (read-guard) e o teto de créditos
-                // (MAX_TURN_CREDITS) seguram o caso patológico.
-                stopWhen: stepCountIs(buildTurn ? 12 : 8),
+                // stopWhen é o TETO de passos. O build agora é: contexto (já injetado)
+                // → perguntar/propor → 1 list_exercises em LOTE (muscle_groups[]) →
+                // 1 create transacional (~4–6 passos); 16 dá folga p/ correções sem
+                // abrir loop (visto em prod: 10–11 list_exercises seriais estouravam
+                // os 12 e o programa nunca era criado). Fora do build, 8 (era 5):
+                // pedidos COMPOSTOS legítimos ("cria o aluno, registra a avaliação e
+                // agenda a sessão") não cabiam em 5 — o turno morria no meio. O
+                // anti-loop (read-guard) e o teto de créditos (MAX_TURN_CREDITS)
+                // seguram o caso patológico.
+                stopWhen: stepCountIs(buildTurn ? 16 : 8),
                 tools,
                 abortSignal: opts.abortSignal,
+                // P1 do plano do harness (13/jul): thinking do Gemini nos turnos de
+                // BUILD — o modelo planeja split/volume/restrições ANTES de emitir a
+                // chamada transacional gigante (a classe de erro que motivou o upgrade
+                // de modelo). Budget explícito p/ custo/latência previsíveis; só é
+                // enviado quando o modelo do turno é Gemini (outros providers ignoram
+                // a chave `google`, mas nem a recebem).
+                ...(model.startsWith('gemini') && buildTurn
+                    ? { providerOptions: { google: { thinkingConfig: { thinkingBudget: 4096 } } } }
+                    : {}),
             })
             let streamError: unknown = null
             let aborted = false
@@ -1013,9 +1083,12 @@ const MCP_HITL_INSTRUCTIONS = `
      e RESPEITE as RESTRIÇÕES MÉDICAS (nunca prescreva exercício contraindicado por lesão/restrição).
   2) Se faltar informação essencial (frequência semanal, objetivo, ênfase em grupos, equipamento), use
      perguntar_treinador. UMA pergunta por vez e só o necessário para prosseguir.
-  3) Busque exercícios REAIS com kinevo_list_exercises (priorize os grupos que vai usar). Use SOMENTE
-     exercise_id vindos do catálogo — nunca invente IDs. Veja kinevo_list_training_methods se for usar
-     métodos avançados (drop-set, cluster, pirâmide…).
+  3) Busque exercícios REAIS com kinevo_list_exercises em UMA ÚNICA chamada: passe TODOS os grupos do
+     split de uma vez em muscle_groups (ex.: muscle_groups=["Peito","Costas","Ombros","Quadríceps",
+     "Posterior de Coxa","Glúteo","Bíceps","Tríceps"], limit=100) — o resultado volta balanceado por
+     grupo, compostos primeiro. NUNCA chame a tool uma vez por grupo: isso queima os passos do turno e
+     ele morre antes de criar o programa. Use SOMENTE exercise_id vindos do catálogo — nunca invente
+     IDs. Veja kinevo_list_training_methods se for usar métodos avançados (drop-set, cluster, pirâmide…).
   4) PROJETE COMO UM PROFISSIONAL — o programa precisa parecer feito por um treinador experiente, NÃO
      "N dias do grupo enfatizado". As regras abaixo são RESTRIÇÕES, não sugestões:
      a) SPLIT DE VERDADE pela frequência. A frequência define um split que treina o CORPO TODO ao longo da
