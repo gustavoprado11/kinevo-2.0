@@ -46,7 +46,12 @@ export function timeShort(iso: string): string {
 }
 
 export function greeting(): string {
-    const h = new Date().getHours()
+    // Fuso fixo: no SSR getHours() é UTC e a saudação sai errada no primeiro paint
+    // (mesmo bug do dashboard-header). Espelha o fuso do restante da UI.
+    const h = Number(
+        new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' })
+            .format(new Date())
+    )
     if (h < 12) return 'Bom dia'
     if (h < 18) return 'Boa tarde'
     return 'Boa noite'

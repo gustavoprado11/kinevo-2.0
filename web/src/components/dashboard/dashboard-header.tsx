@@ -14,7 +14,13 @@ interface DashboardHeaderProps {
 }
 
 function getGreeting(): string {
-    const hour = new Date().getHours()
+    // No SSR este componente renderiza no servidor (UTC) e o suppressHydrationWarning
+    // congela o texto — às 21h35 BRT o primeiro paint dizia "Bom dia". Fixar o fuso
+    // resolve, e mantém coerência com o formatDate logo abaixo.
+    const hour = Number(
+        new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' })
+            .format(new Date())
+    )
     if (hour < 12) return 'Bom dia'
     if (hour < 18) return 'Boa tarde'
     return 'Boa noite'
