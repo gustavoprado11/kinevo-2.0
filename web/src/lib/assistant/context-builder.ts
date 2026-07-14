@@ -46,6 +46,13 @@ export function describeProgramWeek(
     return `semana ${week} de ${durationWeeks ?? '?'}; iniciado em ${startStr}`
 }
 
+/** Dia civil no fuso dado (nº de dias desde a época) — o server roda em UTC. */
+function civilDay(d: Date, timeZone: string): number {
+    // en-CA formata YYYY-MM-DD, parseável direto como UTC-midnight.
+    const ymd = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+    return Date.parse(`${ymd}T00:00:00Z`) / 86_400_000
+}
+
 /** Linha "Data e hora atuais" — o agente precisa disso para resolver "hoje/amanhã/quinta". */
 function nowLine(tz: string = DEFAULT_TZ): string {
     const formatted = new Date().toLocaleString('pt-BR', {
@@ -181,7 +188,7 @@ async function buildStudentSnapshot(trainerId: string, studentId: string): Promi
 
 // ── General context ──
 
-async function buildGeneralSnapshot(trainerId: string): Promise<GeneralSnapshot> {
+async function buildGeneralSnapshot(trainerId: string, tz: string = DEFAULT_TZ): Promise<GeneralSnapshot> {
     const [studentsResult, sessionsResult, insightsResult] = await Promise.all([
         supabaseAdmin
             .from('students')
@@ -234,7 +241,7 @@ async function buildGeneralSnapshot(trainerId: string): Promise<GeneralSnapshot>
     // Student name map for insights
     const studentNameMap = new Map(students.map(s => [s.id, s.name]))
 
-    const now = Date.now()
+    const today = civilDay(new Date(), tz)
 
     return {
         students: students.map(s => {
@@ -242,7 +249,9 @@ async function buildGeneralSnapshot(trainerId: string): Promise<GeneralSnapshot>
             return {
                 id: s.id,
                 name: s.name,
-                days_since_last_session: last ? Math.floor((now - new Date(last).getTime()) / (1000 * 60 * 60 * 24)) : null,
+                // Dias CIVIS no fuso do treinador — o floor de horas corridas dizia
+                // "há 2 dias" para um treino de 3 dias atrás e divergia do perfil.
+                days_since_last_session: last ? Math.max(0, today - civilDay(new Date(last), tz)) : null,
                 active_program: programMap.get(s.id) || null,
             }
         }),
@@ -341,7 +350,7 @@ ${insightsStr}`.trim()
     }
 
     // General mode
-    const snapshot = await buildGeneralSnapshot(trainerId)
+    const snapshot = await buildGeneralSnapshot(trainerId, tz)
 
     const studentsStr = snapshot.students.map(s => {
         const lastStr = s.days_since_last_session !== null ? `último treino há ${s.days_since_last_session}d` : 'nunca treinou'
