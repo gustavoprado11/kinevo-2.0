@@ -5,6 +5,8 @@ import { stripe } from '@/lib/stripe'
 import { AppLayout } from '@/components/layout'
 import { BillingSection } from '@/components/settings/billing-section'
 import { AiPlanSection } from '@/components/settings/ai-plan-section'
+import { priceToTier } from '@/lib/auth/get-ai-tier'
+import { TIER_DISPLAY } from '@/lib/billing/tiers'
 import { getAiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import { ProfileForm } from '@/components/settings/profile-form'
 import { ThemeSelector } from '@/components/settings/theme-selector'
@@ -77,14 +79,23 @@ export default async function SettingsPage() {
                 planAmount = item.price.unit_amount
                 planCurrency = item.price.currency || 'brl'
                 planInterval = item.price.recurring?.interval || 'month'
-                // Try to get product name
-                const productId = typeof item.price.product === 'string' ? item.price.product : (item.price.product as any)?.id
-                if (productId) {
-                    try {
-                        const product = await stripe.products.retrieve(productId)
-                        if (product.name) planName = product.name
-                    } catch {
-                        // keep default name
+                // Nome do plano: o naming novo (tiers) tem precedência sobre o nome
+                // do produto no Stripe — o produto legado ainda se chama "Kinevo PRO"
+                // (R$39,90), que hoje é o tier Essencial, e contradizia a seção Plano e IA.
+                const tierFromPrice = priceToTier(item.price.id)
+                const tierName = tierFromPrice ? TIER_DISPLAY.find(t => t.tier === tierFromPrice)?.name : undefined
+                if (tierName) {
+                    planName = `Kinevo ${tierName}`
+                } else {
+                    // Price fora do mapa de tiers: cai no nome do produto Stripe.
+                    const productId = typeof item.price.product === 'string' ? item.price.product : (item.price.product as any)?.id
+                    if (productId) {
+                        try {
+                            const product = await stripe.products.retrieve(productId)
+                            if (product.name) planName = product.name
+                        } catch {
+                            // keep default name
+                        }
                     }
                 }
             }
