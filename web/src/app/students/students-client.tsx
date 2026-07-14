@@ -292,7 +292,11 @@ export function StudentsClient({
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-white">
-                        Alunos <span className="font-normal text-[#86868B] dark:text-[#8E8E93]">{realStudents.length}</span>
+                        Alunos <span className="font-normal text-[#86868B] dark:text-[#8E8E93]">
+                            {realStudents.length}
+                            {/* A linha "Eu" aparece na tabela mas não conta como aluno — sem o sufixo, o contador parecia errado. */}
+                            {studentsWithAttention.some(s => s.is_trainer_profile) && <span className="text-sm"> + você</span>}
+                        </span>
                     </h1>
                 </div>
                 <Button

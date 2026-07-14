@@ -32,7 +32,11 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     const router = useRouter()
     const { isCollapsed, isAutoCollapsed, toggle, setAutoCollapse, expand } = useSidebarStore()
     const [feedbackOpen, setFeedbackOpen] = useState(false)
-    const [bibliotecaOpen, setBibliotecaOpen] = useState(false)
+    // Aberto quando a rota atual é uma das bibliotecas: a sidebar remonta a cada
+    // navegação, e sem isso o accordion recolhia e escondia o item ativo.
+    const [bibliotecaOpen, setBibliotecaOpen] = useState(
+        () => pathname.startsWith('/programs') || pathname.startsWith('/exercises')
+    )
     const [profileOpen, setProfileOpen] = useState(false)
     // Gate de IA (mostra o item "Assistente IA" e o ModeToggle) + modo de Início
     // (classic|assistant), que dirige o pill e o destino do "Dashboard". O cache é

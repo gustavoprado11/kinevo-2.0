@@ -861,7 +861,7 @@ export function StudentDetailClient({
                                                 <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-4 mb-3">
                                                     <div className="flex items-center gap-2 justify-center mb-1">
                                                         <Clock className="w-4 h-4 text-amber-500" />
-                                                        <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">Faltam {remainingWeeks} semana{remainingWeeks !== 1 ? 's' : ''}!</span>
+                                                        <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{remainingWeeks === 0 ? 'Última semana!' : `Faltam ${remainingWeeks} semana${remainingWeeks !== 1 ? 's' : ''}!`}</span>
                                                     </div>
                                                     <p className="text-xs text-amber-600/70 dark:text-amber-400/60">Prepare o próximo ciclo de treinamento.</p>
                                                 </div>

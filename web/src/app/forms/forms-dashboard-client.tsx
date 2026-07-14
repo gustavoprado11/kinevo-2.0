@@ -589,7 +589,7 @@ export function FormsDashboardClient({
                                                     {sub.student_name || 'Aluno'}
                                                 </span>
                                                 <span className="text-xs text-[#86868B] truncate hidden sm:inline dark:text-k-text-quaternary">
-                                                    {cleanTemplateName(sub.template_title || '')}
+                                                    {cleanTemplateName(sub.template_title || '') || 'Formulário removido'}
                                                 </span>
                                             </div>
                                             <span className={`text-xs ${isPending ? 'text-[#FF9500] dark:text-yellow-400 font-medium' : 'text-[#AEAEB2] dark:text-k-text-quaternary'}`}>
