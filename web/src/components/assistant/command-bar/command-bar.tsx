@@ -34,6 +34,8 @@ export interface AiAccess {
     allowed: boolean
     /** Preferência de Início do treinador (migration 210). Ausente em respostas antigas. */
     homeStyle?: HomeStyle
+    /** Beta fechado da Consultoria IA (migration 251). Ausente em respostas antigas → fechado. */
+    consultoriaAllowed?: boolean
     summary: AiUsageSummary
 }
 
@@ -60,6 +62,31 @@ export function getCachedAiAllowed(): boolean {
     if (aiAllowedMemo !== null) return aiAllowedMemo
     try {
         return window.localStorage.getItem(AI_ALLOWED_CACHE_KEY) === '1'
+    } catch {
+        return false
+    }
+}
+
+// Cache do beta fechado da Consultoria IA (migration 251) — mesma mecânica do
+// aiAllowed: sem ele o item da sidebar só apareceria depois do fetch, piscando a
+// cada navegação client-side para quem TEM acesso. Default false = fail-closed:
+// quem não tem nunca vê o item, nem por um frame.
+const CONSULTORIA_CACHE_KEY = 'kinevo:consultoria-allowed'
+let consultoriaAllowedMemo: boolean | null = null
+
+/** Grava o cache do gate da Consultoria IA (client-only). */
+export function setCachedConsultoriaAllowed(v: boolean): void {
+    if (typeof window === 'undefined') return
+    consultoriaAllowedMemo = v
+    try { window.localStorage.setItem(CONSULTORIA_CACHE_KEY, v ? '1' : '0') } catch { /* noop */ }
+}
+
+/** Leitura síncrona do último gate conhecido (client-only; false no server). */
+export function getCachedConsultoriaAllowed(): boolean {
+    if (typeof window === 'undefined') return false
+    if (consultoriaAllowedMemo !== null) return consultoriaAllowedMemo
+    try {
+        return window.localStorage.getItem(CONSULTORIA_CACHE_KEY) === '1'
     } catch {
         return false
     }
@@ -102,6 +129,7 @@ export async function fetchAiAccess(): Promise<AiAccess | null> {
         aiAllowedMemo = data.allowed
         try { window.localStorage.setItem(AI_ALLOWED_CACHE_KEY, data.allowed ? '1' : '0') } catch { /* noop */ }
         if (data.homeStyle === 'assistant' || data.homeStyle === 'classic') setCachedHomeStyle(data.homeStyle)
+        setCachedConsultoriaAllowed(data.consultoriaAllowed === true)
         return data
     } catch {
         return null

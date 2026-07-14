@@ -1071,6 +1071,7 @@ export type Database = {
       }
       assistant_turn_traces: {
         Row: {
+          cached_input_tokens: number | null
           confirmation: Json | null
           cost_usd_micros: number | null
           created_at: string
@@ -1085,12 +1086,14 @@ export type Database = {
           output_tokens: number | null
           prompt_version: string | null
           route: string | null
+          steps: number | null
           student_id: string | null
           surface: string | null
           tools: Json
           trainer_id: string
         }
         Insert: {
+          cached_input_tokens?: number | null
           confirmation?: Json | null
           cost_usd_micros?: number | null
           created_at?: string
@@ -1105,12 +1108,14 @@ export type Database = {
           output_tokens?: number | null
           prompt_version?: string | null
           route?: string | null
+          steps?: number | null
           student_id?: string | null
           surface?: string | null
           tools?: Json
           trainer_id: string
         }
         Update: {
+          cached_input_tokens?: number | null
           confirmation?: Json | null
           cost_usd_micros?: number | null
           created_at?: string
@@ -1125,6 +1130,7 @@ export type Database = {
           output_tokens?: number | null
           prompt_version?: string | null
           route?: string | null
+          steps?: number | null
           student_id?: string | null
           surface?: string | null
           tools?: Json
@@ -4427,6 +4433,7 @@ export type Database = {
           brand_name: string | null
           brand_show_powered_by: boolean
           branding_enabled: boolean
+          consultoria_enabled: boolean
           created_at: string
           email: string
           financial_attention_seen_at: string | null
@@ -4473,6 +4480,7 @@ export type Database = {
           brand_name?: string | null
           brand_show_powered_by?: boolean
           branding_enabled?: boolean
+          consultoria_enabled?: boolean
           created_at?: string
           email: string
           financial_attention_seen_at?: string | null
@@ -4519,6 +4527,7 @@ export type Database = {
           brand_name?: string | null
           brand_show_powered_by?: boolean
           branding_enabled?: boolean
+          consultoria_enabled?: boolean
           created_at?: string
           email?: string
           financial_attention_seen_at?: string | null

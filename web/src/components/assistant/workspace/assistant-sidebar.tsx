@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useSidebarStore } from '@/stores/sidebar-store'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
 import { MAIN_NAV, BIBLIOTECA_NAV } from '@/components/layout/nav-items'
+import { useAiAccessState } from '@/hooks/use-ai-access'
 import { ModeToggle } from '@/components/layout/mode-toggle'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
 import { AssistantRail, type SidebarStudent } from './assistant-rail'
@@ -76,6 +77,11 @@ export function AssistantSidebar({
     const matchPath = (p: string) => !!pathname && (pathname === p || pathname.startsWith(p + '/'))
     const isPathActive = (item: { href: string; extraActivePrefixes?: string[] }) =>
         matchPath(item.href) || (item.extraActivePrefixes?.some(matchPath) ?? false)
+
+    // Consultoria IA é beta fechado (migration 251) — mesma navegação da Sidebar
+    // Clássica: fora do allowlist, o item não existe.
+    const { consultoriaAllowed } = useAiAccessState()
+    const mainNav = consultoriaAllowed ? MAIN_NAV : MAIN_NAV.filter(n => n.href !== '/consultoria')
 
     // Aba ativa pela rota (exceto Dashboard, que no Assistente é o próprio chat).
     const activeNavItem = useMemo<{ name: string; href: string; icon: React.ElementType } | null>(() => {
@@ -169,7 +175,7 @@ export function AssistantSidebar({
                     <Plus className="h-[18px] w-[18px]" strokeWidth={2.4} />
                 </button>
                 <nav className="flex flex-1 flex-col items-center gap-1">
-                    {MAIN_NAV.map((n) => {
+                    {mainNav.map((n) => {
                         const Icon = n.icon
                         const icon = <Icon size={18} strokeWidth={1.5} />
                         return n.href === '/dashboard'
@@ -233,7 +239,7 @@ export function AssistantSidebar({
                 </button>
                 {navOpen && (
                     <nav className="mt-0.5 space-y-0.5">
-                        {MAIN_NAV.map((n) => {
+                        {mainNav.map((n) => {
                             const Icon = n.icon
                             if (n.href === '/dashboard') {
                                 return (

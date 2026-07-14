@@ -38,18 +38,27 @@ export interface AuthedTrainer {
     aiPrescriptionsEnabled: boolean
 }
 
-/** Auth inline padrão do repo (CLAUDE.md §Server Actions) + campos da consultoria. */
+/**
+ * Auth inline padrão do repo (CLAUDE.md §Server Actions) + campos da consultoria.
+ *
+ * É o portão ÚNICO do módulo: todas as actions ('use server') de consultoria
+ * passam por aqui, então o flag `consultoria_enabled` (migration 251) é checado
+ * neste ponto e nada mais precisa lembrar de checá-lo. Treinador sem o flag é
+ * tratado como não autenticado — fail-closed, mesma resposta de quem não tem
+ * sessão: 'Não autorizado'. Esconder a UI não é gate; o gate é este.
+ */
 export async function resolveTrainer(supabase: DBClient): Promise<AuthedTrainer | null> {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
 
     const { data: trainer } = await supabase
         .from('trainers')
-        .select('id, name, landing_cref, ai_prescriptions_enabled')
+        .select('id, name, landing_cref, ai_prescriptions_enabled, consultoria_enabled')
         .eq('auth_user_id', user.id)
         .single()
 
     if (!trainer) return null
+    if (trainer.consultoria_enabled !== true) return null
     return {
         id: trainer.id,
         name: trainer.name,

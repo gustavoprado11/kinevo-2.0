@@ -206,7 +206,7 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
                                 placeholder="Ex: 012345-G/SP"
                             />
                             <p className="mt-1 text-[11px] text-k-text-quaternary">
-                                Obrigatório para validar prescrições da Consultoria IA — vira o carimbo legal do programa.
+                                Seu registro profissional — aparece na sua página de captação.
                             </p>
                         </div>
 

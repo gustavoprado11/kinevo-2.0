@@ -2,6 +2,7 @@
 // Server Component: auth → reconcile (detecta anamneses respondidas) → fila.
 // docs/rede-consultoria-ia/PLANO.md §5
 
+import { redirect } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/server'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
@@ -14,6 +15,11 @@ export const maxDuration = 120
 
 export default async function ConsultoriaPage() {
     const { trainer } = await getTrainerWithSubscription()
+
+    // Beta fechado (migration 251): quem não tem o flag não tem a rota. A sidebar
+    // já esconde o item, mas o URL é adivinhável — o corte de verdade é aqui.
+    if (trainer.consultoria_enabled !== true) redirect('/dashboard')
+
     const supabase = await createClient()
 
     // Avança pedidos awaiting_anamnese cuja anamnese já foi respondida.

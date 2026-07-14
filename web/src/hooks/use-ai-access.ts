@@ -20,6 +20,7 @@ import { useEffect, useLayoutEffect, useState } from 'react'
 import {
     fetchAiAccess,
     getCachedAiAllowed,
+    getCachedConsultoriaAllowed,
     getCachedHomeStyle,
     type HomeStyle,
 } from '@/components/assistant/command-bar/command-bar'
@@ -32,10 +33,14 @@ export function useAiAccessState() {
     // Valores do SERVIDOR — é com eles que a hidratação precisa casar.
     const [aiAllowed, setAiAllowed] = useState(false)
     const [homeStyle, setHomeStyle] = useState<HomeStyle>('classic')
+    // Consultoria IA — beta fechado (migration 251). Mesma mecânica: false na 1ª
+    // render (casa com o SSR), cache pós-hidratação, fetch confirma.
+    const [consultoriaAllowed, setConsultoriaAllowed] = useState(false)
 
     useIsomorphicLayoutEffect(() => {
         setAiAllowed(getCachedAiAllowed())
         setHomeStyle(getCachedHomeStyle())
+        setConsultoriaAllowed(getCachedConsultoriaAllowed())
     }, [])
 
     useEffect(() => {
@@ -44,9 +49,10 @@ export function useAiAccessState() {
             if (!active || !a) return
             setAiAllowed(a.allowed)
             if (a.homeStyle) setHomeStyle(a.homeStyle)
+            setConsultoriaAllowed(a.consultoriaAllowed === true)
         })
         return () => { active = false }
     }, [])
 
-    return { aiAllowed, homeStyle, setAiAllowed, setHomeStyle }
+    return { aiAllowed, consultoriaAllowed, homeStyle, setAiAllowed, setHomeStyle }
 }

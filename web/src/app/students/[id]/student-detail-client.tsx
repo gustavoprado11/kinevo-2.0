@@ -140,6 +140,8 @@ interface Trainer {
     avatar_url?: string | null
     theme?: 'light' | 'dark' | 'system' | null
     ai_prescriptions_enabled?: boolean
+    /** Beta fechado da Consultoria IA (migration 251). */
+    consultoria_enabled?: boolean
 }
 
 interface CalendarSession {
@@ -615,7 +617,12 @@ export function StudentDetailClient({
                     onDelete={handleDeleteStudent}
                     onSchedule={student.is_trainer_profile ? undefined : () => setIsScheduleModalOpen(true)}
                     onStartTour={student.is_trainer_profile ? undefined : () => useOnboardingStore.getState().startTour('student_detail')}
-                    onConsultoria={student.is_trainer_profile ? undefined : handleStartConsultoria}
+                    onConsultoria={
+                        // Beta fechado (migration 251): sem o flag, o item nem aparece no menu.
+                        student.is_trainer_profile || trainer.consultoria_enabled !== true
+                            ? undefined
+                            : handleStartConsultoria
+                    }
                 >
                     <StudentStatusBar
                         historySummary={historySummary}

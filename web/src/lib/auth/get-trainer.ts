@@ -14,6 +14,7 @@ interface TrainerRecord {
     avatar_url: string | null
     theme: 'light' | 'dark' | 'system' | null
     ai_prescriptions_enabled?: boolean
+    consultoria_enabled?: boolean
     ai_tier?: string | null
     onboarding_state: OnboardingState | null
     modality_focus: TrainerModalityFocus
@@ -52,7 +53,7 @@ export async function getTrainerWithSubscription(userId?: string) {
     const { data: t1, error: e1 } = await supabase
         .from('trainers')
         .select(
-            'id, name, email, avatar_url, theme, ai_prescriptions_enabled, ai_tier, onboarding_state, modality_focus, home_style, ' +
+            'id, name, email, avatar_url, theme, ai_prescriptions_enabled, consultoria_enabled, ai_tier, onboarding_state, modality_focus, home_style, ' +
             'subscriptions(status, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_price_id, created_at)'
         )
         .eq('auth_user_id', authUserId)
@@ -62,7 +63,7 @@ export async function getTrainerWithSubscription(userId?: string) {
         const { subscriptions: subs, ...rest } = t1 as any
         trainer = rest as TrainerRecord
         subscription = pickActiveSubscription(subs)
-    } else if (e1 && (e1.message?.includes('onboarding_state') || e1.message?.includes('modality_focus') || e1.message?.includes('home_style'))) {
+    } else if (e1 && (e1.message?.includes('onboarding_state') || e1.message?.includes('modality_focus') || e1.message?.includes('home_style') || e1.message?.includes('consultoria_enabled'))) {
         // Legacy DB sem onboarding_state e/ou modality_focus (pré Fase 17a).
         const { data: t2 } = await supabase
             .from('trainers')
@@ -79,6 +80,8 @@ export async function getTrainerWithSubscription(userId?: string) {
                 onboarding_state: DEFAULT_ONBOARDING_STATE,
                 modality_focus: null,
                 home_style: null,
+                // DB legado não tem a coluna (migration 251) → Consultoria IA fechada.
+                consultoria_enabled: false,
             } as TrainerRecord
             subscription = pickActiveSubscription(subs)
         }

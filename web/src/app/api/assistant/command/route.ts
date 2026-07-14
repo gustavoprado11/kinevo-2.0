@@ -44,16 +44,20 @@ export async function GET() {
         // explícito no single<T>() para evitar o SelectQueryError do inferidor.
         const { data: trainer } = await supabase
             .from('trainers')
-            .select('id, home_style')
+            .select('id, home_style, consultoria_enabled')
             .eq('auth_user_id', user.id)
-            .single<{ id: string; home_style: string | null }>()
+            .single<{ id: string; home_style: string | null; consultoria_enabled: boolean | null }>()
         if (!trainer) return NextResponse.json({ error: 'Trainer not found' }, { status: 404 })
 
         const homeStyle = trainer.home_style === 'assistant' ? 'assistant' : 'classic'
+        // Beta fechado da Consultoria IA (migration 251). Viaja junto porque as duas
+        // sidebars já leem este GET a cada carga — nenhum request novo. Só esconde o
+        // item; o gate real é /consultoria + resolveTrainer.
+        const consultoriaAllowed = trainer.consultoria_enabled === true
 
         // Kill-switch: some com as superfícies web (⌘K, aba, sidebar) sem deploy.
         if (isAssistantDisabled()) {
-            return NextResponse.json({ tier: 'free', allowed: false, homeStyle, summary: null })
+            return NextResponse.json({ tier: 'free', allowed: false, homeStyle, consultoriaAllowed, summary: null })
         }
 
         const summary = await getAiUsageSummary(supabaseAdmin, trainer.id)
@@ -61,6 +65,7 @@ export async function GET() {
             tier: summary.tier,
             allowed: ASSISTANT_TIERS.has(summary.tier),
             homeStyle,
+            consultoriaAllowed,
             summary,
         })
     } catch (error) {

@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { setCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
 import { useAiAccessState } from '@/hooks/use-ai-access'
 import { setHomeStyle } from '@/actions/assistant/set-home-style'
-import { MAIN_NAV as navigation, BIBLIOTECA_NAV as bibliotecaItems, type NavItem } from '@/components/layout/nav-items'
+import { MAIN_NAV, BIBLIOTECA_NAV as bibliotecaItems, type NavItem } from '@/components/layout/nav-items'
 import { ModeToggle } from '@/components/layout/mode-toggle'
 import { useCommunicationStore } from '@/stores/communication-store'
 
@@ -41,12 +41,16 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     // Gate de IA (mostra o item "Assistente IA" e o ModeToggle) + modo de Início
     // (classic|assistant), que dirige o pill e o destino do "Dashboard". O cache é
     // aplicado pós-hidratação e confirmado por fetch — ver useAiAccessState.
-    const { aiAllowed, homeStyle, setHomeStyle: setHomeStyleState } = useAiAccessState()
+    const { aiAllowed, consultoriaAllowed, homeStyle, setHomeStyle: setHomeStyleState } = useAiAccessState()
     const [switchingAssistant, startSwitch] = useTransition()
     const profileRef = useRef<HTMLDivElement>(null)
     const openChat = useCommunicationStore(s => s.openChat)
 
     const assistantMode = homeStyle === 'assistant'
+
+    // Consultoria IA é beta fechado (migration 251): fora do allowlist, o item nem
+    // existe na navegação.
+    const navigation = consultoriaAllowed ? MAIN_NAV : MAIN_NAV.filter(n => n.href !== '/consultoria')
 
     // Aquece a rota do Assistente p/ a troca de modo ser instantânea.
     useEffect(() => {
