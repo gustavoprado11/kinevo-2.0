@@ -5,6 +5,7 @@ import { Users, Activity, TrendingUp, TrendingDown, Target, Eye, EyeOff, DollarS
 import { motion } from 'framer-motion'
 import type { DashboardStats } from '@/lib/dashboard/get-dashboard-data'
 import { formatCurrency } from '@/lib/utils/financial'
+import { useStudioState } from '@/hooks/use-studio-state'
 
 interface StatCardsProps {
     stats: DashboardStats
@@ -159,6 +160,9 @@ const cardVariants = {
 
 export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
     const showAdherence = stats.hasActivePrograms
+    // Estúdio não cobra alunos por aqui — o card de receita some.
+    const { isStudioAccount } = useStudioState()
+    const showRevenue = !isStudioAccount
     const [mrrVisible, setMrrVisible] = useState(true)
 
     useEffect(() => {
@@ -175,8 +179,15 @@ export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
 
     const cardClass = "rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card p-5 shadow-apple-card dark:shadow-none hover:shadow-md dark:hover:shadow-lg transition-shadow duration-200"
 
+    const cardCount = 2 + (showRevenue ? 1 : 0) + (showAdherence ? 1 : 0)
+    const gridClass = cardCount >= 4
+        ? 'grid-cols-2 md:grid-cols-4'
+        : cardCount === 3
+            ? 'grid-cols-1 sm:grid-cols-3'
+            : 'grid-cols-1 sm:grid-cols-2'
+
     return (
-        <div className={`grid gap-4 mb-6 ${showAdherence ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`} role="region" aria-label="Indicadores-chave de performance">
+        <div className={`grid gap-4 mb-6 ${gridClass}`} role="region" aria-label="Indicadores-chave de performance">
             {/* Active students */}
             <motion.div
                 className={cardClass}
@@ -227,7 +238,8 @@ export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
                 )}
             </motion.div>
 
-            {/* MRR */}
+            {/* MRR — oculto para contas de estúdio */}
+            {showRevenue && (
             <motion.div
                 className={cardClass}
                 variants={cardVariants}
@@ -257,6 +269,7 @@ export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
                     <p className="mt-1 text-[11px] text-[#AEAEB2] dark:text-k-text-quaternary">Nenhuma assinatura ativa ainda</p>
                 )}
             </motion.div>
+            )}
 
             {/* Adherence */}
             {showAdherence && (

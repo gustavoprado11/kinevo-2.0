@@ -3,6 +3,7 @@
 import { memo } from 'react'
 import { Target, TrendingUp, Users, DollarSign } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useStudioState } from '@/hooks/use-studio-state'
 
 interface WeeklyGoal {
     id: string
@@ -21,6 +22,8 @@ interface WeeklyGoalsWidgetProps {
 }
 
 export const WeeklyGoalsWidget = memo(function WeeklyGoalsWidget({ sessionsThisWeek, activeStudentsCount, mrr }: WeeklyGoalsWidgetProps) {
+    // Estúdio não cobra alunos por aqui — a meta de receita some.
+    const { isStudioAccount } = useStudioState()
     // Default goals — in production these would come from trainer settings
     const goals: WeeklyGoal[] = [
         {
@@ -41,7 +44,7 @@ export const WeeklyGoalsWidget = memo(function WeeklyGoalsWidget({ sessionsThisW
             color: 'text-violet-600 dark:text-violet-400',
             bgColor: 'bg-violet-50 dark:bg-violet-500/10',
         },
-        {
+        ...(isStudioAccount ? [] : [{
             id: 'revenue',
             label: 'Receita mensal (R$)',
             current: mrr,
@@ -49,7 +52,7 @@ export const WeeklyGoalsWidget = memo(function WeeklyGoalsWidget({ sessionsThisW
             icon: <DollarSign className="w-3.5 h-3.5" />,
             color: 'text-emerald-600 dark:text-emerald-400',
             bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',
-        },
+        }]),
     ]
 
     return (

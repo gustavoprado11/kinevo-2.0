@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { UserPlus, Dumbbell, ClipboardList, Share2, Wallet } from 'lucide-react'
 import { AppLinksDialog } from '@/components/onboarding/widgets/app-links-dialog'
 import { useOnboardingStore } from '@/stores/onboarding-store'
+import { useStudioState } from '@/hooks/use-studio-state'
 
 interface QuickActionsProps {
     onNewStudent: () => void
@@ -71,6 +72,9 @@ const actions = [
 export function QuickActions({ onNewStudent }: QuickActionsProps) {
     const router = useRouter()
     const [shareOpen, setShareOpen] = useState(false)
+    // Estúdio não cobra alunos por aqui — some "Vender plano".
+    const { isStudioAccount } = useStudioState()
+    const visibleActions = actions.filter(a => !(a.id === 'sell-plan' && isStudioAccount))
 
     const handleClick = (action: typeof actions[number]) => {
         if (action.id === 'new-student') {
@@ -86,7 +90,7 @@ export function QuickActions({ onNewStudent }: QuickActionsProps) {
     return (
         <>
         <nav aria-label="Ações rápidas" className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-            {actions.map((action) => {
+            {visibleActions.map((action) => {
                 const Icon = action.icon
                 const label = action.label
                 return (

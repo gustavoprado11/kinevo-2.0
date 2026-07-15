@@ -33,6 +33,7 @@ import { buildDraftKey, readDraftSummary, removeBuilderDraft, type BuilderDraftS
 import { KeyboardShortcuts } from '@/components/students/keyboard-shortcuts'
 import { StudentStatusBar } from '@/components/students/student-status-bar'
 import { useToast } from '@/components/ui/toast'
+import { useStudioState } from '@/hooks/use-studio-state'
 import { useCommunicationStore } from '@/stores/communication-store'
 import type { InsightItem } from '@/actions/insights'
 import type { DisplayStatus } from '@/types/financial'
@@ -233,6 +234,8 @@ export function StudentDetailClient({
 }: StudentDetailClientProps) {
     const router = useRouter()
     const { toast } = useToast()
+    // Estúdio não usa o módulo Financeiro — o card do perfil some.
+    const { isStudioAccount } = useStudioState()
     const openPanel = useCommunicationStore(s => s.openPanel)
     const openConversation = useCommunicationStore(s => s.openConversation)
 
@@ -1024,13 +1027,15 @@ export function StudentDetailClient({
                         />
                         </div>
 
-                        {/* Financial Card */}
-                        <FinancialSidebarCard
-                            studentId={student.id}
-                            contract={sidebarContract}
-                            displayStatus={displayStatus}
-                            onViewHistory={() => router.push(`/financial?student=${student.id}`)}
-                        />
+                        {/* Financial Card — oculto para contas de estúdio */}
+                        {!isStudioAccount && (
+                            <FinancialSidebarCard
+                                studentId={student.id}
+                                contract={sidebarContract}
+                                displayStatus={displayStatus}
+                                onViewHistory={() => router.push(`/financial?student=${student.id}`)}
+                            />
+                        )}
 
                         <ProgramHistorySection
                             programs={completedPrograms}

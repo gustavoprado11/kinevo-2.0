@@ -13,10 +13,12 @@ import { FeedbackModal } from '@/components/feedback/feedback-modal'
 import { createClient } from '@/lib/supabase/client'
 import { setCachedHomeStyle } from '@/components/assistant/command-bar/command-bar'
 import { useAiAccessState } from '@/hooks/use-ai-access'
+import { useStudioState } from '@/hooks/use-studio-state'
 import { setHomeStyle } from '@/actions/assistant/set-home-style'
 import { MAIN_NAV, BIBLIOTECA_NAV as bibliotecaItems, type NavItem } from '@/components/layout/nav-items'
 import { ModeToggle } from '@/components/layout/mode-toggle'
 import { useCommunicationStore } from '@/stores/communication-store'
+import { Building2 } from 'lucide-react'
 
 interface SidebarProps {
     financialBadge?: React.ReactNode
@@ -48,9 +50,21 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
 
     const assistantMode = homeStyle === 'assistant'
 
+    // Estúdios: conta de estúdio esconde Financeiro; gestor ganha o item "Estúdio".
+    const { isStudioAccount, isManager } = useStudioState()
+
     // Consultoria IA é beta fechado (migration 251): fora do allowlist, o item nem
-    // existe na navegação.
-    const navigation = consultoriaAllowed ? MAIN_NAV : MAIN_NAV.filter(n => n.href !== '/consultoria')
+    // existe na navegação. Financeiro some para contas de estúdio (Fase 4).
+    const STUDIO_NAV: NavItem = { name: 'Estúdio', href: '/estudio', icon: Building2 }
+    const navigation: NavItem[] = [
+        // Gestor: "Estúdio" no topo (painel do estúdio).
+        ...(isManager ? [STUDIO_NAV] : []),
+        ...MAIN_NAV.filter(n => {
+            if (n.href === '/consultoria' && !consultoriaAllowed) return false
+            if (n.href === '/financial' && isStudioAccount) return false
+            return true
+        }),
+    ]
 
     // Aquece a rota do Assistente p/ a troca de modo ser instantânea.
     useEffect(() => {
