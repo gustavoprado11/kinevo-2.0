@@ -10,6 +10,7 @@ export interface OrganizationContext {
         visibility: 'open' | 'restricted'
         seat_limit: number | null
         subscription_status: string
+        grace_until: string | null
     }
     membership: {
         id: string
@@ -46,7 +47,7 @@ export async function getOrganizationContext(): Promise<OrganizationContext | nu
     // Vínculo ativo + dados da org (uma org por treinador na v1)
     const { data: member } = await supabase
         .from('organization_members')
-        .select('id, role, is_coach, organization:organizations(id, name, logo_url, visibility, seat_limit, subscription_status)')
+        .select('id, role, is_coach, organization:organizations(id, name, logo_url, visibility, seat_limit, subscription_status, grace_until)')
         .eq('trainer_id', trainerId)
         .eq('status', 'active')
         .limit(1)

@@ -36,6 +36,21 @@ export async function updateCoachStatus(data: {
         }
 
         if (data.action === 'deactivate') {
+            // Estúdios v1: coach ainda responsável por alunos da org não sai —
+            // reatribua antes (coach_id nunca fica NULL: o app do aluno resolve
+            // chat/branding/sessões por ele).
+            const { count: responsibleCount } = await supabaseAdmin
+                .from('students')
+                .select('id', { count: 'exact', head: true })
+                .eq('coach_id', data.trainerId)
+                .eq('organization_id', ctx.organization.id)
+                .eq('is_trainer_profile', false)
+            if ((responsibleCount ?? 0) > 0) {
+                return {
+                    success: false,
+                    error: `Este treinador ainda é responsável por ${responsibleCount} aluno(s) do estúdio. Reatribua-os antes de desativar.`,
+                }
+            }
             await supabaseAdmin
                 .from('organization_members')
                 .update({ status: 'inactive' })

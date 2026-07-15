@@ -5184,6 +5184,7 @@ export type Database = {
         Args: { p_reason?: string; p_student_id: string }
         Returns: boolean
       }
+      can_access_org_student: { Args: { p_student: string }; Returns: boolean }
       can_read_student: { Args: { p_student: string }; Returns: boolean }
       can_write_student: { Args: { p_student: string }; Returns: boolean }
       check_student_access: { Args: { p_student_id: string }; Returns: Json }
@@ -5398,6 +5399,41 @@ export type Database = {
           coach_name: string
         }[]
       }
+      get_org_coach_week_stats: {
+        Args: { p_org: string; p_week_start: string }
+        Returns: {
+          active_students: number
+          adherence_pct: number
+          coach_id: string
+          coach_name: string
+          completed_sessions: number
+          expected_sessions: number
+        }[]
+      }
+      get_org_members_directory: {
+        Args: { p_org: string }
+        Returns: {
+          avatar_url: string
+          email: string
+          is_coach: boolean
+          name: string
+          role: string
+          status: string
+          trainer_id: string
+        }[]
+      }
+      get_org_students_overview: {
+        Args: { p_org: string }
+        Returns: {
+          at_risk: boolean
+          coach_id: string
+          coach_name: string
+          has_active_program: boolean
+          last_session: string
+          student_id: string
+          student_name: string
+        }[]
+      }
       get_previous_exercise_sets: {
         Args: { p_exercise_id: string; p_student_id: string }
         Returns: {
@@ -5510,6 +5546,10 @@ export type Database = {
           p_trigger_context: string
         }
         Returns: Json
+      }
+      trainer_can_access_student: {
+        Args: { p_student: string; p_trainer: string }
+        Returns: boolean
       }
       trainer_finish_workout_session: {
         Args: {

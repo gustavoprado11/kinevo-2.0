@@ -7,6 +7,20 @@ type DBClient = SupabaseClient<Database>
 const ORG_ACTIVE = new Set(['active', 'trialing'])
 
 /**
+ * Regra ÚNICA de "billing da org concede acesso": active/trialing, ou past_due
+ * dentro da janela grace_until. Compartilhada entre hasOrgCoreAccess e
+ * getStudentScope para as duas superfícies nunca divergirem.
+ */
+export function isOrgBillingActive(status: string, graceUntil: string | null): boolean {
+    if (ORG_ACTIVE.has(status)) return true
+    return (
+        status === 'past_due' &&
+        !!graceUntil &&
+        new Date(graceUntil).getTime() > Date.now()
+    )
+}
+
+/**
  * Estúdios P1.1 — fonte ÚNICA do "acesso herdado ao núcleo".
  *
  * True quando o treinador é membro ATIVO de uma organização cujo billing está
@@ -44,13 +58,5 @@ export async function hasOrgCoreAccess(client: DBClient, trainerId: string): Pro
         | undefined
     if (!org) return false
 
-    if (ORG_ACTIVE.has(org.subscription_status)) return true
-    if (
-        org.subscription_status === 'past_due' &&
-        org.grace_until &&
-        new Date(org.grace_until).getTime() > Date.now()
-    ) {
-        return true
-    }
-    return false
+    return isOrgBillingActive(org.subscription_status, org.grace_until)
 }

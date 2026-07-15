@@ -18,6 +18,7 @@ import { EquipeSection } from '@/components/settings/equipe-section'
 import { SettingsSection } from '@/components/settings/settings-section'
 import { DeveloperLinkCard } from '@/components/settings/developer-link-card'
 import { getOrganizationContext } from '@/lib/studio/get-organization'
+import { getOrgMembersDirectory } from '@/lib/studio/org-directory'
 
 import { ChevronRight } from 'lucide-react'
 
@@ -152,31 +153,19 @@ export default async function SettingsPage() {
         }
     }
 
-    // Coaches da academia (para a aba Equipe)
+    // Coaches da academia (para a aba Equipe) — via RPC diretório (migr 252):
+    // o embed trainers devolvia null pós-225 (leitura cross-membro fechada) e a
+    // aba mostrava '—' no lugar dos nomes.
     let orgCoaches: { trainerId: string; role: string; status: string; name: string; email: string }[] = []
     if (orgCtx) {
-        const { data: coachesRaw } = await supabase
-            .from('organization_members')
-            .select('trainer_id, role, status, trainer:trainers(id, name, email)')
-            .eq('organization_id', orgCtx.organization.id)
-            .in('status', ['active', 'inactive'])
-            .order('status', { ascending: true })
-        type CoachRow = {
-            trainer_id: string
-            role: string
-            status: string
-            trainer: { name: string; email: string } | { name: string; email: string }[] | null
-        }
-        orgCoaches = ((coachesRaw ?? []) as unknown as CoachRow[]).map((m) => {
-            const t = Array.isArray(m.trainer) ? m.trainer[0] : m.trainer
-            return {
-                trainerId: m.trainer_id,
-                role: m.role,
-                status: m.status,
-                name: t?.name ?? '—',
-                email: t?.email ?? '',
-            }
-        })
+        const directory = await getOrgMembersDirectory(supabase, orgCtx.organization.id)
+        orgCoaches = directory.map((m) => ({
+            trainerId: m.trainer_id,
+            role: m.role,
+            status: m.status,
+            name: m.name || '—',
+            email: m.email || '',
+        }))
     }
 
     // Numeração das seções: Landing saiu pra /marketing (era 03). Voltamos
