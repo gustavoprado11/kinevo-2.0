@@ -52,6 +52,36 @@ function SaveButton() {
     )
 }
 
+/**
+ * Reduz o avatar no CLIENTE antes do upload: ≤512px, WebP q0.85. Fotos de câmera
+ * chegavam com 1-5MB e o círculo da lista de Alunos ficava vazio enquanto o PNG
+ * baixava. Best-effort: formato que o canvas não decodifica (ex.: HEIC) segue
+ * original — o server continua validando tipo e tamanho.
+ */
+const AVATAR_MAX_PX = 512
+
+async function compressAvatar(file: File): Promise<File> {
+    try {
+        const bitmap = await createImageBitmap(file)
+        const scale = Math.min(1, AVATAR_MAX_PX / Math.max(bitmap.width, bitmap.height))
+        const w = Math.max(1, Math.round(bitmap.width * scale))
+        const h = Math.max(1, Math.round(bitmap.height * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return file
+        ctx.drawImage(bitmap, 0, 0, w, h)
+        bitmap.close()
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.85))
+        // Só troca se realmente encolheu — WebP de um ícone minúsculo pode crescer.
+        if (!blob || blob.size >= file.size) return file
+        return new File([blob], 'avatar.webp', { type: 'image/webp' })
+    } catch {
+        return file
+    }
+}
+
 function getInitials(name: string) {
     return name
         .split(' ')
@@ -69,6 +99,8 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
     const [name, setName] = useState(trainer.name)
     const [avatarPreview, setAvatarPreview] = useState<string | null>(trainer.avatar_url ?? null)
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+    // Avatar já comprimido no cliente; substitui o arquivo cru do input no submit.
+    const compressedAvatarRef = useRef<File | null>(null)
 
     const handleChooseAvatar = () => {
         fileInputRef.current?.click()
@@ -86,6 +118,11 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
 
         const objectUrl = URL.createObjectURL(file)
         setAvatarPreview(objectUrl)
+
+        compressedAvatarRef.current = null
+        void compressAvatar(file).then((processed) => {
+            compressedAvatarRef.current = processed
+        })
     }
 
     const initials = getInitials(name || trainer.name)
@@ -106,6 +143,11 @@ export function ProfileForm({ trainer }: ProfileFormProps) {
             <form
                 action={async (formData: FormData) => {
                     setMessage(null)
+                    const rawAvatar = formData.get('avatar')
+                    if (rawAvatar instanceof File && rawAvatar.size > 0) {
+                        const processed = compressedAvatarRef.current ?? (await compressAvatar(rawAvatar))
+                        formData.set('avatar', processed, processed.name)
+                    }
                     const result = await updateTrainerProfile(formData)
 
                     if (!result.success) {

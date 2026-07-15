@@ -1,5 +1,7 @@
 # Auditoria de telas — Web (prod) — 13/jul/2026
 
+> **STATUS (15/jul/2026): ENCERRADA.** P1.1–P1.3 corrigidos (`3d13d80`, `5e27f6f`, `b3c7487`) e P2.4/6/7/8/9 corrigidos (`ba59dd6`, `48d0818`) — tudo em prod, smoke verificado. P2.5 (avatar) era falso positivo: a foto existe e responde 200; a causa era o PNG de 1,3 MB — mitigado com compressão de avatar no upload (cliente, ≤512px WebP). P2.10 é comportamento correto (tooltip já explica cortesias). Cosméticos não atacados por decisão de escopo.
+
 Auditoria visual e funcional de todas as telas do sistema web em produção (www.kinevoapp.com), navegando logado como Gustavo, em modo somente leitura (nenhum dado criado/alterado/enviado). Viewport 1460×812, tema claro. Console e rede verificados em cada bloco — **zero erros de console em todas as telas**.
 
 ## Veredito geral
