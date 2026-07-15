@@ -43,6 +43,31 @@ function findWorkoutsMissingSchedule(workouts: AssignedWorkoutSchedule[] | null 
         .map(workout => workout.name)
 }
 
+/**
+ * Estúdios: o ator (trainerId) pode não ser o dono do programa (trainer_id do
+ * registro) — basta ser membro ativo da org do aluno. Autoriza aqui; as
+ * operações usam o trainer_id DO PROGRAMA (ownerTrainerId), mantendo o fluxo do
+ * cron idêntico (lá ator == dono).
+ */
+async function actorCanActassignStudent(actingTrainerId: string, ownerTrainerId: string, studentId: string): Promise<boolean> {
+    if (actingTrainerId === ownerTrainerId) return true
+    const { data: st } = await supabaseAdmin
+        .from('students')
+        .select('organization_id')
+        .eq('id', studentId)
+        .maybeSingle()
+    const orgId = (st as { organization_id: string | null } | null)?.organization_id
+    if (!orgId) return false
+    const { data: m } = await supabaseAdmin
+        .from('organization_members')
+        .select('id')
+        .eq('trainer_id', actingTrainerId)
+        .eq('organization_id', orgId)
+        .eq('status', 'active')
+        .maybeSingle()
+    return !!m
+}
+
 export async function activateAssignedProgram(params: {
     assignedProgramId: string
     trainerId: string
@@ -54,10 +79,15 @@ export async function activateAssignedProgram(params: {
         .from('assigned_programs')
         .select('id, student_id, status, name, trainer_id, duration_weeks, assigned_workouts(id, name, scheduled_days)')
         .eq('id', assignedProgramId)
-        .eq('trainer_id', trainerId)
         .single()
 
     if (programError || !program) {
+        return { success: false, activated: false, reason: 'not_found', error: 'Program not found' }
+    }
+
+    // Autorização org-aware; a partir daqui operamos com o dono do programa.
+    const ownerTrainerId = program.trainer_id
+    if (!(await actorCanActassignStudent(trainerId, ownerTrainerId, program.student_id))) {
         return { success: false, activated: false, reason: 'not_found', error: 'Program not found' }
     }
 
@@ -90,7 +120,6 @@ export async function activateAssignedProgram(params: {
         .from('students')
         .select('id, name')
         .eq('id', program.student_id)
-        .eq('coach_id', trainerId)
         .single()
 
     if (studentError || !student) {
@@ -120,7 +149,7 @@ export async function activateAssignedProgram(params: {
             expires_at: expiresAt,
         })
         .eq('id', assignedProgramId)
-        .eq('trainer_id', trainerId)
+        .eq('trainer_id', ownerTrainerId)
         // Aceita 'scheduled' (fila, ativação manual ou via cron) e 'draft'
         // (programa criado fora do builder, ex.: assistente via MCP).
         .in('status', ['scheduled', 'draft'])
@@ -157,7 +186,7 @@ export async function activateAssignedProgram(params: {
             updated_at: nowIso,
         })
         .eq('student_id', program.student_id)
-        .eq('trainer_id', trainerId)
+        .eq('trainer_id', ownerTrainerId)
         .neq('id', assignedProgramId)
         .in('status', ['active', 'expired'])
 
@@ -165,7 +194,7 @@ export async function activateAssignedProgram(params: {
 
     const inboxItemId = await insertStudentNotification({
         studentId: program.student_id,
-        trainerId,
+        trainerId: ownerTrainerId,
         type: 'program_assigned',
         title: 'Novo programa de treino!',
         subtitle: `${programName} está disponível no seu app.`,
@@ -182,7 +211,7 @@ export async function activateAssignedProgram(params: {
 
     if (source === 'cron') {
         const trainerNotificationId = await insertTrainerNotification({
-            trainerId,
+            trainerId: ownerTrainerId,
             type: 'program_auto_activated',
             title: 'Programa ativado automaticamente',
             message: `${programName} foi ativado automaticamente para ${student.name ?? 'Aluno'}.`,
@@ -194,7 +223,7 @@ export async function activateAssignedProgram(params: {
         })
 
         sendTrainerPush({
-            trainerId,
+            trainerId: ownerTrainerId,
             type: 'program_auto_activated',
             title: 'Programa ativado automaticamente',
             body: `${programName} foi ativado automaticamente para ${student.name ?? 'Aluno'}.`,

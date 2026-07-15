@@ -38,6 +38,9 @@ interface Student {
     lastSessionDate: string | null
     sessionsThisWeek: number
     expectedPerWeek: number
+    /** Estúdio: treinador responsável (coach_id) + nome resolvido. */
+    responsibleCoachId?: string | null
+    responsibleCoachName?: string | null
 }
 
 type AttentionLevel = 'ok' | 'warning' | 'urgent'
@@ -59,6 +62,9 @@ interface StudentsClientProps {
     anamneseTemplates?: WizardTemplate[]
     /** M9 — templates de avaliação (step 2). */
     assessmentTemplates?: WizardTemplate[]
+    /** Estúdio: mostra coluna "Responsável" + filtro por treinador. */
+    isStudioView?: boolean
+    studioCoaches?: { id: string; name: string }[]
 }
 
 // ---------------------------------------------------------------------------
@@ -112,12 +118,15 @@ export function StudentsClient({
     formTemplates = [],
     anamneseTemplates = [],
     assessmentTemplates = [],
+    isStudioView = false,
+    studioCoaches = [],
 }: StudentsClientProps) {
     const router = useRouter()
     const [students, setStudents] = useState<Student[]>(initialStudents)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
+    const [coachFilter, setCoachFilter] = useState<string>('all') // 'all' | trainerId | 'mine'
     const [sortKey, setSortKey] = useState<SortKey>('attention')
     const [sortDir, setSortDir] = useState<SortDir>('asc')
 
@@ -200,6 +209,12 @@ export function StudentsClient({
         else if (activeFilter === 'presential') result = result.filter(s => s.modality === 'presential')
         else if (activeFilter === 'no_program') result = result.filter(s => !s.programName && s.status === 'active')
 
+        // Estúdio: filtro por treinador responsável
+        if (isStudioView && coachFilter !== 'all') {
+            const target = coachFilter === 'mine' ? trainer.id : coachFilter
+            result = result.filter(s => s.responsibleCoachId === target)
+        }
+
         // Sort — trainer profile always first
         result = [...result].sort((a, b) => {
             if (a.is_trainer_profile) return -1
@@ -228,7 +243,7 @@ export function StudentsClient({
         })
 
         return result
-    }, [studentsWithAttention, searchQuery, activeFilter, sortKey, sortDir])
+    }, [studentsWithAttention, searchQuery, activeFilter, coachFilter, isStudioView, trainer.id, sortKey, sortDir])
 
     const handleSort = (key: SortKey) => {
         if (sortKey === key) {
@@ -341,6 +356,23 @@ export function StudentsClient({
                         </span>
                     </button>
                 ))}
+
+                {/* Estúdio: filtro por treinador responsável */}
+                {isStudioView && studioCoaches.length > 0 && (
+                    <select
+                        value={coachFilter}
+                        onChange={(e) => setCoachFilter(e.target.value)}
+                        className="ml-auto shrink-0 rounded-full border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3.5 py-1.5 text-xs font-medium text-[#6E6E73] dark:text-k-text-tertiary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/40"
+                    >
+                        <option value="all">Todos os treinadores</option>
+                        <option value="mine">Meus alunos</option>
+                        {studioCoaches
+                            .filter(c => c.id !== trainer.id)
+                            .map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                    </select>
+                )}
             </div>
 
             {/* Students Table */}
@@ -383,6 +415,11 @@ export function StudentsClient({
                             <thead>
                                 <tr className="border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-transparent">
                                     <SortHeader label="Aluno" sortKeyValue="name" />
+                                    {isStudioView && (
+                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
+                                            Responsável
+                                        </th>
+                                    )}
                                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
                                         Modalidade
                                     </th>
@@ -440,6 +477,19 @@ export function StudentsClient({
                                                     </div>
                                                 </div>
                                             </td>
+
+                                            {/* RESPONSÁVEL (estúdio) */}
+                                            {isStudioView && (
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    {student.responsibleCoachName ? (
+                                                        <span className={`text-sm ${student.responsibleCoachId === trainer.id ? 'font-semibold text-[#7C3AED] dark:text-violet-300' : 'text-[#6E6E73] dark:text-k-text-secondary'}`}>
+                                                            {student.responsibleCoachId === trainer.id ? 'Você' : student.responsibleCoachName}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-sm text-[#AEAEB2] dark:text-k-text-quaternary">—</span>
+                                                    )}
+                                                </td>
+                                            )}
 
                                             {/* MODALIDADE */}
                                             <td className="px-4 py-3 whitespace-nowrap">

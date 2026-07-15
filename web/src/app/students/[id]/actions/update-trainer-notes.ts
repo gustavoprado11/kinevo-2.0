@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { isStudentManagementLockedForTrainer, STUDENT_MANAGEMENT_LOCKED_ERROR } from '@/lib/limits/student-readonly'
+import { getStudentScope, assertStudentAccess } from '@/lib/studio/student-scope'
 
 export async function updateTrainerNotes(studentId: string, notes: string) {
     try {
@@ -12,14 +13,9 @@ export async function updateTrainerNotes(studentId: string, notes: string) {
         }
         const supabase = await createClient()
 
-        // Verify the student belongs to this trainer
-        const { data: student } = await supabase
-            .from('students')
-            .select('id')
-            .eq('id', studentId)
-            .eq('coach_id', trainer.id)
-            .single()
-
+        // Escopo: dono (solo) OU membro do estúdio do aluno.
+        const scope = await getStudentScope(trainer.id)
+        const student = await assertStudentAccess(supabase, scope, studentId)
         if (!student) {
             return { success: false, error: 'Student not found' }
         }

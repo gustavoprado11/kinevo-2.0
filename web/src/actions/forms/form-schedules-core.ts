@@ -17,6 +17,17 @@ import type { Database } from '@kinevo/shared/types/database'
 
 type DBClient = SupabaseClient<Database>
 
+/** Org ativa do treinador (Estúdios) — null se solo. Funciona com admin client. */
+async function trainerActiveOrgId(supabase: DBClient, trainerId: string): Promise<string | null> {
+    const { data } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('trainer_id', trainerId)
+        .eq('status', 'active')
+        .maybeSingle()
+    return (data as { organization_id: string | null } | null)?.organization_id ?? null
+}
+
 export type ScheduleFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly'
 
 export interface CreateScheduleInput {
@@ -46,20 +57,21 @@ export async function createFormSchedulesCore(
         return { success: false, error: 'Dados incompletos' }
     }
 
-    // A4: isolamento de tenant — só agenda para alunos DESTE treinador. Espelha o
-    // check coach_id do RPC assign_form_to_students; sem isso, conhecendo o UUID de
-    // um aluno de outro tenant, daria pra criar agendamento recorrente cross-tenant.
-    const { data: owned, error: ownErr } = await supabase
+    // Isolamento de tenant: agenda para alunos DESTE treinador OU do estúdio dele
+    // (Estúdios v1 — visibilidade open). Sem isso, conhecendo o UUID de um aluno de
+    // outro tenant, daria pra criar agendamento cross-tenant.
+    const orgId = await trainerActiveOrgId(supabase, trainerId)
+    const { data: cand, error: ownErr } = await supabase
         .from('students')
-        .select('id')
-        .eq('coach_id', trainerId)
+        .select('id, coach_id, organization_id')
         .in('id', input.studentIds)
     if (ownErr) {
         console.error('[createFormSchedulesCore] ownership check error:', ownErr)
         return { success: false, error: 'Não foi possível agendar o formulário.' }
     }
-    const ownedIds = new Set((owned ?? []).map(s => s.id))
-    const validIds = input.studentIds.filter(id => ownedIds.has(id))
+    const validIds = (cand ?? [])
+        .filter(s => s.coach_id === trainerId || (!!orgId && s.organization_id === orgId))
+        .map(s => s.id)
     if (validIds.length === 0) {
         return { success: false, error: 'Nenhum aluno válido' }
     }
@@ -96,7 +108,22 @@ export async function getStudentFormSchedulesCore(
     trainerId: string,
     studentId: string,
 ): Promise<FormScheduleRow[]> {
-    const { data, error } = await supabase
+    // Gate de acesso ao aluno (este core pode ser chamado com admin client, que
+    // bypassa RLS): responsável OU membro do estúdio do aluno.
+    const orgId = await trainerActiveOrgId(supabase, trainerId)
+    const { data: st } = await supabase
+        .from('students')
+        .select('coach_id, organization_id')
+        .eq('id', studentId)
+        .maybeSingle()
+    const student = st as { coach_id: string | null; organization_id: string | null } | null
+    if (!student) return []
+    const canAccess = student.coach_id === trainerId || (!!orgId && student.organization_id === orgId)
+    if (!canAccess) return []
+
+    // Estúdio: mostra os agendamentos do aluno criados por QUALQUER treinador do
+    // estúdio (não só os deste trainerId). Solo: só os próprios.
+    let query = supabase
         .from('form_schedules')
         .select(`
             id,
@@ -109,10 +136,12 @@ export async function getStudentFormSchedulesCore(
             created_at,
             form_templates!inner ( title )
         `)
-        .eq('trainer_id', trainerId)
         .eq('student_id', studentId)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
+    if (!orgId) query = query.eq('trainer_id', trainerId)
+
+    const { data, error } = await query
 
     if (error) {
         console.error('[getStudentFormSchedulesCore] error:', error)

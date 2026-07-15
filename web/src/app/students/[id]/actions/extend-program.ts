@@ -4,6 +4,7 @@ import { isStudentManagementLockedForTrainer, STUDENT_MANAGEMENT_LOCKED_ERROR } 
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getStudentScope, assertStudentAccess } from '@/lib/studio/student-scope'
 
 export async function extendProgram(programId: string, studentId: string, additionalWeeks: number) {
     const supabase = await createClient()
@@ -23,14 +24,11 @@ export async function extendProgram(programId: string, studentId: string, additi
             return { success: false, error: STUDENT_MANAGEMENT_LOCKED_ERROR }
         }
 
-        // Verify trainer owns this student
-        const { data: student } = await supabase
-            .from('students')
-            .select('id')
-            .eq('id', studentId)
-            .eq('coach_id', trainer.id)
-            .single()
-        if (!student) return { success: false, error: 'Aluno não encontrado' }
+        // Escopo: responsável (solo) OU membro do estúdio do aluno.
+        const scope = await getStudentScope(trainer.id)
+        if (!(await assertStudentAccess(supabase, scope, studentId))) {
+            return { success: false, error: 'Aluno não encontrado' }
+        }
 
         // Get current program data
         const { data: program } = await supabase

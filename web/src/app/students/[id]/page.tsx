@@ -112,12 +112,13 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .order('created_at', { ascending: false })
             .limit(10),
 
-        // Body metrics history (last 5 submissions for trend)
+        // Body metrics history (last 5 submissions for trend).
+        // Estúdio: sem filtro por trainer_id — a RLS org (form_submissions_org_select)
+        // gate por aluno; solo continua restrito pela policy base por-treinador.
         supabase
             .from('form_submissions')
             .select('answers_json, submitted_at, form_templates!inner(system_key)')
             .eq('student_id', id)
-            .eq('trainer_id', trainer.id)
             .in('status', ['submitted', 'reviewed'])
             .in('form_templates.system_key', SUPPORTED_METRIC_SYSTEM_KEYS)
             .order('submitted_at', { ascending: false })
@@ -134,23 +135,21 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .limit(1)
             .maybeSingle(),
 
-        // Last submitted/reviewed form submission
+        // Last submitted/reviewed form submission (RLS org/base gate por aluno)
         supabase
             .from('form_submissions')
             .select('id, status, submitted_at, form_templates(title, category)')
             .eq('student_id', id)
-            .eq('trainer_id', trainer.id)
             .in('status', ['submitted', 'reviewed'])
             .order('submitted_at', { ascending: false })
             .limit(1)
             .maybeSingle(),
 
-        // Pending form requests (inbox items not completed)
+        // Pending form requests (inbox items not completed; RLS gate por aluno)
         supabase
             .from('student_inbox_items')
             .select('id, title, status, created_at')
             .eq('student_id', id)
-            .eq('trainer_id', trainer.id)
             .eq('type', 'form_request')
             .in('status', ['unread', 'pending_action'])
             .order('created_at', { ascending: false }),
@@ -160,7 +159,6 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .from('form_submissions')
             .select('answers_json, submitted_at, form_templates!inner(system_key)')
             .eq('student_id', id)
-            .eq('trainer_id', trainer.id)
             .in('status', ['submitted', 'reviewed'])
             .in('form_templates.system_key', SUPPORTED_METRIC_SYSTEM_KEYS)
             .order('submitted_at', { ascending: false })
@@ -180,7 +178,6 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             .from('form_schedules')
             .select('id, student_id, form_template_id, frequency, is_active, next_due_at, last_sent_at, created_at, form_templates!inner(title)')
             .eq('student_id', id)
-            .eq('trainer_id', trainer.id)
             .eq('is_active', true)
             .order('created_at', { ascending: false }),
 

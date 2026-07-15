@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getStudentScope, assertStudentAccess } from '@/lib/studio/student-scope'
 
 interface UpdateStudentInput {
     studentId: string
@@ -58,12 +59,15 @@ export async function updateStudent(
         return { success: false, error: 'E-mail inválido.' }
     }
 
-    // Posse via client RLS (coach_id) antes de qualquer operação privilegiada.
-    const { data: existing } = await supabase
+    // Escopo (solo dono OU membro do estúdio) antes de qualquer op privilegiada.
+    const scope = await getStudentScope(trainer.id)
+    if (!(await assertStudentAccess(supabase, scope, input.studentId))) {
+        return { success: false, error: 'Aluno não encontrado' }
+    }
+    const { data: existing } = await supabaseAdmin
         .from('students')
         .select('id, email, auth_user_id')
         .eq('id', input.studentId)
-        .eq('coach_id', trainer.id)
         .single()
     if (!existing) return { success: false, error: 'Aluno não encontrado' }
 

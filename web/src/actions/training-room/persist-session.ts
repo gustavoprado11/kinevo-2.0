@@ -19,6 +19,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getStudentScope, assertStudentAccess } from '@/lib/studio/student-scope'
 
 interface EnsureResult {
     sessionId: string | null
@@ -45,12 +46,11 @@ async function authorizeTrainerForStudent(studentId: string): Promise<{ trainerI
         .single()
     if (!trainer) return { error: 'Treinador não encontrado' }
 
-    const { data: student } = await supabase
-        .from('students')
-        .select('id, coach_id')
-        .eq('id', studentId)
-        .single()
-    if (!student || student.coach_id !== trainer.id) return { error: 'Aluno não encontrado' }
+    // Escopo: responsável (solo) OU membro do estúdio do aluno — a Sala de Treino
+    // funciona no aluno de qualquer treinador do estúdio.
+    const scope = await getStudentScope(trainer.id)
+    const student = await assertStudentAccess(supabase, scope, studentId)
+    if (!student) return { error: 'Aluno não encontrado' }
 
     return { trainerId: trainer.id }
 }

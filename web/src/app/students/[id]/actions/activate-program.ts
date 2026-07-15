@@ -26,28 +26,16 @@ export async function activateProgram(assignedProgramId: string) {
             throw new Error(STUDENT_MANAGEMENT_LOCKED_ERROR)
         }
 
-        // 2. Get program details — with trainer_id ownership filter
+        // Só para o revalidatePath — a autorização (dono OU membro do estúdio do
+        // aluno) e a existência do programa são resolvidas dentro de
+        // activateAssignedProgram, agora org-aware.
         const { data: program } = await supabase
             .from('assigned_programs')
             .select('student_id')
             .eq('id', assignedProgramId)
-            .eq('trainer_id', trainer.id)
             .single()
+        const studentId = program?.student_id
 
-        if (!program) throw new Error('Program not found')
-
-        const studentId = program.student_id
-
-        // 3. Verify trainer owns this student
-        const { data: student } = await supabase
-            .from('students')
-            .select('id')
-            .eq('id', studentId)
-            .eq('coach_id', trainer.id)
-            .single()
-        if (!student) throw new Error('Student not found')
-
-        // 4. Activate using shared logic so manual and automatic flows stay in sync.
         const result = await activateAssignedProgram({
             assignedProgramId,
             trainerId: trainer.id,

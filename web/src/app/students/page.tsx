@@ -1,18 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { getWeekRange } from '@kinevo/shared/utils/schedule-projection'
+import { getStudentScope } from '@/lib/studio/student-scope'
+import { getOrgMembersDirectory } from '@/lib/studio/org-directory'
 import { StudentsClient } from './students-client'
 
 export default async function StudentsPage() {
     const { trainer } = await getTrainerWithSubscription()
+    const scope = await getStudentScope(trainer.id)
 
     const supabase = await createClient()
+
+    // Estúdio: lista TODOS os alunos da org (visibilidade open) + selecionamos
+    // coach_id p/ mostrar o "Responsável". Solo: só os próprios (coach_id).
+    const baseStudentQuery = supabase
+        .from('students')
+        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, coach_id')
+        .order('created_at', { ascending: false })
+
     const [studentsResult, templatesResult] = await Promise.all([
-        supabase
-            .from('students')
-            .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile')
-            .eq('coach_id', trainer.id)
-            .order('created_at', { ascending: false }),
+        scope.kind === 'org'
+            ? baseStudentQuery.eq('organization_id', scope.orgId)
+            : baseStudentQuery.eq('coach_id', trainer.id),
         // M9 — `category` adicionado pra alimentar o NewStudentWizard:
         // step 1 filtra category='anamnese', step 2 filtra category='assessment'.
         supabase
@@ -24,7 +33,11 @@ export default async function StudentsPage() {
             .order('created_at', { ascending: false }),
     ])
 
-    const students = studentsResult.data
+    // Estúdio: o "perfil Eu" (is_trainer_profile) de CADA treinador entra na org
+    // pelo backfill — mostrar o Eu dos colegas como aluno é ruído. Mantém só o meu.
+    const students = (studentsResult.data ?? []).filter(
+        s => !(s.is_trainer_profile && s.coach_id !== trainer.id),
+    )
     // Mantém shape original (sem category) pra StudentModal que ainda usa
     // o dropdown atalho (decisão B do M9 — atalho preservado). Filtra
     // assessment fora pra não confundir com forms.
@@ -45,6 +58,19 @@ export default async function StudentsPage() {
 
     const studentIds = students?.map(s => s.id) || []
 
+    // Estúdio: diretório de responsáveis (nome por coach) + lista de coaches p/
+    // o filtro. Só o gestor reatribui pela lista; o card do perfil também.
+    const isStudioView = scope.kind === 'org'
+    const coachNameById = new Map<string, string>()
+    let studioCoaches: { id: string; name: string }[] = []
+    if (isStudioView && scope.kind === 'org') {
+        const directory = await getOrgMembersDirectory(supabase, scope.orgId)
+        for (const m of directory) coachNameById.set(m.trainer_id, m.name)
+        studioCoaches = directory
+            .filter(m => m.is_coach && m.status === 'active')
+            .map(m => ({ id: m.trainer_id, name: m.name }))
+    }
+
     if (studentIds.length === 0) {
         return (
             <StudentsClient
@@ -53,6 +79,8 @@ export default async function StudentsPage() {
                 formTemplates={formTemplates}
                 anamneseTemplates={anamneseTemplates}
                 assessmentTemplates={assessmentTemplates}
+                isStudioView={isStudioView}
+                studioCoaches={studioCoaches}
             />
         )
     }
@@ -60,28 +88,28 @@ export default async function StudentsPage() {
     // Fire both enrichment queries in parallel
     const sixtyDaysAgo = new Date()
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
-    const [{ data: activePrograms }, { data: allSessions }] = await Promise.all([
-        // Active programs with scheduled days for expected-per-week calculation
-        supabase
-            .from('assigned_programs')
-            .select(`
-                id, name, student_id, duration_weeks, started_at,
-                assigned_workouts(scheduled_days)
-            `)
-            .eq('trainer_id', trainer.id)
-            .in('student_id', studentIds)
-            .eq('status', 'active'),
+    // No estúdio, os programas/sessões podem ser de qualquer treinador da org —
+    // a RLS org já restringe ao conjunto de alunos visíveis, então filtramos só
+    // por student_id (não por trainer_id, que é o responsável, não o autor).
+    const programsQuery = supabase
+        .from('assigned_programs')
+        .select(`
+            id, name, student_id, duration_weeks, started_at,
+            assigned_workouts(scheduled_days)
+        `)
+        .in('student_id', studentIds)
+        .eq('status', 'active')
+    const sessionsQuery = supabase
+        .from('workout_sessions')
+        .select('student_id, completed_at')
+        .in('student_id', studentIds)
+        .eq('status', 'completed')
+        .gte('completed_at', sixtyDaysAgo.toISOString())
+        .order('completed_at', { ascending: false })
 
-        // Completed sessions (last 60 days — enough for last session + this week count)
-        // Use completed_at as canonical "when workout happened" timestamp
-        supabase
-            .from('workout_sessions')
-            .select('student_id, completed_at')
-            .eq('trainer_id', trainer.id)
-            .in('student_id', studentIds)
-            .eq('status', 'completed')
-            .gte('completed_at', sixtyDaysAgo.toISOString())
-            .order('completed_at', { ascending: false }),
+    const [{ data: activePrograms }, { data: allSessions }] = await Promise.all([
+        isStudioView ? programsQuery : programsQuery.eq('trainer_id', trainer.id),
+        isStudioView ? sessionsQuery : sessionsQuery.eq('trainer_id', trainer.id),
     ])
 
     // Build session stats per student
@@ -127,6 +155,8 @@ export default async function StudentsPage() {
             lastSessionDate: stats?.lastSession || null,
             sessionsThisWeek: stats?.thisWeekCount || 0,
             expectedPerWeek,
+            responsibleCoachId: student.coach_id,
+            responsibleCoachName: isStudioView ? (coachNameById.get(student.coach_id ?? '') ?? null) : null,
         }
     })
 
@@ -137,6 +167,8 @@ export default async function StudentsPage() {
             formTemplates={formTemplates}
             anamneseTemplates={anamneseTemplates}
             assessmentTemplates={assessmentTemplates}
+            isStudioView={isStudioView}
+            studioCoaches={studioCoaches}
         />
     )
 }
