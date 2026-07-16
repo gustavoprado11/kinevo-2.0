@@ -60,3 +60,36 @@ export async function hasOrgCoreAccess(client: DBClient, trainerId: string): Pro
 
     return isOrgBillingActive(org.subscription_status, org.grace_until)
 }
+
+export interface ActiveBillingOrg {
+    id: string
+    plan_tier: string | null
+}
+
+/**
+ * A org do treinador COM billing ativo (id + plan_tier), ou null. Base do cap de
+ * alunos por faixa: o teto deriva do plan_tier (studio-tiers). Never-throw.
+ * Funciona com admin OU client RLS.
+ */
+export async function getActiveBillingOrg(client: DBClient, trainerId: string): Promise<ActiveBillingOrg | null> {
+    try {
+        const { data } = await client
+            .from('organization_members')
+            .select('organization:organizations(id, plan_tier, subscription_status, grace_until)')
+            .eq('trainer_id', trainerId)
+            .eq('status', 'active')
+            .limit(1)
+            .maybeSingle()
+        if (!data) return null
+        const rel = (data as { organization: unknown }).organization
+        const org = (Array.isArray(rel) ? rel[0] : rel) as
+            | { id: string; plan_tier: string | null; subscription_status: string; grace_until: string | null }
+            | null
+            | undefined
+        if (!org || !isOrgBillingActive(org.subscription_status, org.grace_until)) return null
+        return { id: org.id, plan_tier: org.plan_tier }
+    } catch (err) {
+        console.error('[getActiveBillingOrg] lookup failed:', err)
+        return null
+    }
+}

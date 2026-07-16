@@ -13,7 +13,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@kinevo/shared/types/database'
 import type { AiTier } from '@/lib/auth/get-ai-tier'
-import { hasOrgCoreAccess } from '@/lib/studio/org-access'
+import { hasOrgCoreAccess, getActiveBillingOrg } from '@/lib/studio/org-access'
+import { studioLimitForOrg } from '@/lib/studio/studio-tiers'
 
 export const STUDENT_CAP: Record<AiTier, number> = {
     free: 1,
@@ -50,8 +51,30 @@ export async function assertCanCreateStudent(
     trainerId: string,
     tier: AiTier,
 ): Promise<void> {
-    // Acesso herdado do estúdio: coach de org ativa = ilimitado (não toca getAiTier).
-    if (await hasOrgCoreAccess(admin, trainerId)) return
+    // Estúdio: o cap é da ORG e deriva da faixa (plan_tier), contando alunos por
+    // organization_id (soma de todos os coaches). Org sem plan_tier (manual/comp)
+    // → ilimitado. Isso substitui o antigo "coach de org ativa = ilimitado".
+    const org = await getActiveBillingOrg(admin, trainerId)
+    if (org) {
+        const limit = studioLimitForOrg(org.plan_tier)
+        if (!Number.isFinite(limit)) return
+        const { count, error } = await admin
+            .from('students')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', org.id)
+            .eq('is_trainer_profile', false)
+        if (error) {
+            console.error('[assertCanCreateStudent] org count error:', error)
+            return
+        }
+        if ((count ?? 0) >= limit) {
+            throw new StudentCapError(
+                `O estúdio atingiu o limite de ${limit} alunos da faixa atual. Faça upgrade para a próxima faixa em Estúdio → Plano.`,
+            )
+        }
+        return
+    }
+
     const cap = STUDENT_CAP[tier]
     if (!Number.isFinite(cap)) return
 
