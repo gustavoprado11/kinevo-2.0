@@ -32,19 +32,29 @@ export default async function EstudioOverviewPage() {
     const { trainer } = await getTrainerWithSubscription()
     const supabase = await createClient()
 
-    const weekStart = getWeekRange(new Date(), TZ).start.toISOString().slice(0, 10)
-    const [coachRes, studentRes] = await Promise.all([
+    const weekStartDate = getWeekRange(new Date(), TZ).start
+    const weekStart = weekStartDate.toISOString().slice(0, 10)
+    // Tendência: mesma RPC apontada para a SEGUNDA anterior (semana fechada).
+    const prevWeekStart = new Date(weekStartDate.getTime() - 7 * 86_400_000).toISOString().slice(0, 10)
+    const [coachRes, studentRes, prevCoachRes] = await Promise.all([
         supabase.rpc('get_org_coach_week_stats', { p_org: ctx.organization.id, p_week_start: weekStart }),
         supabase.rpc('get_org_students_overview', { p_org: ctx.organization.id }),
+        supabase.rpc('get_org_coach_week_stats', { p_org: ctx.organization.id, p_week_start: prevWeekStart }),
     ])
     const coaches = (coachRes.data ?? []) as CoachRow[]
     const students = (studentRes.data ?? []) as StudentRow[]
+    const prevCoaches = (prevCoachRes.data ?? []) as CoachRow[]
 
     const totalActive = students.length
     const atRisk = students.filter(s => s.at_risk).length
     const doneWeek = coaches.reduce((a, c) => a + Number(c.completed_sessions), 0)
     const expectedWeek = coaches.reduce((a, c) => a + Number(c.expected_sessions), 0)
     const adherence = expectedWeek > 0 ? Math.round((doneWeek * 100) / expectedWeek) : null
+
+    // Semana passada (fechada) como referência honesta — a atual ainda está em curso.
+    const prevDone = prevCoaches.reduce((a, c) => a + Number(c.completed_sessions), 0)
+    const prevExpected = prevCoaches.reduce((a, c) => a + Number(c.expected_sessions), 0)
+    const prevAdherence = prevExpected > 0 ? Math.round((prevDone * 100) / prevExpected) : null
 
     return (
         <AppLayout
@@ -60,11 +70,22 @@ export default async function EstudioOverviewPage() {
 
             <EstudioNav active="overview" />
 
-            {/* KPIs */}
+            {/* KPIs (com a semana passada como referência) */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-6">
                 <KpiCard icon={<Users size={18} className="text-violet-500" />} label="Alunos ativos" value={String(totalActive)} />
-                <KpiCard icon={<Dumbbell size={18} className="text-emerald-500" />} label="Treinos na semana" value={`${doneWeek}/${expectedWeek}`} />
-                <KpiCard icon={<TrendingUp size={18} className="text-blue-500" />} label="Aderência" value={adherence === null ? '—' : `${adherence}%`} />
+                <KpiCard
+                    icon={<Dumbbell size={18} className="text-emerald-500" />}
+                    label="Treinos na semana"
+                    value={`${doneWeek}/${expectedWeek}`}
+                    hint={prevExpected > 0 ? `sem. passada: ${prevDone}/${prevExpected}` : undefined}
+                />
+                <KpiCard
+                    icon={<TrendingUp size={18} className="text-blue-500" />}
+                    label="Aderência"
+                    value={adherence === null ? '—' : `${adherence}%`}
+                    hint={prevAdherence === null ? undefined : `sem. passada: ${prevAdherence}%`}
+                    trend={adherence !== null && prevAdherence !== null ? adherence - prevAdherence : undefined}
+                />
                 <KpiCard icon={<AlertTriangle size={18} className="text-amber-500" />} label="Em risco" value={String(atRisk)} />
             </div>
 
@@ -124,7 +145,15 @@ export default async function EstudioOverviewPage() {
     )
 }
 
-function KpiCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function KpiCard({ icon, label, value, hint, trend }: {
+    icon: React.ReactNode
+    label: string
+    value: string
+    /** Referência textual (ex.: "sem. passada: 12/40"). */
+    hint?: string
+    /** Delta numérico vs a semana passada (só p/ aderência) — colore a referência. */
+    trend?: number
+}) {
     return (
         <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -132,6 +161,13 @@ function KpiCard({ icon, label, value }: { icon: React.ReactNode; label: string;
                 <span className="text-[10px] font-bold uppercase tracking-wider text-k-text-quaternary">{label}</span>
             </div>
             <p className="text-2xl font-bold text-k-text-primary">{value}</p>
+            {hint && (
+                <p className={`mt-1 text-[11px] ${
+                    trend === undefined ? 'text-k-text-quaternary' : trend >= 0 ? 'text-emerald-500' : 'text-amber-500'
+                }`}>
+                    {hint}{trend !== undefined && trend !== 0 ? ` (${trend > 0 ? '+' : ''}${trend}pp)` : ''}
+                </p>
+            )}
         </div>
     )
 }
