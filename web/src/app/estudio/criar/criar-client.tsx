@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/toast'
 import { STUDIO_TIERS, type StudioTier } from '@/lib/studio/studio-tiers'
 import { startStudioCheckout } from '../studio-tier-picker'
 
-export function CriarEstudioClient() {
+export function CriarEstudioClient({ soloPlanNote = null }: { soloPlanNote?: string | null }) {
     const { toast } = useToast()
     const [name, setName] = useState('')
     const [tier, setTier] = useState<StudioTier>('studio_50')
@@ -77,6 +77,12 @@ export function CriarEstudioClient() {
                     </button>
                 ))}
             </div>
+
+            {soloPlanNote && (
+                <div className="mb-6 rounded-xl border border-amber-300/50 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 px-4 py-3 text-xs text-k-text-tertiary">
+                    <span className="font-semibold text-k-text-primary">Seu plano pessoal ({soloPlanNote}) continua ativo</span> — com o estúdio, ele passa a valer só para alunos particulares. Se não for usar, dá para cancelar depois em Estúdio → Plano.
+                </div>
+            )}
 
             <button
                 onClick={submit}

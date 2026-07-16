@@ -3,13 +3,14 @@ import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { AppLayout } from '@/components/layout'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { studioLimitForOrg, type StudioTier } from '@/lib/studio/studio-tiers'
+import { tierDisplay } from '@/lib/billing/tiers'
 import { requireManagerContext } from '../guard'
 import { EstudioNav } from '../estudio-nav'
 import { PlanoClient } from './plano-client'
 
 export default async function EstudioPlanoPage() {
     const ctx = await requireManagerContext()
-    const { trainer } = await getTrainerWithSubscription()
+    const { trainer, tier: soloTier } = await getTrainerWithSubscription()
     await createClient()
 
     const { count } = await supabaseAdmin
@@ -19,6 +20,20 @@ export default async function EstudioPlanoPage() {
         .eq('is_trainer_profile', false)
 
     const limit = studioLimitForOrg(ctx.organization.plan_tier)
+
+    // Dupla cobrança: o gestor pode ter um plano SOLO pago além da assinatura
+    // do estúdio. Com o estúdio ativo, o plano pessoal só serve para alunos
+    // particulares — o card avisa e aponta pro portal pessoal (cancela lá).
+    let soloPlan: { name: string; price: string; privateCount: number } | null = null
+    if (soloTier !== 'free') {
+        const display = tierDisplay(soloTier)
+        const { count: privateCount } = await supabaseAdmin
+            .from('students')
+            .select('id', { count: 'exact', head: true })
+            .eq('coach_id', trainer.id)
+            .eq('is_private', true)
+        if (display) soloPlan = { name: display.name, price: display.price, privateCount: privateCount ?? 0 }
+    }
 
     return (
         <AppLayout
@@ -41,6 +56,7 @@ export default async function EstudioPlanoPage() {
                 currentPeriodEnd={ctx.organization.current_period_end}
                 cancelAtPeriodEnd={ctx.organization.cancel_at_period_end}
                 status={ctx.organization.subscription_status}
+                soloPlan={soloPlan}
             />
         </AppLayout>
     )

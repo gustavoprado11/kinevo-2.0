@@ -14,12 +14,15 @@ interface Props {
     currentPeriodEnd: string | null
     cancelAtPeriodEnd: boolean
     status: string
+    /** Plano SOLO pago do gestor (dupla cobrança): aviso + portal pessoal. */
+    soloPlan?: { name: string; price: string; privateCount: number } | null
 }
 
-export function PlanoClient({ tier, studentCount, studentLimit, currentPeriodEnd, cancelAtPeriodEnd, status }: Props) {
+export function PlanoClient({ tier, studentCount, studentLimit, currentPeriodEnd, cancelAtPeriodEnd, status, soloPlan = null }: Props) {
     const { toast } = useToast()
     const router = useRouter()
     const [loadingPortal, setLoadingPortal] = useState(false)
+    const [loadingSoloPortal, setLoadingSoloPortal] = useState(false)
     const [switchingTier, setSwitchingTier] = useState<StudioTier | null>(null)
     const display = tier ? studioTierDisplay(tier) : null
 
@@ -32,6 +35,18 @@ export function PlanoClient({ tier, studentCount, studentLimit, currentPeriodEnd
             else { toast({ message: json.error ?? 'Falha ao abrir a gestão', type: 'error' }); setLoadingPortal(false) }
         } catch {
             toast({ message: 'Erro ao abrir a gestão', type: 'error' }); setLoadingPortal(false)
+        }
+    }
+
+    async function openSoloPortal() {
+        setLoadingSoloPortal(true)
+        try {
+            const res = await fetch('/api/stripe/portal', { method: 'POST' })
+            const json = await res.json()
+            if (json.url) window.location.href = json.url
+            else { toast({ message: json.error ?? 'Falha ao abrir o portal pessoal', type: 'error' }); setLoadingSoloPortal(false) }
+        } catch {
+            toast({ message: 'Erro ao abrir o portal pessoal', type: 'error' }); setLoadingSoloPortal(false)
         }
     }
 
@@ -105,6 +120,29 @@ export function PlanoClient({ tier, studentCount, studentLimit, currentPeriodEnd
                     </div>
                 </div>
             </div>
+
+            {/* Dupla cobrança: gestor com plano SOLO pago além do estúdio */}
+            {soloPlan && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300/50 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 p-4">
+                    <div className="text-sm">
+                        <p className="font-semibold text-k-text-primary">
+                            Você também tem um plano pessoal ativo — {soloPlan.name} · {soloPlan.price}/mês
+                        </p>
+                        <p className="mt-0.5 text-k-text-tertiary">
+                            {soloPlan.privateCount > 0
+                                ? `Ele vale para seus ${soloPlan.privateCount} aluno(s) particular(es) — mantenha se quiser continuar com eles.`
+                                : 'Com o estúdio ativo, ele só serve para alunos particulares. Se não for usar, cancele para não pagar duas vezes.'}
+                        </p>
+                    </div>
+                    <button
+                        onClick={openSoloPortal}
+                        disabled={loadingSoloPortal}
+                        className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-amber-400/60 px-4 py-2 text-sm font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-500/10 disabled:opacity-60"
+                    >
+                        {loadingSoloPortal ? <Loader2 size={14} className="animate-spin" /> : <>Gerenciar plano pessoal <ExternalLink size={14} /></>}
+                    </button>
+                </div>
+            )}
 
             {/* Faixas: troca in-app com proração (o portal cobre cancelar/cartão/faturas) */}
             <div>
