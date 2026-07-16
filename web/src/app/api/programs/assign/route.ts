@@ -120,15 +120,28 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: rl.error }, { status: 429 })
         }
 
-        // 2. Validate student ownership
+        // 2. Validate student access — Estúdios: responsável (coach_id) OU
+        //    membro ATIVO do estúdio do aluno (RLS 252 / can_access_org_student).
+        //    Checagem inline (sem cookies): esta rota também é chamada pelo
+        //    mobile com Bearer token. Aluno particular (org null) → só o dono.
         const { data: student } = await supabase
             .from('students')
-            .select('id')
+            .select('id, coach_id, organization_id')
             .eq('id', studentId)
-            .eq('coach_id', trainer.id)
             .single()
 
-        if (!student) {
+        let studentAllowed = !!student && student.coach_id === trainer.id
+        if (!studentAllowed && student?.organization_id) {
+            const { data: member } = await supabase
+                .from('organization_members')
+                .select('id')
+                .eq('organization_id', student.organization_id)
+                .eq('trainer_id', trainer.id)
+                .eq('status', 'active')
+                .maybeSingle()
+            studentAllowed = !!member
+        }
+        if (!studentAllowed) {
             return NextResponse.json({ error: 'Student not found or unauthorized' }, { status: 404 })
         }
 

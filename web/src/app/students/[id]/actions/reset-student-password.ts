@@ -3,6 +3,7 @@
 import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getStudentScope } from '@/lib/studio/student-scope'
 
 function generatePassword() {
     return crypto.randomBytes(8).toString('base64url')
@@ -32,7 +33,7 @@ export async function resetStudentPassword(studentId: string) {
 
         const { data: student, error: studentError } = await supabase
             .from('students')
-            .select('auth_user_id, coach_id')
+            .select('auth_user_id, coach_id, organization_id')
             .eq('id', studentId)
             .single()
 
@@ -41,8 +42,14 @@ export async function resetStudentPassword(studentId: string) {
             return { success: false, error: 'Aluno não encontrado.' }
         }
 
+        // Estúdios: responsável OU membro do estúdio do aluno pode redefinir
+        // (mesmo eixo do RLS 252 — quem pode operar o aluno pode dar acesso).
         if (student.coach_id !== trainer.id) {
-            return { success: false, error: 'Acesso negado: Você não tem permissão para alterar este aluno.' }
+            const scope = await getStudentScope(trainer.id)
+            const orgAllowed = scope.kind === 'org' && student.organization_id === scope.orgId
+            if (!orgAllowed) {
+                return { success: false, error: 'Acesso negado: Você não tem permissão para alterar este aluno.' }
+            }
         }
 
         if (!student.auth_user_id) {

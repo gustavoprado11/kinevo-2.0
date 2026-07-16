@@ -79,6 +79,9 @@ interface DashboardClientProps {
     initialStudents: Student[]
     selfStudentId?: string | null
     formTemplates?: FormTemplateOption[]
+    /** Estúdios: habilita o toggle 'Aluno particular' no modal de criação. */
+    isStudioCoach?: boolean
+    hasPaidSolo?: boolean
 }
 
 // ── Lazy loading skeleton ──
@@ -95,7 +98,7 @@ function WidgetSkeleton() {
     )
 }
 
-export function DashboardClient({ trainer, data, initialStudents, selfStudentId, formTemplates = [] }: DashboardClientProps) {
+export function DashboardClient({ trainer, data, initialStudents, selfStudentId, formTemplates = [], isStudioCoach = false, hasPaidSolo = false }: DashboardClientProps) {
     const router = useRouter()
     const { toast } = useToast()
     const [students, setStudents] = useState<Student[]>(initialStudents)
@@ -272,6 +275,8 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
                 onStudentCreated={handleStudentCreated}
                 trainerId={trainer.id}
                 formTemplates={formTemplates}
+                isStudioCoach={isStudioCoach}
+                hasPaidSolo={hasPaidSolo}
             />
 
             <WelcomeModal trainerName={trainer.name} />

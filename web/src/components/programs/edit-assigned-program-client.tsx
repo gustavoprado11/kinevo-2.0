@@ -214,6 +214,35 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     const initializeWorkouts = (): Workout[] => {
         if (!program?.assigned_workouts) return []
 
+        // Estúdios: programa prescrito por OUTRO coach pode referenciar
+        // exercícios custom dele (owner = colega), que NÃO estão na biblioteca
+        // do ator (getTrainerExerciseLibrary é owner-ou-sistema). Sem isto, o
+        // find() abaixo dava undefined → card "Exercício sem nome" e, pior, o
+        // save gravava exercise_name = null, DESTRUINDO o denormalizado de que
+        // o app do aluno depende. O fallback sintetiza o exercício a partir dos
+        // campos denormalizados da própria linha — exibe certo e round-tripa
+        // name/muscle_group/equipment no save.
+        const denormExercise = (row: { exercise_id: string | null }): Exercise | undefined => {
+            const r = row as { exercise_id: string | null; exercise_name?: string | null; exercise_muscle_group?: string | null; exercise_equipment?: string | null }
+            if (!r.exercise_id || !r.exercise_name) return undefined
+            return {
+                id: r.exercise_id,
+                name: r.exercise_name,
+                muscle_groups: r.exercise_muscle_group ? [{ id: r.exercise_id, name: r.exercise_muscle_group }] : [],
+                equipment: r.exercise_equipment ?? null,
+                owner_id: null,
+                original_system_id: null,
+                video_url: null,
+                thumbnail_url: null,
+                instructions: null,
+                is_archived: false,
+                created_at: '1970-01-01T00:00:00.000Z',
+                updated_at: '1970-01-01T00:00:00.000Z',
+            } as unknown as Exercise
+        }
+        const resolveExercise = (row: { exercise_id: string | null }) =>
+            localExercises.find(e => e.id === row.exercise_id) ?? denormExercise(row)
+
         return program.assigned_workouts
             .sort((a, b) => a.order_index - b.order_index)
             .map(wt => {
@@ -237,7 +266,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             parent_item_id: null,
                             exercise_id: item.exercise_id,
                             substitute_exercise_ids: item.substitute_exercise_ids || [],
-                            exercise: localExercises.find(e => e.id === item.exercise_id),
+                            exercise: resolveExercise(item),
                             sets: item.sets,
                             reps: item.reps,
                             rest_seconds: item.rest_seconds,
@@ -262,7 +291,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                         parent_item_id: item.id,
                                         exercise_id: child.exercise_id,
                                         substitute_exercise_ids: child.substitute_exercise_ids || [],
-                                        exercise: localExercises.find(e => e.id === child.exercise_id),
+                                        exercise: resolveExercise(child),
                                         sets: child.sets,
                                         reps: child.reps,
                                         rest_seconds: child.rest_seconds,

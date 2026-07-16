@@ -96,6 +96,9 @@ interface Student {
     trainer_notes: string | null
     objective: string | null
     management_tags: string[] | null
+    /** Estúdios: responsável pelo aluno (CTAs pessoais só para o dono). */
+    coach_id?: string | null
+    is_private?: boolean | null
 }
 
 interface AssignedProgram {
@@ -245,6 +248,11 @@ export function StudentDetailClient({
      * o usuário continua na página do aluno e pode fechar o painel (X no
      * header do painel, backdrop ou botão de voltar) sem perder contexto.
      */
+    // Estúdios: agenda e mensagens são PESSOAIS do responsável (decisão de
+    // produto) — para aluno de colega os CTAs somem em vez de falhar com
+    // 'Sem permissão'/thread vazia.
+    const isOwnStudent = !initialStudent.coach_id || initialStudent.coach_id === trainer.id
+
     const handleOpenMessages = useCallback(() => {
         openPanel('messages')
         openConversation(initialStudent.id)
@@ -618,7 +626,7 @@ export function StudentDetailClient({
                     student={student}
                     onEdit={handleEditStudent}
                     onDelete={handleDeleteStudent}
-                    onSchedule={student.is_trainer_profile ? undefined : () => setIsScheduleModalOpen(true)}
+                    onSchedule={student.is_trainer_profile || !isOwnStudent ? undefined : () => setIsScheduleModalOpen(true)}
                     onStartTour={student.is_trainer_profile ? undefined : () => useOnboardingStore.getState().startTour('student_detail')}
                     onConsultoria={
                         // Beta fechado (migration 251): sem o flag, o item nem aparece no menu.
@@ -637,7 +645,7 @@ export function StudentDetailClient({
                         hasPendingForms={pendingForms.length > 0}
                         studentName={student.name}
                         studentPhone={student.phone}
-                        onSendMessage={handleOpenMessages}
+                        onSendMessage={isOwnStudent ? handleOpenMessages : undefined}
                         mode="compact"
                     />
                 </StudentHeader>
@@ -975,6 +983,8 @@ export function StudentDetailClient({
 
                         {/* Quick Message with context-aware suggestions */}
                         {/* data-onboarding acts as a scroll anchor for inline insight CTAs ("Enviar mensagem"). */}
+                        {/* Estúdios: mensagens são do responsável — card some p/ aluno de colega. */}
+                        {isOwnStudent && (
                         <div data-onboarding="quick-message">
                         <QuickMessageCard
                             studentId={student.id}
@@ -1002,6 +1012,7 @@ export function StudentDetailClient({
                             })()}
                         />
                         </div>
+                        )}
 
                         {/* Unified Insights & Pinned Notes */}
                         <StudentInsightsCard

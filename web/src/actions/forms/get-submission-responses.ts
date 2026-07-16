@@ -41,11 +41,15 @@ export async function getSubmissionResponses(
         .single()
     if (!trainer) return { success: false, error: 'Trainer não encontrado' }
 
+    // Estúdios: a submissão pode ser de um form enviado por OUTRO coach ao
+    // aluno compartilhado — o card do perfil já a mostra via RLS org
+    // (form_submissions_org_select), então a expansão precisa do MESMO escopo.
+    // Sem o filtro por trainer_id, o RLS decide: dono do form OU membro do
+    // estúdio do aluno (solo continua vendo só as próprias).
     const { data, error } = await supabase
         .from('form_submissions')
         .select('id, submitted_at, answers_json, schema_snapshot_json, trainer_feedback, feedback_sent_at, form_templates(title, category)')
         .eq('id', submissionId)
-        .eq('trainer_id', trainer.id)
         .maybeSingle()
 
     if (error) return { success: false, error: error.message }

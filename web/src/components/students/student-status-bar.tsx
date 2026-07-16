@@ -68,7 +68,8 @@ interface StudentStatusBarProps {
     studentName: string
     studentPhone: string | null
     /** Chamado ao clicar em "Mensagem" no CTA de inatividade. */
-    onSendMessage: () => void
+    /** Opcional: some p/ aluno de colega (mensagem é do responsável). */
+    onSendMessage?: () => void
     /**
      * Onda 3 — Modo `compact` mostra apenas os 2 stats operacionais
      * (X/N esta semana, último treino) e suprime os chips de alerta + CTA
@@ -375,7 +376,7 @@ export function StudentStatusBar({
                 )}
 
                 {/* CTA de contato quando o aluno está sumido */}
-                {inactivityChip && (
+                {inactivityChip && onSendMessage && (
                     <div className="flex items-center gap-1.5 ml-auto">
                         <button
                             onClick={onSendMessage}

@@ -40,7 +40,7 @@ export default async function DashboardPage({
         }
     }
 
-    const { trainer } = await getTrainerWithSubscription(user.id)
+    const { trainer, tier } = await getTrainerWithSubscription(user.id)
 
     // Preferência de Início (migration 210): home do Assistente → redireciona,
     // exceto ao voltar do checkout (mostra o dashboard) ou com ?h=classic
@@ -96,6 +96,18 @@ export default async function DashboardPage({
 
     const selfStudent = students?.find(s => s.is_trainer_profile) ?? null
 
+    // Estúdios: o modal de novo aluno do dashboard também precisa do toggle
+    // "Aluno particular" (sem isto, todo aluno criado por aqui nascia no
+    // estúdio). Coach de estúdio = membro ativo de qualquer papel.
+    const { data: anyMembership } = await supabase
+        .from('organization_members')
+        .select('id')
+        .eq('trainer_id', trainer.id)
+        .eq('status', 'active')
+        .maybeSingle()
+    const isStudioCoach = !!anyMembership
+    const hasPaidSolo = tier !== 'free'
+
     return (
         <DashboardClient
             trainer={trainer}
@@ -107,6 +119,8 @@ export default async function DashboardPage({
             }))}
             selfStudentId={selfStudent?.id ?? null}
             formTemplates={formTemplates}
+            isStudioCoach={isStudioCoach}
+            hasPaidSolo={hasPaidSolo}
         />
     )
 }

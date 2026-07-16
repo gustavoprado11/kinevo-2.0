@@ -38,13 +38,27 @@ export async function getStudentTodayWorkout(
 
     if (!trainer) return { data: null, error: 'Treinador não encontrado' }
 
+    // Estúdios: responsável OU membro ATIVO do estúdio do aluno (paridade com
+    // o mobile, migr 260 — coach substituto conduz o treino). O SELECT do
+    // aluno de colega já passa pelo RLS org (252); o gate abaixo espelha isso.
     const { data: student } = await supabase
         .from('students')
-        .select('id, coach_id')
+        .select('id, coach_id, organization_id')
         .eq('id', studentId)
         .single()
 
-    if (!student || student.coach_id !== trainer.id) {
+    let allowed = !!student && student.coach_id === trainer.id
+    if (!allowed && student?.organization_id) {
+        const { data: member } = await supabase
+            .from('organization_members')
+            .select('id')
+            .eq('organization_id', student.organization_id)
+            .eq('trainer_id', trainer.id)
+            .eq('status', 'active')
+            .maybeSingle()
+        allowed = !!member
+    }
+    if (!allowed) {
         return { data: null, error: 'Aluno não encontrado' }
     }
 
