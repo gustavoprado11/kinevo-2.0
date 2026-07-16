@@ -60,6 +60,11 @@ function SignupPageInner() {
     // entrada Gratuita (sem checkout, sem cartão).
     const selectedTier = paidTierFromParam(searchParams?.get('tier'))
     const selectedPlan = selectedTier ? tierDisplay(selectedTier) : null
+    // Intenção de estúdio (?intent=studio, CTA do StudioBanner da landing):
+    // pós-cadastro vai direto pro fluxo de criação do estúdio (nome + faixa →
+    // checkout por org), em vez do dashboard/checkout solo. Enum fixo — não é
+    // um redirect arbitrário.
+    const isStudioIntent = searchParams?.get('intent') === 'studio'
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -143,9 +148,14 @@ function SignupPageInner() {
         }
 
         // Step 3 — destino pós-cadastro:
+        //   - intenção de estúdio → fluxo de criação do estúdio (billing por org);
         //   - entrada Gratuita (sem ?tier=) → direto pro dashboard, SEM cartão. O
         //     treinador experimenta o produto e faz upgrade quando quiser (Caminho B);
         //   - tier pago escolhido na landing → Stripe Checkout daquele plano.
+        if (isStudioIntent) {
+            window.location.href = '/estudio/criar'
+            return
+        }
         if (!selectedTier) {
             window.location.href = '/dashboard'
             return
@@ -206,7 +216,11 @@ function SignupPageInner() {
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-slate-900">Crie sua conta</h1>
                     <p className="text-slate-500 mt-1.5">Comece a transformar sua consultoria hoje</p>
-                    {selectedPlan && (
+                    {isStudioIntent ? (
+                        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700">
+                            Kinevo Estúdios · você escolhe a faixa no próximo passo
+                        </div>
+                    ) : selectedPlan && (
                         <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700">
                             Plano {selectedPlan.name} · {selectedPlan.price}
                             {selectedPlan.priceSuffix}
@@ -333,15 +347,19 @@ function SignupPageInner() {
                     >
                         {loading
                             ? 'Criando conta...'
-                            : selectedTier
-                              ? 'Criar conta e assinar'
-                              : 'Criar conta grátis'}
+                            : isStudioIntent
+                              ? 'Criar conta e montar o estúdio'
+                              : selectedTier
+                                ? 'Criar conta e assinar'
+                                : 'Criar conta grátis'}
                     </button>
 
                     <p className="text-center text-sm text-slate-400">
-                        {selectedPlan
-                            ? `${selectedPlan.price}${selectedPlan.priceSuffix ?? ''} · cancele quando quiser`
-                            : 'Plano Gratuito — sem cartão. Faça upgrade quando quiser.'}
+                        {isStudioIntent
+                            ? 'A partir de R$ 219,90/mês · cancele quando quiser'
+                            : selectedPlan
+                              ? `${selectedPlan.price}${selectedPlan.priceSuffix ?? ''} · cancele quando quiser`
+                              : 'Plano Gratuito — sem cartão. Faça upgrade quando quiser.'}
                     </p>
                 </form>
             </div>

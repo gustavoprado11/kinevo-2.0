@@ -123,7 +123,7 @@ function StudioBanner() {
                     <p style={{ fontSize: 13, opacity: 0.7 }}>Vários treinadores, alunos compartilhados e painel do gestor — a partir de R$ 219,90/mês. {faixas}.</p>
                 </div>
             </div>
-            <a href={SIGNUP} style={{ flexShrink: 0, fontSize: 13.5, fontWeight: 700, padding: '11px 20px', borderRadius: 11, background: '#8b5cf6', color: '#fff', textAlign: 'center' }}>
+            <a href={`${SIGNUP}?intent=studio`} style={{ flexShrink: 0, fontSize: 13.5, fontWeight: 700, padding: '11px 20px', borderRadius: 11, background: '#8b5cf6', color: '#fff', textAlign: 'center' }}>
                 Criar estúdio
             </a>
         </div>
