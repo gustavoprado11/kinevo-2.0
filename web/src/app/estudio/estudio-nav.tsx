@@ -4,9 +4,10 @@ const TABS = [
     { key: 'overview', label: 'Visão geral', href: '/estudio' },
     { key: 'treinadores', label: 'Treinadores', href: '/estudio/treinadores' },
     { key: 'alunos', label: 'Alunos', href: '/estudio/alunos' },
+    { key: 'plano', label: 'Plano', href: '/estudio/plano' },
 ] as const
 
-export function EstudioNav({ active }: { active: 'overview' | 'treinadores' | 'alunos' }) {
+export function EstudioNav({ active }: { active: 'overview' | 'treinadores' | 'alunos' | 'plano' }) {
     return (
         <div className="flex items-center gap-1 border-b border-k-border-subtle">
             {TABS.map(t => (

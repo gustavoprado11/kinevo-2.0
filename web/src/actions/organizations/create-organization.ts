@@ -7,13 +7,13 @@ import { revalidatePath } from 'next/cache'
 /**
  * Cria um estúdio (organization) e vincula o criador como owner ativo.
  *
- * Estúdios P1.1: a org nasce em 'trialing' (o billing real por seat entra na
- * P1.5). `seat_limit` fica null (ilimitado) no piloto. Usa admin client porque
- * as linhas ainda não existem para a RLS do criador enxergar antes do vínculo.
+ * Self-serve: a org nasce 'incomplete' (SEM acesso — isOrgBillingActive=false)
+ * e só vira 'active' quando o checkout Stripe do estúdio completa (webhook). O
+ * criador vira owner+coach. Usa admin client porque as linhas ainda não existem
+ * para a RLS do criador enxergar antes do vínculo.
  *
- * NOTA (§7 do PLANO): a exposição self-serve desta action na UI depende da
- * decisão de onboarding do estúdio. Até lá pode ser disparada por
- * provisionamento manual/piloto.
+ * Provisionamento manual/comp continua pelo script (scripts/provision-studio.ts),
+ * que cria direto 'active' e sem plan_tier (ilimitado).
  */
 export async function createOrganization(data: { name: string }) {
     try {
@@ -43,7 +43,7 @@ export async function createOrganization(data: { name: string }) {
 
         const { data: org, error: orgError } = await supabaseAdmin
             .from('organizations')
-            .insert({ name, subscription_status: 'trialing' })
+            .insert({ name, subscription_status: 'incomplete' })
             .select('id')
             .single()
         if (orgError || !org) {

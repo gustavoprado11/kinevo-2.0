@@ -20,7 +20,8 @@ import { DeveloperLinkCard } from '@/components/settings/developer-link-card'
 import { getOrganizationContext } from '@/lib/studio/get-organization'
 import { getOrgMembersDirectory } from '@/lib/studio/org-directory'
 
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Building2 } from 'lucide-react'
+import Link from 'next/link'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -204,6 +205,25 @@ export default async function SettingsPage() {
                     Sua conta, sua marca, suas preferências e sua assinatura.
                 </p>
             </div>
+
+            {/* Convite a criar estúdio — só para quem não pertence a nenhum. */}
+            {!orgCtx && (
+                <Link
+                    href="/estudio/criar"
+                    className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5 transition-colors hover:border-violet-500/40"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
+                            <Building2 size={20} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-k-text-primary">Tem uma equipe? Crie um Estúdio</p>
+                            <p className="text-xs text-k-text-tertiary">Vários treinadores, alunos compartilhados e painel do gestor — a partir de R$ 219,90/mês.</p>
+                        </div>
+                    </div>
+                    <span className="shrink-0 rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white">Criar estúdio</span>
+                </Link>
+            )}
 
             {/* ── 01 · Você ── */}
             <SettingsSection number="01" title="Você" hint="Identidade pessoal na plataforma">
