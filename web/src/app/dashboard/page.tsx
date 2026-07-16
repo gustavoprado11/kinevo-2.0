@@ -1,6 +1,7 @@
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
 import { createClient } from '@/lib/supabase/server'
 import { getDashboardData } from '@/lib/dashboard/get-dashboard-data'
+import { isOrgBillingActive } from '@/lib/studio/org-access'
 import { redirect } from 'next/navigation'
 import { DashboardClient } from './dashboard-client'
 import { CheckoutPolling } from './checkout-polling'
@@ -49,6 +50,25 @@ export default async function DashboardPage({
     // serial extra que rodava em toda carga do dashboard.
     if (checkout !== 'success' && h !== 'classic' && trainer.home_style === 'assistant') {
         redirect('/assistente')
+    }
+
+    // Gestor-puro (owner/admin que NÃO treina): o dashboard pessoal fica vazio —
+    // manda direto ao painel do estúdio. Uma query indexada por trainer_id; para
+    // solo/coach retorna vazio e não redireciona. Só gestor de org com billing ativo.
+    if (checkout !== 'success') {
+        const { data: mgr } = await supabase
+            .from('organization_members')
+            .select('organizations(subscription_status, grace_until)')
+            .eq('trainer_id', trainer.id)
+            .eq('status', 'active')
+            .eq('is_coach', false)
+            .in('role', ['owner', 'admin'])
+            .maybeSingle()
+        const mgrOrg = (mgr as { organizations: { subscription_status: string; grace_until: string | null } | { subscription_status: string; grace_until: string | null }[] | null } | null)?.organizations
+        const org = Array.isArray(mgrOrg) ? mgrOrg[0] : mgrOrg
+        if (org && isOrgBillingActive(org.subscription_status, org.grace_until)) {
+            redirect('/estudio')
+        }
     }
 
     // Fetch dashboard data, students, and templates in parallel

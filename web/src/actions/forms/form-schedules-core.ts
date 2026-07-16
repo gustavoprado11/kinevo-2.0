@@ -176,17 +176,39 @@ export async function getStudentFormSchedulesCore(
     })
 }
 
+/**
+ * Pode gerenciar (toggle/delete) este agendamento? Dono direto OU membro do
+ * estúdio do aluno do agendamento (Estúdios v1 — open). Gate de app porque o
+ * core roda com admin client.
+ */
+async function canManageSchedule(supabase: DBClient, trainerId: string, scheduleId: string): Promise<boolean> {
+    const { data: sched } = await supabase
+        .from('form_schedules')
+        .select('student_id, trainer_id')
+        .eq('id', scheduleId)
+        .maybeSingle()
+    const row = sched as { student_id: string; trainer_id: string } | null
+    if (!row) return false
+    if (row.trainer_id === trainerId) return true
+    const orgId = await trainerActiveOrgId(supabase, trainerId)
+    if (!orgId) return false
+    const { data: st } = await supabase.from('students').select('organization_id').eq('id', row.student_id).maybeSingle()
+    return (st as { organization_id: string | null } | null)?.organization_id === orgId
+}
+
 export async function toggleFormScheduleCore(
     supabase: DBClient,
     trainerId: string,
     scheduleId: string,
     isActive: boolean,
 ): Promise<{ success: boolean; error?: string }> {
+    if (!(await canManageSchedule(supabase, trainerId, scheduleId))) {
+        return { success: false, error: 'Agendamento não encontrado' }
+    }
     const { error } = await supabase
         .from('form_schedules')
         .update({ is_active: isActive })
         .eq('id', scheduleId)
-        .eq('trainer_id', trainerId)
 
     if (error) {
         console.error('[toggleFormScheduleCore] error:', error)
@@ -200,11 +222,13 @@ export async function deleteFormScheduleCore(
     trainerId: string,
     scheduleId: string,
 ): Promise<{ success: boolean; error?: string }> {
+    if (!(await canManageSchedule(supabase, trainerId, scheduleId))) {
+        return { success: false, error: 'Agendamento não encontrado' }
+    }
     const { error } = await supabase
         .from('form_schedules')
         .delete()
         .eq('id', scheduleId)
-        .eq('trainer_id', trainerId)
 
     if (error) {
         console.error('[deleteFormScheduleCore] error:', error)
