@@ -448,6 +448,26 @@ function StudentRow({
                                     EU
                                 </Text>
                             </View>
+                        ) : student.is_private ? (
+                            <View
+                                style={{
+                                    backgroundColor: colors.purple[100],
+                                    paddingHorizontal: spacing[2],
+                                    paddingVertical: 2,
+                                    borderRadius: radius.sm,
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        fontFamily: "PlusJakartaSans_700Bold",
+                                        fontSize: 9,
+                                        color: colors.purple[700],
+                                        letterSpacing: 0.4,
+                                    }}
+                                >
+                                    PARTICULAR
+                                </Text>
+                            </View>
                         ) : null}
                     </View>
 

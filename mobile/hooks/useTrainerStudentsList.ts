@@ -18,6 +18,8 @@ export interface TrainerStudent {
     avatar_url: string | null;
     created_at: string;
     is_trainer_profile: boolean;
+    /** Estúdios: aluno particular do coach (fora do estúdio). */
+    is_private?: boolean;
     program_name: string | null;
     duration_weeks: number | null;
     program_started_at: string | null;

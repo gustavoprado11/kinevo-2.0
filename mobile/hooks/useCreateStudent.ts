@@ -11,6 +11,8 @@ interface CreateStudentData {
     email: string;
     phone: string;
     modality: "online" | "presential";
+    /** Estúdios: aluno particular do coach (fora do estúdio; exige plano solo pago). */
+    is_private?: boolean;
 }
 
 export interface CreateStudentResult {

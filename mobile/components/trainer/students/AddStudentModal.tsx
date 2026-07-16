@@ -11,11 +11,14 @@ import {
     ActivityIndicator,
     Share,
 } from "react-native";
-import { X, User, Mail, Phone, Globe, MapPin, Copy, Share2, Check } from "lucide-react-native";
+import { X, User, Mail, Phone, Globe, MapPin, Copy, Share2, Check, Lock } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
+import { Switch } from "react-native";
 import { useCreateStudent } from "../../../hooks/useCreateStudent";
+import { useStudioMembership } from "../../../hooks/useStudioDashboard";
+import { useRoleMode } from "../../../contexts/RoleModeContext";
 import { useV2Colors } from "../../../hooks/useV2Colors";
 import { toRgba } from "../../../lib/brandColor";
 
@@ -77,7 +80,17 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [modality, setModality] = useState<"online" | "presential">("online");
+    const [isPrivate, setIsPrivate] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Estúdios: coach de estúdio pode marcar o aluno como PARTICULAR (fora do
+    // estúdio — invisível aos colegas, não conta na faixa). Exige plano solo
+    // pago do próprio coach — o servidor é a fonte de verdade; aqui só damos a
+    // dica quando a assinatura pessoal não parece ativa.
+    const { membership: studioMembership } = useStudioMembership();
+    const { subscriptionStatus } = useRoleMode();
+    const isStudioCoach = !!studioMembership?.billingActive;
+    const likelyHasPaidSolo = subscriptionStatus === "active" || subscriptionStatus === "trialing";
 
     // Flow state
     const [step, setStep] = useState<Step>("form");
@@ -91,6 +104,7 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
             setEmail("");
             setPhone("");
             setModality("online");
+            setIsPrivate(false);
             setError(null);
             setStep("form");
             setCredentials(null);
@@ -110,6 +124,7 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
             email: email.trim().toLowerCase(),
             phone: phone.trim(),
             modality,
+            is_private: isStudioCoach && isPrivate,
         });
 
         if (!result.success) {
@@ -127,7 +142,7 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
         });
         setStep("credentials");
         onStudentCreated?.();
-    }, [canSubmit, isCreating, name, email, phone, modality, createStudent, onStudentCreated]);
+    }, [canSubmit, isCreating, name, email, phone, modality, isPrivate, isStudioCoach, createStudent, onStudentCreated]);
 
     const buildCredentialsMessage = useCallback(() => {
         if (!credentials) return "";
@@ -309,6 +324,48 @@ export function AddStudentModal({ visible, onClose, onStudentCreated }: AddStude
                                     );
                                 })}
                             </View>
+
+                            {/* Aluno particular (só coach de estúdio) */}
+                            {isStudioCoach && (
+                                <>
+                                    <Text style={labelStyle}>Vínculo</Text>
+                                    <View
+                                        style={{
+                                            ...inputRow,
+                                            paddingVertical: 12,
+                                            justifyContent: "space-between",
+                                        }}
+                                    >
+                                        <View style={{ flex: 1, paddingRight: 10 }}>
+                                            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
+                                                Aluno particular
+                                            </Text>
+                                            <Text style={{ marginTop: 2, fontSize: 12, color: colors.text.tertiary }}>
+                                                {isPrivate
+                                                    ? "Só você vê — fora do estúdio e da faixa."
+                                                    : "Desligado: o aluno entra no estúdio."}
+                                            </Text>
+                                        </View>
+                                        <Switch
+                                            value={isPrivate}
+                                            onValueChange={(v) => {
+                                                Haptics.selectionAsync();
+                                                setIsPrivate(v);
+                                            }}
+                                            trackColor={{ true: colors.purple[600] }}
+                                            accessibilityLabel="Aluno particular"
+                                        />
+                                    </View>
+                                    {isPrivate && !likelyHasPaidSolo && (
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+                                            <Lock size={12} color={colors.text.quaternary} />
+                                            <Text style={{ flex: 1, fontSize: 12, color: colors.text.tertiary }}>
+                                                Alunos particulares exigem um plano pessoal pago ativo.
+                                            </Text>
+                                        </View>
+                                    )}
+                                </>
+                            )}
                         </ScrollView>
 
                         {/* Submit button */}
