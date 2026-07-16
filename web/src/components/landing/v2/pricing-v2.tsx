@@ -4,8 +4,9 @@
  * ao Claude Design. Substitui o markup estático que vinha no .dc.html.
  */
 import type { CSSProperties } from 'react'
-import { Check, Sparkles, Lock } from 'lucide-react'
+import { Check, Sparkles, Lock, Building2 } from 'lucide-react'
 import { TIER_DISPLAY, type TierDisplay } from '@/lib/billing/tiers'
+import { PURCHASABLE_STUDIO_TIERS } from '@/lib/studio/studio-tiers'
 
 const SIGNUP = 'https://www.kinevoapp.com/signup'
 
@@ -100,12 +101,44 @@ function PriceCard({ t }: { t: TierDisplay }) {
     )
 }
 
+/** Faixa "Estúdios" — produto por organização (não por treinador). Abaixo do
+ *  grid solo, resume as faixas por nº de alunos e leva ao signup. */
+function StudioBanner() {
+    const faixas = PURCHASABLE_STUDIO_TIERS.map(t => `${t.name} (${t.studentLimit}) ${t.price}`).join(' · ')
+    return (
+        <div
+            className="studio-banner"
+            style={{
+                marginTop: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
+                gap: 16, padding: '20px 24px', borderRadius: 16,
+                border: '1px solid rgba(139,92,246,0.25)', background: 'rgba(139,92,246,0.06)',
+            }}
+        >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', flexShrink: 0 }}>
+                    <Building2 size={22} />
+                </div>
+                <div>
+                    <p style={{ fontSize: 15, fontWeight: 700 }}>Tem uma equipe? Kinevo Estúdios</p>
+                    <p style={{ fontSize: 13, opacity: 0.7 }}>Vários treinadores, alunos compartilhados e painel do gestor — a partir de R$ 219,90/mês. {faixas}.</p>
+                </div>
+            </div>
+            <a href={SIGNUP} style={{ flexShrink: 0, fontSize: 13.5, fontWeight: 700, padding: '11px 20px', borderRadius: 11, background: '#8b5cf6', color: '#fff', textAlign: 'center' }}>
+                Criar estúdio
+            </a>
+        </div>
+    )
+}
+
 export function PricingV2() {
     return (
-        <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, alignItems: 'stretch' }}>
-            {TIER_DISPLAY.map((t) => (
-                <PriceCard key={t.tier} t={t} />
-            ))}
-        </div>
+        <>
+            <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, alignItems: 'stretch' }}>
+                {TIER_DISPLAY.map((t) => (
+                    <PriceCard key={t.tier} t={t} />
+                ))}
+            </div>
+            <StudioBanner />
+        </>
     )
 }
