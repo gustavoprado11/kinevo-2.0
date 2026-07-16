@@ -14,7 +14,7 @@ interface Props {
     currentTrainerId: string
     coaches: Coach[]
 }
-interface Credential { name: string; email: string; password: string | null }
+interface Credential { name: string; email: string; password: string | null; invited?: boolean }
 
 export function EquipeSection({ organization, isManager, currentTrainerId, coaches }: Props) {
     const router = useRouter()
@@ -153,7 +153,7 @@ function AddCoachInline({ onDone }: { onDone: (cred: Credential | null) => void 
         startTransition(async () => {
             const res = await addCoach({ name, email })
             if (!res.success) { setError(res.error ?? 'Erro'); return }
-            onDone(res.password ? { name, email, password: res.password } : null)
+            onDone(res.password || res.invited ? { name, email, password: res.password ?? null, invited: res.invited } : null)
         })
     }
 
@@ -180,10 +180,20 @@ function CredentialBanner({ credential, onClose }: { credential: Credential; onC
             <div className="flex gap-3">
                 <KeyRound size={18} className="mt-0.5 text-amber-600 dark:text-amber-400" />
                 <div className="text-sm">
-                    <p className="font-medium text-k-text-primary">Acesso criado para {credential.name}</p>
-                    <p className="text-k-text-tertiary">Email: <span className="font-mono">{credential.email}</span></p>
-                    {credential.password && <p className="text-k-text-tertiary">Senha: <span className="font-mono">{credential.password}</span></p>}
-                    <p className="mt-1 text-xs text-k-text-quaternary">Anote e repasse — não será exibida de novo.</p>
+                    {credential.invited ? (
+                        <>
+                            <p className="font-medium text-k-text-primary">Convite enviado para {credential.name}</p>
+                            <p className="text-k-text-tertiary">Email: <span className="font-mono">{credential.email}</span></p>
+                            <p className="mt-1 text-xs text-k-text-quaternary">O coach recebe o link por e-mail e define a própria senha.</p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="font-medium text-k-text-primary">Acesso criado para {credential.name}</p>
+                            <p className="text-k-text-tertiary">Email: <span className="font-mono">{credential.email}</span></p>
+                            {credential.password && <p className="text-k-text-tertiary">Senha: <span className="font-mono">{credential.password}</span></p>}
+                            <p className="mt-1 text-xs text-k-text-quaternary">Anote e repasse — não será exibida de novo.</p>
+                        </>
+                    )}
                 </div>
             </div>
             <button onClick={onClose} className="text-k-text-quaternary"><X size={18} /></button>
