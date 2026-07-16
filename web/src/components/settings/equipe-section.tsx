@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, UserPlus, Loader2, KeyRound, X, ShieldCheck } from 'lucide-react'
 import { addCoach } from '@/actions/organizations/add-coach'
-import { updateOrgVisibility } from '@/actions/organizations/update-org-visibility'
 import { updateCoachStatus } from '@/actions/organizations/update-coach-status'
 
 interface Coach { trainerId: string; role: string; status: string; name: string; email: string }
@@ -22,15 +21,6 @@ export function EquipeSection({ organization, isManager, currentTrainerId, coach
     const [credential, setCredential] = useState<Credential | null>(null)
     const [actionError, setActionError] = useState<string | null>(null)
     const [isPending, startTransition] = useTransition()
-
-    function toggleVisibility() {
-        if (!isManager) return
-        const next = organization.visibility === 'open' ? 'restricted' : 'open'
-        startTransition(async () => {
-            const res = await updateOrgVisibility({ visibility: next })
-            if (res.success) router.refresh()
-        })
-    }
 
     function runCoachAction(input: Parameters<typeof updateCoachStatus>[0]) {
         if (!isManager) return
@@ -50,7 +40,7 @@ export function EquipeSection({ organization, isManager, currentTrainerId, coach
                         <Users size={18} className="text-violet-500" />
                     </div>
                     <div>
-                        <h2 className="text-sm font-bold text-k-text-primary">Equipe da academia</h2>
+                        <h2 className="text-sm font-bold text-k-text-primary">Equipe do estúdio</h2>
                         <p className="text-xs text-k-text-quaternary">{organization.name}</p>
                     </div>
                 </div>
@@ -59,33 +49,23 @@ export function EquipeSection({ organization, isManager, currentTrainerId, coach
                         onClick={() => setShowForm((v) => !v)}
                         className="flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-white"
                     >
-                        <UserPlus size={15} /> Adicionar coach
+                        <UserPlus size={15} /> Adicionar treinador
                     </button>
                 )}
             </div>
 
-            {/* Visibilidade cruzada */}
-            <div className="mb-5 flex items-center justify-between rounded-xl border border-k-border-primary p-3.5">
-                <div className="flex items-start gap-2.5">
-                    <ShieldCheck size={16} className="mt-0.5 text-k-text-quaternary" />
-                    <div>
-                        <p className="text-sm font-medium text-k-text-primary">Visibilidade entre coaches</p>
-                        <p className="text-xs text-k-text-quaternary">
-                            {organization.visibility === 'open'
-                                ? 'Aberta — todo coach vê e atua nos atletas da academia.'
-                                : 'Restrita — coaches veem todos, mas atuam só nos próprios (gestor atua em todos).'}
-                        </p>
-                    </div>
+            {/* Visibilidade: v1 é SEMPRE aberta (RLS/RPCs dão acesso por membership).
+                O toggle "Tornar restrita" foi removido — gravava organizations.visibility
+                mas NADA lia o campo para decidir acesso, então a tela prometia uma
+                restrição que não existia. Volta junto com o modo restrito de verdade. */}
+            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-k-border-primary p-3.5">
+                <ShieldCheck size={16} className="mt-0.5 text-k-text-quaternary" />
+                <div>
+                    <p className="text-sm font-medium text-k-text-primary">Visibilidade entre treinadores</p>
+                    <p className="text-xs text-k-text-quaternary">
+                        Aberta — todo treinador do estúdio vê e atua nos alunos do estúdio. Alunos particulares ficam fora.
+                    </p>
                 </div>
-                {isManager && (
-                    <button
-                        onClick={toggleVisibility}
-                        disabled={isPending}
-                        className="shrink-0 rounded-lg border border-k-border-primary px-3 py-1.5 text-xs font-medium text-k-text-secondary disabled:opacity-50"
-                    >
-                        {organization.visibility === 'open' ? 'Tornar restrita' : 'Tornar aberta'}
-                    </button>
-                )}
             </div>
 
             {credential && <CredentialBanner credential={credential} onClose={() => setCredential(null)} />}
@@ -130,8 +110,8 @@ export function EquipeSection({ organization, isManager, currentTrainerId, coach
                                         {inactive ? 'Reativar' : 'Desativar'}
                                     </button>
                                 )}
-                                <span className="rounded-full bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium capitalize text-violet-500">
-                                    {c.role}
+                                <span className="rounded-full bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium text-violet-500">
+                                    {c.role === 'owner' ? 'Dono' : c.role === 'admin' ? 'Admin' : 'Coach'}
                                 </span>
                             </div>
                         </li>
@@ -160,7 +140,7 @@ function AddCoachInline({ onDone }: { onDone: (cred: Credential | null) => void 
     return (
         <div className="mb-4 rounded-xl border border-k-border-primary p-4">
             <div className="grid gap-3 sm:grid-cols-2">
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do coach"
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do treinador"
                     className="rounded-lg border border-k-border-primary bg-transparent px-3 py-2 text-sm text-k-text-primary outline-none" />
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email"
                     className="rounded-lg border border-k-border-primary bg-transparent px-3 py-2 text-sm text-k-text-primary outline-none" />

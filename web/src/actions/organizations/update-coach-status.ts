@@ -19,7 +19,7 @@ export async function updateCoachStatus(data: {
 }) {
     try {
         const ctx = await getOrganizationContext()
-        if (!ctx) return { success: false, error: 'Você não pertence a uma academia' }
+        if (!ctx) return { success: false, error: 'Você não pertence a um estúdio' }
         if (!ctx.isManager) return { success: false, error: 'Apenas o gestor pode gerenciar coaches' }
 
         const { data: member } = await supabaseAdmin
@@ -28,11 +28,11 @@ export async function updateCoachStatus(data: {
             .eq('organization_id', ctx.organization.id)
             .eq('trainer_id', data.trainerId)
             .maybeSingle()
-        if (!member) return { success: false, error: 'Coach não encontrado nesta academia' }
+        if (!member) return { success: false, error: 'Treinador não encontrado neste estúdio' }
         const m = member as { id: string; role: string; status: string }
 
         if (m.role === 'owner') {
-            return { success: false, error: 'O responsável pela academia não pode ser alterado aqui' }
+            return { success: false, error: 'O dono do estúdio não pode ser alterado aqui' }
         }
 
         if (data.action === 'deactivate') {
@@ -63,7 +63,7 @@ export async function updateCoachStatus(data: {
                     .eq('organization_id', ctx.organization.id)
                     .eq('status', 'active')
                 if ((count ?? 0) >= ctx.organization.seat_limit) {
-                    return { success: false, error: 'Limite de assentos da academia atingido.' }
+                    return { success: false, error: 'Limite de assentos do estúdio atingido.' }
                 }
             }
             await supabaseAdmin

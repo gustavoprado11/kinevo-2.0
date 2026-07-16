@@ -104,7 +104,7 @@ function PriceCard({ t }: { t: TierDisplay }) {
 /** Faixa "Estúdios" — produto por organização (não por treinador). Abaixo do
  *  grid solo, resume as faixas por nº de alunos e leva ao signup. */
 function StudioBanner() {
-    const faixas = PURCHASABLE_STUDIO_TIERS.map(t => `${t.name} (${t.studentLimit}) ${t.price}`).join(' · ')
+    const faixas = PURCHASABLE_STUDIO_TIERS.map(t => `${t.name} ${t.price}`).join(' · ')
     return (
         <div
             className="studio-banner"

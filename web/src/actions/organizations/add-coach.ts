@@ -30,8 +30,8 @@ export async function addCoach(data: {
         if (!name || !email) return { success: false, error: 'Nome e email são obrigatórios' }
 
         const ctx = await getOrganizationContext()
-        if (!ctx) return { success: false, error: 'Você não pertence a uma academia' }
-        if (!ctx.isManager) return { success: false, error: 'Apenas o gestor pode adicionar coaches' }
+        if (!ctx) return { success: false, error: 'Você não pertence a um estúdio' }
+        if (!ctx.isManager) return { success: false, error: 'Apenas o gestor pode adicionar treinadores' }
 
         // 1. Treinador já existe?
         const { data: existingTrainer } = await supabaseAdmin
@@ -116,7 +116,7 @@ export async function addCoach(data: {
                     .eq('organization_id', ctx.organization.id)
                     .eq('status', 'active')
                 if ((count ?? 0) >= ctx.organization.seat_limit) {
-                    return { success: false, error: 'Limite de assentos da academia atingido.' }
+                    return { success: false, error: 'Limite de assentos do estúdio atingido.' }
                 }
             }
             const { error: memberError } = await supabaseAdmin
@@ -132,7 +132,7 @@ export async function addCoach(data: {
                 })
             if (memberError) {
                 console.error('Error linking coach to organization:', memberError)
-                return { success: false, error: 'Erro ao vincular o coach à academia' }
+                return { success: false, error: 'Erro ao vincular o treinador ao estúdio' }
             }
         }
 

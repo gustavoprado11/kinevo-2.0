@@ -17,7 +17,7 @@ export async function updateOrgVisibility(data: { visibility: 'open' | 'restrict
             return { success: false, error: 'Visibilidade inválida' }
         }
         const ctx = await getOrganizationContext()
-        if (!ctx) return { success: false, error: 'Você não pertence a uma academia' }
+        if (!ctx) return { success: false, error: 'Você não pertence a um estúdio' }
         if (!ctx.isManager) return { success: false, error: 'Apenas o gestor pode alterar a visibilidade' }
 
         const { error } = await supabaseAdmin
