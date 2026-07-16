@@ -35,6 +35,30 @@ export function mapExerciseRows(rows: any[] | null | undefined): Exercise[] {
 
 async function fetchTrainerLibrary(trainerId: string): Promise<Exercise[]> {
     const supabase = createAdminClient()
+
+    // Estúdios (decisão 16/jul): a biblioteca do estúdio é COMPARTILHADA — o
+    // builder também lista os exercícios custom dos COLEGAS ativos do mesmo
+    // estúdio (espelha a policy exercises_org_select da migr 263). Solo: o
+    // lookup de membership volta vazio e nada muda.
+    const ownerIds = [trainerId]
+    const { data: myMembership } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('trainer_id', trainerId)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle()
+    if (myMembership) {
+        const { data: colleagues } = await supabase
+            .from('organization_members')
+            .select('trainer_id')
+            .eq('organization_id', (myMembership as { organization_id: string }).organization_id)
+            .eq('status', 'active')
+        for (const c of (colleagues ?? []) as Array<{ trainer_id: string }>) {
+            if (!ownerIds.includes(c.trainer_id)) ownerIds.push(c.trainer_id)
+        }
+    }
+
     const { data, error } = await supabase
         .from('exercises')
         .select(`
@@ -53,7 +77,7 @@ async function fetchTrainerLibrary(trainerId: string): Promise<Exercise[]> {
                 )
             )
         `)
-        .or(`owner_id.is.null,owner_id.eq.${trainerId}`)
+        .or(`owner_id.is.null,owner_id.in.(${ownerIds.join(',')})`)
         .eq('is_archived', false)
         .order('name')
 

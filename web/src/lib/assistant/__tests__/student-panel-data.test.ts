@@ -41,7 +41,7 @@ describe('getStudentPanelData', () => {
 
     it('monta o payload completo (programa, aderência, alerta, histórico, notas)', async () => {
         const sb = makeClient({
-            students: { id: STUDENT_ID, name: 'João', avatar_url: 'http://a', status: 'active', trainer_notes: 'Cuidar do joelho' },
+            students: { id: STUDENT_ID, name: 'João', avatar_url: 'http://a', status: 'active', trainer_notes: 'Cuidar do joelho', coach_id: TRAINER_ID, organization_id: null },
             assigned_programs: [{
                 id: 'p1', name: 'Hipertrofia 3x', current_week: 5, duration_weeks: 8, started_at: '2026-06-01',
                 assigned_workouts: [{ scheduled_days: [1, 4] }, { scheduled_days: [2, 5] }], // expected = 4
@@ -79,7 +79,7 @@ describe('getStudentPanelData', () => {
 
     it('aluno sem programa ativo: program e adherence nulos, histórico ainda aparece', async () => {
         const sb = makeClient({
-            students: { id: STUDENT_ID, name: 'Ana', avatar_url: null, status: 'active', trainer_notes: null },
+            students: { id: STUDENT_ID, name: 'Ana', avatar_url: null, status: 'active', trainer_notes: null, coach_id: TRAINER_ID, organization_id: null },
             assigned_programs: [],
             workout_sessions: [
                 { id: 's1', completed_at: '2026-07-07T14:00:00Z', assigned_workouts: { name: 'Full body' } },
@@ -98,7 +98,7 @@ describe('getStudentPanelData', () => {
 
     it('sem histórico: history vazio; com programa, aderência é done 0', async () => {
         const sb = makeClient({
-            students: { id: STUDENT_ID, name: 'Bia', avatar_url: null, status: 'active', trainer_notes: '   ' },
+            students: { id: STUDENT_ID, name: 'Bia', avatar_url: null, status: 'active', trainer_notes: '   ', coach_id: TRAINER_ID, organization_id: null },
             assigned_programs: [{
                 id: 'p1', name: 'Base', current_week: 1, duration_weeks: 4, started_at: '2026-07-01',
                 assigned_workouts: [{ scheduled_days: [1, 3, 5] }], // expected = 3
@@ -115,7 +115,7 @@ describe('getStudentPanelData', () => {
 
     it('programa ativo sem dias agendados: adherence null (esconde "0/0")', async () => {
         const sb = makeClient({
-            students: { id: STUDENT_ID, name: 'Duda', avatar_url: null, status: 'active', trainer_notes: null },
+            students: { id: STUDENT_ID, name: 'Duda', avatar_url: null, status: 'active', trainer_notes: null, coach_id: TRAINER_ID, organization_id: null },
             assigned_programs: [{
                 id: 'p1', name: 'Sem agenda', current_week: 1, duration_weeks: 4, started_at: '2026-07-01',
                 assigned_workouts: [{ scheduled_days: [] }, { scheduled_days: null }], // expected = 0
@@ -132,7 +132,7 @@ describe('getStudentPanelData', () => {
 
     it('readOnly é refletido no payload', async () => {
         const sb = makeClient({
-            students: { id: STUDENT_ID, name: 'Léo', avatar_url: null, status: 'inactive', trainer_notes: null },
+            students: { id: STUDENT_ID, name: 'Léo', avatar_url: null, status: 'inactive', trainer_notes: null, coach_id: TRAINER_ID, organization_id: null },
             assigned_programs: [],
             workout_sessions: [],
             assistant_insights: [],
@@ -144,7 +144,7 @@ describe('getStudentPanelData', () => {
 
     it('escolhe o insight de maior prioridade (high > medium)', async () => {
         const sb = makeClient({
-            students: { id: STUDENT_ID, name: 'Rui', avatar_url: null, status: 'active', trainer_notes: null },
+            students: { id: STUDENT_ID, name: 'Rui', avatar_url: null, status: 'active', trainer_notes: null, coach_id: TRAINER_ID, organization_id: null },
             assigned_programs: [],
             workout_sessions: [],
             assistant_insights: [
@@ -159,7 +159,7 @@ describe('getStudentPanelData', () => {
 
     it('critical vence high na escolha do alerta', async () => {
         const sb = makeClient({
-            students: { id: STUDENT_ID, name: 'Zoe', avatar_url: null, status: 'active', trainer_notes: null },
+            students: { id: STUDENT_ID, name: 'Zoe', avatar_url: null, status: 'active', trainer_notes: null, coach_id: TRAINER_ID, organization_id: null },
             assigned_programs: [],
             workout_sessions: [],
             assistant_insights: [
@@ -173,7 +173,7 @@ describe('getStudentPanelData', () => {
 
     it("insight de estagnação (key stagnation:*) é 'estagnado' mesmo com category progression", async () => {
         const sb = makeClient({
-            students: { id: STUDENT_ID, name: 'Ivo', avatar_url: null, status: 'active', trainer_notes: null },
+            students: { id: STUDENT_ID, name: 'Ivo', avatar_url: null, status: 'active', trainer_notes: null, coach_id: TRAINER_ID, organization_id: null },
             assigned_programs: [],
             workout_sessions: [],
             assistant_insights: [

@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getTrainerWithSubscription } from '@/lib/auth/get-trainer'
+import { getStudentScope } from '@/lib/studio/student-scope'
 import { listConversations } from '@/lib/assistant/conversations'
 import { getAttentionInsights } from '@/lib/assistant/home-data'
 import { ASSISTANT_TIERS } from '@/lib/assistant/command-engine'
@@ -26,7 +27,25 @@ export async function GET() {
 
         const [conversations, studentsRes, attention] = await Promise.all([
             listConversations(supabaseAdmin, trainer.id),
-            supabase.from('students').select('id, name, status, avatar_url').eq('coach_id', trainer.id).order('name', { ascending: true }),
+            // Estúdios (decisão 16/jul): o assistente enxerga os alunos do
+            // estúdio, não só os próprios. Perfis "Eu" de colegas ficam fora.
+            (async () => {
+                const scope = await getStudentScope(trainer.id)
+                const q = supabase
+                    .from('students')
+                    .select('id, name, status, avatar_url, coach_id, is_trainer_profile')
+                    .order('name', { ascending: true })
+                const res = scope.kind === 'org'
+                    ? await q.or(`organization_id.eq.${scope.orgId},coach_id.eq.${trainer.id}`)
+                    : await q.eq('coach_id', trainer.id)
+                if (res.data) {
+                    res.data = res.data.filter(
+                        (s: { is_trainer_profile?: boolean | null; coach_id?: string | null }) =>
+                            !(s.is_trainer_profile && s.coach_id !== trainer.id),
+                    )
+                }
+                return res
+            })(),
             getAttentionInsights(supabaseAdmin, trainer.id),
         ])
 

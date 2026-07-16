@@ -73,15 +73,28 @@ export async function getStudentPanelData(
     const now = opts.now ?? new Date()
     const timeZone = opts.timeZone ?? WEEK_TZ
 
-    // Posse: o aluno tem que ser deste treinador. null → 404 na rota.
+    // Acesso: dono (coach_id) OU membro ATIVO do estúdio do aluno (decisão
+    // 16/jul — o assistente enxerga os alunos do estúdio). null → 404 na rota.
     const { data: student } = await sb
         .from('students')
-        .select('id, name, avatar_url, status, trainer_notes')
+        .select('id, name, avatar_url, status, trainer_notes, coach_id, organization_id')
         .eq('id', studentId)
-        .eq('coach_id', trainerId)
         .maybeSingle()
 
     if (!student) return null
+    const sRow = student as { coach_id: string | null; organization_id: string | null }
+    let allowed = sRow.coach_id === trainerId
+    if (!allowed && sRow.organization_id) {
+        const { data: member } = await sb
+            .from('organization_members')
+            .select('id')
+            .eq('organization_id', sRow.organization_id)
+            .eq('trainer_id', trainerId)
+            .eq('status', 'active')
+            .maybeSingle()
+        allowed = !!member
+    }
+    if (!allowed) return null
 
     const [programRes, sessionsRes, insightsRes] = await Promise.all([
         // Programa ATIVO (mais recente) + treinos p/ o cálculo de aderência.

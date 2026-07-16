@@ -74,14 +74,25 @@ export async function POST(req: NextRequest) {
         const rawStudentId: unknown = body?.studentId
         let studentId: string | null = null
         if (typeof rawStudentId === 'string' && UUID_RE.test(rawStudentId)) {
-            // Valida posse do aluno antes de vincular.
+            // Valida acesso antes de vincular: dono OU membro do estúdio do
+            // aluno (decisão 16/jul).
             const { data } = await supabaseAdmin
                 .from('students')
-                .select('id')
+                .select('id, coach_id, organization_id')
                 .eq('id', rawStudentId)
-                .eq('coach_id', trainer.id)
                 .maybeSingle()
-            studentId = data?.id ?? null
+            if (data && data.coach_id === trainer.id) {
+                studentId = data.id
+            } else if (data?.organization_id) {
+                const { data: member } = await supabaseAdmin
+                    .from('organization_members')
+                    .select('id')
+                    .eq('organization_id', data.organization_id)
+                    .eq('trainer_id', trainer.id)
+                    .eq('status', 'active')
+                    .maybeSingle()
+                studentId = member ? data.id : null
+            }
         }
 
         const conversation = await createConversation(supabaseAdmin, trainer.id, { studentId })
