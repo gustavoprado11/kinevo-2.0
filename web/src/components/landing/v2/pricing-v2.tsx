@@ -120,7 +120,10 @@ function StudioBanner() {
                 </div>
                 <div>
                     <p style={{ fontSize: 15, fontWeight: 700 }}>Tem uma equipe? Kinevo Estúdios</p>
-                    <p style={{ fontSize: 13, opacity: 0.7 }}>Vários treinadores, alunos compartilhados e painel do gestor — a partir de R$ 219,90/mês. {faixas}.</p>
+                    <p style={{ fontSize: 13, opacity: 0.7 }}>
+                        Vários treinadores, alunos compartilhados e painel do gestor — a partir de R$ 219,90/mês. {faixas}.{' '}
+                        <a href="/estudios" style={{ color: '#8b5cf6', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>Saiba mais</a>
+                    </p>
                 </div>
             </div>
             <a href={`${SIGNUP}?intent=studio`} style={{ flexShrink: 0, fontSize: 13.5, fontWeight: 700, padding: '11px 20px', borderRadius: 11, background: '#8b5cf6', color: '#fff', textAlign: 'center' }}>

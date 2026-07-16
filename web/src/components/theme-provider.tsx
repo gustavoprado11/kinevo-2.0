@@ -5,7 +5,7 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes'
 import type { ComponentType, ReactNode } from 'react'
 
 const LOGGED_AREA_PREFIXES = ['/dashboard', '/students', '/programs', '/exercises', '/schedule', '/settings', '/forms', '/avaliacoes', '/financial', '/training-room', '/marketing', '/leads', '/landing', '/assistente', '/consultoria', '/estudio']
-const FORCE_LIGHT_ROUTES = ['/', '/login', '/signup']
+const FORCE_LIGHT_ROUTES = ['/', '/login', '/signup', '/estudios']
 // /assistente saiu daqui em 07/jul/2026: a casca (workspace/sidebar/meter) ganhou
 // pares dark: e segue a preferência do treinador como o resto da área logada.
 const FORCE_LIGHT_PREFIXES = ['/auth']

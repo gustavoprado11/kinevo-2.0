@@ -203,9 +203,35 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     if (!subscriptionId) return
 
     // Estúdio: past_due com grace_until derivado do period_end (precisa da sub).
-    if (await orgIdForSubscription(subscriptionId)) {
+    const orgId = await orgIdForSubscription(subscriptionId)
+    if (orgId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data'] })
         await updateOrgBySubscription(subscription)
+        // Aviso proativo: fatura do ESTÚDIO falhou → notifica os gestores
+        // (decisão 16/jul — o gestor não deveria descobrir só ao abrir o painel).
+        // Fire-and-forget: falha aqui não pode derrubar o webhook.
+        try {
+            const { data: managers } = await supabaseAdmin
+                .from('organization_members')
+                .select('trainer_id')
+                .eq('organization_id', orgId)
+                .eq('status', 'active')
+                .in('role', ['owner', 'admin'])
+            if (managers?.length) {
+                await supabaseAdmin.from('trainer_notifications').insert(
+                    (managers as Array<{ trainer_id: string }>).map(m => ({
+                        trainer_id: m.trainer_id,
+                        type: 'studio_payment_failed',
+                        title: 'Pagamento do estúdio falhou',
+                        body: 'A cobrança da assinatura do estúdio não foi aprovada. Atualize o cartão em Estúdio → Plano → Gerenciar assinatura para não perder o acesso da equipe.',
+                        data: { organization_id: orgId },
+                        category: 'billing',
+                    })),
+                )
+            }
+        } catch (notifyError) {
+            console.error('[webhook] falha ao notificar gestores (org payment failed):', notifyError)
+        }
         return
     }
 
