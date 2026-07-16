@@ -22,15 +22,22 @@ export function registerStudentWriteTools(server: McpServer, trainerId: string) 
         .array(z.object({ condition: z.string(), notes: z.string().optional() }))
         .optional()
         .describe('Medical conditions or restrictions (e.g., knee injury, herniated disc)'),
+      is_private: z
+        .boolean()
+        .optional()
+        .describe(
+          "Studio coaches only: true = personal client OUTSIDE the studio (invisible to colleagues/manager, does not count toward the studio tier). Requires the coach's own PAID solo plan. Irrelevant for solo trainers.",
+        ),
     },
     { title: 'Criar aluno', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    async ({ name, email, phone, objective, modality, training_level, medical_restrictions }) => {
+    async ({ name, email, phone, objective, modality, training_level, medical_restrictions, is_private }) => {
       const supabaseAdmin = createAdminClient()
 
       // 0. Gate de limite de alunos por tier (Free = 1; pago = ilimitado).
+      // Particular (estúdio): exige plano solo pago do coach.
       try {
         const tier = await getAiTierForTrainer(supabaseAdmin, trainerId)
-        await assertCanCreateStudent(supabaseAdmin, trainerId, tier)
+        await assertCanCreateStudent(supabaseAdmin, trainerId, tier, { isPrivate: is_private })
       } catch (capError) {
         if (capError instanceof StudentCapError) {
           return mcpError(capError.message)
@@ -63,6 +70,7 @@ export function registerStudentWriteTools(server: McpServer, trainerId: string) 
           modality,
           objective: objective ?? null,
           status: 'active',
+          is_private: is_private === true,
         })
         .select('id, name, email, status')
         .single()

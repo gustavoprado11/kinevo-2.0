@@ -6,21 +6,24 @@ import { getOrgMembersDirectory } from '@/lib/studio/org-directory'
 import { StudentsClient } from './students-client'
 
 export default async function StudentsPage() {
-    const { trainer } = await getTrainerWithSubscription()
+    const { trainer, tier } = await getTrainerWithSubscription()
     const scope = await getStudentScope(trainer.id)
+    // Alunos particulares (coach de estúdio): exigem plano solo PAGO do coach.
+    const hasPaidSolo = tier !== 'free'
 
     const supabase = await createClient()
 
-    // Estúdio: lista TODOS os alunos da org (visibilidade open) + selecionamos
-    // coach_id p/ mostrar o "Responsável". Solo: só os próprios (coach_id).
+    // Estúdio: lista TODOS os alunos da org (visibilidade open) + os PRÓPRIOS
+    // fora da org (alunos particulares, is_private) + selecionamos coach_id p/
+    // mostrar o "Responsável". Solo: só os próprios (coach_id).
     const baseStudentQuery = supabase
         .from('students')
-        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, coach_id')
+        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, coach_id, is_private')
         .order('created_at', { ascending: false })
 
     const [studentsResult, templatesResult] = await Promise.all([
         scope.kind === 'org'
-            ? baseStudentQuery.eq('organization_id', scope.orgId)
+            ? baseStudentQuery.or(`organization_id.eq.${scope.orgId},coach_id.eq.${trainer.id}`)
             : baseStudentQuery.eq('coach_id', trainer.id),
         // M9 — `category` adicionado pra alimentar o NewStudentWizard:
         // step 1 filtra category='anamnese', step 2 filtra category='assessment'.
@@ -80,6 +83,7 @@ export default async function StudentsPage() {
                 anamneseTemplates={anamneseTemplates}
                 assessmentTemplates={assessmentTemplates}
                 isStudioView={isStudioView}
+                hasPaidSolo={hasPaidSolo}
                 studioCoaches={studioCoaches}
             />
         )
@@ -168,6 +172,7 @@ export default async function StudentsPage() {
             anamneseTemplates={anamneseTemplates}
             assessmentTemplates={assessmentTemplates}
             isStudioView={isStudioView}
+                hasPaidSolo={hasPaidSolo}
             studioCoaches={studioCoaches}
         />
     )

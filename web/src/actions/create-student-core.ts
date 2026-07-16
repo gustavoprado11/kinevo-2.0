@@ -19,6 +19,9 @@ export interface CreateStudentInput {
     email: string
     phone: string
     modality: 'online' | 'presential'
+    /** Estúdios: aluno PARTICULAR do coach (fora do estúdio). Exige plano solo
+     *  pago do próprio coach — gate em assertCanCreateStudent. Inócuo p/ solo. */
+    isPrivate?: boolean
 }
 
 export interface CreateStudentResult {
@@ -42,7 +45,7 @@ export async function createStudentCore(
         // Cobre a action createStudent E convertLeadToStudentCore (que chama o core).
         try {
             const tier = await getAiTierForTrainer(supabaseAdmin, trainerId)
-            await assertCanCreateStudent(supabaseAdmin, trainerId, tier)
+            await assertCanCreateStudent(supabaseAdmin, trainerId, tier, { isPrivate: data.isPrivate })
         } catch (capError) {
             if (capError instanceof StudentCapError) {
                 // `code` deixa a UI distinguir o muro de monetização (cap do Free) de
@@ -96,6 +99,8 @@ export async function createStudentCore(
                 phone: data.phone,
                 modality: data.modality,
                 status: 'active',
+                // Particular NÃO herda a org (trigger students_derive_org_id respeita).
+                is_private: data.isPrivate === true,
             })
             .select('id')
             .single()

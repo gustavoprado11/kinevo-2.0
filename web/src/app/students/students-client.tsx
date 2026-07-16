@@ -34,6 +34,8 @@ interface Student {
     avatar_url: string | null
     created_at: string
     is_trainer_profile: boolean | null
+    /** Estúdio: aluno particular do coach (fora do estúdio). */
+    is_private?: boolean | null
     programName: string | null
     lastSessionDate: string | null
     sessionsThisWeek: number
@@ -64,6 +66,8 @@ interface StudentsClientProps {
     assessmentTemplates?: WizardTemplate[]
     /** Estúdio: mostra coluna "Responsável" + filtro por treinador. */
     isStudioView?: boolean
+    /** Plano solo pago do coach (libera alunos particulares no estúdio). */
+    hasPaidSolo?: boolean
     studioCoaches?: { id: string; name: string }[]
 }
 
@@ -119,6 +123,7 @@ export function StudentsClient({
     anamneseTemplates = [],
     assessmentTemplates = [],
     isStudioView = false,
+    hasPaidSolo = false,
     studioCoaches = [],
 }: StudentsClientProps) {
     const router = useRouter()
@@ -474,6 +479,11 @@ export function StudentsClient({
                                                                 Eu
                                                             </span>
                                                         )}
+                                                        {!student.is_trainer_profile && student.is_private && isStudioView && (
+                                                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-[#F3F0FF] dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-300 border border-[#E0D7FF] dark:border-violet-500/20">
+                                                                Particular
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -571,6 +581,8 @@ export function StudentsClient({
                 onAccessDialogClosed={handleAccessDialogClosed}
                 trainerId={trainer.id}
                 formTemplates={formTemplates}
+                isStudioCoach={isStudioView}
+                hasPaidSolo={hasPaidSolo}
             />
 
             {/* M9 — NewStudentWizard dispara após o StudentAccessDialog fechar. */}

@@ -44,6 +44,10 @@ interface StudentModalProps {
     trainerId: string
     initialData?: Student | null
     formTemplates?: FormTemplateOption[]
+    /** Estúdio: mostra o toggle "Aluno particular" (fora do estúdio). */
+    isStudioCoach?: boolean
+    /** Plano solo pago do coach — sem ele o particular fica travado (CTA). */
+    hasPaidSolo?: boolean
 }
 
 export function StudentModal({
@@ -55,11 +59,14 @@ export function StudentModal({
     trainerId,
     initialData,
     formTemplates = [],
+    isStudioCoach = false,
+    hasPaidSolo = false,
 }: StudentModalProps) {
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [phone, setPhone] = useState('')
     const [modality, setModality] = useState<'online' | 'presential'>('online')
+    const [isPrivate, setIsPrivate] = useState(false)
     const [selectedFormId, setSelectedFormId] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [capReached, setCapReached] = useState(false)
@@ -97,6 +104,7 @@ export function StudentModal({
                 setEmail('')
                 setPhone('')
                 setModality('online')
+                setIsPrivate(false)
                 setSelectedFormId('')
             }
             setError(null)
@@ -138,7 +146,8 @@ export function StudentModal({
                 name: name.trim(),
                 email: email.trim().toLowerCase(),
                 phone: phone.trim(),
-                modality
+                modality,
+                isPrivate: isStudioCoach && isPrivate,
             })
 
             if (!result.success) {
@@ -363,6 +372,37 @@ export function StudentModal({
                                         </label>
                                     </div>
                                 </div>
+
+                                {/* Aluno particular — só coach de estúdio, só criação */}
+                                {!isEdit && isStudioCoach && (
+                                    <div>
+                                        <label className="mb-2 block text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide">
+                                            Vínculo
+                                        </label>
+                                        <label className="flex items-start justify-between gap-3 rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3.5 py-3 cursor-pointer">
+                                            <span>
+                                                <span className="block text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">Aluno particular</span>
+                                                <span className="mt-0.5 block text-xs text-[#86868B] dark:text-k-text-tertiary">
+                                                    {isPrivate
+                                                        ? 'Só você vê — fora do estúdio e da faixa.'
+                                                        : 'Desligado: o aluno entra no estúdio.'}
+                                                </span>
+                                            </span>
+                                            <input
+                                                type="checkbox"
+                                                checked={isPrivate}
+                                                onChange={(e) => setIsPrivate(e.target.checked)}
+                                                className="mt-0.5 h-4 w-4 accent-[#7C3AED]"
+                                            />
+                                        </label>
+                                        {isPrivate && !hasPaidSolo && (
+                                            <p className="mt-1.5 text-xs text-[#FF9500] dark:text-yellow-400">
+                                                Alunos particulares exigem um plano pessoal pago ativo —{' '}
+                                                <a href="/settings" className="underline underline-offset-2">assine em Configurações</a>.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Form template dropdown — only show in create mode */}
                                 {!isEdit && sortedTemplates.length > 0 && (

@@ -41,20 +41,38 @@ function capMessage(cap: number): string {
 
 type DBClient = SupabaseClient<Database>
 
+/** Mensagem do gate de aluno particular (coach de estúdio sem plano solo pago). */
+export const PRIVATE_STUDENT_REQUIRES_PLAN_ERROR =
+    'Alunos particulares exigem um plano pessoal pago ativo. Assine um plano em Configurações → Assinatura para atender sua carteira própria.'
+
 /**
  * Lança StudentCapError se a criação de mais um aluno ultrapassar o cap do tier.
  * No-op para tiers ilimitados. Conta `students` por `coach_id` (o self-student
  * conta como 1, então no Free o 2º aluno é bloqueado).
+ *
+ * `opts.isPrivate` (Estúdios, decisão 16/jul): aluno PARTICULAR de coach de
+ * estúdio exige plano solo PAGO do próprio coach (qualquer pago = ilimitado;
+ * Gratuito NÃO vale — o coach já tem o núcleo pago pelo estúdio, a carteira
+ * própria é privilégio do plano pessoal). Para treinador solo o flag é inócuo
+ * (todos os alunos dele já são "particulares" por natureza).
  */
 export async function assertCanCreateStudent(
     admin: DBClient,
     trainerId: string,
     tier: AiTier,
+    opts?: { isPrivate?: boolean },
 ): Promise<void> {
     // Estúdio: o cap é da ORG e deriva da faixa (plan_tier), contando alunos por
     // organization_id (soma de todos os coaches). Org sem plan_tier (manual/comp)
     // → ilimitado. Isso substitui o antigo "coach de org ativa = ilimitado".
     const org = await getActiveBillingOrg(admin, trainerId)
+    if (org && opts?.isPrivate) {
+        // Aluno particular: sai do eixo da org — o gate é o plano PESSOAL.
+        if (tier === 'free') {
+            throw new StudentCapError(PRIVATE_STUDENT_REQUIRES_PLAN_ERROR)
+        }
+        return // qualquer plano pago = particulares ilimitados
+    }
     if (org) {
         const limit = studioLimitForOrg(org.plan_tier)
         if (!Number.isFinite(limit)) return

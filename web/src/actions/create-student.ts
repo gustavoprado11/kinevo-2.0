@@ -9,6 +9,8 @@ export async function createStudent(data: {
     email: string
     phone: string
     modality: 'online' | 'presential'
+    /** Estúdios: aluno particular do coach (fora do estúdio; exige plano solo pago). */
+    isPrivate?: boolean
 }) {
     // Verify caller is an authenticated trainer
     const supabase = await createClient()
