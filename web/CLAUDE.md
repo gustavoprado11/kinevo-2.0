@@ -311,6 +311,9 @@ CRON_SECRET
 STRIPE_PRICE_STUDIO_50
 STRIPE_PRICE_STUDIO_100
 STRIPE_PRICE_STUDIO_200
+# Config do Billing Portal dedicada ao estúdio (troca entre faixas + cancelar).
+# Sem ela, studio-portal cai na config default (que não troca de plano).
+STRIPE_STUDIO_PORTAL_CONFIG
 
 # Prescrição Feature Flags
 ENABLE_COMPACT_EXERCISE_POOL=true

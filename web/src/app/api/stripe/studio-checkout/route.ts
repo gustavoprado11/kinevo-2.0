@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { getOrganizationContext } from '@/lib/studio/get-organization'
+import { isOrgBillingActive } from '@/lib/studio/org-access'
 import { isStudioTier, studioPriceIdForTier } from '@/lib/studio/studio-tiers'
 
 /**
@@ -24,6 +25,18 @@ export async function POST(request: NextRequest) {
     const priceId = studioPriceIdForTier(requestedTier)
     if (!priceId) {
         return NextResponse.json({ error: `Price não configurado para ${requestedTier}` }, { status: 500 })
+    }
+
+    // Estúdio já com assinatura ativa: checkout criaria uma 2ª assinatura
+    // (cobrança dupla). Trocar de faixa é pelo portal ("Gerenciar assinatura").
+    if (
+        isOrgBillingActive(ctx.organization.subscription_status, ctx.organization.grace_until) &&
+        ctx.organization.subscription_status !== 'incomplete'
+    ) {
+        return NextResponse.json(
+            { error: 'O estúdio já tem uma assinatura ativa. Para trocar de faixa, use Gerenciar assinatura.' },
+            { status: 409 },
+        )
     }
 
     // Nome/email do gestor para o customer da org (informativo no Stripe).

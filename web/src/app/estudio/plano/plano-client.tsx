@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import { ExternalLink, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
-import { StudioTierPicker } from '../studio-tier-picker'
-import { studioTierDisplay, type StudioTier } from '@/lib/studio/studio-tiers'
+import { STUDIO_TIERS, studioTierDisplay, type StudioTier } from '@/lib/studio/studio-tiers'
 
 interface Props {
     tier: StudioTier | null
@@ -80,10 +79,36 @@ export function PlanoClient({ tier, studentCount, studentLimit, currentPeriodEnd
                 </div>
             </div>
 
-            {/* Trocar de faixa */}
+            {/* Faixas + troca via portal (checkout criaria uma 2ª assinatura) */}
             <div>
-                <h2 className="text-sm font-semibold text-k-text-primary mb-3">Trocar de faixa</h2>
-                <StudioTierPicker currentTier={tier} ctaLabel="Mudar para" />
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-k-text-primary">Faixas do estúdio</h2>
+                    <button
+                        onClick={openPortal}
+                        disabled={loadingPortal}
+                        className="text-xs font-semibold text-violet-500 hover:text-violet-400 disabled:opacity-60"
+                    >
+                        Trocar de faixa ou cancelar →
+                    </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {STUDIO_TIERS.map(t => {
+                        const isCurrent = tier === t.tier
+                        return (
+                            <div key={t.tier} className={`rounded-2xl border p-4 ${isCurrent ? 'border-violet-500 bg-violet-500/5' : 'border-k-border-subtle bg-surface-card'}`}>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-k-text-primary">{t.name}</span>
+                                    {isCurrent && <span className="text-[10px] font-bold text-violet-500 uppercase">Atual</span>}
+                                </div>
+                                <p className="mt-1 text-xl font-bold text-k-text-primary">
+                                    {t.price}{!t.custom && <span className="text-xs font-normal text-k-text-tertiary">/mês</span>}
+                                </p>
+                                <p className="mt-1 text-xs text-k-text-tertiary">{t.blurb}</p>
+                            </div>
+                        )
+                    })}
+                </div>
+                <p className="mt-3 text-xs text-k-text-quaternary">Mudar de faixa ou cancelar é feito em &ldquo;Gerenciar assinatura&rdquo; — a troca ajusta o valor proporcionalmente (sem nova cobrança cheia).</p>
             </div>
         </div>
     )

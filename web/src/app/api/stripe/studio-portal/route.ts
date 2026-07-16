@@ -24,8 +24,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Estúdio sem assinatura' }, { status: 404 })
     }
 
+    // Configuração dedicada do estúdio (troca entre as 3 faixas + cancelamento).
+    // Sem ela, o portal cai na config default (que não troca de plano).
+    const configuration = process.env.STRIPE_STUDIO_PORTAL_CONFIG || undefined
     const portalSession = await stripe.billingPortal.sessions.create({
         customer: customerId,
+        ...(configuration ? { configuration } : {}),
         return_url: `${request.nextUrl.origin}/estudio/plano`,
     })
 
