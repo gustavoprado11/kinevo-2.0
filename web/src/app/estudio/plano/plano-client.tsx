@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ExternalLink, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { STUDIO_TIERS, studioTierDisplay, type StudioTier } from '@/lib/studio/studio-tiers'
+import { changeStudioTier } from '@/actions/organizations/change-studio-tier'
 
 interface Props {
     tier: StudioTier | null
@@ -16,7 +18,9 @@ interface Props {
 
 export function PlanoClient({ tier, studentCount, studentLimit, currentPeriodEnd, cancelAtPeriodEnd, status }: Props) {
     const { toast } = useToast()
+    const router = useRouter()
     const [loadingPortal, setLoadingPortal] = useState(false)
+    const [switchingTier, setSwitchingTier] = useState<StudioTier | null>(null)
     const display = tier ? studioTierDisplay(tier) : null
 
     async function openPortal() {
@@ -28,6 +32,29 @@ export function PlanoClient({ tier, studentCount, studentLimit, currentPeriodEnd
             else { toast({ message: json.error ?? 'Falha ao abrir a gestão', type: 'error' }); setLoadingPortal(false) }
         } catch {
             toast({ message: 'Erro ao abrir a gestão', type: 'error' }); setLoadingPortal(false)
+        }
+    }
+
+    async function switchTier(target: StudioTier) {
+        const targetDisplay = studioTierDisplay(target)
+        const downgrade = studentLimit != null && Number.isFinite(studentLimit)
+        const warn = downgrade
+            ? `Trocar para ${targetDisplay?.name}? O valor é ajustado proporcionalmente na próxima fatura (sem nova cobrança cheia agora).`
+            : `Trocar para ${targetDisplay?.name}?`
+        if (!window.confirm(warn)) return
+        setSwitchingTier(target)
+        try {
+            const res = await changeStudioTier({ tier: target })
+            if (res.success) {
+                toast({ message: `Faixa alterada para ${targetDisplay?.name}.`, type: 'success' })
+                router.refresh()
+            } else {
+                toast({ message: res.error ?? 'Não foi possível trocar a faixa', type: 'error' })
+            }
+        } catch {
+            toast({ message: 'Erro ao trocar a faixa', type: 'error' })
+        } finally {
+            setSwitchingTier(null)
         }
     }
 
@@ -79,23 +106,15 @@ export function PlanoClient({ tier, studentCount, studentLimit, currentPeriodEnd
                 </div>
             </div>
 
-            {/* Faixas + troca via portal (checkout criaria uma 2ª assinatura) */}
+            {/* Faixas: troca in-app com proração (o portal cobre cancelar/cartão/faturas) */}
             <div>
-                <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-semibold text-k-text-primary">Faixas do estúdio</h2>
-                    <button
-                        onClick={openPortal}
-                        disabled={loadingPortal}
-                        className="text-xs font-semibold text-violet-500 hover:text-violet-400 disabled:opacity-60"
-                    >
-                        Trocar de faixa ou cancelar →
-                    </button>
-                </div>
+                <h2 className="text-sm font-semibold text-k-text-primary mb-3">Faixas do estúdio</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {STUDIO_TIERS.map(t => {
                         const isCurrent = tier === t.tier
+                        const busy = switchingTier === t.tier
                         return (
-                            <div key={t.tier} className={`rounded-2xl border p-4 ${isCurrent ? 'border-violet-500 bg-violet-500/5' : 'border-k-border-subtle bg-surface-card'}`}>
+                            <div key={t.tier} className={`flex flex-col rounded-2xl border p-4 ${isCurrent ? 'border-violet-500 bg-violet-500/5' : 'border-k-border-subtle bg-surface-card'}`}>
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-semibold text-k-text-primary">{t.name}</span>
                                     {isCurrent && <span className="text-[10px] font-bold text-violet-500 uppercase">Atual</span>}
@@ -103,12 +122,30 @@ export function PlanoClient({ tier, studentCount, studentLimit, currentPeriodEnd
                                 <p className="mt-1 text-xl font-bold text-k-text-primary">
                                     {t.price}{!t.custom && <span className="text-xs font-normal text-k-text-tertiary">/mês</span>}
                                 </p>
-                                <p className="mt-1 text-xs text-k-text-tertiary">{t.blurb}</p>
+                                <p className="mt-1 text-xs text-k-text-tertiary flex-1">{t.blurb}</p>
+                                {isCurrent ? (
+                                    <span className="mt-3 inline-flex h-8 items-center justify-center rounded-lg bg-glass-bg text-xs font-semibold text-k-text-tertiary">Plano atual</span>
+                                ) : t.custom ? (
+                                    <a
+                                        href="mailto:contato@kinevoapp.com?subject=Kinevo%20Est%C3%BAdio%20200%2B"
+                                        className="mt-3 inline-flex h-8 items-center justify-center rounded-lg border border-k-border-primary text-xs font-semibold text-k-text-primary hover:bg-glass-bg"
+                                    >
+                                        Falar com a gente
+                                    </a>
+                                ) : (
+                                    <button
+                                        onClick={() => switchTier(t.tier)}
+                                        disabled={switchingTier !== null}
+                                        className="mt-3 inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-violet-500 text-xs font-semibold text-white hover:bg-violet-600 disabled:opacity-60"
+                                    >
+                                        {busy ? <Loader2 size={13} className="animate-spin" /> : 'Mudar para esta'}
+                                    </button>
+                                )}
                             </div>
                         )
                     })}
                 </div>
-                <p className="mt-3 text-xs text-k-text-quaternary">Mudar de faixa ou cancelar é feito em &ldquo;Gerenciar assinatura&rdquo; — a troca ajusta o valor proporcionalmente (sem nova cobrança cheia).</p>
+                <p className="mt-3 text-xs text-k-text-quaternary">A troca de faixa ajusta o valor proporcionalmente na próxima fatura (sem nova cobrança cheia). Cancelar, trocar o cartão ou ver faturas é feito em &ldquo;Gerenciar assinatura&rdquo;.</p>
             </div>
         </div>
     )
