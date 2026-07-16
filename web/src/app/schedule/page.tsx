@@ -65,6 +65,32 @@ export default async function SchedulePage() {
             studentsList.map((s) => [s.id, { name: s.name, avatarUrl: s.avatarUrl }]),
         )
 
+    // Estúdios (decisão 16/jul): a agenda do estúdio vive AQUI, não numa aba
+    // separada — membro de org ganha o filtro por treinador (Você · Todos ·
+    // cada coach) e vê as sessões da equipe. Agendar continua pessoal.
+    let studioCoaches: { id: string; name: string }[] = []
+    const { data: membership } = await supabaseAdmin
+        .from('organization_members')
+        .select('organization_id')
+        .eq('trainer_id', trainer.id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle()
+    if (membership) {
+        const { data: members } = await supabaseAdmin
+            .from('organization_members')
+            .select('trainer_id, trainers(name)')
+            .eq('organization_id', (membership as { organization_id: string }).organization_id)
+            .eq('status', 'active')
+            .eq('is_coach', true)
+        studioCoaches = ((members ?? []) as Array<{ trainer_id: string; trainers: { name: string } | { name: string }[] | null }>)
+            .map(m => {
+                const t = Array.isArray(m.trainers) ? m.trainers[0] : m.trainers
+                return { id: m.trainer_id, name: t?.name ?? '—' }
+            })
+            .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    }
+
     return (
         <ScheduleClient
             trainerName={trainer.name}
@@ -75,6 +101,8 @@ export default async function SchedulePage() {
             initialOccurrences={occurrencesResult.data ?? []}
             initialStudentsById={studentsById}
             students={studentsList}
+            myTrainerId={trainer.id}
+            studioCoaches={studioCoaches}
         />
     )
 }

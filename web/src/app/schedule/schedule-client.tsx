@@ -8,6 +8,7 @@ import { WeeklyCalendar } from '@/components/schedule/weekly-calendar'
 import { WeekNavigator } from '@/components/schedule/week-navigator'
 import { CreateAppointmentModal } from '@/components/appointments/create-appointment-modal'
 import { listAppointmentsInRange } from '@/actions/appointments/list-appointments'
+import { listStudioAgendaInRange } from '@/actions/organizations/list-studio-agenda'
 import type { AppointmentOccurrence } from '@kinevo/shared/types/appointments'
 
 export interface ScheduleStudent {
@@ -30,6 +31,9 @@ interface Props {
     initialOccurrences: AppointmentOccurrence[]
     initialStudentsById: Record<string, ScheduleStudent>
     students: ScheduleStudentOption[]
+    /** Estúdios: id do ator + coaches ativos (>1 = mostra o filtro por coach). */
+    myTrainerId?: string
+    studioCoaches?: { id: string; name: string }[]
 }
 
 function addDaysKey(dateKey: string, days: number): string {
@@ -60,8 +64,14 @@ export function ScheduleClient({
     initialOccurrences,
     initialStudentsById,
     students,
+    myTrainerId,
+    studioCoaches = [],
 }: Props) {
     const [weekStart, setWeekStart] = useState<string>(initialWeekStart)
+    // Estúdios: 'me' = agenda pessoal (fluxo original); 'all' ou coachId = visão
+    // do estúdio (fetch org + filtro client-side).
+    const [coachFilter, setCoachFilter] = useState<string>('me')
+    const showStudioFilter = studioCoaches.length > 1
     const [occurrences, setOccurrences] =
         useState<AppointmentOccurrence[]>(initialOccurrences)
     const [studentsById, setStudentsById] =
@@ -143,7 +153,23 @@ export function ScheduleClient({
     )
 
     const refetch = useCallback(
-        async (start: string, end: string) => {
+        async (start: string, end: string, filter: string = coachFilter) => {
+            // Visão do estúdio: busca as ocorrências de TODOS os coaches e
+            // filtra client-side; nomes de alunos de colegas vêm sufixados.
+            if (filter !== 'me') {
+                const org = await listStudioAgendaInRange({ rangeStart: start, rangeEnd: end })
+                if (org.success && org.occurrences) {
+                    const filtered = filter === 'all'
+                        ? org.occurrences
+                        : org.occurrences.filter((o) => o.trainerId === filter)
+                    setOccurrences(filtered)
+                    optimisticSnapshots.current.clear()
+                    if (org.studentsById) {
+                        setStudentsById((prev) => ({ ...org.studentsById, ...prev }))
+                    }
+                }
+                return
+            }
             const result = await listAppointmentsInRange({
                 rangeStart: start,
                 rangeEnd: end,
@@ -173,7 +199,7 @@ export function ScheduleClient({
                 }
             }
         },
-        [studentsById],
+        [studentsById, coachFilter],
     )
 
     const navigateToWeek = useCallback(
@@ -225,6 +251,16 @@ export function ScheduleClient({
         window.addEventListener('keydown', handler)
         return () => window.removeEventListener('keydown', handler)
     }, [goToPreviousWeek, goToNextWeek, goToToday])
+
+    const handleCoachFilter = useCallback(
+        (filter: string) => {
+            setCoachFilter(filter)
+            startTransition(() => {
+                void refetch(weekStart, addDaysKey(weekStart, 6), filter)
+            })
+        },
+        [refetch, weekStart],
+    )
 
     const handleSlotClick = useCallback((date: string, time: string) => {
         // Cria rotina a partir do slot vazio. O modal atual exige
@@ -293,6 +329,30 @@ export function ScheduleClient({
                     </div>
                 </div>
 
+                {/* Estúdios: filtro por treinador (Você · Todos · cada coach).
+                    Ver é aberto a todo membro; AGENDAR continua pessoal. */}
+                {showStudioFilter && (
+                    <div className="flex items-center gap-2 overflow-x-auto">
+                        <FilterChip active={coachFilter === 'me'} onClick={() => handleCoachFilter('me')} label="Você" />
+                        <FilterChip active={coachFilter === 'all'} onClick={() => handleCoachFilter('all')} label="Estúdio (todos)" />
+                        {studioCoaches
+                            .filter((c) => c.id !== myTrainerId)
+                            .map((c) => (
+                                <FilterChip
+                                    key={c.id}
+                                    active={coachFilter === c.id}
+                                    onClick={() => handleCoachFilter(c.id)}
+                                    label={c.name.split(' ')[0]}
+                                />
+                            ))}
+                        {coachFilter !== 'me' && (
+                            <span className="shrink-0 text-[11px] text-[#86868B] dark:text-k-text-quaternary">
+                                visão do estúdio — para agendar/remarcar, use a visão &ldquo;Você&rdquo;
+                            </span>
+                        )}
+                    </div>
+                )}
+
                 {/* Card único contendo header de dias + grid de horas */}
                 <WeeklyCalendar
                     weekStart={weekStart}
@@ -322,5 +382,20 @@ export function ScheduleClient({
                 />
             )}
         </AppLayout>
+    )
+}
+
+function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+    return (
+        <button
+            onClick={onClick}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                active
+                    ? 'bg-[#7C3AED] dark:bg-violet-600 text-white'
+                    : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary border border-[#E8E8ED] dark:border-k-border-subtle'
+            }`}
+        >
+            {label}
+        </button>
     )
 }

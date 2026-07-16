@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
         subscription_data: {
             metadata: { organization_id: ctx.organization.id, studio_tier: requestedTier },
         },
-        success_url: `${request.nextUrl.origin}/estudio?checkout=success`,
+        // Pós-checkout: o Dashboard do gestor É a visão do estúdio (decisão 16/jul).
+        success_url: `${request.nextUrl.origin}/dashboard`,
         cancel_url: `${request.nextUrl.origin}/estudio/blocked?checkout=canceled`,
         metadata: { organization_id: ctx.organization.id, studio_tier: requestedTier },
     })

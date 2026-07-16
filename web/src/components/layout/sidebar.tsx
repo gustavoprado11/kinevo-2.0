@@ -55,7 +55,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
 
     // Consultoria IA é beta fechado (migration 251): fora do allowlist, o item nem
     // existe na navegação. Financeiro some para contas de estúdio (Fase 4).
-    const STUDIO_NAV: NavItem = { name: 'Estúdio', href: '/estudio', icon: Building2 }
+    const STUDIO_NAV: NavItem = { name: 'Estúdio', href: '/estudio/treinadores', icon: Building2 }
     const navigation: NavItem[] = [
         // Gestor: "Estúdio" no topo (painel do estúdio).
         ...(isManager ? [STUDIO_NAV] : []),

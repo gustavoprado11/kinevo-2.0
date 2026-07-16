@@ -1,14 +1,13 @@
 import Link from 'next/link'
 
+// Decisão 16/jul: a aba Estúdio é só ADMINISTRAÇÃO (equipe + billing).
+// A operação (dashboard, agenda, alunos) vive nas telas normais do Kinevo.
 const TABS = [
-    { key: 'overview', label: 'Visão geral', href: '/estudio' },
-    { key: 'agenda', label: 'Agenda', href: '/estudio/agenda' },
     { key: 'treinadores', label: 'Treinadores', href: '/estudio/treinadores' },
-    { key: 'alunos', label: 'Alunos', href: '/estudio/alunos' },
     { key: 'plano', label: 'Plano', href: '/estudio/plano' },
 ] as const
 
-export function EstudioNav({ active }: { active: 'overview' | 'agenda' | 'treinadores' | 'alunos' | 'plano' }) {
+export function EstudioNav({ active }: { active: 'treinadores' | 'plano' }) {
     return (
         <div className="flex items-center gap-1 border-b border-k-border-subtle">
             {TABS.map(t => (

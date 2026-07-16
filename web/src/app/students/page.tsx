@@ -64,6 +64,7 @@ export default async function StudentsPage() {
     // Estúdio: diretório de responsáveis (nome por coach) + lista de coaches p/
     // o filtro. Só o gestor reatribui pela lista; o card do perfil também.
     const isStudioView = scope.kind === 'org'
+    const isStudioManager = scope.kind === 'org' && scope.isManager
 
     // Entrada no estúdio — alunos MEUS criados ANTES do vínculo ficam sem org e
     // sem is_private ("não classificados"; o trigger derive só roda no INSERT).
@@ -93,6 +94,7 @@ export default async function StudentsPage() {
                 assessmentTemplates={assessmentTemplates}
                 isStudioView={isStudioView}
                 hasPaidSolo={hasPaidSolo}
+                isStudioManager={isStudioManager}
                 unclassifiedStudents={unclassifiedStudents}
                 studioCoaches={studioCoaches}
             />
@@ -183,6 +185,7 @@ export default async function StudentsPage() {
             assessmentTemplates={assessmentTemplates}
             isStudioView={isStudioView}
                 hasPaidSolo={hasPaidSolo}
+                isStudioManager={isStudioManager}
                 unclassifiedStudents={unclassifiedStudents}
             studioCoaches={studioCoaches}
         />

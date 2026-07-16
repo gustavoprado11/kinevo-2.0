@@ -4,14 +4,15 @@ import { getDashboardData } from '@/lib/dashboard/get-dashboard-data'
 import { isOrgBillingActive } from '@/lib/studio/org-access'
 import { redirect } from 'next/navigation'
 import { DashboardClient } from './dashboard-client'
+import { StudioDashboardView } from './studio-view'
 import { CheckoutPolling } from './checkout-polling'
 
 export default async function DashboardPage({
     searchParams,
 }: {
-    searchParams: Promise<{ checkout?: string; h?: string }>
+    searchParams: Promise<{ checkout?: string; h?: string; v?: string }>
 }) {
-    const { checkout, h } = await searchParams
+    const { checkout, h, v } = await searchParams
 
     // Single getUser() call for the entire page — validates the JWT once via
     // Supabase Auth API, then passes userId down to avoid redundant roundtrips.
@@ -52,22 +53,21 @@ export default async function DashboardPage({
         redirect('/assistente')
     }
 
-    // Gestor-puro (owner/admin que NÃO treina): o dashboard pessoal fica vazio —
-    // manda direto ao painel do estúdio. Uma query indexada por trainer_id; para
-    // solo/coach retorna vazio e não redireciona. Só gestor de org com billing ativo.
-    if (checkout !== 'success') {
+    // Estúdios (decisão 16/jul): o GESTOR usa o Dashboard normal — a visão do
+    // estúdio (KPIs, por treinador, tendências) renderiza AQUI por padrão, com
+    // toggle pro painel pessoal (?v=me). Coach comum segue no pessoal.
+    if (checkout !== 'success' && v !== 'me') {
         const { data: mgr } = await supabase
             .from('organization_members')
-            .select('organizations(subscription_status, grace_until)')
+            .select('organizations(id, name, subscription_status, grace_until)')
             .eq('trainer_id', trainer.id)
             .eq('status', 'active')
-            .eq('is_coach', false)
             .in('role', ['owner', 'admin'])
             .maybeSingle()
-        const mgrOrg = (mgr as { organizations: { subscription_status: string; grace_until: string | null } | { subscription_status: string; grace_until: string | null }[] | null } | null)?.organizations
+        const mgrOrg = (mgr as { organizations: { id: string; name: string; subscription_status: string; grace_until: string | null } | { id: string; name: string; subscription_status: string; grace_until: string | null }[] | null } | null)?.organizations
         const org = Array.isArray(mgrOrg) ? mgrOrg[0] : mgrOrg
         if (org && isOrgBillingActive(org.subscription_status, org.grace_until)) {
-            redirect('/estudio')
+            return <StudioDashboardView trainer={trainer} organization={{ id: org.id, name: org.name }} />
         }
     }
 

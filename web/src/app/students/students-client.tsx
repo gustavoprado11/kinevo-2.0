@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
@@ -12,6 +12,8 @@ import { Plus, Search, ChevronRight, ChevronUp, ChevronDown, Users, Building2 } 
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { matchesSearch } from '@kinevo/shared/utils/search-text'
+import { reassignStudent } from '@/actions/organizations/reassign-student'
+import { useToast } from '@/components/ui/toast'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,6 +73,8 @@ interface StudentsClientProps {
     hasPaidSolo?: boolean
     /** Entrada no estúdio: alunos MEUS pré-vínculo ainda sem classificação. */
     unclassifiedStudents?: UnclassifiedStudent[]
+    /** Gestor: habilita reatribuir o responsável direto na lista. */
+    isStudioManager?: boolean
     studioCoaches?: { id: string; name: string }[]
 }
 
@@ -128,9 +132,27 @@ export function StudentsClient({
     isStudioView = false,
     hasPaidSolo = false,
     unclassifiedStudents = [],
+    isStudioManager = false,
     studioCoaches = [],
 }: StudentsClientProps) {
     const router = useRouter()
+    const { toast } = useToast()
+    const [reassignPending, startReassign] = useTransition()
+    const [reassigningId, setReassigningId] = useState<string | null>(null)
+
+    function handleReassign(studentId: string, newCoachId: string) {
+        setReassigningId(studentId)
+        startReassign(async () => {
+            const res = await reassignStudent({ studentId, newCoachId })
+            if (res.success) {
+                toast({ message: 'Responsável atualizado', type: 'success' })
+                router.refresh()
+            } else {
+                toast({ message: res.error ?? 'Erro ao reatribuir', type: 'error' })
+            }
+            setReassigningId(null)
+        })
+    }
     const [students, setStudents] = useState<Student[]>(initialStudents)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isClassifyOpen, setIsClassifyOpen] = useState(false)
@@ -517,7 +539,21 @@ export function StudentsClient({
                                             {/* RESPONSÁVEL (estúdio) */}
                                             {isStudioView && (
                                                 <td className="px-4 py-3 whitespace-nowrap">
-                                                    {student.responsibleCoachName ? (
+                                                    {isStudioManager && !student.is_trainer_profile && !student.is_private && student.responsibleCoachId && studioCoaches.length > 1 ? (
+                                                        // Gestor reatribui o responsável aqui mesmo (decisão 16/jul:
+                                                        // a operação vive nas telas normais, não na aba Estúdio).
+                                                        <select
+                                                            value={student.responsibleCoachId}
+                                                            disabled={reassignPending && reassigningId === student.id}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            onChange={(e) => handleReassign(student.id, e.target.value)}
+                                                            className="rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-2 py-1 text-xs text-[#6E6E73] dark:text-k-text-secondary focus:outline-none focus:border-[#7C3AED] disabled:opacity-50"
+                                                        >
+                                                            {studioCoaches.map(c => (
+                                                                <option key={c.id} value={c.id}>{c.id === trainer.id ? 'Você' : c.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    ) : student.responsibleCoachName ? (
                                                         <span className={`text-sm ${student.responsibleCoachId === trainer.id ? 'font-semibold text-[#7C3AED] dark:text-violet-300' : 'text-[#6E6E73] dark:text-k-text-secondary'}`}>
                                                             {student.responsibleCoachId === trainer.id ? 'Você' : student.responsibleCoachName}
                                                         </span>
