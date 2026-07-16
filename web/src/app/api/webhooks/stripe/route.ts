@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { studioPriceToTier } from '@/lib/studio/studio-tiers'
 import Stripe from 'stripe'
+
+// Janela de graça do estúdio: past_due mantém acesso até period_end + 14d (a
+// coluna organizations.grace_until é PERSISTIDA, ao contrário do solo que
+// calcula em runtime). Espelha DUNNING_GRACE_DAYS de get-ai-tier.
+const ORG_GRACE_DAYS = 14
 
 // In Stripe v20+, current_period_end moved from Subscription to SubscriptionItem
 function getPeriodEnd(subscription: Stripe.Subscription): string | null {
@@ -120,7 +126,74 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true })
 }
 
+// ── Estúdios (billing por org) ──────────────────────────────────────────────
+// Constrói os campos de organizations a partir da subscription do Stripe.
+// plan_tier só entra se o price mapeia (não sobrescreve com null num update).
+function orgFieldsFromSubscription(subscription: Stripe.Subscription): Record<string, unknown> {
+    const periodEnd = getPeriodEnd(subscription)
+    const st = subscription.status as string
+    let subscription_status = st
+    let grace_until: string | null = null
+    if (st === 'past_due') {
+        grace_until = periodEnd ? new Date(new Date(periodEnd).getTime() + ORG_GRACE_DAYS * 86_400_000).toISOString() : null
+    } else if (st === 'canceled' || st === 'unpaid') {
+        subscription_status = 'canceled'
+    }
+    const planTier = studioPriceToTier(getPriceId(subscription))
+    return {
+        subscription_status,
+        current_period_end: periodEnd,
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        grace_until,
+        ...(planTier ? { plan_tier: planTier } : {}),
+    }
+}
+
+/** Atualiza a org dona desta subscription. Retorna true se era uma org. */
+async function updateOrgBySubscription(subscription: Stripe.Subscription): Promise<boolean> {
+    const { data } = await supabaseAdmin
+        .from('organizations')
+        .update(orgFieldsFromSubscription(subscription))
+        .eq('stripe_subscription_id', subscription.id)
+        .select('id')
+    return (data?.length ?? 0) > 0
+}
+
+/** É uma subscription de ESTÚDIO? (para ramificar os handlers por sub id) */
+async function orgIdForSubscription(subscriptionId: string): Promise<string | null> {
+    const { data } = await supabaseAdmin
+        .from('organizations')
+        .select('id')
+        .eq('stripe_subscription_id', subscriptionId)
+        .maybeSingle()
+    return (data as { id: string } | null)?.id ?? null
+}
+
+async function handleOrgCheckout(session: Stripe.Checkout.Session, organizationId: string) {
+    const subscription = await stripe.subscriptions.retrieve(session.subscription as string, { expand: ['items.data'] })
+    const { error } = await supabaseAdmin
+        .from('organizations')
+        .update({
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: subscription.id,
+            ...orgFieldsFromSubscription(subscription),
+        })
+        .eq('id', organizationId)
+    if (error) {
+        console.error('[webhook:checkout:org] update error:', error)
+        throw error
+    }
+    console.log(`[webhook:checkout:org] org ${organizationId} → ${subscription.status}`)
+}
+
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+    // Estúdio: metadata.organization_id é a ponte (o checkout de org injeta ela).
+    const organizationId = session.metadata?.organization_id
+    if (organizationId && session.mode === 'subscription') {
+        await handleOrgCheckout(session, organizationId)
+        return
+    }
+
     const trainerId = session.metadata?.trainer_id
     console.log(`[webhook:checkout] trainer_id=${trainerId}, mode=${session.mode}, subscription=${session.subscription}`)
 
@@ -161,6 +234,9 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
         expand: ['items.data'],
     })
 
+    // Estúdio primeiro (resolve por stripe_subscription_id na org); senão solo.
+    if (await updateOrgBySubscription(subscription)) return
+
     await supabaseAdmin.from('subscriptions')
         .update({
             status: subscription.status as string,
@@ -174,12 +250,21 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     const subscriptionId = getSubscriptionIdFromInvoice(invoice)
     if (!subscriptionId) return
 
+    // Estúdio: past_due com grace_until derivado do period_end (precisa da sub).
+    if (await orgIdForSubscription(subscriptionId)) {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data'] })
+        await updateOrgBySubscription(subscription)
+        return
+    }
+
     await supabaseAdmin.from('subscriptions')
         .update({ status: 'past_due' })
         .eq('stripe_subscription_id', subscriptionId)
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+    if (await updateOrgBySubscription(subscription)) return
+
     await supabaseAdmin.from('subscriptions')
         .update({
             status: subscription.status as string,
@@ -191,6 +276,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+    // updateOrgBySubscription já mapeia canceled/unpaid → 'canceled' na org.
+    if (await updateOrgBySubscription(subscription)) return
+
     await supabaseAdmin.from('subscriptions')
         .update({ status: 'canceled' })
         .eq('stripe_subscription_id', subscription.id)
