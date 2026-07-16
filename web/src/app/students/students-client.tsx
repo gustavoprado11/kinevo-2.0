@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { StudentModal } from '@/components/student-modal'
 import { NewStudentWizard, type WizardStudent, type WizardTemplate } from '@/components/students/new-student-wizard'
+import { ClassifyStudentsModal, type UnclassifiedStudent } from '@/components/students/classify-students-modal'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
-import { Plus, Search, ChevronRight, ChevronUp, ChevronDown, Users } from 'lucide-react'
+import { Plus, Search, ChevronRight, ChevronUp, ChevronDown, Users, Building2 } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { matchesSearch } from '@kinevo/shared/utils/search-text'
@@ -68,6 +69,8 @@ interface StudentsClientProps {
     isStudioView?: boolean
     /** Plano solo pago do coach (libera alunos particulares no estúdio). */
     hasPaidSolo?: boolean
+    /** Entrada no estúdio: alunos MEUS pré-vínculo ainda sem classificação. */
+    unclassifiedStudents?: UnclassifiedStudent[]
     studioCoaches?: { id: string; name: string }[]
 }
 
@@ -124,11 +127,13 @@ export function StudentsClient({
     assessmentTemplates = [],
     isStudioView = false,
     hasPaidSolo = false,
+    unclassifiedStudents = [],
     studioCoaches = [],
 }: StudentsClientProps) {
     const router = useRouter()
     const [students, setStudents] = useState<Student[]>(initialStudents)
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isClassifyOpen, setIsClassifyOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
     const [coachFilter, setCoachFilter] = useState<string>('all') // 'all' | trainerId | 'mine'
@@ -328,6 +333,27 @@ export function StudentsClient({
                     Novo Aluno
                 </Button>
             </div>
+
+            {/* Entrada no estúdio — carteira pré-vínculo aguardando classificação */}
+            {unclassifiedStudents.length > 0 && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-300/50 bg-violet-50 dark:border-violet-500/30 dark:bg-violet-500/10 px-4 py-3">
+                    <div className="flex items-start gap-2.5">
+                        <Building2 size={16} className="mt-0.5 shrink-0 text-violet-600 dark:text-violet-400" />
+                        <p className="text-sm text-[#1D1D1F] dark:text-k-text-primary">
+                            <span className="font-semibold">
+                                {unclassifiedStudents.length} {unclassifiedStudents.length === 1 ? 'aluno seu precisa' : 'alunos seus precisam'} de classificação
+                            </span>
+                            <span className="text-[#6E6E73] dark:text-k-text-tertiary"> — diga quais entram no estúdio e quais são particulares.</span>
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setIsClassifyOpen(true)}
+                        className="shrink-0 rounded-lg bg-violet-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-violet-500"
+                    >
+                        Classificar agora
+                    </button>
+                </div>
+            )}
 
             {/* Search */}
             <div data-onboarding="students-search" className="mb-4">
@@ -583,6 +609,17 @@ export function StudentsClient({
                 formTemplates={formTemplates}
                 isStudioCoach={isStudioView}
                 hasPaidSolo={hasPaidSolo}
+            />
+
+            <ClassifyStudentsModal
+                isOpen={isClassifyOpen}
+                onClose={() => setIsClassifyOpen(false)}
+                students={unclassifiedStudents}
+                hasPaidSolo={hasPaidSolo}
+                onDone={() => {
+                    setIsClassifyOpen(false)
+                    router.refresh()
+                }}
             />
 
             {/* M9 — NewStudentWizard dispara após o StudentAccessDialog fechar. */}

@@ -18,7 +18,7 @@ export default async function StudentsPage() {
     // mostrar o "Responsável". Solo: só os próprios (coach_id).
     const baseStudentQuery = supabase
         .from('students')
-        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, coach_id, is_private')
+        .select('id, name, email, phone, status, modality, avatar_url, created_at, is_trainer_profile, coach_id, is_private, organization_id')
         .order('created_at', { ascending: false })
 
     const [studentsResult, templatesResult] = await Promise.all([
@@ -64,6 +64,15 @@ export default async function StudentsPage() {
     // Estúdio: diretório de responsáveis (nome por coach) + lista de coaches p/
     // o filtro. Só o gestor reatribui pela lista; o card do perfil também.
     const isStudioView = scope.kind === 'org'
+
+    // Entrada no estúdio — alunos MEUS criados ANTES do vínculo ficam sem org e
+    // sem is_private ("não classificados"; o trigger derive só roda no INSERT).
+    // O banner + modal de classificação resolvem o limbo, aluno a aluno.
+    const unclassifiedStudents = isStudioView
+        ? students
+              .filter(s => s.coach_id === trainer.id && !s.organization_id && !s.is_private && !s.is_trainer_profile && s.status !== 'archived')
+              .map(s => ({ id: s.id, name: s.name, avatar_url: s.avatar_url }))
+        : []
     const coachNameById = new Map<string, string>()
     let studioCoaches: { id: string; name: string }[] = []
     if (isStudioView && scope.kind === 'org') {
@@ -84,6 +93,7 @@ export default async function StudentsPage() {
                 assessmentTemplates={assessmentTemplates}
                 isStudioView={isStudioView}
                 hasPaidSolo={hasPaidSolo}
+                unclassifiedStudents={unclassifiedStudents}
                 studioCoaches={studioCoaches}
             />
         )
@@ -173,6 +183,7 @@ export default async function StudentsPage() {
             assessmentTemplates={assessmentTemplates}
             isStudioView={isStudioView}
                 hasPaidSolo={hasPaidSolo}
+                unclassifiedStudents={unclassifiedStudents}
             studioCoaches={studioCoaches}
         />
     )
