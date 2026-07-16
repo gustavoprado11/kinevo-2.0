@@ -16,6 +16,7 @@ import BottomSheet, {
 import { Check, ChevronRight, Search, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useTrainerStudentsList, type TrainerStudent } from "../../../hooks/useTrainerStudentsList";
+import { useRoleMode } from "../../../contexts/RoleModeContext";
 import {
     useAppointmentMutations,
     type CreateAppointmentInput,
@@ -96,7 +97,15 @@ export function CreateAppointmentSheet({
     const isEdit = !!editing;
     const sheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["92%"], []);
-    const { students: studentsListed, isLoading: studentsLoading } = useTrainerStudentsList();
+    const { students: allStudentsListed, isLoading: studentsLoading } = useTrainerStudentsList();
+    const { trainerId } = useRoleMode();
+    // Estúdios: a agenda é PESSOAL do responsável — a lista org-aware inclui
+    // alunos de colegas, mas agendar para eles falharia ('Sem permissão').
+    // O picker mostra só os próprios.
+    const studentsListed = useMemo(
+        () => allStudentsListed.filter((s) => !s.coach_id || s.coach_id === trainerId),
+        [allStudentsListed, trainerId],
+    );
     const { createAppointment, updateRecurring } = useAppointmentMutations();
     const { getReminderPermissionStatus, requestReminderPermission, scheduleForRule, refreshForRule } =
         useScheduleAppointmentReminder();

@@ -20,6 +20,8 @@ export interface TrainerStudent {
     is_trainer_profile: boolean;
     /** Estúdios: aluno particular do coach (fora do estúdio). */
     is_private?: boolean;
+    /** Estúdios: responsável pelo aluno (RPC 262). */
+    coach_id?: string | null;
     program_name: string | null;
     duration_weeks: number | null;
     program_started_at: string | null;

@@ -15,6 +15,8 @@ export interface StudentDetailData {
         avatar_url: string | null;
         is_trainer_profile: boolean;
         created_at: string;
+        /** Estúdios: responsável pelo aluno (RPC 262). CTAs pessoais só p/ o dono. */
+        coach_id?: string | null;
     };
     activeProgram: {
         id: string;

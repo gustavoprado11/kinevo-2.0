@@ -24,6 +24,7 @@ import {
     User,
 } from "lucide-react-native";
 import { useStudentDetail } from "../../../hooks/useStudentDetail";
+import { useRoleMode } from "../../../contexts/RoleModeContext";
 import { useTrainingRoomStore } from "../../../stores/training-room-store";
 import { StudentOverviewTab } from "../../../components/trainer/student/StudentOverviewTab";
 import { StudentProgramsTab } from "../../../components/trainer/student/StudentProgramsTab";
@@ -63,6 +64,7 @@ export default function StudentProfileScreen({
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { data, isLoading, isRefreshing, refresh } = useStudentDetail(id || null);
+    const { trainerId } = useRoleMode();
 
     // A7: revalida ao voltar o foco (ex.: depois de atribuir/editar programa pelo
     // builder/wizard). Sem isto o detalhe ficava stale ("sem programa ativo") e o
@@ -315,11 +317,14 @@ export default function StudentProfileScreen({
                         label="Prescrever"
                         onPress={handleOpenBuilder}
                     />
-                    <ActionButton
-                        icon={<MessageCircle size={14} color={v2c.brand.primary} />}
-                        label="Conversar"
-                        onPress={() => router.push({ pathname: "/messages/[studentId]" as any, params: { studentId: id } })}
-                    />
+                    {/* Estúdios: conversa é do responsável — some p/ aluno de colega. */}
+                    {(!student.coach_id || student.coach_id === trainerId) && (
+                        <ActionButton
+                            icon={<MessageCircle size={14} color={v2c.brand.primary} />}
+                            label="Conversar"
+                            onPress={() => router.push({ pathname: "/messages/[studentId]" as any, params: { studentId: id } })}
+                        />
+                    )}
                 </ScrollView>
 
                 {/* Tab bar */}
