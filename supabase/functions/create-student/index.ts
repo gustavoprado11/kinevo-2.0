@@ -54,13 +54,23 @@ Deno.serve(async (req: Request) => {
             );
         }
 
-        // 3b. Trava de monetização "Free = 1 aluno" (paridade com o web
-        //     assertCanCreateStudent / a tool MCP kinevo_create_student). Esta edge
-        //     function é chamada pelo app (AddStudentModal + conversão de lead) e
-        //     ANTES não checava o cap → o mobile burlava o limite que sustenta a
-        //     venda. Checa ANTES de criar o auth user (sem órfão). Só o tier Free é
-        //     limitado (cap=1, o "aluno-teste"); qualquer tier pago = ilimitado.
-        //     Free = sem override de ai_tier pago E sem assinatura active/trialing
+        // 4. Parse request body (antes do gate — is_private muda a regra)
+        const body = await req.json();
+        const { name, email, phone, modality } = body;
+
+        if (!name?.trim() || !email?.trim()) {
+            return new Response(
+                JSON.stringify({ success: false, error: "Nome e email são obrigatórios" }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+        }
+
+        // 3b. Gates de monetização (paridade com o web assertCanCreateStudent /
+        //     a tool MCP kinevo_create_student), checados ANTES de criar o auth
+        //     user (sem órfão). Falha de contagem não bloqueia criação legítima
+        //     (gate de produto, não de segurança).
+        //
+        //     Plano pago SOLO = ai_tier override pago OU assinatura active/trialing
         //     (espelha lib/auth/get-ai-tier).
         const aiTier = (trainer.ai_tier ?? "free") as string;
         let isPaid = aiTier !== "free";
@@ -73,13 +83,72 @@ Deno.serve(async (req: Request) => {
                 .maybeSingle();
             isPaid = !!activeSub;
         }
-        if (!isPaid) {
+
+        //     Estúdio: coach de org com billing ativo. Espelha isOrgBillingActive
+        //     (org-access.ts): active/trialing, ou past_due dentro de grace_until.
+        const { data: memberRow } = await adminClient
+            .from("organization_members")
+            .select("organization:organizations(id, plan_tier, subscription_status, grace_until)")
+            .eq("trainer_id", trainer.id)
+            .eq("status", "active")
+            .limit(1)
+            .maybeSingle();
+        const orgRel = (memberRow as { organization?: unknown } | null)?.organization;
+        const org = (Array.isArray(orgRel) ? orgRel[0] : orgRel) as
+            | { id: string; plan_tier: string | null; subscription_status: string; grace_until: string | null }
+            | null
+            | undefined;
+        const orgActive = !!org && (
+            ["active", "trialing"].includes(org.subscription_status) ||
+            (org.subscription_status === "past_due" && !!org.grace_until && new Date(org.grace_until).getTime() > Date.now())
+        );
+        const isPrivate = body.is_private === true;
+
+        if (orgActive && isPrivate) {
+            // Aluno PARTICULAR de coach de estúdio: exige plano solo PAGO do
+            // próprio coach (decisão 16/jul — o Gratuito não vale aqui).
+            if (!isPaid) {
+                return new Response(
+                    JSON.stringify({
+                        success: false,
+                        code: "student_cap_reached",
+                        error:
+                            "Alunos particulares exigem um plano pessoal pago ativo. Assine um plano em Configurações → Assinatura para atender sua carteira própria.",
+                    }),
+                    { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
+            }
+            // pago = particulares ilimitados
+        } else if (orgActive) {
+            // Aluno do ESTÚDIO: o cap é da ORG e deriva da faixa (plan_tier),
+            // contando por organization_id. ANTES esta função aplicava o cap
+            // solo Free ao coach de estúdio → mobile travava em 1 aluno mesmo
+            // com o estúdio pagando. Mapa espelha lib/studio/studio-tiers.ts.
+            const STUDIO_LIMITS: Record<string, number> = { studio_50: 50, studio_100: 100, studio_200: 200 };
+            const limit = org!.plan_tier ? STUDIO_LIMITS[org!.plan_tier] : undefined;
+            if (limit != null) {
+                const { count, error: countError } = await adminClient
+                    .from("students")
+                    .select("id", { count: "exact", head: true })
+                    .eq("organization_id", org!.id)
+                    .eq("is_trainer_profile", false);
+                if (!countError && (count ?? 0) >= limit) {
+                    return new Response(
+                        JSON.stringify({
+                            success: false,
+                            code: "student_cap_reached",
+                            error: `O estúdio atingiu o limite de ${limit} alunos da faixa atual. Fale com o gestor para fazer upgrade em Estúdio → Plano.`,
+                        }),
+                        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                    );
+                }
+            }
+        } else if (!isPaid) {
+            // Solo Free = 1 aluno (o "aluno-teste").
             const { count, error: countError } = await adminClient
                 .from("students")
                 .select("id", { count: "exact", head: true })
                 .eq("coach_id", trainer.id);
-            // Falha ao contar não bloqueia uma criação legítima (gate de produto,
-            // não de segurança) — espelha o assertCanCreateStudent do web.
             if (!countError && (count ?? 0) >= 1) {
                 return new Response(
                     JSON.stringify({
@@ -91,17 +160,6 @@ Deno.serve(async (req: Request) => {
                     { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
                 );
             }
-        }
-
-        // 4. Parse request body
-        const body = await req.json();
-        const { name, email, phone, modality } = body;
-
-        if (!name?.trim() || !email?.trim()) {
-            return new Response(
-                JSON.stringify({ success: false, error: "Nome e email são obrigatórios" }),
-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
         }
 
         // 5. Generate secure password
@@ -144,6 +202,8 @@ Deno.serve(async (req: Request) => {
                 phone: phone?.trim() || null,
                 modality: modality || "online",
                 status: "active",
+                // Só coach de estúdio marca particular (o trigger derive respeita).
+                is_private: orgActive && isPrivate,
             })
             .select("id")
             .single();

@@ -3835,6 +3835,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          is_private: boolean
           is_trainer_profile: boolean | null
           management_tags: string[] | null
           modality: string
@@ -3858,6 +3859,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          is_private?: boolean
           is_trainer_profile?: boolean | null
           management_tags?: string[] | null
           modality?: string
@@ -3881,6 +3883,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          is_private?: boolean
           is_trainer_profile?: boolean | null
           management_tags?: string[] | null
           modality?: string
