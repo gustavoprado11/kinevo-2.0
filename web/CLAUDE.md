@@ -305,6 +305,13 @@ STRIPE_PRICE_ESSENCIAL
 STRIPE_PRICE_ID          # legado (R$39,90) → 'essencial' se ESSENCIAL vazio
 CRON_SECRET
 
+# Estúdios — billing por org (LOAD-BEARING): sem eles, studio-checkout devolve
+# 500 'Price não configurado' e o "Assinar" do estúdio quebra (solo intocado).
+# price↔faixa mapeado em lib/studio/studio-tiers.ts (studio_50/100/200).
+STRIPE_PRICE_STUDIO_50
+STRIPE_PRICE_STUDIO_100
+STRIPE_PRICE_STUDIO_200
+
 # Prescrição Feature Flags
 ENABLE_COMPACT_EXERCISE_POOL=true
 ENABLE_SLOT_BASED_BUILDER=true

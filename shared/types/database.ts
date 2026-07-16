@@ -2544,7 +2544,9 @@ export type Database = {
       }
       organizations: {
         Row: {
+          cancel_at_period_end: boolean
           created_at: string
+          current_period_end: string | null
           grace_until: string | null
           id: string
           logo_url: string | null
@@ -2558,7 +2560,9 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          cancel_at_period_end?: boolean
           created_at?: string
+          current_period_end?: string | null
           grace_until?: string | null
           id?: string
           logo_url?: string | null
@@ -2572,7 +2576,9 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          cancel_at_period_end?: boolean
           created_at?: string
+          current_period_end?: string | null
           grace_until?: string | null
           id?: string
           logo_url?: string | null
