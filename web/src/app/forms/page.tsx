@@ -11,16 +11,19 @@ export default async function FormsPage() {
     const { data: templates } = await supabase
         .from('form_templates')
         .select('id, title, category, version, schema_json, created_at, trainer_id')
-        .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
+        // Estúdios (265): o RLS já limita a own + sistema + COLEGAS do estúdio
+        // — o or-filter antigo excluía os templates da equipe.
         .or('system_key.is.null,system_key.neq.prescription_questionnaire')
         .neq('category', 'assessment')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
 
-    const { data: rawSubmissions } = await supabaseAdmin
+    // Estúdios (decisão 16/jul): o inbox mostra as respostas dos alunos do
+    // ESTÚDIO (de qualquer coach da equipe), além das próprias. Client de
+    // sessão + RLS (form_submissions own + org_select da 252) fazem o corte.
+    const { data: rawSubmissions } = await supabase
         .from('form_submissions')
         .select('id, status, submitted_at, feedback_sent_at, created_at, student_id, form_template_id')
-        .eq('trainer_id', trainer.id)
         .in('status', ['submitted', 'reviewed'])
         .order('submitted_at', { ascending: false })
 
@@ -31,10 +34,13 @@ export default async function FormsPage() {
         .eq('status', 'draft')
         .order('created_at', { ascending: false })
 
+    // Alunos p/ o picker + resolução de nomes do inbox: no estúdio inclui os
+    // compartilhados (enviar form a aluno de colega é permitido desde a 255).
+    // RLS (students own + org_select) faz o corte; o filtro explícito antigo
+    // escondia os nomes dos alunos de colegas no inbox.
     const { data: students } = await supabase
         .from('students')
-        .select('id, name, avatar_url')
-        .eq('coach_id', trainer.id)
+        .select('id, name, avatar_url, coach_id, is_trainer_profile')
         .order('name')
 
     const studentsMap = new Map((students || []).map(s => [s.id, s]))
@@ -87,11 +93,14 @@ export default async function FormsPage() {
         version: t.version || 1,
     }))
 
-    const studentsList = (students || []).map(s => ({
-        id: s.id,
-        name: s.name,
-        avatar_url: s.avatar_url,
-    }))
+    // Picker: sem os perfis "Eu" de COLEGAS (o próprio continua, como antes).
+    const studentsList = (students || [])
+        .filter(s => !(s.is_trainer_profile && s.coach_id !== trainer.id))
+        .map(s => ({
+            id: s.id,
+            name: s.name,
+            avatar_url: s.avatar_url,
+        }))
 
     return (
         <FormsDashboardClient

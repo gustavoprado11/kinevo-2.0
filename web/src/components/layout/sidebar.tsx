@@ -62,6 +62,9 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
         ...MAIN_NAV.filter(n => {
             if (n.href === '/consultoria' && !consultoriaAllowed) return false
             if (n.href === '/financial' && isStudioAccount) return false
+            // Decisão 16/jul: conta de estúdio não tem Marketing (aquisição é
+            // pessoal do personal; o estúdio capta fora da plataforma).
+            if (n.href === '/marketing' && isStudioAccount) return false
             return true
         }),
     ]

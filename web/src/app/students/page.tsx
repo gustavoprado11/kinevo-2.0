@@ -30,7 +30,8 @@ export default async function StudentsPage() {
         supabase
             .from('form_templates')
             .select('id, title, trainer_id, category')
-            .or(`trainer_id.eq.${trainer.id},trainer_id.is.null`)
+            // Estúdios (265): RLS = own + sistema + colegas (biblioteca compartilhada)
+            
             .or('system_key.is.null,system_key.neq.prescription_questionnaire')
             .eq('is_active', true)
             .order('created_at', { ascending: false }),

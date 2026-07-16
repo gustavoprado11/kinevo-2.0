@@ -13,6 +13,9 @@ import {
     useAgendaOccurrences,
     type AgendaOccurrence,
 } from "../../hooks/useAgendaOccurrences";
+import { useStudioMembership } from "../../hooks/useStudioDashboard";
+import { useRoleMode } from "../../contexts/RoleModeContext";
+import { ScrollView } from "react-native";
 
 function addDays(d: Date, days: number): Date {
     const r = new Date(d);
@@ -25,6 +28,10 @@ export default function AgendaScreen() {
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
     const [createOpen, setCreateOpen] = useState(false);
+    // Estúdios: 'me' | 'all' | coachId — membro vê a agenda da equipe.
+    const [scope, setScope] = useState<string>("me");
+    const { membership } = useStudioMembership();
+    const { trainerId } = useRoleMode();
     const [detailOccurrence, setDetailOccurrence] = useState<AgendaOccurrence | null>(null);
     const [editOccurrence, setEditOccurrence] = useState<AgendaOccurrence | null>(null);
 
@@ -35,9 +42,10 @@ export default function AgendaScreen() {
         return { rangeStart: start, rangeEnd: end };
     }, [selectedDate]);
 
-    const { occurrences, isLoading, isRefreshing, refresh, error } = useAgendaOccurrences({
+    const { occurrences, studioCoaches, isLoading, isRefreshing, refresh, error } = useAgendaOccurrences({
         rangeStart,
         rangeEnd,
+        scope,
     });
 
     const handleBack = useCallback(() => {
@@ -96,6 +104,40 @@ export default function AgendaScreen() {
                         Agenda
                     </Text>
                 </View>
+
+                {/* Estúdios: filtro por treinador (ver é aberto; agendar segue pessoal) */}
+                {membership && (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ flexGrow: 0 }}
+                        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}
+                    >
+                        {[{ id: "me", label: "Você" }, { id: "all", label: "Estúdio (todos)" },
+                          ...studioCoaches.filter((c) => c.id !== trainerId).map((c) => ({ id: c.id, label: c.name.split(" ")[0] }))]
+                            .map((chip) => {
+                                const active = scope === chip.id;
+                                return (
+                                    <Pressable
+                                        key={chip.id}
+                                        onPress={() => { Haptics.selectionAsync(); setScope(chip.id); }}
+                                        style={{
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 7,
+                                            borderRadius: 999,
+                                            backgroundColor: active ? colors.brand.primary : colors.surface.card,
+                                            borderWidth: active ? 0 : 1,
+                                            borderColor: colors.border.subtle,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: "700", color: active ? "#fff" : colors.text.tertiary }}>
+                                            {chip.label}
+                                        </Text>
+                                    </Pressable>
+                                );
+                            })}
+                    </ScrollView>
+                )}
 
                 <AgendaDayView
                     selectedDate={selectedDate}

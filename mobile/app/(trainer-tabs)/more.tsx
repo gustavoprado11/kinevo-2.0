@@ -6,7 +6,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
     ArrowLeftRight,
     Bell,
-    Building2,
     User,
     ChevronRight,
     Crown,
@@ -263,7 +262,6 @@ export default function MoreScreen() {
     const [appearanceModalOpen, setAppearanceModalOpen] = useState(false);
     // Estúdios: entrada do painel só para o gestor com billing ativo.
     const { membership: studioMembership } = useStudioMembership();
-    const showStudioPanel = !!studioMembership?.isManager && !!studioMembership?.billingActive;
 
     const handleManageSubscription = useCallback(async () => {
         setLoadingPortal(true);
@@ -457,49 +455,22 @@ export default function MoreScreen() {
                     </LinearGradient>
                 </Animated.View>
 
-                {/* Captação */}
-                <SectionLabel title="Captação" delay={100} />
-                <Animated.View
-                    entering={FadeInUp.delay(120).duration(300).easing(Easing.out(Easing.cubic))}
-                >
-                    <KCard style={{ padding: 0 }}>
-                        <LeadsMenuRow />
-                    </KCard>
-                </Animated.View>
-
-                {/* Estúdio — só o gestor com billing ativo vê */}
-                {showStudioPanel && (
+                {/* Captação — estúdio não tem Marketing (decisão 16/jul) */}
+                {!studioMembership && (
                     <>
-                        <SectionLabel title="Estúdio" delay={120} />
+                        <SectionLabel title="Captação" delay={100} />
                         <Animated.View
                             entering={FadeInUp.delay(120).duration(300).easing(Easing.out(Easing.cubic))}
                         >
                             <KCard style={{ padding: 0 }}>
-                                <MenuRow
-                                    icon={
-                                        <IconBox bg={toRgba(colors.brand.primary, 0.12)}>
-                                            <Building2 size={16} color={colors.brand.primary} strokeWidth={2.2} />
-                                        </IconBox>
-                                    }
-                                    label="Painel do estúdio"
-                                    sub={
-                                        <Text
-                                            style={{
-                                                fontFamily: "PlusJakartaSans_500Medium",
-                                                fontSize: 12,
-                                                color: colors.text.tertiary,
-                                            }}
-                                        >
-                                            {studioMembership?.orgName}
-                                        </Text>
-                                    }
-                                    onPress={() => router.push("/estudio" as never)}
-                                />
+                                <LeadsMenuRow />
                             </KCard>
                         </Animated.View>
                     </>
                 )}
 
+                {/* (decisão 16/jul) A visão do estúdio vive no DASHBOARD do gestor —
+                    a entrada "Painel do estúdio" saiu daqui. */}
                 {/* Comunicação */}
                 <SectionLabel title="Comunicação" delay={140} />
                 <Animated.View

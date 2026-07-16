@@ -23,11 +23,15 @@ export interface AgendaOccurrence extends AppointmentOccurrence {
 interface UseAgendaOccurrencesArgs {
     rangeStart: Date;
     rangeEnd: Date;
+    /** Estúdios: 'me' (default, fluxo original) | 'all' | trainerId de um coach. */
+    scope?: string;
 }
 
 interface UseAgendaOccurrencesReturn {
     occurrences: AgendaOccurrence[];
     students: Map<string, AgendaStudentLite>;
+    /** Estúdios: coaches ativos do estúdio (vazio p/ solo) — alimenta o filtro. */
+    studioCoaches: { id: string; name: string }[];
     isLoading: boolean;
     isRefreshing: boolean;
     error: string | null;
@@ -51,12 +55,14 @@ function toDateKey(d: Date): string {
 export function useAgendaOccurrences({
     rangeStart,
     rangeEnd,
+    scope = "me",
 }: UseAgendaOccurrencesArgs): UseAgendaOccurrencesReturn {
     const { trainerId } = useRoleMode();
     const [occurrences, setOccurrences] = useState<AgendaOccurrence[]>([]);
     const [students, setStudents] = useState<Map<string, AgendaStudentLite>>(
         new Map(),
     );
+    const [studioCoaches, setStudioCoaches] = useState<{ id: string; name: string }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -79,6 +85,54 @@ export function useAgendaOccurrences({
     const fetchData = useCallback(async () => {
         if (!trainerId) return;
         const seq = ++requestSeqRef.current;
+
+        // Estúdios: visão da equipe via RPC (RLS de recurring_appointments é
+        // por-trainer). A projeção continua client-side (mesma engine).
+        if (scope !== "me") {
+            const { data: payload, error: orgError } = await (supabase as any).rpc(
+                "get_studio_agenda_data",
+                { p_start: rangeStartKey, p_end: rangeEndKey },
+            );
+            if (orgError) throw new Error(orgError.message);
+            if (!payload) throw new Error("Você não pertence a um estúdio");
+
+            const allRules = (payload.rules ?? []) as RecurringAppointment[];
+            const rules = scope === "all" ? allRules : allRules.filter((r) => r.trainer_id === scope);
+            const exceptions = (payload.exceptions ?? []) as AppointmentException[];
+            const coachName = new Map<string, string>(
+                ((payload.coaches ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
+            );
+            const studentNameById = new Map<string, string>(
+                ((payload.students ?? []) as { id: string; name: string }[]).map((st) => [st.id, st.name]),
+            );
+
+            const expanded = expandAppointments(rules, exceptions, rangeStart, rangeEnd);
+            const ruleFrequencyById = new Map<string, AppointmentFrequency>();
+            for (const r of rules) ruleFrequencyById.set(r.id, r.frequency);
+
+            const studentMap = new Map<string, AgendaStudentLite>();
+            const enriched: AgendaOccurrence[] = expanded.map((o) => {
+                const base = studentNameById.get(o.studentId) ?? "Aluno";
+                const suffix = o.trainerId === trainerId ? "" : ` · ${(coachName.get(o.trainerId) ?? "").split(" ")[0]}`;
+                const lite = { id: o.studentId, name: `${base}${suffix}`, avatar_url: null };
+                studentMap.set(o.studentId, lite);
+                return {
+                    ...o,
+                    student: lite,
+                    frequency: ruleFrequencyById.get(o.recurringAppointmentId) ?? "weekly",
+                };
+            });
+
+            if (!mountedRef.current || seq !== requestSeqRef.current) return;
+            setOccurrences(enriched);
+            setStudents(studentMap);
+            setStudioCoaches(
+                ((payload.coaches ?? []) as { id: string; name: string }[])
+                    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+            );
+            setError(null);
+            return;
+        }
 
         const { data: rulesRows, error: rulesError } = await supabase
             .from("recurring_appointments")
@@ -149,7 +203,7 @@ export function useAgendaOccurrences({
         setOccurrences(enriched);
         setStudents(studentMap);
         setError(null);
-    }, [trainerId, rangeStart, rangeEnd, rangeStartKey, rangeEndKey]);
+    }, [trainerId, scope, rangeStart, rangeEnd, rangeStartKey, rangeEndKey]);
 
     useEffect(() => {
         if (!trainerId) {
@@ -182,5 +236,5 @@ export function useAgendaOccurrences({
         }
     }, [fetchData]);
 
-    return { occurrences, students, isLoading, isRefreshing, error, refresh };
+    return { occurrences, students, studioCoaches, isLoading, isRefreshing, error, refresh };
 }

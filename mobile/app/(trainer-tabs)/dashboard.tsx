@@ -24,6 +24,8 @@ import Animated, { FadeInUp, FadeIn, Easing } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useRoleMode } from "../../contexts/RoleModeContext";
 import { useTrainerDashboard, type DailyActivityItem } from "../../hooks/useTrainerDashboard";
+import { useStudioMembership } from "../../hooks/useStudioDashboard";
+import { StudioOverview } from "../../components/trainer/StudioOverview";
 import { useNotificationStore } from "../../stores/notification-store";
 import { useResponsive } from "../../hooks/useResponsive";
 import { ResponsiveContainer } from "../../components/shared/ResponsiveContainer";
@@ -100,11 +102,49 @@ export default function DashboardScreen() {
     return <ClassicDashboard />;
 }
 
+/**
+ * Estúdios (decisão 16/jul): o GESTOR abre o Dashboard já na visão do
+ * ESTÚDIO, com toggle pro painel pessoal — nada de tela paralela.
+ */
+function useStudioScope() {
+    const { membership } = useStudioMembership();
+    const isManager = !!membership?.isManager && !!membership?.billingActive;
+    const [scope, setScope] = React.useState<"studio" | "me" | null>(null);
+    // default: gestor começa no estúdio; demais no pessoal.
+    const effective = scope ?? (isManager ? "studio" : "me");
+    return { isManager, scope: effective, setScope };
+}
+
+function ScopeToggle({ scope, setScope }: { scope: "studio" | "me"; setScope: (s: "studio" | "me") => void }) {
+    const colors = useV2Colors();
+    return (
+        <View style={{ flexDirection: "row", gap: 4, backgroundColor: colors.surface.card, borderRadius: 999, padding: 3, borderWidth: 1, borderColor: colors.border.subtle }}>
+            {(["studio", "me"] as const).map((k) => (
+                <Pressable
+                    key={k}
+                    onPress={() => setScope(k)}
+                    style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 999,
+                        backgroundColor: scope === k ? colors.brand.primary : "transparent",
+                    }}
+                >
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: scope === k ? "#fff" : colors.text.tertiary }}>
+                        {k === "studio" ? "Estúdio" : "Meu painel"}
+                    </Text>
+                </Pressable>
+            ))}
+        </View>
+    );
+}
+
 function ClassicDashboard() {
     const colors = useV2Colors();
     const { setMode: setAssistantMode } = useAssistantMode();
     const { allowed: assistantAllowed } = useAssistantAccess();
     const { trainerProfile } = useRoleMode();
+    const { isManager, scope, setScope } = useStudioScope();
     const { stats, pendingActions, dailyActivity, isLoading, isRefreshing, refresh } = useTrainerDashboard();
     const router = useRouter();
     const unreadCount = useNotificationStore((s) => s.unreadCount);
@@ -115,6 +155,14 @@ function ClassicDashboard() {
     const subContext = activeStudents > 0
         ? `${activeStudents} ${activeStudents === 1 ? "aluno ativo" : "alunos ativos"}`
         : "sem alunos ativos";
+
+    if (isManager && scope === "studio") {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface.canvas }} edges={["top"]}>
+                <StudioOverview scopeToggle={<ScopeToggle scope={scope} setScope={setScope} />} />
+            </SafeAreaView>
+        );
+    }
 
     if (isLoading) {
         return (
@@ -189,6 +237,11 @@ function ClassicDashboard() {
                             >
                                 {formatDate()} · {subContext}
                             </Text>
+                            {isManager && (
+                                <View style={{ marginTop: spacing[2], alignSelf: "flex-start" }}>
+                                    <ScopeToggle scope={scope} setScope={setScope} />
+                                </View>
+                            )}
                         </View>
                         <Pressable
                             onPress={() => router.push("/notifications" as any)}
