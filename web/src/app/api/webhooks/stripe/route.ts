@@ -1,34 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { studioPriceToTier } from '@/lib/studio/studio-tiers'
+import { getPeriodEnd, getPriceId, orgFieldsFromSubscription } from '@/lib/studio/org-billing-sync'
 import Stripe from 'stripe'
-
-// Janela de graça do estúdio: past_due mantém acesso até period_end + 14d (a
-// coluna organizations.grace_until é PERSISTIDA, ao contrário do solo que
-// calcula em runtime). Espelha DUNNING_GRACE_DAYS de get-ai-tier.
-const ORG_GRACE_DAYS = 14
-
-// In Stripe v20+, current_period_end moved from Subscription to SubscriptionItem
-function getPeriodEnd(subscription: Stripe.Subscription): string | null {
-    const item = subscription.items?.data?.[0]
-    if (item?.current_period_end) {
-        return new Date(item.current_period_end * 1000).toISOString()
-    }
-    if (subscription.trial_end) {
-        return new Date(subscription.trial_end * 1000).toISOString()
-    }
-    return null
-}
-
-// Price ID do plano (primeiro item da subscription). Deriva o tier de IA por
-// env em tempo de LEITURA (lib/auth/get-ai-tier). IMPORTANTE: NÃO gravamos
-// trainers.ai_tier aqui — esse campo é só override manual; como a resolução
-// trata "ai_tier != 'free'" como override, escrevê-lo congelaria upgrades
-// futuros derivados do price. O webhook persiste só o stripe_price_id.
-function getPriceId(subscription: Stripe.Subscription): string | null {
-    return subscription.items?.data?.[0]?.price?.id ?? null
-}
 
 // In Stripe v20+, Invoice.subscription moved to Invoice.parent.subscription_details.subscription
 function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
@@ -127,28 +101,6 @@ export async function POST(request: NextRequest) {
 }
 
 // ── Estúdios (billing por org) ──────────────────────────────────────────────
-// Constrói os campos de organizations a partir da subscription do Stripe.
-// plan_tier só entra se o price mapeia (não sobrescreve com null num update).
-function orgFieldsFromSubscription(subscription: Stripe.Subscription): Record<string, unknown> {
-    const periodEnd = getPeriodEnd(subscription)
-    const st = subscription.status as string
-    let subscription_status = st
-    let grace_until: string | null = null
-    if (st === 'past_due') {
-        grace_until = periodEnd ? new Date(new Date(periodEnd).getTime() + ORG_GRACE_DAYS * 86_400_000).toISOString() : null
-    } else if (st === 'canceled' || st === 'unpaid') {
-        subscription_status = 'canceled'
-    }
-    const planTier = studioPriceToTier(getPriceId(subscription))
-    return {
-        subscription_status,
-        current_period_end: periodEnd,
-        cancel_at_period_end: subscription.cancel_at_period_end,
-        grace_until,
-        ...(planTier ? { plan_tier: planTier } : {}),
-    }
-}
-
 /** Atualiza a org dona desta subscription. Retorna true se era uma org. */
 async function updateOrgBySubscription(subscription: Stripe.Subscription): Promise<boolean> {
     const { data } = await supabaseAdmin
