@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
 
         const { data: student, error: studentError } = await adminClient
             .from("students")
-            .select("id, auth_user_id, coach_id, name, email, phone, modality, status")
+            .select("id, auth_user_id, coach_id, organization_id, name, email, phone, modality, status")
             .eq("id", studentId)
             .single();
 
@@ -82,7 +82,21 @@ Deno.serve(async (req: Request) => {
             return jsonResponse({ success: false, error: "Aluno não encontrado." }, 404);
         }
 
-        if (student.coach_id !== trainer.id) {
+        // Autorização org-aware (paridade com o RLS 252 e a web): o dono
+        // (coach_id) OU um membro ATIVO do estúdio do aluno pode editar.
+        // Aluno particular/solo tem organization_id null → só o dono.
+        let allowed = student.coach_id === trainer.id;
+        if (!allowed && student.organization_id) {
+            const { data: member } = await adminClient
+                .from("organization_members")
+                .select("id")
+                .eq("organization_id", student.organization_id)
+                .eq("trainer_id", trainer.id)
+                .eq("status", "active")
+                .maybeSingle();
+            allowed = !!member;
+        }
+        if (!allowed) {
             return jsonResponse(
                 { success: false, error: "Aluno não encontrado ou sem permissão." },
                 403
@@ -173,11 +187,13 @@ Deno.serve(async (req: Request) => {
             }
         }
 
+        // Autorização já validada acima (dono OU membro do estúdio) — o filtro
+        // por coach_id sairia errado para o coach substituto editando aluno de
+        // colega, então o UPDATE é por id.
         const { data: updated, error: updateError } = await adminClient
             .from("students")
             .update(updates)
             .eq("id", studentId)
-            .eq("coach_id", trainer.id)
             .select("id, name, email, phone, modality, status")
             .single();
 
