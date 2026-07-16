@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
     ArrowLeftRight,
     Bell,
+    Building2,
     User,
     ChevronRight,
     Crown,
@@ -24,6 +25,7 @@ import Animated, { FadeIn, FadeInUp, Easing } from "react-native-reanimated";
 import Constants from "expo-constants";
 import { useRoleMode } from "../../contexts/RoleModeContext";
 import { useTrainerLeads } from "../../hooks/useTrainerLeads";
+import { useStudioMembership } from "../../hooks/useStudioDashboard";
 import { useAuth } from "../../contexts/AuthContext";
 import { PressableScale } from "../../components/shared/PressableScale";
 import { supabase } from "../../lib/supabase";
@@ -259,6 +261,9 @@ export default function MoreScreen() {
 
     const [loadingPortal, setLoadingPortal] = useState(false);
     const [appearanceModalOpen, setAppearanceModalOpen] = useState(false);
+    // Estúdios: entrada do painel só para o gestor com billing ativo.
+    const { membership: studioMembership } = useStudioMembership();
+    const showStudioPanel = !!studioMembership?.isManager && !!studioMembership?.billingActive;
 
     const handleManageSubscription = useCallback(async () => {
         setLoadingPortal(true);
@@ -461,6 +466,39 @@ export default function MoreScreen() {
                         <LeadsMenuRow />
                     </KCard>
                 </Animated.View>
+
+                {/* Estúdio — só o gestor com billing ativo vê */}
+                {showStudioPanel && (
+                    <>
+                        <SectionLabel title="Estúdio" delay={120} />
+                        <Animated.View
+                            entering={FadeInUp.delay(120).duration(300).easing(Easing.out(Easing.cubic))}
+                        >
+                            <KCard style={{ padding: 0 }}>
+                                <MenuRow
+                                    icon={
+                                        <IconBox bg={toRgba(colors.brand.primary, 0.12)}>
+                                            <Building2 size={16} color={colors.brand.primary} strokeWidth={2.2} />
+                                        </IconBox>
+                                    }
+                                    label="Painel do estúdio"
+                                    sub={
+                                        <Text
+                                            style={{
+                                                fontFamily: "PlusJakartaSans_500Medium",
+                                                fontSize: 12,
+                                                color: colors.text.tertiary,
+                                            }}
+                                        >
+                                            {studioMembership?.orgName}
+                                        </Text>
+                                    }
+                                    onPress={() => router.push("/estudio" as never)}
+                                />
+                            </KCard>
+                        </Animated.View>
+                    </>
+                )}
 
                 {/* Comunicação */}
                 <SectionLabel title="Comunicação" delay={140} />
