@@ -26,52 +26,54 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Existing shadcn/ui variables (Light — Apple HIG palette) ── */
-  --background: #F5F5F7;
-  --foreground: #1D1D1F;
+  /* ── Existing shadcn/ui variables (Light — "ferramenta profissional",
+        jul/2026: neutros quentes stone no lugar do cinza-azulado; violeta
+        mais profundo, usado só como ação) ── */
+  --background: #FAFAF9;
+  --foreground: #1C1917;
   --card: #ffffff;
-  --card-foreground: #1D1D1F;
+  --card-foreground: #1C1917;
   --popover: #ffffff;
-  --popover-foreground: #1D1D1F;
-  --primary: #7C3AED;
+  --popover-foreground: #1C1917;
+  --primary: #6D28D9;
   --primary-foreground: #ffffff;
-  --muted: #F5F5F7;
-  --muted-foreground: #6E6E73;
-  --accent: #F5F5F7;
-  --accent-foreground: #7C3AED;
-  --border: #D2D2D7;
-  --input: #D2D2D7;
-  --ring: #7C3AED;
-  --destructive: #FF3B30;
+  --muted: #F4F3F1;
+  --muted-foreground: #57534E;
+  --accent: #F4F3F1;
+  --accent-foreground: #6D28D9;
+  --border: #E7E5E4;
+  --input: #D6D3D0;
+  --ring: #6D28D9;
+  --destructive: #B91C1C;
   --destructive-foreground: #ffffff;
   color-scheme: light;
 
-  /* ── Kinevo Semantic Surfaces (Light — Apple HIG) ── */
-  --surface-primary: #F5F5F7;
-  --surface-canvas: #F5F5F7;
+  /* ── Kinevo Semantic Surfaces (Light — stone) ── */
+  --surface-primary: #FAFAF9;
+  --surface-canvas: #FAFAF9;
   --surface-card: #FFFFFF;
-  --surface-sidebar: #FFFFFF;
+  --surface-sidebar: #FAFAF9;
   --surface-elevated: #FFFFFF;
-  --surface-inset: #F5F5F7;
+  --surface-inset: #F4F3F1;
 
-  /* ── Kinevo Semantic Text (Light — Apple HIG) ── */
-  --text-primary: #1D1D1F;
-  --text-secondary: #6E6E73;
-  --text-tertiary: #86868B;
-  --text-quaternary: #AEAEB2;
+  /* ── Kinevo Semantic Text (Light — tinta quente) ── */
+  --text-primary: #1C1917;
+  --text-secondary: #57534E;
+  --text-tertiary: #8A8681;
+  --text-quaternary: #B8B4AF;
 
-  /* ── Kinevo Semantic Borders (Light — Apple HIG) ── */
-  --border-primary: #D2D2D7;
-  --border-subtle: #E8E8ED;
+  /* ── Kinevo Semantic Borders (Light — hairlines) ── */
+  --border-primary: #D6D3D0;
+  --border-subtle: #E7E5E4;
 
   /* ── Kinevo Glass / Overlay (Light) ── */
-  --glass-bg: #F5F5F7;
-  --glass-bg-active: #ECECF0;
-  --glass-bg-hover: #F0F0F4;
+  --glass-bg: #F4F3F1;
+  --glass-bg-active: #ECEAE7;
+  --glass-bg-hover: #F0EEEB;
 
   /* ── Kinevo Gradient Text (Light) ── */
-  --gradient-text-from: #1D1D1F;
-  --gradient-text-to: #86868B;
+  --gradient-text-from: #1C1917;
+  --gradient-text-to: #8A8681;
 
   /* ── Workout card type accents (Light) ── */
   --accent-warmup: #F59E0B;
@@ -86,52 +88,54 @@
 }
 
 .dark {
-  /* ── Existing shadcn/ui variables (Dark — UNCHANGED) ── */
-  --background: #09090B;
-  --foreground: #f8fafc;
-  --card: #0f172a;
-  --card-foreground: #f8fafc;
-  --popover: #0f172a;
-  --popover-foreground: #f8fafc;
-  --primary: #8b5cf6;
-  --primary-foreground: #ffffff;
-  --muted: #0f172a;
-  --muted-foreground: #94a3b8;
-  --accent: #1e293b;
-  --accent-foreground: #f8fafc;
-  --border: #1e293b;
-  --input: #1e293b;
-  --ring: #8b5cf6;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
+  /* ── Existing shadcn/ui variables (Dark — "ferramenta profissional",
+        jul/2026: sai a mistura slate/iOS, entra uma escala única de cinzas
+        neutros; violeta claro contido) ── */
+  --background: #111113;
+  --foreground: #EDEDF0;
+  --card: #18181B;
+  --card-foreground: #EDEDF0;
+  --popover: #18181B;
+  --popover-foreground: #EDEDF0;
+  --primary: #A78BFA;
+  --primary-foreground: #16121F;
+  --muted: #212124;
+  --muted-foreground: #A7A5AB;
+  --accent: #212124;
+  --accent-foreground: #EDEDF0;
+  --border: #29292E;
+  --input: #29292E;
+  --ring: #A78BFA;
+  --destructive: #F87171;
+  --destructive-foreground: #16121F;
   color-scheme: dark;
 
-  /* ── Kinevo Semantic Surfaces (Dark — mirrors hardcoded hex) ── */
-  --surface-primary: #121214;
-  --surface-canvas: #09090B;
-  --surface-card: #1C1C1E;
-  --surface-sidebar: #09090B;
-  --surface-elevated: #1C1C1E;
-  --surface-inset: rgba(0, 0, 0, 0.2);
+  /* ── Kinevo Semantic Surfaces (Dark) ── */
+  --surface-primary: #161618;
+  --surface-canvas: #111113;
+  --surface-card: #18181B;
+  --surface-sidebar: #111113;
+  --surface-elevated: #1D1D20;
+  --surface-inset: #212124;
 
-  /* ── Kinevo Semantic Text (Dark — mirrors text-white/XX) ── */
-  --text-primary: #FFFFFF;
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-tertiary: rgba(255, 255, 255, 0.4);
-  --text-quaternary: rgba(255, 255, 255, 0.2);
+  /* ── Kinevo Semantic Text (Dark) ── */
+  --text-primary: #EDEDF0;
+  --text-secondary: #A7A5AB;
+  --text-tertiary: #6F6D75;
+  --text-quaternary: #4A484F;
 
-  /* ── Kinevo Semantic Borders (Dark — mirrors border-white/XX) ── */
-  --border-primary: rgba(255, 255, 255, 0.1);
-  --border-subtle: rgba(255, 255, 255, 0.05);
+  /* ── Kinevo Semantic Borders (Dark — hairlines sólidas, não white/α) ── */
+  --border-primary: #38383E;
+  --border-subtle: #29292E;
 
-  /* ── Kinevo Glass / Overlay (Dark — mirrors bg-white/XX) ── */
+  /* ── Kinevo Glass / Overlay (Dark) ── */
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-bg-active: rgba(255, 255, 255, 0.1);
   --glass-bg-hover: rgba(255, 255, 255, 0.05);
 
   /* ── Kinevo Gradient Text (Dark) ── */
-  --gradient-text-from: #FFFFFF;
-  --gradient-text-to: #a1a1aa;
+  --gradient-text-from: #EDEDF0;
+  --gradient-text-to: #A7A5AB;
 
   /* ── Workout card type accents (Dark) ── */
   --accent-warmup: #FBBF24;
@@ -200,8 +204,16 @@
   --color-accent-dropset-bg: var(--accent-dropset-bg);
   --color-surface-nested: var(--surface-nested);
 
-  /* Font families */
+  /* Font families — Mona Sans (UI/display) + Geist Mono (dados/rótulos).
+     `font-sans` e `font-mono` do Tailwind passam a resolver para elas. */
+  --font-sans: var(--font-mona), "Mona Sans", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, SFMono-Regular, monospace;
   --font-family-jakarta: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+
+  /* Radius — uma decisão, não o default: 8px em controles, 10px em painéis.
+     Utilities: rounded-control / rounded-panel. */
+  --radius-control: 8px;
+  --radius-panel: 10px;
 
   /* Z-Index Design Tokens — semantic stacking layers
      Usage: z-sticky, z-header, z-sidebar, z-dropdown, z-modal, etc. */
@@ -561,11 +573,11 @@ section[id], div[id] { scroll-margin-top: 80px; }
    (shadcn/radix components override this where they need custom focus)
    ═══════════════════════════════════════════════════════════════════ */
 :focus-visible {
-  outline: 2px solid #7C3AED;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
   border-radius: 4px;
 }
 button:focus-visible, a:focus-visible {
-  outline: 2px solid #7C3AED;
+  outline: 2px solid var(--ring);
   outline-offset: 3px;
 }

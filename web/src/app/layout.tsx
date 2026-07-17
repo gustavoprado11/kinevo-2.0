@@ -1,11 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Mona_Sans, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
+// Direção "ferramenta profissional" (jul/2026): Mona Sans é a fonte de UI e
+// display; Geist Mono cobre rótulos de dados e valores técnicos (utility
+// `font-mono`). Jakarta permanece só pela landing (.font-display).
+const monaSans = Mona_Sans({ subsets: ['latin'], variable: '--font-mona', display: 'swap' })
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap' })
 const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', display: 'swap' })
 
 export const metadata: Metadata = {
@@ -58,7 +62,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
-    { media: '(prefers-color-scheme: dark)', color: '#0A0A0B' },
+    { media: '(prefers-color-scheme: dark)', color: '#111113' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -130,7 +134,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${jakarta.variable} ${inter.className} antialiased`}
+        className={`${monaSans.variable} ${geistMono.variable} ${jakarta.variable} ${monaSans.className} antialiased`}
       >
         <script
           type="application/ld+json"
