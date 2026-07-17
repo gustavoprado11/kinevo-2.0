@@ -55,7 +55,7 @@ export function CreditMeter({ summary, compact = false, pill = false }: CreditMe
         ? { width: `${pct}%`, background: 'linear-gradient(90deg, #EF4444, #F87171)' }
         : warning
           ? { width: `${pct}%`, background: 'linear-gradient(90deg, #F59E0B, #FBBF6B)' }
-          : { width: `${pct}%`, background: 'linear-gradient(90deg, #7C3AED, #A78BFA)' }
+          : { width: `${pct}%`, background: 'var(--primary)' }
 
     const isFree = tier === 'free'
     const unitLabel = 'créditos'
@@ -66,8 +66,8 @@ export function CreditMeter({ summary, compact = false, pill = false }: CreditMe
           : `renova em ${days} ${days === 1 ? 'dia' : 'dias'}`
 
     const subLine = (
-        <p className="text-[12.5px] text-[#6E6E73] dark:text-muted-foreground">
-            <b className="font-semibold text-[#1D1D1F] dark:text-foreground [font-variant-numeric:tabular-nums]">
+        <p className="text-[12.5px] text-k-text-secondary dark:text-muted-foreground">
+            <b className="font-semibold text-k-text-primary dark:text-foreground [font-variant-numeric:tabular-nums]">
                 {creditsUsed.toLocaleString('pt-BR')} de {creditsTotal.toLocaleString('pt-BR')} {unitLabel}
             </b>{' '}
             usados neste ciclo · {renewalLabel}
@@ -83,13 +83,13 @@ export function CreditMeter({ summary, compact = false, pill = false }: CreditMe
     if (pill) {
         return (
             <div
-                className="flex items-center gap-[11px] rounded-[12px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card px-[14px] py-2 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+                className="flex items-center gap-[11px] rounded-[12px] border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card px-[14px] py-2 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
                 aria-label={`${creditsUsed} de ${creditsTotal} ${unitLabel} usados`}
             >
                 <Coins className="h-4 w-4 shrink-0 text-[#F59E0B]" strokeWidth={1.8} />
                 <div className="flex min-w-[172px] flex-col gap-[5px]">
-                    <span className="text-[11.5px] text-[#86868B] dark:text-muted-foreground">
-                        <b className="font-semibold text-[#1D1D1F] dark:text-foreground [font-variant-numeric:tabular-nums]">
+                    <span className="text-[11.5px] text-k-text-tertiary dark:text-muted-foreground">
+                        <b className="font-semibold text-k-text-primary dark:text-foreground [font-variant-numeric:tabular-nums]">
                             {creditsUsed.toLocaleString('pt-BR')}
                         </b>{' '}
                         de {creditsTotal.toLocaleString('pt-BR')} {unitLabel} · {renewalLabel}
@@ -112,14 +112,14 @@ export function CreditMeter({ summary, compact = false, pill = false }: CreditMe
     }
 
     return (
-        <div className="rounded-[14px] border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card p-[15px_18px] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]">
+        <div className="rounded-[14px] border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card p-[15px_18px] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-[200px] flex-1">
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-[#EDE9FE] dark:bg-violet-500/15 px-2.5 py-1 text-xs font-bold text-[#7C3AED] dark:text-violet-400">
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-[#EDE9FE] dark:bg-violet-500/15 px-2.5 py-1 text-xs font-bold text-primary dark:text-violet-400">
                         <Sparkles className="h-[13px] w-[13px]" strokeWidth={2} />
                         {TIER_LABEL[tier]}
                     </span>
-                    <h3 className="mt-2 text-[15px] font-semibold text-[#1D1D1F] dark:text-foreground">
+                    <h3 className="mt-2 text-[15px] font-semibold text-k-text-primary dark:text-foreground">
                         {exhausted
                             ? isFree
                                 ? 'Você testou tudo do plano gratuito'
@@ -132,7 +132,7 @@ export function CreditMeter({ summary, compact = false, pill = false }: CreditMe
                     {subLine}
                 </div>
                 <div className="text-right">
-                    <div className="text-[28px] font-extrabold leading-none tracking-tight text-[#1D1D1F] dark:text-foreground [font-variant-numeric:tabular-nums]">
+                    <div className="text-[28px] font-extrabold leading-none tracking-tight text-k-text-primary dark:text-foreground [font-variant-numeric:tabular-nums]">
                         {creditsRemaining.toLocaleString('pt-BR')}
                         <span className="ml-1 text-[13px] font-medium text-[#8A8A8E] dark:text-muted-foreground/80">
                             {isFree ? 'restantes' : 'créditos'}

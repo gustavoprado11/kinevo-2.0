@@ -67,7 +67,7 @@ export function AssistantBanner({ data, onDismiss }: { data: AssistantBannerData
     const icon = warning ? 'text-[#B45309] dark:text-amber-300' : 'text-[#BE123C] dark:text-rose-300'
     const text = warning ? 'text-[#92580C] dark:text-amber-200' : 'text-[#9F1239] dark:text-rose-200'
     const ctaClass =
-        'inline-flex shrink-0 items-center gap-1 rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-2.5 py-1 text-[11.5px] font-bold text-white shadow-[0_4px_12px_-4px_rgba(124,58,237,0.5)] transition hover:brightness-[1.07]'
+        'inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-[11.5px] font-semibold text-primary-foreground transition hover:opacity-90'
 
     return (
         <div

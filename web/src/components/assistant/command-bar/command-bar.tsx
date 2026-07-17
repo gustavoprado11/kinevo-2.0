@@ -287,7 +287,7 @@ export function CommandBar({
 
             {/* Palette */}
             <div className="fixed left-1/2 top-[14%] w-full max-w-[640px] -translate-x-1/2 px-4">
-                <div className="overflow-hidden rounded-2xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-[0_4px_12px_rgba(0,0,0,0.06),0_24px_60px_-24px_rgba(0,0,0,0.22)]">
+                <div className="overflow-hidden rounded-2xl border border-k-border-primary dark:border-k-border-primary bg-white dark:bg-surface-card shadow-[0_4px_12px_rgba(0,0,0,0.06),0_24px_60px_-24px_rgba(0,0,0,0.22)]">
                     <IntentInput
                         ref={inputRef}
                         value={input}
@@ -329,27 +329,27 @@ export function CommandBar({
                                     disabled={loading || exhausted}
                                     className="flex w-full items-center gap-2.5 px-[18px] py-2 text-left transition-colors hover:bg-[#F4F1FE] dark:hover:bg-violet-500/10 disabled:opacity-50"
                                 >
-                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-muted-foreground">
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-inset dark:bg-glass-bg text-k-text-secondary dark:text-muted-foreground">
                                         <ArrowRight className="h-[15px] w-[15px]" strokeWidth={2} />
                                     </span>
-                                    <span className="flex-1 text-[13.5px] font-medium text-[#1D1D1F] dark:text-foreground">{s}</span>
+                                    <span className="flex-1 text-[13.5px] font-medium text-k-text-primary dark:text-foreground">{s}</span>
                                 </button>
                             ))}
                         </div>
                     )}
 
                     {/* Footer: medidor de créditos + atalhos. */}
-                    <div className="border-t border-[#E8E8ED] dark:border-k-border-subtle bg-[#FCFCFD] dark:bg-surface-elevated px-[18px] py-2.5">
+                    <div className="border-t border-k-border-subtle dark:border-k-border-subtle bg-[#FCFCFD] dark:bg-surface-elevated px-[18px] py-2.5">
                         {summary && <CreditMeter summary={summary} compact />}
-                        <div className="mt-2 flex items-center gap-4 text-[11.5px] text-[#6E6E73] dark:text-muted-foreground">
+                        <div className="mt-2 flex items-center gap-4 text-[11.5px] text-k-text-secondary dark:text-muted-foreground">
                             <span className="flex items-center gap-1">
-                                <kbd className="rounded border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-glass-bg px-1.5 py-0.5 font-mono text-[10px] text-[#1D1D1F] dark:text-foreground">
+                                <kbd className="rounded border border-k-border-primary dark:border-k-border-primary bg-white dark:bg-glass-bg px-1.5 py-0.5 font-mono text-[10px] text-k-text-primary dark:text-foreground">
                                     ↵
                                 </kbd>
                                 executar
                             </span>
                             <span className="flex items-center gap-1">
-                                <kbd className="rounded border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-glass-bg px-1.5 py-0.5 font-mono text-[10px] text-[#1D1D1F] dark:text-foreground">
+                                <kbd className="rounded border border-k-border-primary dark:border-k-border-primary bg-white dark:bg-glass-bg px-1.5 py-0.5 font-mono text-[10px] text-k-text-primary dark:text-foreground">
                                     esc
                                 </kbd>
                                 fechar

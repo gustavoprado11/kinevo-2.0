@@ -110,13 +110,13 @@ export function AssistantSidebar({
         router.push('/login')
     }
 
-    const navLinkClass = 'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight font-medium text-[#6E6E73] dark:text-muted-foreground transition hover:bg-[#F5F5F7] hover:text-[#1D1D1F] dark:hover:bg-glass-bg dark:hover:text-foreground'
-    const navIconClass = 'h-[18px] w-[18px] shrink-0 text-[#AEAEB2] dark:text-muted-foreground/60 transition group-hover:text-[#6E6E73] dark:group-hover:text-foreground'
+    const navLinkClass = 'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight font-medium text-k-text-secondary dark:text-muted-foreground transition hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'
+    const navIconClass = 'h-[18px] w-[18px] shrink-0 text-k-text-quaternary dark:text-muted-foreground/60 transition group-hover:text-k-text-secondary dark:group-hover:text-foreground'
 
     // Botão de recolher na borda (idêntico ao Clássico).
     const edgeToggle = (
         <button onClick={toggle} title={isCollapsed ? 'Expandir menu' : 'Recolher menu'} aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
-            className="absolute top-9 -right-3 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-sidebar text-[#AEAEB2] dark:text-muted-foreground/60 shadow-sm transition-colors hover:bg-[#F5F5F7] hover:text-[#6E6E73] dark:hover:bg-glass-bg dark:hover:text-foreground">
+            className="absolute top-9 -right-3 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-sidebar text-k-text-quaternary dark:text-muted-foreground/60 shadow-sm transition-colors hover:bg-surface-inset hover:text-k-text-secondary dark:hover:bg-glass-bg dark:hover:text-foreground">
             {isCollapsed ? <ChevronRight size={14} strokeWidth={2} /> : <ChevronLeft size={14} strokeWidth={2} />}
         </button>
     )
@@ -125,7 +125,7 @@ export function AssistantSidebar({
     const profile = (
         <div className="relative" ref={profileRef}>
             <button onClick={() => setProfileOpen((o) => !o)}
-                className={`flex w-full items-center gap-3 rounded-lg py-2 transition-colors hover:bg-[#F5F5F7] dark:hover:bg-glass-bg ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}>
+                className={`flex w-full items-center gap-3 rounded-lg py-2 transition-colors hover:bg-surface-inset dark:hover:bg-glass-bg ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}>
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-blue-600 ring-2 ring-[#E8E8ED] dark:ring-border">
                     {trainerAvatarUrl
                         ? <Image src={trainerAvatarUrl} alt="Avatar" width={32} height={32} unoptimized className="h-8 w-8 rounded-full object-cover" />
@@ -133,20 +133,20 @@ export function AssistantSidebar({
                 </div>
                 {!isCollapsed && (
                     <div className="min-w-0 flex-1 text-left">
-                        <p className="truncate text-sm font-medium leading-tight text-[#1D1D1F] dark:text-foreground">{trainerName ?? 'Treinador'}</p>
-                        {trainerEmail && <p className="truncate text-xs leading-tight text-[#86868B] dark:text-muted-foreground">{trainerEmail}</p>}
+                        <p className="truncate text-sm font-medium leading-tight text-k-text-primary dark:text-foreground">{trainerName ?? 'Treinador'}</p>
+                        {trainerEmail && <p className="truncate text-xs leading-tight text-k-text-tertiary dark:text-muted-foreground">{trainerEmail}</p>}
                     </div>
                 )}
             </button>
             {profileOpen && (
-                <div className={`absolute bottom-full z-modal mb-2 w-56 overflow-hidden rounded-xl border border-[#E8E8ED] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-xl ${isCollapsed ? 'left-full ml-2' : 'left-0'}`}>
-                    <div className="border-b border-[#E8E8ED] dark:border-k-border-subtle px-4 py-3">
-                        <p className="truncate text-sm font-medium text-[#1D1D1F] dark:text-foreground">{trainerName ?? 'Treinador'}</p>
-                        {trainerEmail && <p className="truncate text-xs text-[#86868B] dark:text-muted-foreground">{trainerEmail}</p>}
+                <div className={`absolute bottom-full z-modal mb-2 w-56 overflow-hidden rounded-xl border border-k-border-subtle dark:border-k-border-primary bg-white dark:bg-surface-card shadow-xl ${isCollapsed ? 'left-full ml-2' : 'left-0'}`}>
+                    <div className="border-b border-k-border-subtle dark:border-k-border-subtle px-4 py-3">
+                        <p className="truncate text-sm font-medium text-k-text-primary dark:text-foreground">{trainerName ?? 'Treinador'}</p>
+                        {trainerEmail && <p className="truncate text-xs text-k-text-tertiary dark:text-muted-foreground">{trainerEmail}</p>}
                     </div>
                     <div className="py-1">
                         <button onClick={handleLogout}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#FF3B30] transition-colors hover:bg-[#F5F5F7] dark:hover:bg-glass-bg">
+                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#FF3B30] transition-colors hover:bg-surface-inset dark:hover:bg-glass-bg">
                             <LogOut size={16} strokeWidth={1.5} /> Sair
                         </button>
                     </div>
@@ -158,9 +158,9 @@ export function AssistantSidebar({
     // ── Colapsada: rail de ícones (espelha o Clássico colapsado) ──
     if (isCollapsed) {
         const iconRow = (active: boolean, content: ReactNode, label: string, onClick?: () => void, href?: string) => {
-            const cls = `group/nav relative flex h-10 w-10 items-center justify-center rounded-lg transition ${active ? 'bg-[#7C3AED]/10 text-[#7C3AED] dark:bg-glass-bg-active dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 hover:bg-[#F5F5F7] hover:text-[#6E6E73] dark:hover:bg-glass-bg dark:hover:text-foreground'}`
+            const cls = `group/nav relative flex h-10 w-10 items-center justify-center rounded-lg transition ${active ? 'bg-primary/10 text-primary dark:bg-glass-bg-active dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 hover:bg-surface-inset hover:text-k-text-secondary dark:hover:bg-glass-bg dark:hover:text-foreground'}`
             const tip = (
-                <span className="pointer-events-none absolute left-full top-1/2 z-modal ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-[#1D1D1F] dark:bg-white px-2.5 py-1 text-xs font-medium text-white dark:text-[#1D1D1F] opacity-0 shadow-lg transition-opacity group-hover/nav:opacity-100">{label}</span>
+                <span className="pointer-events-none absolute left-full top-1/2 z-modal ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-[#1D1D1F] dark:bg-white px-2.5 py-1 text-xs font-medium text-white dark:text-k-text-primary opacity-0 shadow-lg transition-opacity group-hover/nav:opacity-100">{label}</span>
             )
             return href
                 ? <Link href={href} className={cls}>{content}{tip}</Link>
@@ -171,7 +171,7 @@ export function AssistantSidebar({
                 {edgeToggle}
                 <Image src="/logo-icon.png" alt="Kinevo" width={34} height={34} className="mb-4 shrink-0 rounded-lg" />
                 <button onClick={onNewConversation} title="Nova conversa"
-                    className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] text-white shadow-[0_8px_20px_-8px_rgba(124,58,237,0.65)] transition hover:brightness-[1.06]">
+                    className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90">
                     <Plus className="h-[18px] w-[18px]" strokeWidth={2.4} />
                 </button>
                 <nav className="flex flex-1 flex-col items-center gap-1">
@@ -199,7 +199,7 @@ export function AssistantSidebar({
             {/* Marca */}
             <div className="flex items-center gap-3 px-[18px] pb-3 pt-[20px]">
                 <Image src="/logo-icon.png" alt="Kinevo" width={32} height={32} className="shrink-0 rounded-lg" />
-                <span className="text-lg font-semibold tracking-tight text-[#1D1D1F] dark:text-foreground">Kinevo</span>
+                <span className="text-lg font-semibold tracking-tight text-k-text-primary dark:text-foreground">Kinevo</span>
             </div>
 
             {/* Toggle Clássico/Assistente — componente compartilhado com a Clássica. */}
@@ -212,7 +212,7 @@ export function AssistantSidebar({
 
             {/* Ação primária: Nova conversa — linha estilo "Ir para…" com leve destaque violeta. */}
             <button onClick={onNewConversation}
-                className="group mx-4 mb-1 flex items-center gap-3 rounded-lg bg-[#7C3AED]/[0.06] dark:bg-violet-500/10 px-3 py-2 text-sm font-semibold text-[#7C3AED] dark:text-violet-400 transition hover:bg-[#7C3AED]/[0.12] dark:hover:bg-violet-500/20">
+                className="group mx-4 mb-1 flex items-center gap-3 rounded-lg bg-primary/[0.06] dark:bg-violet-500/10 px-3 py-2 text-sm font-semibold text-primary dark:text-violet-400 transition hover:bg-primary/[0.12] dark:hover:bg-violet-500/20">
                 <Plus className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
                 <span className="flex-1 text-left">Nova conversa</span>
             </button>
@@ -221,12 +221,12 @@ export function AssistantSidebar({
             <div className="px-4 pb-1">
                 <button onClick={() => setNavOpen((o) => !o)}
                     className={`w-full ${activeNavItem && ActiveIcon
-                        ? 'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold tracking-tight text-[#7C3AED] dark:text-violet-400 transition hover:bg-[#7C3AED]/[0.06] dark:hover:bg-violet-500/10'
+                        ? 'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold tracking-tight text-primary dark:text-violet-400 transition hover:bg-primary/[0.06] dark:hover:bg-violet-500/10'
                         : navLinkClass}`}>
                     {activeNavItem && ActiveIcon ? (
                         <>
                             <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />
-                            <ActiveIcon className="h-[18px] w-[18px] shrink-0 text-[#7C3AED] dark:text-violet-400" strokeWidth={1.5} />
+                            <ActiveIcon className="h-[18px] w-[18px] shrink-0 text-primary dark:text-violet-400" strokeWidth={1.5} />
                             <span className="flex-1 text-left">{activeNavItem.name}</span>
                         </>
                     ) : (
@@ -235,7 +235,7 @@ export function AssistantSidebar({
                             <span className="flex-1 text-left">Ir para…</span>
                         </>
                     )}
-                    <ChevronRight className={`h-3.5 w-3.5 transition-transform ${activeNavItem ? 'text-[#7C3AED]/70 dark:text-violet-400/70' : 'text-[#AEAEB2] dark:text-muted-foreground/60'} ${navOpen ? 'rotate-90' : ''}`} strokeWidth={2} />
+                    <ChevronRight className={`h-3.5 w-3.5 transition-transform ${activeNavItem ? 'text-primary/70 dark:text-violet-400/70' : 'text-k-text-quaternary dark:text-muted-foreground/60'} ${navOpen ? 'rotate-90' : ''}`} strokeWidth={2} />
                 </button>
                 {navOpen && (
                     <nav className="mt-0.5 space-y-0.5">
@@ -245,10 +245,10 @@ export function AssistantSidebar({
                                 return (
                                     <button key={n.href} onClick={onHome}
                                         className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${isHome
-                                            ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED] dark:bg-glass-bg-active dark:text-violet-400'
-                                            : 'font-medium text-[#6E6E73] dark:text-muted-foreground hover:bg-[#F5F5F7] hover:text-[#1D1D1F] dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
+                                            ? 'bg-primary/10 font-semibold text-primary dark:bg-glass-bg-active dark:text-violet-400'
+                                            : 'font-medium text-k-text-secondary dark:text-muted-foreground hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
                                         {isHome && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />}
-                                        <Icon className={`h-[18px] w-[18px] shrink-0 ${isHome ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
+                                        <Icon className={`h-[18px] w-[18px] shrink-0 ${isHome ? 'text-primary dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 group-hover:text-k-text-secondary dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
                                         <span className="flex-1 text-left">{n.name}</span>
                                     </button>
                                 )
@@ -257,10 +257,10 @@ export function AssistantSidebar({
                             return (
                                 <Link key={n.href} href={n.href}
                                     className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
-                                        ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED] dark:bg-glass-bg-active dark:text-violet-400'
-                                        : 'font-medium text-[#6E6E73] dark:text-muted-foreground hover:bg-[#F5F5F7] hover:text-[#1D1D1F] dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
+                                        ? 'bg-primary/10 font-semibold text-primary dark:bg-glass-bg-active dark:text-violet-400'
+                                        : 'font-medium text-k-text-secondary dark:text-muted-foreground hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
                                     {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />}
-                                    <Icon className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
+                                    <Icon className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-primary dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 group-hover:text-k-text-secondary dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
                                     <span className="flex-1">{n.name}</span>
                                 </Link>
                             )
@@ -279,9 +279,9 @@ export function AssistantSidebar({
                                     return (
                                         <Link key={n.href} href={n.href}
                                             className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
-                                                ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED] dark:bg-glass-bg-active dark:text-violet-400'
-                                                : 'font-medium text-[#6E6E73] dark:text-muted-foreground hover:bg-[#F5F5F7] hover:text-[#1D1D1F] dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
-                                            <Icon className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
+                                                ? 'bg-primary/10 font-semibold text-primary dark:bg-glass-bg-active dark:text-violet-400'
+                                                : 'font-medium text-k-text-secondary dark:text-muted-foreground hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
+                                            <Icon className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-primary dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 group-hover:text-k-text-secondary dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
                                             <span className="flex-1">{n.name}</span>
                                         </Link>
                                     )
@@ -294,16 +294,16 @@ export function AssistantSidebar({
                             return (
                                 <Link href="/settings"
                                     className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
-                                        ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED] dark:bg-glass-bg-active dark:text-violet-400'
-                                        : 'font-medium text-[#6E6E73] dark:text-muted-foreground hover:bg-[#F5F5F7] hover:text-[#1D1D1F] dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
+                                        ? 'bg-primary/10 font-semibold text-primary dark:bg-glass-bg-active dark:text-violet-400'
+                                        : 'font-medium text-k-text-secondary dark:text-muted-foreground hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
                                     {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />}
-                                    <Settings className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
+                                    <Settings className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-primary dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 group-hover:text-k-text-secondary dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
                                     <span className="flex-1">Configurações</span>
                                 </Link>
                             )
                         })()}
 
-                        <div className="my-1 h-px bg-[#EDEDF0] dark:bg-k-border-subtle" />
+                        <div className="my-1 h-px bg-surface-inset dark:bg-k-border-subtle" />
 
                         <button onClick={() => setFeedbackOpen(true)} className={`w-full ${navLinkClass}`}>
                             <MessageSquarePlus className={navIconClass} strokeWidth={1.5} />
@@ -320,7 +320,7 @@ export function AssistantSidebar({
             </div>
 
             {/* Rótulo da seção de conversas */}
-            <div className="px-5 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.09em] text-[#AEAEB2] dark:text-muted-foreground/60">
+            <div className="px-5 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.09em] text-k-text-quaternary dark:text-muted-foreground/60">
                 Conversas & Alunos
             </div>
 
@@ -340,7 +340,7 @@ export function AssistantSidebar({
             />
 
             {/* Perfil (idêntico ao Clássico) */}
-            <div className="border-t border-[#E8E8ED] dark:border-k-border-subtle px-4 py-2">
+            <div className="border-t border-k-border-subtle dark:border-k-border-subtle px-4 py-2">
                 {profile}
             </div>
 

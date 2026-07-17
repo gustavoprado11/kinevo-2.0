@@ -199,7 +199,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     }, [searchParams, selectConversation, selectStudent, startStyleInterview])
 
     return (
-        <div className="kv-mode-in flex h-[100dvh] overflow-hidden bg-[#F5F5F7] text-[#1D1D1F] dark:bg-background dark:text-foreground">
+        <div className="kv-mode-in flex h-[100dvh] overflow-hidden bg-surface-inset text-k-text-primary dark:bg-background dark:text-foreground">
             <AssistantSidebar
                 trainerName={trainerName}
                 trainerEmail={trainerEmail}

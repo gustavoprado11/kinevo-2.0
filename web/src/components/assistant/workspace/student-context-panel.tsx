@@ -128,7 +128,7 @@ const ALERT_STYLE: Record<AttentionKind, { cls: string; icon: typeof TrendingUp 
     nota: { cls: 'text-[#2563EB] bg-[#EFF6FF] dark:text-blue-400 dark:bg-blue-500/10', icon: FileText },
 }
 
-const EYEBROW = 'text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#86868B] dark:text-muted-foreground/60'
+const EYEBROW = 'text-[10.5px] font-bold uppercase tracking-[0.08em] text-k-text-tertiary dark:text-muted-foreground/60'
 
 interface Props {
     studentId: string | null
@@ -157,7 +157,7 @@ export function StudentContextPanel({ studentId, fromConversation, open, refresh
         <aside
             aria-hidden={!hasStudent}
             style={{ width, transition: 'width 220ms cubic-bezier(0.16,1,0.3,1)' }}
-            className={`hidden shrink-0 flex-col overflow-hidden bg-[#F5F5F7] dark:bg-background lg:flex ${hasStudent ? 'border-l border-[#EDEDF0] dark:border-k-border-subtle' : ''}`}
+            className={`hidden shrink-0 flex-col overflow-hidden bg-surface-inset dark:bg-background lg:flex ${hasStudent ? 'border-l border-k-border-subtle dark:border-k-border-subtle' : ''}`}
         >
             {hasStudent && !open && (
                 // ── Colapsado: rail vertical de 60px ──
@@ -165,16 +165,16 @@ export function StudentContextPanel({ studentId, fromConversation, open, refresh
                     <button
                         onClick={onToggle}
                         aria-label="Expandir contexto do aluno"
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#EDEDF0] bg-white text-[#6E6E73] transition hover:bg-[#FAFAFA] dark:border-k-border-subtle dark:bg-surface-card dark:text-muted-foreground dark:hover:bg-glass-bg"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-k-border-subtle bg-white text-k-text-secondary transition hover:bg-surface-canvas dark:border-k-border-subtle dark:bg-surface-card dark:text-muted-foreground dark:hover:bg-glass-bg"
                     >
                         <ChevronLeft className="h-4 w-4" strokeWidth={2} />
                     </button>
-                    <span className="mt-3 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#7C3AED] px-1 text-[10.5px] font-bold leading-none text-white dark:bg-violet-500">
+                    <span className="mt-3 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10.5px] font-bold leading-none text-white dark:bg-violet-500">
                         1
                     </span>
                     <button
                         onClick={onToggle}
-                        className="mt-3 flex-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#86868B] dark:text-muted-foreground/60"
+                        className="mt-3 flex-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-k-text-tertiary dark:text-muted-foreground/60"
                         style={{ writingMode: 'vertical-rl' }}
                         aria-label="Expandir contexto do aluno"
                     >
@@ -187,15 +187,15 @@ export function StudentContextPanel({ studentId, fromConversation, open, refresh
                 // ── Aberto ──
                 <div className="flex h-full w-[340px] flex-col">
                     {/* Header */}
-                    <div className="flex items-center gap-2 border-b border-[#EDEDF0] px-4 py-3.5 dark:border-k-border-subtle">
-                        <span className="text-[13.5px] font-bold tracking-[-0.01em] text-[#1D1D1F] dark:text-foreground">Contexto do aluno</span>
-                        <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#EDE9FE] px-1 text-[10.5px] font-bold leading-none text-[#7C3AED] dark:bg-violet-500/15 dark:text-violet-300">
+                    <div className="flex items-center gap-2 border-b border-k-border-subtle px-4 py-3.5 dark:border-k-border-subtle">
+                        <span className="text-[13.5px] font-bold tracking-[-0.01em] text-k-text-primary dark:text-foreground">Contexto do aluno</span>
+                        <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#EDE9FE] px-1 text-[10.5px] font-bold leading-none text-primary dark:bg-violet-500/15 dark:text-violet-300">
                             1
                         </span>
                         <button
                             onClick={onToggle}
                             aria-label="Colapsar contexto do aluno"
-                            className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg border border-[#EDEDF0] bg-white text-[#6E6E73] transition hover:bg-[#FAFAFA] dark:border-k-border-subtle dark:bg-surface-card dark:text-muted-foreground dark:hover:bg-glass-bg"
+                            className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg border border-k-border-subtle bg-white text-k-text-secondary transition hover:bg-surface-canvas dark:border-k-border-subtle dark:bg-surface-card dark:text-muted-foreground dark:hover:bg-glass-bg"
                         >
                             <ChevronRight className="h-4 w-4" strokeWidth={2} />
                         </button>
@@ -205,7 +205,7 @@ export function StudentContextPanel({ studentId, fromConversation, open, refresh
                         {loading && !data ? (
                             <CardSkeleton />
                         ) : error && !data ? (
-                            <button onClick={reload} className="mt-2 flex w-full items-center justify-center gap-2 rounded-[12px] border border-[#EDEDF0] bg-white py-3 text-[13px] font-medium text-[#6E6E73] transition hover:bg-[#FAFAFA] dark:border-k-border-subtle dark:bg-surface-card dark:text-muted-foreground dark:hover:bg-glass-bg">
+                            <button onClick={reload} className="mt-2 flex w-full items-center justify-center gap-2 rounded-[12px] border border-k-border-subtle bg-white py-3 text-[13px] font-medium text-k-text-secondary transition hover:bg-surface-canvas dark:border-k-border-subtle dark:bg-surface-card dark:text-muted-foreground dark:hover:bg-glass-bg">
                                 Não foi possível carregar. Tentar de novo
                             </button>
                         ) : data ? (
@@ -226,16 +226,16 @@ export function StudentContextPanel({ studentId, fromConversation, open, refresh
 
 function CardSkeleton() {
     return (
-        <div className="animate-pulse rounded-[20px] border border-[#EDEDF0] bg-white p-4 dark:border-k-border-subtle dark:bg-surface-card">
+        <div className="animate-pulse rounded-[20px] border border-k-border-subtle bg-white p-4 dark:border-k-border-subtle dark:bg-surface-card">
             <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-[11px] bg-[#EDEDF0] dark:bg-surface-inset" />
+                <div className="h-9 w-9 rounded-[11px] bg-surface-inset dark:bg-surface-inset" />
                 <div className="flex-1 space-y-2">
-                    <div className="h-3 w-2/3 rounded bg-[#EDEDF0] dark:bg-surface-inset" />
+                    <div className="h-3 w-2/3 rounded bg-surface-inset dark:bg-surface-inset" />
                     <div className="h-2.5 w-1/2 rounded bg-[#F0F0F3] dark:bg-surface-inset/70" />
                 </div>
             </div>
-            <div className="mt-4 h-5 w-1/2 rounded-full bg-[#EDEDF0] dark:bg-surface-inset" />
-            <div className="mt-4 h-1.5 w-full rounded-full bg-[#EDEDF0] dark:bg-surface-inset" />
+            <div className="mt-4 h-5 w-1/2 rounded-full bg-surface-inset dark:bg-surface-inset" />
+            <div className="mt-4 h-1.5 w-full rounded-full bg-surface-inset dark:bg-surface-inset" />
             <div className="mt-5 space-y-2">
                 <div className="h-2.5 w-full rounded bg-[#F0F0F3] dark:bg-surface-inset/70" />
                 <div className="h-2.5 w-4/5 rounded bg-[#F0F0F3] dark:bg-surface-inset/70" />
@@ -266,7 +266,7 @@ function StudentCard({ data, fromConversation, onRemove, onPrefill, onNotesSaved
     const AlertIcon = alert ? ALERT_STYLE[alert.kind].icon : null
 
     return (
-        <div className="rounded-[20px] border border-[#EDEDF0] bg-white p-4 dark:border-k-border-subtle dark:bg-surface-card">
+        <div className="rounded-[20px] border border-k-border-subtle bg-white p-4 dark:border-k-border-subtle dark:bg-surface-card">
             {/* Cabeçalho do card */}
             <div className="flex items-start gap-3">
                 <span
@@ -276,14 +276,14 @@ function StudentCard({ data, fromConversation, onRemove, onPrefill, onNotesSaved
                     {av.initials}
                 </span>
                 <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-semibold tracking-[-0.01em] text-[#1D1D1F] dark:text-foreground">{student.name}</p>
-                    <p className="mt-0.5 truncate text-[12px] text-[#86868B] dark:text-muted-foreground">{programLabel}</p>
+                    <p className="truncate text-[14px] font-semibold tracking-[-0.01em] text-k-text-primary dark:text-foreground">{student.name}</p>
+                    <p className="mt-0.5 truncate text-[12px] text-k-text-tertiary dark:text-muted-foreground">{programLabel}</p>
                 </div>
                 {!fromConversation && (
                     <button
                         onClick={onRemove}
                         aria-label={`Remover ${firstName} do contexto`}
-                        className="-mr-1 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#AEAEB2] transition hover:bg-[#F5F5F7] hover:text-[#6E6E73] dark:text-muted-foreground/60 dark:hover:bg-glass-bg"
+                        className="-mr-1 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-k-text-quaternary transition hover:bg-surface-inset hover:text-k-text-secondary dark:text-muted-foreground/60 dark:hover:bg-glass-bg"
                     >
                         <X className="h-4 w-4" strokeWidth={2} />
                     </button>
@@ -309,11 +309,11 @@ function StudentCard({ data, fromConversation, onRemove, onPrefill, onNotesSaved
                 >
                     <div className={EYEBROW}>Aderência</div>
                     <div className="mt-1.5 flex items-center justify-between">
-                        <span className="text-[12.5px] font-medium text-[#1D1D1F] dark:text-foreground">{adherence.done}/{adherence.expected} esta semana</span>
-                        <span className="text-[11.5px] font-bold text-[#7C3AED] dark:text-violet-400 [font-variant-numeric:tabular-nums]">{adherence.pct}%</span>
+                        <span className="text-[12.5px] font-medium text-k-text-primary dark:text-foreground">{adherence.done}/{adherence.expected} esta semana</span>
+                        <span className="text-[11.5px] font-bold text-primary dark:text-violet-400 [font-variant-numeric:tabular-nums]">{adherence.pct}%</span>
                     </div>
-                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#EDEDF0] dark:bg-white/10">
-                        <div className="h-full rounded-full bg-[#7C3AED] dark:bg-violet-500" style={{ width: `${adherence.pct}%` }} />
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-inset dark:bg-white/10">
+                        <div className="h-full rounded-full bg-primary dark:bg-violet-500" style={{ width: `${adherence.pct}%` }} />
                     </div>
                 </button>
             )}
@@ -329,11 +329,11 @@ function StudentCard({ data, fromConversation, onRemove, onPrefill, onNotesSaved
                                     onClick={() => onPrefill(
                                         `Sobre ${firstName}: analise a sessão "${h.text.replace(/ concluído$/, '')}" (${h.dateLabel === 'Hoje' ? 'hoje' : h.dateLabel}). Como foi o desempenho — cargas, RPE, feedback — e o que ajustar para a próxima?`,
                                     )}
-                                    className="-mx-1.5 flex w-[calc(100%+12px)] items-center gap-2 rounded-lg px-1.5 py-1 text-left text-[12.5px] text-[#1D1D1F] transition hover:bg-[#F5F5F7] dark:text-foreground dark:hover:bg-glass-bg"
+                                    className="-mx-1.5 flex w-[calc(100%+12px)] items-center gap-2 rounded-lg px-1.5 py-1 text-left text-[12.5px] text-k-text-primary transition hover:bg-surface-inset dark:text-foreground dark:hover:bg-glass-bg"
                                 >
                                     <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C7C7CC] dark:bg-muted-foreground/50" />
                                     <span className="min-w-0 flex-1 truncate">{h.text}</span>
-                                    <span className="shrink-0 text-[11px] text-[#86868B] dark:text-muted-foreground/60">{h.dateLabel}</span>
+                                    <span className="shrink-0 text-[11px] text-k-text-tertiary dark:text-muted-foreground/60">{h.dateLabel}</span>
                                 </button>
                             </li>
                         ))}
@@ -408,7 +408,7 @@ function NotesSection({ studentId, notes, readOnly, onSaved }: {
         return (
             <button
                 onClick={start}
-                className="mt-4 flex items-center gap-1.5 text-[11.5px] font-semibold text-[#86868B] transition hover:text-[#6E6E73] dark:text-muted-foreground/60 dark:hover:text-muted-foreground"
+                className="mt-4 flex items-center gap-1.5 text-[11.5px] font-semibold text-k-text-tertiary transition hover:text-k-text-secondary dark:text-muted-foreground/60 dark:hover:text-muted-foreground"
             >
                 <Plus className="h-3 w-3" strokeWidth={2.2} />
                 Adicionar nota do treinador
@@ -424,7 +424,7 @@ function NotesSection({ studentId, notes, readOnly, onSaved }: {
                     <button
                         onClick={start}
                         aria-label="Editar notas do treinador"
-                        className="flex h-5 w-5 items-center justify-center rounded text-[#AEAEB2] transition hover:bg-[#F5F5F7] hover:text-[#6E6E73] dark:text-muted-foreground/60 dark:hover:bg-glass-bg"
+                        className="flex h-5 w-5 items-center justify-center rounded text-k-text-quaternary transition hover:bg-surface-inset hover:text-k-text-secondary dark:text-muted-foreground/60 dark:hover:bg-glass-bg"
                     >
                         <Pencil className="h-3 w-3" strokeWidth={2} />
                     </button>
@@ -438,28 +438,28 @@ function NotesSection({ studentId, notes, readOnly, onSaved }: {
                         rows={4}
                         autoFocus
                         disabled={saving}
-                        className="w-full resize-none rounded-[12px] border border-[#D2D2D7] bg-white px-3 py-2.5 text-[12.5px] leading-relaxed text-[#1D1D1F] outline-none focus:border-[#7C3AED] disabled:opacity-60 dark:border-k-border-primary dark:bg-surface-card dark:text-foreground dark:focus:border-violet-500"
+                        className="w-full resize-none rounded-[12px] border border-k-border-primary bg-white px-3 py-2.5 text-[12.5px] leading-relaxed text-k-text-primary outline-none focus:border-primary disabled:opacity-60 dark:border-k-border-primary dark:bg-surface-card dark:text-foreground dark:focus:border-violet-500"
                     />
                     {error && <p className="mt-1 text-[11.5px] text-[#DC2626] dark:text-red-400">{error}</p>}
                     <div className="mt-1.5 flex justify-end gap-2">
                         <button
                             onClick={() => setEditing(false)}
                             disabled={saving}
-                            className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-[#6E6E73] transition hover:bg-[#F5F5F7] disabled:opacity-60 dark:text-muted-foreground dark:hover:bg-glass-bg"
+                            className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-k-text-secondary transition hover:bg-surface-inset disabled:opacity-60 dark:text-muted-foreground dark:hover:bg-glass-bg"
                         >
                             Cancelar
                         </button>
                         <button
                             onClick={save}
                             disabled={saving}
-                            className="rounded-lg bg-[#7C3AED] px-2.5 py-1.5 text-[11.5px] font-bold text-white transition hover:bg-[#6D28D9] disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-600"
+                            className="rounded-lg bg-primary px-2.5 py-1.5 text-[11.5px] font-bold text-white transition hover:opacity-90 disabled:opacity-60 dark:bg-violet-500 dark:hover:bg-violet-600"
                         >
                             {saving ? 'Salvando…' : 'Salvar'}
                         </button>
                     </div>
                 </div>
             ) : (
-                <p className="mt-1.5 whitespace-pre-wrap rounded-[12px] bg-[#FAFAFA] px-3 py-2.5 text-[12.5px] italic leading-relaxed text-[#6E6E73] dark:bg-surface-inset dark:text-muted-foreground">
+                <p className="mt-1.5 whitespace-pre-wrap rounded-[12px] bg-surface-canvas px-3 py-2.5 text-[12.5px] italic leading-relaxed text-k-text-secondary dark:bg-surface-inset dark:text-muted-foreground">
                     {notes}
                 </p>
             )}
@@ -468,7 +468,7 @@ function NotesSection({ studentId, notes, readOnly, onSaved }: {
 }
 
 const ACTION_CLS =
-    'flex flex-1 flex-col items-center gap-1 rounded-[12px] border border-[#EDEDF0] bg-white py-2.5 text-[10.5px] font-semibold text-[#6E6E73] transition hover:bg-[#FAFAFA] hover:text-[#1D1D1F] dark:border-k-border-subtle dark:bg-surface-card dark:text-muted-foreground dark:hover:bg-glass-bg dark:hover:text-foreground'
+    'flex flex-1 flex-col items-center gap-1 rounded-[12px] border border-k-border-subtle bg-white py-2.5 text-[10.5px] font-semibold text-k-text-secondary transition hover:bg-surface-canvas hover:text-k-text-primary dark:border-k-border-subtle dark:bg-surface-card dark:text-muted-foreground dark:hover:bg-glass-bg dark:hover:text-foreground'
 
 function ActionButton(
     props:

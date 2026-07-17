@@ -101,29 +101,29 @@ export function ToolConfirmationCard({
         return (
             <div className="mx-2.5 rounded-[16px] border border-[#DDD6FE] dark:border-violet-500/30 bg-white dark:bg-surface-card p-3.5 shadow-[0_6px_20px_-10px_rgba(124,58,237,0.30)]">
                 <div className="flex items-center gap-2.5">
-                    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px]" style={{ background: '#EDE9FE', color: '#7C3AED' }}>
+                    <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px]" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)' }}>
                         <Send className="h-[15px] w-[15px]" strokeWidth={2} />
                     </span>
-                    <b className="block text-[13.5px] font-bold text-[#1D1D1F] dark:text-foreground">{request.title}</b>
+                    <b className="block text-[13.5px] font-bold text-k-text-primary dark:text-foreground">{request.title}</b>
                 </div>
 
                 {/* Destinatário EM DESTAQUE — o treinador confere pra quem vai antes de enviar. */}
                 {request.recipientName ? (
-                    <div className="mt-2.5 flex items-center gap-2.5 rounded-[12px] border border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-glass-bg px-3 py-2">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EDE9FE] text-[12px] font-bold text-[#7C3AED]">
+                    <div className="mt-2.5 flex items-center gap-2.5 rounded-[12px] border border-k-border-subtle dark:border-k-border-subtle bg-surface-canvas dark:bg-glass-bg px-3 py-2">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EDE9FE] text-[12px] font-bold text-primary">
                             {recipientInitials(request.recipientName)}
                         </span>
                         <div className="min-w-0 leading-tight">
-                            <span className="block text-[10px] font-bold uppercase tracking-[0.06em] text-[#86868B] dark:text-muted-foreground">Enviar para</span>
-                            <b className="block truncate text-[14px] font-bold text-[#1D1D1F] dark:text-foreground">{request.recipientName}</b>
+                            <span className="block text-[10px] font-bold uppercase tracking-[0.06em] text-k-text-tertiary dark:text-muted-foreground">Enviar para</span>
+                            <b className="block truncate text-[14px] font-bold text-k-text-primary dark:text-foreground">{request.recipientName}</b>
                         </div>
                     </div>
                 ) : (
-                    <span className="mt-1 block truncate text-[11.5px] text-[#86868B] dark:text-muted-foreground">{request.summary}</span>
+                    <span className="mt-1 block truncate text-[11.5px] text-k-text-tertiary dark:text-muted-foreground">{request.summary}</span>
                 )}
 
                 {sent ? (
-                    <div className="mt-2.5 whitespace-pre-wrap rounded-[12px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1D1D1F] dark:text-foreground">
+                    <div className="mt-2.5 whitespace-pre-wrap rounded-[12px] bg-surface-inset dark:bg-glass-bg px-3 py-2.5 text-[13.5px] leading-relaxed text-k-text-primary dark:text-foreground">
                         {editValue}
                     </div>
                 ) : (
@@ -134,20 +134,20 @@ export function ToolConfirmationCard({
                         disabled={status === 'running'}
                         aria-label={request.editableLabel ?? 'Mensagem'}
                         style={{ outline: 'none' }}
-                        className="mt-2.5 w-full resize-y rounded-[12px] border border-[#E2E2E7] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-3 py-2.5 text-[13.5px] leading-relaxed text-[#1D1D1F] dark:text-foreground transition focus:border-[#7C3AED] disabled:opacity-60"
+                        className="mt-2.5 w-full resize-y rounded-[12px] border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-3 py-2.5 text-[13.5px] leading-relaxed text-k-text-primary dark:text-foreground transition focus:border-primary disabled:opacity-60"
                     />
                 )}
 
                 <div className="mt-3 flex items-center gap-2">
                     {!sent && (
                         <>
-                            <span className="text-[11px] text-[#AEAEB2] dark:text-muted-foreground/60">Revise antes de enviar</span>
+                            <span className="text-[11px] text-k-text-quaternary dark:text-muted-foreground/60">Revise antes de enviar</span>
                             <div className="ml-auto flex items-center gap-2">
                                 <button
                                     type="button"
                                     onClick={handleCancel}
                                     disabled={status === 'running'}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-2.5 py-1.5 text-xs font-bold text-[#1D1D1F] dark:text-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-k-border-primary dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-2.5 py-1.5 text-xs font-bold text-k-text-primary dark:text-foreground transition hover:bg-surface-inset dark:hover:bg-glass-bg disabled:opacity-50"
                                 >
                                     <X className="h-3 w-3" strokeWidth={2.5} /> Cancelar
                                 </button>
@@ -156,7 +156,7 @@ export function ToolConfirmationCard({
                                     onClick={execute}
                                     disabled={status === 'running' || !editValue.trim()}
                                     className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-[0_6px_16px_-6px_rgba(124,58,237,0.55)] transition hover:brightness-[1.07] disabled:opacity-60"
-                                    style={{ background: 'linear-gradient(135deg,#7C3AED,#8b5cf6)' }}
+                                    style={{ background: 'var(--primary)' }}
                                 >
                                     {status === 'running' ? <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.5} /> : <Send className="h-3 w-3" strokeWidth={2.4} />}
                                     {status === 'running' ? 'Enviando…' : 'Enviar'}
@@ -182,7 +182,7 @@ export function ToolConfirmationCard({
         : 'shadow-[0_6px_20px_-10px_rgba(124,58,237,0.30)]'
     const tile = destructive
         ? { background: '#FEF2F2', color: '#BE123C' }
-        : { background: '#EDE9FE', color: '#7C3AED' }
+        : { background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)' }
 
     return (
         <div className={`mx-2.5 rounded-[16px] border bg-white ${wrapBorder} ${wrapShadow} p-3.5`}>
@@ -199,8 +199,8 @@ export function ToolConfirmationCard({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                    <b className="block text-[13.5px] font-bold text-[#1D1D1F]">{request.title}</b>
-                    <span className="block text-[11.5px] text-[#86868B]">{request.summary}</span>
+                    <b className="block text-[13.5px] font-bold text-k-text-primary">{request.title}</b>
+                    <span className="block text-[11.5px] text-k-text-tertiary">{request.summary}</span>
                 </div>
             </div>
 
@@ -221,7 +221,7 @@ export function ToolConfirmationCard({
                             type="button"
                             onClick={handleCancel}
                             disabled={status === 'running'}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D2D2D7] bg-white px-2.5 py-1.5 text-xs font-bold text-[#1D1D1F] transition-colors hover:bg-[#F5F5F7] disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-k-border-primary bg-white px-2.5 py-1.5 text-xs font-bold text-k-text-primary transition-colors hover:bg-surface-inset disabled:opacity-50"
                         >
                             <X className="h-3 w-3" strokeWidth={2.5} />
                             Cancelar
@@ -233,7 +233,7 @@ export function ToolConfirmationCard({
                             onClick={execute}
                             disabled={status === 'running'}
                             className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-[0_6px_16px_-6px_rgba(124,58,237,0.55)] transition hover:brightness-[1.07] disabled:opacity-60"
-                            style={{ background: destructive ? '#EF4444' : 'linear-gradient(135deg,#7C3AED,#8b5cf6)' }}
+                            style={{ background: destructive ? '#EF4444' : 'var(--primary)' }}
                         >
                             {status === 'running' ? (
                                 <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.5} />

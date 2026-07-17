@@ -145,22 +145,22 @@ export function ConversationView({
     return (
         // Superfície branca full-bleed (ponta a ponta) — flat, sem moldura, estilo Claude.
         <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-surface-card">
-            <header className="flex shrink-0 items-center gap-1.5 border-b border-[#EDEDF0] dark:border-k-border-subtle px-4 py-2.5">
-                <button onClick={onBackHome} className="flex h-9 w-9 items-center justify-center rounded-[10px] text-[#86868B] dark:text-muted-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg hover:text-[#1D1D1F] dark:hover:text-foreground" title="Voltar ao início">
+            <header className="flex shrink-0 items-center gap-1.5 border-b border-k-border-subtle dark:border-k-border-subtle px-4 py-2.5">
+                <button onClick={onBackHome} className="flex h-9 w-9 items-center justify-center rounded-[10px] text-k-text-tertiary dark:text-muted-foreground transition hover:bg-surface-inset dark:hover:bg-glass-bg hover:text-k-text-primary dark:hover:text-foreground" title="Voltar ao início">
                     <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.9} />
                 </button>
                 <div className="flex min-w-0 items-center gap-2.5 pl-1">
                     <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] text-[11.5px] font-bold"
-                        style={active.student_id ? { background: av.bg, color: av.fg } : { background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', color: '#fff' }}>
+                        style={active.student_id ? { background: av.bg, color: av.fg } : { background: 'var(--primary)', color: '#fff' }}>
                         {active.student_id ? av.initials : <Sparkles className="h-4 w-4 text-white" strokeWidth={1.7} />}
                     </span>
                     <div className="min-w-0 leading-tight">
-                        <b className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-[#1D1D1F] dark:text-foreground">{active.studentName ?? 'Geral · visão geral dos alunos'}</b>
-                        <span className="block truncate text-[11px] text-[#86868B] dark:text-muted-foreground">{active.student_id ? 'Conversa sobre o aluno' : 'Todos os alunos'}</span>
+                        <b className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-k-text-primary dark:text-foreground">{active.studentName ?? 'Geral · visão geral dos alunos'}</b>
+                        <span className="block truncate text-[11px] text-k-text-tertiary dark:text-muted-foreground">{active.student_id ? 'Conversa sobre o aluno' : 'Todos os alunos'}</span>
                     </div>
                 </div>
                 <div className="flex-1" />
-                <button onClick={onRename} className="hidden h-9 w-9 items-center justify-center rounded-[10px] text-[#86868B] dark:text-muted-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg hover:text-[#1D1D1F] dark:hover:text-foreground sm:flex" title="Renomear conversa">
+                <button onClick={onRename} className="hidden h-9 w-9 items-center justify-center rounded-[10px] text-k-text-tertiary dark:text-muted-foreground transition hover:bg-surface-inset dark:hover:bg-glass-bg hover:text-k-text-primary dark:hover:text-foreground sm:flex" title="Renomear conversa">
                     <Pencil className="h-[16px] w-[16px]" strokeWidth={1.8} />
                 </button>
                 <div className="hidden lg:block"><CreditMeter summary={summary} pill /></div>
@@ -169,7 +169,7 @@ export function ConversationView({
             <div ref={streamRef} className="min-h-0 flex-1 overflow-y-auto py-9" aria-live="polite" aria-busy={sending}>
                 <div className="mx-auto max-w-[760px] px-6">
                     {loadingMessages && (
-                        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#AEAEB2] dark:text-muted-foreground/60" /></div>
+                        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-k-text-quaternary dark:text-muted-foreground/60" /></div>
                     )}
                     {messages.map((m, idx) => (
                         <MessageRow key={m.id} message={m} interactive={idx === messages.length - 1 && !sending}
@@ -187,9 +187,9 @@ export function ConversationView({
                                             // Texto já fluindo = passos concluídos (sem spinner preso).
                                             const spinning = !liveText && i === liveSteps.length - 1
                                             return (
-                                                <div key={i} className="flex items-center gap-2 text-[13px] text-[#86868B] dark:text-muted-foreground">
+                                                <div key={i} className="flex items-center gap-2 text-[13px] text-k-text-tertiary dark:text-muted-foreground">
                                                     {spinning
-                                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C3AED] dark:text-violet-400" strokeWidth={2.2} />
+                                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary dark:text-violet-400" strokeWidth={2.2} />
                                                         : <Check className="h-3.5 w-3.5 text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} />}
                                                     <span>{step}</span>
                                                 </div>
@@ -199,7 +199,7 @@ export function ConversationView({
                                 )}
                                 {/* U-STREAM: a resposta aparece token a token; o `done` a substitui pela persistida. */}
                                 {liveText && (
-                                    <div className={`whitespace-pre-wrap text-[15.5px] leading-[1.7] text-[#1D1D1F] dark:text-foreground ${liveSteps.length > 0 ? 'mt-3' : ''}`}>
+                                    <div className={`whitespace-pre-wrap text-[15.5px] leading-[1.7] text-k-text-primary dark:text-foreground ${liveSteps.length > 0 ? 'mt-3' : ''}`}>
                                         {liveText}
                                     </div>
                                 )}
@@ -226,13 +226,13 @@ export function ConversationView({
                         <div className="mb-2.5 flex flex-wrap items-center gap-2">
                             {suggestions.map((s) => (
                                 <button key={s} onClick={() => onSendText(s)} disabled={sending}
-                                    className="inline-flex items-center rounded-full border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-3 py-1.5 text-[12.5px] font-medium text-[#6E6E73] dark:text-muted-foreground/80 transition hover:border-[#D2D2D7] dark:hover:border-k-border-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg hover:text-[#1D1D1F] dark:hover:text-foreground disabled:opacity-50">
+                                    className="inline-flex items-center rounded-full border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-3 py-1.5 text-[12.5px] font-medium text-k-text-secondary dark:text-muted-foreground/80 transition hover:border-k-border-primary dark:hover:border-k-border-primary hover:bg-surface-inset dark:hover:bg-glass-bg hover:text-k-text-primary dark:hover:text-foreground disabled:opacity-50">
                                     {s}
                                 </button>
                             ))}
                         </div>
                     )}
-                    <div className="flex items-end gap-2 rounded-[22px] border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-2.5 py-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_3px_rgba(60,60,67,0.07)]">
+                    <div className="flex items-end gap-2 rounded-[22px] border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-2.5 py-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_3px_rgba(60,60,67,0.07)]">
                         {VOICE_MODE_ENABLED && onVoiceTurn && voice.supported && (
                             <button
                                 type="button"
@@ -242,8 +242,8 @@ export function ConversationView({
                                 aria-pressed={voiceOn}
                                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] border transition ${
                                     voiceOn
-                                        ? 'border-[#7C3AED] bg-[#7C3AED] text-white'
-                                        : 'border-[#E8E8ED] dark:border-k-border-subtle text-[#6E6E73] dark:text-muted-foreground/80 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                                        ? 'border-primary bg-primary text-white'
+                                        : 'border-k-border-subtle dark:border-k-border-subtle text-k-text-secondary dark:text-muted-foreground/80 hover:bg-surface-inset dark:hover:bg-glass-bg'
                                 }`}
                             >
                                 <AudioLines className="h-[17px] w-[17px]" strokeWidth={2} />
@@ -262,22 +262,22 @@ export function ConversationView({
                             placeholder={active.studentName ? `Diga o que fazer com ${active.studentName.split(' ')[0]}…` : 'Diga o que fazer no Kinevo…'}
                             // outline inline: vence a regra global unlayered `:focus-visible`; foco fica na borda do card.
                             style={{ outline: 'none' }}
-                            className="max-h-[200px] flex-1 resize-none overflow-y-auto bg-transparent px-1.5 py-2 text-[15px] leading-[1.5] text-[#1D1D1F] dark:text-foreground placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60"
+                            className="max-h-[200px] flex-1 resize-none overflow-y-auto bg-transparent px-1.5 py-2 text-[15px] leading-[1.5] text-k-text-primary dark:text-foreground placeholder:text-k-text-quaternary dark:placeholder:text-muted-foreground/60"
                         />
                         {sending ? (
                             <button onClick={onStop} type="button" title="Parar"
-                                className="flex h-[36px] items-center gap-1.5 rounded-[14px] border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-4 text-[13px] font-bold text-[#1D1D1F] dark:text-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg">
+                                className="flex h-[36px] items-center gap-1.5 rounded-[14px] border border-k-border-primary dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-4 text-[13px] font-bold text-k-text-primary dark:text-foreground transition hover:bg-surface-inset dark:hover:bg-glass-bg">
                                 <Square className="h-3 w-3" strokeWidth={2.5} fill="currentColor" /> Parar
                             </button>
                         ) : (
                             <button onClick={onSend} disabled={!input.trim()}
-                                className="flex h-[36px] items-center gap-1.5 rounded-[14px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 text-[13px] font-bold text-white transition hover:brightness-105 disabled:opacity-40">
+                                className="flex h-[36px] items-center gap-1.5 rounded-[14px] bg-primary px-4 text-[13px] font-bold text-white transition hover:brightness-105 disabled:opacity-40">
                                 <Send className="h-[15px] w-[15px]" strokeWidth={2} /> Agir
                             </button>
                         )}
                     </div>
-                    <div className="mt-2 flex justify-center gap-4 text-[10.5px] text-[#AEAEB2] dark:text-muted-foreground/60">
-                        <span><kbd className="rounded border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-1.5 font-mono text-[#86868B] dark:text-muted-foreground">Enter</kbd> enviar</span>
+                    <div className="mt-2 flex justify-center gap-4 text-[10.5px] text-k-text-quaternary dark:text-muted-foreground/60">
+                        <span><kbd className="rounded border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-glass-bg px-1.5 font-mono text-k-text-tertiary dark:text-muted-foreground">Enter</kbd> enviar</span>
                         <span>ações sensíveis sempre pedem confirmação</span>
                     </div>
                 </div>
@@ -298,14 +298,14 @@ function StudentPicker({ students, onPick, onSearchOther }: {
                 const a = avatarFor(s.name)
                 return (
                     <button key={s.id} onClick={() => onPick(s.name)}
-                        className="inline-flex items-center gap-2 rounded-full border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-elevated py-[5px] pl-[5px] pr-[13px] text-[12.5px] font-medium text-[#1D1D1F] dark:text-foreground transition hover:border-[#D2D2D7] dark:hover:border-k-border-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg">
+                        className="inline-flex items-center gap-2 rounded-full border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-elevated py-[5px] pl-[5px] pr-[13px] text-[12.5px] font-medium text-k-text-primary dark:text-foreground transition hover:border-k-border-primary dark:hover:border-k-border-primary hover:bg-surface-inset dark:hover:bg-glass-bg">
                         <span className="flex h-6 w-6 items-center justify-center rounded-[7px] text-[10px] font-bold" style={{ background: a.bg, color: a.fg }}>{a.initials}</span>
                         {s.name}
                     </button>
                 )
             })}
             <button onClick={onSearchOther}
-                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#E2E2E7] dark:border-k-border-subtle px-[13px] py-1.5 text-[12.5px] font-medium text-[#86868B] dark:text-muted-foreground transition hover:border-[#AEAEB2] dark:hover:border-k-border-primary hover:text-[#6E6E73] dark:hover:text-foreground">
+                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-k-border-subtle dark:border-k-border-subtle px-[13px] py-1.5 text-[12.5px] font-medium text-k-text-tertiary dark:text-muted-foreground transition hover:border-[#AEAEB2] dark:hover:border-k-border-primary hover:text-k-text-secondary dark:hover:text-foreground">
                 <Search className="h-[13px] w-[13px]" strokeWidth={2} /> Buscar outro…
             </button>
         </div>
@@ -323,7 +323,7 @@ function MessageRow({ message, interactive, onConfirmResolved, onSendText }: {
     if (isUser) {
         return (
             <div className="kv-msg-in mb-7 flex justify-end">
-                <div className="max-w-[78%] whitespace-pre-wrap rounded-[18px] rounded-tr-[6px] bg-[#F4F4F7] dark:bg-glass-bg px-4 py-2.5 text-[15px] leading-[1.55] text-[#1D1D1F] dark:text-foreground">
+                <div className="max-w-[78%] whitespace-pre-wrap rounded-[18px] rounded-tr-[6px] bg-[#F4F4F7] dark:bg-glass-bg px-4 py-2.5 text-[15px] leading-[1.55] text-k-text-primary dark:text-foreground">
                     {message.content}
                 </div>
             </div>
@@ -333,7 +333,7 @@ function MessageRow({ message, interactive, onConfirmResolved, onSendText }: {
     return (
         <div className="kv-msg-in mb-7">
             {message.content && (
-                <div className="whitespace-pre-wrap text-[15.5px] leading-[1.7] text-[#1D1D1F] dark:text-foreground">{message.content}</div>
+                <div className="whitespace-pre-wrap text-[15.5px] leading-[1.7] text-k-text-primary dark:text-foreground">{message.content}</div>
             )}
             {message.parts.map((part, i) => (
                 <PartView key={i} part={part} interactive={interactive}
@@ -358,21 +358,21 @@ function PartView({ part, interactive, onConfirmResolved, onSendText }: {
         // Programa gerado: card acionável com prévia + botão para o builder/revisão.
         if (!failed && part.toolName === 'generateProgram' && r?.reviewUrl) {
             return (
-                <div className="mt-3 max-w-[440px] rounded-2xl border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                <div className="mt-3 max-w-[440px] rounded-2xl border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                     <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'var(--primary)' }}>
                             <Sparkles className="h-4 w-4 text-white" strokeWidth={1.8} />
                         </span>
                         <div className="min-w-0">
-                            <b className="block text-[13.5px] font-semibold text-[#1D1D1F] dark:text-foreground">Programa gerado (rascunho)</b>
-                            <span className="block text-[12px] text-[#86868B] dark:text-muted-foreground">Salvo para revisão — ainda não ativado para o aluno.</span>
+                            <b className="block text-[13.5px] font-semibold text-k-text-primary dark:text-foreground">Programa gerado (rascunho)</b>
+                            <span className="block text-[12px] text-k-text-tertiary dark:text-muted-foreground">Salvo para revisão — ainda não ativado para o aluno.</span>
                         </div>
                     </div>
-                    <p className="mt-2.5 text-[12.5px] leading-relaxed text-[#6E6E73] dark:text-muted-foreground/80">
-                        Abra o builder para conferir os treinos e exercícios, ajustar o que quiser e <b className="font-semibold text-[#1D1D1F] dark:text-foreground">ativar</b> — só então ele aparece no painel do aluno.
+                    <p className="mt-2.5 text-[12.5px] leading-relaxed text-k-text-secondary dark:text-muted-foreground/80">
+                        Abra o builder para conferir os treinos e exercícios, ajustar o que quiser e <b className="font-semibold text-k-text-primary dark:text-foreground">ativar</b> — só então ele aparece no painel do aluno.
                     </p>
                     <Link href={r.reviewUrl}
-                        className="mt-3 inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07]">
+                        className="mt-3 inline-flex items-center gap-2 rounded-[12px] bg-primary px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07]">
                         Revisar no builder <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
                     </Link>
                 </div>
@@ -388,21 +388,21 @@ function PartView({ part, interactive, onConfirmResolved, onSendText }: {
             if (!payload?.error && prog?.id && studentId) {
                 const editUrl = `/students/${studentId}/program/${prog.id}/edit`
                 return (
-                    <div className="mt-3 max-w-[440px] rounded-2xl border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                    <div className="mt-3 max-w-[440px] rounded-2xl border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                         <div className="flex items-center gap-2.5">
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'linear-gradient(135deg,#7C3AED,#A78BFA)' }}>
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'var(--primary)' }}>
                                 <Sparkles className="h-4 w-4 text-white" strokeWidth={1.8} />
                             </span>
                             <div className="min-w-0">
-                                <b className="block truncate text-[13.5px] font-semibold text-[#1D1D1F] dark:text-foreground">{prog.name || 'Rascunho de programa'}</b>
-                                <span className="block text-[12px] text-[#86868B] dark:text-muted-foreground">Rascunho no perfil do aluno — ainda não ativado.</span>
+                                <b className="block truncate text-[13.5px] font-semibold text-k-text-primary dark:text-foreground">{prog.name || 'Rascunho de programa'}</b>
+                                <span className="block text-[12px] text-k-text-tertiary dark:text-muted-foreground">Rascunho no perfil do aluno — ainda não ativado.</span>
                             </div>
                         </div>
-                        <p className="mt-2.5 text-[12.5px] leading-relaxed text-[#6E6E73] dark:text-muted-foreground/80">
-                            Abra o builder para revisar os treinos e exercícios, ajustar o que quiser e <b className="font-semibold text-[#1D1D1F] dark:text-foreground">ativar</b> — só então ele aparece no app do aluno.
+                        <p className="mt-2.5 text-[12.5px] leading-relaxed text-k-text-secondary dark:text-muted-foreground/80">
+                            Abra o builder para revisar os treinos e exercícios, ajustar o que quiser e <b className="font-semibold text-k-text-primary dark:text-foreground">ativar</b> — só então ele aparece no app do aluno.
                         </p>
                         <Link href={editUrl}
-                            className="mt-3 inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07]">
+                            className="mt-3 inline-flex items-center gap-2 rounded-[12px] bg-primary px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07]">
                             Revisar rascunho <ArrowUpRight className="h-4 w-4" strokeWidth={2.2} />
                         </Link>
                     </div>
@@ -410,7 +410,7 @@ function PartView({ part, interactive, onConfirmResolved, onSendText }: {
             }
         }
         return (
-            <div className={`mt-3 inline-flex items-center gap-2 rounded-[10px] px-3 py-1.5 text-[12.5px] font-medium ${failed ? 'bg-[#FEF2F2] dark:bg-rose-500/10 text-[#BE123C] dark:text-rose-300' : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-muted-foreground/80'}`}>
+            <div className={`mt-3 inline-flex items-center gap-2 rounded-[10px] px-3 py-1.5 text-[12.5px] font-medium ${failed ? 'bg-[#FEF2F2] dark:bg-rose-500/10 text-[#BE123C] dark:text-rose-300' : 'bg-surface-inset dark:bg-glass-bg text-k-text-secondary dark:text-muted-foreground/80'}`}>
                 {failed
                     ? <span className="text-[#BE123C] dark:text-rose-300">✕</span>
                     : <Check className="h-[13px] w-[13px] text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} />}
@@ -435,7 +435,7 @@ function PartView({ part, interactive, onConfirmResolved, onSendText }: {
         )
     }
     return (
-        <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-1.5 text-[12px] text-[#86868B] dark:text-muted-foreground">
+        <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-surface-inset dark:bg-glass-bg px-3 py-1.5 text-[12px] text-k-text-tertiary dark:text-muted-foreground">
             {part.status === 'confirmed' ? 'Ação confirmada' : 'Ação cancelada'}
         </div>
     )
@@ -460,12 +460,12 @@ function QuestionCard({ request, onAnswer, interactive }: {
     useEffect(() => { if (otherMode) otherRef.current?.focus() }, [otherMode])
 
     const chipBase = 'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-[12.5px] font-semibold transition disabled:cursor-default'
-    const chipIdle = 'border-[#E2E2E7] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#1D1D1F] dark:text-foreground hover:border-[#7C3AED] hover:bg-[#7C3AED]/[0.06] hover:text-[#7C3AED] dark:hover:text-violet-300'
-    const chipOn = 'border-[#7C3AED] bg-[#7C3AED]/10 text-[#7C3AED] dark:text-violet-300'
+    const chipIdle = 'border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card text-k-text-primary dark:text-foreground hover:border-primary hover:bg-primary/[0.06] hover:text-primary dark:hover:text-violet-300'
+    const chipOn = 'border-primary bg-primary/10 text-primary dark:text-violet-300'
 
     if (done) {
         return (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-1.5 text-[12px] text-[#86868B] dark:text-muted-foreground">
+            <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-surface-inset dark:bg-glass-bg px-3 py-1.5 text-[12px] text-k-text-tertiary dark:text-muted-foreground">
                 <Check className="h-[13px] w-[13px] text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} /> Respondido
             </div>
         )
@@ -476,7 +476,7 @@ function QuestionCard({ request, onAnswer, interactive }: {
         return (
             <div className="mt-3 flex flex-wrap gap-2 opacity-60">
                 {request.options.map((opt) => (
-                    <span key={opt} className="inline-flex items-center rounded-full border border-[#E2E2E7] dark:border-k-border-subtle px-3.5 py-[7px] text-[12.5px] font-semibold text-[#AEAEB2] dark:text-muted-foreground/60">{opt}</span>
+                    <span key={opt} className="inline-flex items-center rounded-full border border-k-border-subtle dark:border-k-border-subtle px-3.5 py-[7px] text-[12.5px] font-semibold text-k-text-quaternary dark:text-muted-foreground/60">{opt}</span>
                 ))}
             </div>
         )
@@ -492,7 +492,7 @@ function QuestionCard({ request, onAnswer, interactive }: {
 
     const otherChip = request.allowOther && !otherMode && (
         <button onClick={() => setOtherMode(true)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#E2E2E7] dark:border-k-border-subtle px-3.5 py-[7px] text-[12.5px] font-medium text-[#86868B] dark:text-muted-foreground transition hover:border-[#AEAEB2] dark:hover:border-k-border-primary hover:text-[#6E6E73] dark:hover:text-foreground">
+            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-k-border-subtle dark:border-k-border-subtle px-3.5 py-[7px] text-[12.5px] font-medium text-k-text-tertiary dark:text-muted-foreground transition hover:border-[#AEAEB2] dark:hover:border-k-border-primary hover:text-k-text-secondary dark:hover:text-foreground">
             <PenLine className="h-[13px] w-[13px]" strokeWidth={2} /> Outro…
         </button>
     )
@@ -502,9 +502,9 @@ function QuestionCard({ request, onAnswer, interactive }: {
             <input ref={otherRef} value={otherText} onChange={(e) => setOtherText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitOther() } }}
                 placeholder="Escreva sua resposta…"
-                className="min-w-0 flex-1 rounded-[12px] border border-[#E2E2E7] dark:border-k-border-subtle bg-white dark:bg-surface-card px-3.5 py-2 text-[13.5px] text-[#1D1D1F] dark:text-foreground outline-none transition focus:border-[#7C3AED] placeholder:text-[#AEAEB2] dark:placeholder:text-muted-foreground/60" />
+                className="min-w-0 flex-1 rounded-[12px] border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card px-3.5 py-2 text-[13.5px] text-k-text-primary dark:text-foreground outline-none transition focus:border-primary placeholder:text-k-text-quaternary dark:placeholder:text-muted-foreground/60" />
             <button onClick={submitOther} disabled={!otherText.trim()}
-                className="inline-flex shrink-0 items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07] disabled:opacity-40">
+                className="inline-flex shrink-0 items-center gap-2 rounded-[12px] bg-primary px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07] disabled:opacity-40">
                 <Send className="h-3.5 w-3.5" strokeWidth={2} /> Enviar
             </button>
         </div>
@@ -546,7 +546,7 @@ function QuestionCard({ request, onAnswer, interactive }: {
             {!otherMode && (
                 <button disabled={selected.length === 0}
                     onClick={() => { setDone(true); onAnswer(selected.join(', ')) }}
-                    className="mt-2.5 inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07] disabled:opacity-40">
+                    className="mt-2.5 inline-flex items-center gap-2 rounded-[12px] bg-primary px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07] disabled:opacity-40">
                     <Send className="h-3.5 w-3.5" strokeWidth={2} /> Enviar
                 </button>
             )}
@@ -569,7 +569,7 @@ function ProposalCard({ request, onAnswer, interactive }: {
 
     if (done) {
         return (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-[#F5F5F7] dark:bg-glass-bg px-3 py-1.5 text-[12px] text-[#86868B] dark:text-muted-foreground">
+            <div className="mt-3 inline-flex items-center gap-2 rounded-[10px] bg-surface-inset dark:bg-glass-bg px-3 py-1.5 text-[12px] text-k-text-tertiary dark:text-muted-foreground">
                 {done === 'approved'
                     ? <><Check className="h-[13px] w-[13px] text-[#16A34A] dark:text-emerald-400" strokeWidth={2.6} /> Proposta aprovada</>
                     : <>Proposta cancelada</>}
@@ -580,12 +580,12 @@ function ProposalCard({ request, onAnswer, interactive }: {
     // Conversa avançou: card antigo vira read-only (itens estáticos, sem botões).
     if (!interactive) {
         return (
-            <div className="mt-3 max-w-[540px] rounded-2xl border border-[#EDEDF0] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-glass-bg p-4 opacity-70">
+            <div className="mt-3 max-w-[540px] rounded-2xl border border-k-border-subtle dark:border-k-border-subtle bg-surface-canvas dark:bg-glass-bg p-4 opacity-70">
                 <div className="flex flex-col gap-2">
                     {request.items.map((it, i) => (
                         <div key={i} className="flex items-baseline gap-3 text-[12.5px]">
-                            <span className="w-[110px] shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#86868B] dark:text-muted-foreground">{it.label}</span>
-                            <span className="text-[#6E6E73] dark:text-muted-foreground/80">{values[i]}</span>
+                            <span className="w-[110px] shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-k-text-tertiary dark:text-muted-foreground">{it.label}</span>
+                            <span className="text-k-text-secondary dark:text-muted-foreground/80">{values[i]}</span>
                         </div>
                     ))}
                 </div>
@@ -601,7 +601,7 @@ function ProposalCard({ request, onAnswer, interactive }: {
     const cancel = () => { setDone('cancelled'); onAnswer('Cancelar a proposta.') }
 
     return (
-        <div className="mt-3 max-w-[540px] rounded-2xl border border-[#EDEDF0] dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="mt-3 max-w-[540px] rounded-2xl border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <div className="flex flex-col gap-2.5">
                 {request.items.map((it, i) => {
                     // Itens de "direção"/estilo (ou valores longos) ganham textarea — o
@@ -609,16 +609,16 @@ function ProposalCard({ request, onAnswer, interactive }: {
                     const multiline = /direç|estilo|brief|observ|nota/i.test(it.label) || (values[i]?.length ?? 0) > 44
                     return (
                         <label key={i} className={`flex gap-3 ${multiline ? 'items-start' : 'items-center'}`}>
-                            <span className={`w-[110px] shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-[#86868B] dark:text-muted-foreground ${multiline ? 'pt-2.5' : ''}`}>{it.label}</span>
+                            <span className={`w-[110px] shrink-0 text-[11px] font-bold uppercase tracking-[0.06em] text-k-text-tertiary dark:text-muted-foreground ${multiline ? 'pt-2.5' : ''}`}>{it.label}</span>
                             {multiline ? (
                                 <textarea value={values[i]} rows={3}
                                     onChange={(e) => setValues((v) => v.map((x, j) => (j === i ? e.target.value : x)))}
-                                    className="flex-1 resize-y rounded-[10px] border border-transparent bg-[#F5F5F7] dark:bg-glass-bg px-3 py-2 text-[13.5px] font-medium leading-relaxed text-[#1D1D1F] dark:text-foreground outline-none transition hover:border-[#E2E2E7] dark:hover:border-k-border-subtle focus:border-[#7C3AED] focus:bg-white dark:focus:bg-surface-card" />
+                                    className="flex-1 resize-y rounded-[10px] border border-transparent bg-surface-inset dark:bg-glass-bg px-3 py-2 text-[13.5px] font-medium leading-relaxed text-k-text-primary dark:text-foreground outline-none transition hover:border-k-border-subtle dark:hover:border-k-border-subtle focus:border-primary focus:bg-white dark:focus:bg-surface-card" />
                             ) : (
                                 <span className="relative flex-1">
                                     <input value={values[i]}
                                         onChange={(e) => setValues((v) => v.map((x, j) => (j === i ? e.target.value : x)))}
-                                        className="w-full rounded-[10px] border border-transparent bg-[#F5F5F7] dark:bg-glass-bg px-3 py-2 pr-8 text-[13.5px] font-medium text-[#1D1D1F] dark:text-foreground outline-none transition hover:border-[#E2E2E7] dark:hover:border-k-border-subtle focus:border-[#7C3AED] focus:bg-white dark:focus:bg-surface-card" />
+                                        className="w-full rounded-[10px] border border-transparent bg-surface-inset dark:bg-glass-bg px-3 py-2 pr-8 text-[13.5px] font-medium text-k-text-primary dark:text-foreground outline-none transition hover:border-k-border-subtle dark:hover:border-k-border-subtle focus:border-primary focus:bg-white dark:focus:bg-surface-card" />
                                     <PenLine className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#C4C4C9] dark:text-muted-foreground/50" strokeWidth={2} />
                                 </span>
                             )}
@@ -628,11 +628,11 @@ function ProposalCard({ request, onAnswer, interactive }: {
             </div>
             <div className="mt-4 flex items-center gap-2">
                 <button onClick={approve}
-                    className="inline-flex items-center gap-2 rounded-[12px] bg-gradient-to-br from-[#7C3AED] to-[#8b5cf6] px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07]">
+                    className="inline-flex items-center gap-2 rounded-[12px] bg-primary px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-[1.07]">
                     <Check className="h-4 w-4" strokeWidth={2.4} /> {request.approveLabel}
                 </button>
                 <button onClick={cancel}
-                    className="rounded-[12px] border border-[#E2E2E7] dark:border-k-border-subtle px-4 py-2 text-[13px] font-semibold text-[#6E6E73] dark:text-muted-foreground transition hover:bg-[#F5F5F7] dark:hover:bg-glass-bg">
+                    className="rounded-[12px] border border-k-border-subtle dark:border-k-border-subtle px-4 py-2 text-[13px] font-semibold text-k-text-secondary dark:text-muted-foreground transition hover:bg-surface-inset dark:hover:bg-glass-bg">
                     Cancelar
                 </button>
             </div>
@@ -654,31 +654,31 @@ function VoiceStatusPill({ state, interim, onInterrupt, onStop }: {
     const base = 'flex w-full items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-[13px]'
     if (state === 'listening') {
         return (
-            <div className={`${base} border-[#DDD6FE] bg-[#7C3AED]/[0.05] text-[#1D1D1F] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-foreground`}>
+            <div className={`${base} border-[#DDD6FE] bg-primary/[0.05] text-k-text-primary dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-foreground`}>
                 <span className="relative flex h-2.5 w-2.5 shrink-0">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7C3AED] opacity-60" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#7C3AED]" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
                 </span>
                 <span className="min-w-0 flex-1 truncate">
-                    {interim ? <em className="not-italic text-[#6E6E73] dark:text-muted-foreground">{interim}</em> : 'Ouvindo… pode falar.'}
+                    {interim ? <em className="not-italic text-k-text-secondary dark:text-muted-foreground">{interim}</em> : 'Ouvindo… pode falar.'}
                 </span>
-                <button onClick={onStop} className="shrink-0 text-[12px] font-semibold text-[#86868B] transition hover:text-[#1D1D1F] dark:text-muted-foreground dark:hover:text-foreground">Sair</button>
+                <button onClick={onStop} className="shrink-0 text-[12px] font-semibold text-k-text-tertiary transition hover:text-k-text-primary dark:text-muted-foreground dark:hover:text-foreground">Sair</button>
             </div>
         )
     }
     if (state === 'thinking') {
         return (
-            <div className={`${base} border-[#EDEDF0] bg-[#F5F5F7] text-[#6E6E73] dark:border-k-border-subtle dark:bg-glass-bg dark:text-muted-foreground`}>
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#7C3AED] dark:text-violet-400" strokeWidth={2.2} />
+            <div className={`${base} border-k-border-subtle bg-surface-inset text-k-text-secondary dark:border-k-border-subtle dark:bg-glass-bg dark:text-muted-foreground`}>
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary dark:text-violet-400" strokeWidth={2.2} />
                 <span className="flex-1">Pensando…</span>
-                <button onClick={onStop} className="shrink-0 text-[12px] font-semibold text-[#86868B] transition hover:text-[#1D1D1F] dark:text-muted-foreground dark:hover:text-foreground">Sair</button>
+                <button onClick={onStop} className="shrink-0 text-[12px] font-semibold text-k-text-tertiary transition hover:text-k-text-primary dark:text-muted-foreground dark:hover:text-foreground">Sair</button>
             </div>
         )
     }
     if (state === 'speaking') {
         return (
-            <button onClick={onInterrupt} className={`${base} border-[#DDD6FE] bg-[#7C3AED]/[0.05] text-left text-[#1D1D1F] transition hover:bg-[#7C3AED]/[0.09] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-foreground`}>
-                <Volume2 className="h-4 w-4 shrink-0 animate-pulse text-[#7C3AED] dark:text-violet-400" strokeWidth={2} />
+            <button onClick={onInterrupt} className={`${base} border-[#DDD6FE] bg-primary/[0.05] text-left text-k-text-primary transition hover:bg-primary/[0.09] dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-foreground`}>
+                <Volume2 className="h-4 w-4 shrink-0 animate-pulse text-primary dark:text-violet-400" strokeWidth={2} />
                 <span className="flex-1">Falando… toque para interromper e falar.</span>
             </button>
         )
