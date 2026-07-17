@@ -227,6 +227,7 @@ export function CreateAppointmentSheet({
         // remarcar/cancelar um não afeta os demais.
         const createdIds: string[] = [];
         const failures: string[] = [];
+        let firstError: string | null = null;
         for (const sid of selectedStudentIds) {
             const input: CreateAppointmentInput = {
                 studentId: sid,
@@ -243,12 +244,13 @@ export function CreateAppointmentSheet({
                 createdIds.push(result.data.id);
             } else {
                 failures.push(studentsListed?.find((st: TrainerStudent) => st.id === sid)?.name ?? "aluno");
+                firstError ??= result.error ?? null;
             }
         }
 
         if (createdIds.length === 0) {
             setSubmitting(false);
-            setError("Erro ao criar agendamento");
+            setError(firstError ?? "Erro ao criar agendamento");
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
         }

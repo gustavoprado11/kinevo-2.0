@@ -258,6 +258,7 @@ export function CreateAppointmentModal({
             // um aluno não afeta os demais.
             const failures: string[] = []
             let firstPayload: { recurringId?: string; groupId?: string } | null = null
+            let firstError: string | null = null
             for (const studentId of effectiveStudentIds) {
                 if (normalizedSlots.length === 1) {
                     const result = await createRecurringAppointment({
@@ -271,6 +272,7 @@ export function CreateAppointmentModal({
                         firstPayload ??= { recurringId: result.data.id }
                     } else {
                         failures.push(students?.find((st) => st.id === studentId)?.name ?? 'aluno')
+                        firstError ??= result.error ?? null
                     }
                 } else {
                     const result = await createRecurringAppointmentGroup({
@@ -284,6 +286,7 @@ export function CreateAppointmentModal({
                         firstPayload ??= { groupId: result.data.groupId }
                     } else {
                         failures.push(students?.find((st) => st.id === studentId)?.name ?? 'aluno')
+                        firstError ??= result.error ?? null
                     }
                 }
             }
@@ -299,7 +302,7 @@ export function CreateAppointmentModal({
                 setError(`Não foi possível agendar: ${failures.join(', ')}. Os demais foram criados.`)
                 return
             }
-            setError('Erro ao criar rotina')
+            setError(firstError ?? 'Erro ao criar rotina')
         } catch (err) {
             // AG8: exceção da server action (rede) morria sem feedback — o
             // trainer clicava e nada acontecia.
