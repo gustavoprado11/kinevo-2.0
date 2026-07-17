@@ -37,17 +37,32 @@ function makeRequest(body: unknown): NextRequest {
     } as any)
 }
 
+// Builder chainable tolerante — a rota varia o nº de `.eq()` por tabela (a
+// checagem org-aware de Estúdios mudou a query de students para
+// `.eq('id').single()` e lê coach_id/organization_id), então o stub aceita
+// qualquer profundidade de cadeia e resolve no `.single()`/`.maybeSingle()`.
+function chainResult(result: { data: unknown; error: unknown }) {
+    const node: Record<string, unknown> = {}
+    node.select = () => node
+    node.eq = () => node
+    node.single = () => Promise.resolve(result)
+    node.maybeSingle = () => Promise.resolve(result)
+    return node
+}
+
 // Supabase client stub that resolves trainer + student lookups. Used for
 // bodies that pass prelude validation; the test controls what happens after
 // via either the helper mock (generationId branch) or the template stub
 // (templateId branch).
 function stubClientForHappyPrelude(opts: {
     trainer?: { id: string } | null
-    student?: { id: string } | null
+    student?: { id: string; coach_id?: string; organization_id?: string | null } | null
     template?: { id: string } | null
 } = {}) {
-    const trainer = opts.trainer ?? { id: TRAINER_ID }
-    const student = opts.student ?? { id: STUDENT_ID }
+    const trainer = opts.trainer !== undefined ? opts.trainer : { id: TRAINER_ID }
+    const student = opts.student !== undefined
+        ? opts.student
+        : { id: STUDENT_ID, coach_id: TRAINER_ID, organization_id: null }
     const template = opts.template ?? null
 
     const client: any = {
@@ -59,23 +74,16 @@ function stubClientForHappyPrelude(opts: {
         rpc: vi.fn().mockResolvedValue({ data: 'stub-program', error: null }),
         from(table: string) {
             if (table === 'trainers') {
-                return {
-                    select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: trainer, error: null }) }) }),
-                }
+                return chainResult({ data: trainer, error: null })
             }
             if (table === 'students') {
-                return {
-                    select: () => ({
-                        eq: () => ({ eq: () => ({ single: () => Promise.resolve({ data: student, error: null }) }) }),
-                    }),
-                }
+                return chainResult({ data: student, error: null })
+            }
+            if (table === 'organization_members') {
+                return chainResult({ data: null, error: null })
             }
             if (table === 'program_templates') {
-                return {
-                    select: () => ({
-                        eq: () => ({ eq: () => ({ single: () => Promise.resolve({ data: template, error: null }) }) }),
-                    }),
-                }
+                return chainResult({ data: template, error: null })
             }
             throw new Error(`unexpected table: ${table}`)
         },
@@ -281,28 +289,19 @@ function stubClientFase2b(opts: {
         },
         from(table: string) {
             if (table === 'trainers') {
-                return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { id: TRAINER_ID }, error: null }) }) }) }
+                return chainResult({ data: { id: TRAINER_ID }, error: null })
             }
             if (table === 'students') {
-                return {
-                    select: () => ({ eq: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { id: STUDENT_ID }, error: null }) }) }) }),
-                }
+                return chainResult({
+                    data: { id: STUDENT_ID, coach_id: TRAINER_ID, organization_id: null },
+                    error: null,
+                })
             }
             if (table === 'prescription_generations') {
-                return {
-                    select: () => ({
-                        eq: () => ({
-                            eq: () => ({
-                                eq: () => ({
-                                    single: () => Promise.resolve({
-                                        data: ownershipFound ? { id: GENERATION_ID } : null,
-                                        error: ownershipFound ? null : { code: 'PGRST116' },
-                                    }),
-                                }),
-                            }),
-                        }),
-                    }),
-                }
+                return chainResult({
+                    data: ownershipFound ? { id: GENERATION_ID } : null,
+                    error: ownershipFound ? null : { code: 'PGRST116' },
+                })
             }
             if (table === 'exercises') {
                 return {

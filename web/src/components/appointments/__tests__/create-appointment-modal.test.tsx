@@ -191,8 +191,9 @@ describe('CreateAppointmentModal', () => {
 
         fireEvent.click(screen.getByRole('option', { name: /Bruno Lima/i }))
 
-        // Chip com o nome aparece e submit fica habilitado
-        expect(screen.getByText('Bruno Lima')).toBeInTheDocument()
+        // Chip com o nome aparece (o dropdown segue aberto com o mesmo nome
+        // marcado "na turma" — por isso getAllByText) e submit fica habilitado
+        expect(screen.getAllByText('Bruno Lima').length).toBeGreaterThan(0)
         const submit = screen.getByRole('button', { name: /Criar agendamento/i })
         expect(submit).toBeEnabled()
 
