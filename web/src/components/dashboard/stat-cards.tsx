@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, memo, useCallback } from 'react'
-import { Users, Activity, TrendingUp, TrendingDown, Target, Eye, EyeOff, DollarSign } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { DashboardStats } from '@/lib/dashboard/get-dashboard-data'
 import { formatCurrency } from '@/lib/utils/financial'
@@ -14,9 +14,9 @@ interface StatCardsProps {
 // Monday-first to match sessionsPerDay ([Mon..Sun])
 const DAY_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
-// ── Trend Badge ──
+// ── Trend (texto, sem pílula: cor só no delta) ──
 
-function TrendBadge({ current, previous, suffix = '', invertColors = false }: {
+function TrendText({ current, previous, suffix = '', invertColors = false }: {
     current: number
     previous: number | null
     suffix?: string
@@ -26,32 +26,22 @@ function TrendBadge({ current, previous, suffix = '', invertColors = false }: {
 
     const delta = current - previous
     const percent = Math.round((delta / previous) * 100)
-
     if (percent === 0) return null
 
     const isPositive = percent > 0
     const isGood = invertColors ? !isPositive : isPositive
 
     return (
-        <span
-            className={`inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-md ${
-                isGood
-                    ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10'
-                    : 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10'
-            }`}
-            title={`Semana anterior: ${previous}${suffix}`}
-        >
-            {isPositive ? (
-                <TrendingUp className="w-3 h-3" />
-            ) : (
-                <TrendingDown className="w-3 h-3" />
-            )}
-            {isPositive ? '+' : ''}{percent}%
+        <span className="text-[11.5px] text-k-text-tertiary tabular-nums" title={`Semana anterior: ${previous}${suffix}`}>
+            <span className={isGood ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                {isPositive ? '+' : ''}{percent}%
+            </span>
+            {' '}vs anterior
         </span>
     )
 }
 
-// ── Sparkline ──
+// ── Sparkline (neutra: tinta sobre inset — cor não é decoração) ──
 
 function Sparkline({ data }: { data: number[] }) {
     const max = Math.max(...data, 1)
@@ -66,10 +56,8 @@ function Sparkline({ data }: { data: number[] }) {
                     initial={{ height: 0 }}
                     animate={{ height: `${Math.max(12, (v / max) * 100)}%` }}
                     transition={{ delay: i * 0.05, duration: 0.4, ease: 'easeOut' }}
-                    className={`flex-1 rounded-sm cursor-default ${
-                        v > 0
-                            ? 'bg-[#007AFF] dark:bg-blue-500 hover:bg-[#0056B3] dark:hover:bg-blue-400'
-                            : 'bg-[#E8E8ED] dark:bg-white/5'
+                    className={`flex-1 rounded-[2px] cursor-default ${
+                        v > 0 ? 'bg-k-text-tertiary' : 'bg-surface-inset'
                     }`}
                     title={`${DAY_LABELS[i]}: ${v} treino${v !== 1 ? 's' : ''}`}
                 />
@@ -78,49 +66,7 @@ function Sparkline({ data }: { data: number[] }) {
     )
 }
 
-// ── Progress Ring (for adherence) ──
-
-function ProgressRing({ percent, size = 44, strokeWidth = 3.5 }: {
-    percent: number
-    size?: number
-    strokeWidth?: number
-}) {
-    const radius = (size - strokeWidth) / 2
-    const circumference = 2 * Math.PI * radius
-    const offset = circumference - (percent / 100) * circumference
-
-    // Green ≥70%, blue 40-69%, amber <40%
-    const color = percent >= 70 ? '#34C759' : percent >= 40 ? '#007AFF' : '#FF9500'
-
-    return (
-        <svg width={size} height={size} className="shrink-0 -rotate-90" role="img" aria-label={`Aderência: ${percent}%`}>
-            <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={strokeWidth}
-                className="text-[#F0F0F5] dark:text-white/5"
-            />
-            <motion.circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="none"
-                stroke={color}
-                strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                initial={{ strokeDashoffset: circumference }}
-                animate={{ strokeDashoffset: offset }}
-                transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-            />
-        </svg>
-    )
-}
-
-// ── Session progress bar ──
+// ── Session progress bar (neutra; âmbar só quando está atrás) ──
 
 function SessionProgressBar({ current, total }: { current: number; total: number }) {
     if (total <= 0) return null
@@ -128,39 +74,47 @@ function SessionProgressBar({ current, total }: { current: number; total: number
 
     return (
         <div className="mt-2">
-            <div className="h-1.5 w-full rounded-full bg-[#F0F0F5] dark:bg-white/5 overflow-hidden">
+            <div className="h-1 w-full rounded-full bg-surface-inset overflow-hidden">
                 <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${percent}%` }}
                     transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
-                    className={`h-full rounded-full ${
-                        percent >= 70 ? 'bg-emerald-500' : percent >= 40 ? 'bg-[#007AFF]' : 'bg-amber-500'
-                    }`}
+                    className={`h-full rounded-full ${percent >= 40 ? 'bg-k-text-secondary' : 'bg-amber-500'}`}
                 />
             </div>
-            <p className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary mt-1">
-                {percent}% concluído
-            </p>
         </div>
     )
 }
 
-// ── Card animation wrapper ──
+// ── Célula da régua ──
 
-const cardVariants = {
-    hidden: { opacity: 0, y: 12 },
-    visible: (i: number) => ({
-        opacity: 1,
-        y: 0,
-        transition: { delay: i * 0.08, duration: 0.4, ease: 'easeOut' as const },
-    }),
+function KpiCell({ label, children, action }: {
+    label: string
+    children: React.ReactNode
+    action?: React.ReactNode
+}) {
+    return (
+        <div className="bg-surface-card px-5 py-4 flex flex-col gap-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                    {label}
+                </span>
+                {action}
+            </div>
+            {children}
+        </div>
+    )
 }
 
 // ── Main Component ──
+//
+// Fase 3 do redesign ("ferramenta profissional"): os 4 cards soltos com ícone
+// colorido viraram UMA régua de métricas — painel único, divisores hairline
+// (gap-px sobre o tom da borda), rótulos em mono e números tabulares.
 
 export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
     const showAdherence = stats.hasActivePrograms
-    // Estúdio não cobra alunos por aqui — o card de receita some.
+    // Estúdio não cobra alunos por aqui — a célula de receita some.
     const { isStudioAccount } = useStudioState()
     const showRevenue = !isStudioAccount
     const [mrrVisible, setMrrVisible] = useState(true)
@@ -177,124 +131,90 @@ export const StatCards = memo(function StatCards({ stats }: StatCardsProps) {
         })
     }, [])
 
-    const cardClass = "rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card p-5 shadow-apple-card dark:shadow-none hover:shadow-md dark:hover:shadow-lg transition-shadow duration-200"
-
-    const cardCount = 2 + (showRevenue ? 1 : 0) + (showAdherence ? 1 : 0)
-    const gridClass = cardCount >= 4
+    const cellCount = 2 + (showRevenue ? 1 : 0) + (showAdherence ? 1 : 0)
+    const gridClass = cellCount >= 4
         ? 'grid-cols-2 md:grid-cols-4'
-        : cardCount === 3
+        : cellCount === 3
             ? 'grid-cols-1 sm:grid-cols-3'
             : 'grid-cols-1 sm:grid-cols-2'
 
-    return (
-        <div className={`grid gap-4 mb-6 ${gridClass}`} role="region" aria-label="Indicadores-chave de performance">
-            {/* Active students */}
-            <motion.div
-                className={cardClass}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                custom={0}
-                role="group"
-                aria-label={`Alunos ativos: ${stats.activeStudentsCount}`}
-            >
-                <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium text-[#86868B] dark:text-k-text-tertiary uppercase tracking-wide">Alunos ativos</span>
-                    <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
-                        <Users size={14} className="text-[#007AFF] dark:text-blue-400" aria-hidden="true" />
-                    </div>
-                </div>
-                <div className="flex items-baseline gap-2">
-                    <p className="text-3xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">{stats.activeStudentsCount}</p>
-                    <TrendBadge current={stats.activeStudentsCount} previous={stats.activeStudentsLastWeek} />
-                </div>
-            </motion.div>
+    const valueClass = 'text-[26px] leading-tight font-bold tracking-tight text-k-text-primary tabular-nums'
 
-            {/* Sessions this week */}
-            <motion.div
-                className={cardClass}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                custom={1}
-            >
-                <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium text-[#86868B] dark:text-k-text-tertiary uppercase tracking-wide">Treinos esta semana</span>
-                    <div className="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center">
-                        <Activity size={14} className="text-violet-600 dark:text-violet-400" />
-                    </div>
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className={`mb-6 grid ${gridClass} gap-px rounded-panel border border-k-border-subtle bg-k-border-subtle overflow-hidden`}
+            role="region"
+            aria-label="Indicadores-chave de performance"
+        >
+            {/* Alunos ativos */}
+            <KpiCell label="Alunos ativos">
+                <div className="flex items-baseline gap-2" role="group" aria-label={`Alunos ativos: ${stats.activeStudentsCount}`}>
+                    <p className={valueClass}>{stats.activeStudentsCount}</p>
+                    <TrendText current={stats.activeStudentsCount} previous={stats.activeStudentsLastWeek} />
                 </div>
+            </KpiCell>
+
+            {/* Treinos esta semana */}
+            <KpiCell label="Treinos esta semana">
                 <div className="flex items-baseline gap-1.5">
-                    <p className="text-3xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">{stats.sessionsThisWeek}</p>
-                    {stats.expectedSessionsThisWeek > 0 && (
-                        <span className="text-base text-[#AEAEB2] dark:text-k-text-quaternary font-medium">/{stats.expectedSessionsThisWeek}</span>
-                    )}
-                    <TrendBadge current={stats.sessionsThisWeek} previous={stats.sessionsLastWeek} />
+                    <p className={valueClass}>
+                        {stats.sessionsThisWeek}
+                        {stats.expectedSessionsThisWeek > 0 && (
+                            <span className="text-[15px] font-medium text-k-text-tertiary"> / {stats.expectedSessionsThisWeek}</span>
+                        )}
+                    </p>
+                    <TrendText current={stats.sessionsThisWeek} previous={stats.sessionsLastWeek} />
                 </div>
                 <SessionProgressBar current={stats.sessionsThisWeek} total={stats.expectedSessionsThisWeek} />
                 <Sparkline data={stats.sessionsPerDay} />
                 {stats.sessionsThisWeek === 0 && stats.expectedSessionsThisWeek === 0 && (
-                    <p className="mt-1 text-[11px] text-[#AEAEB2] dark:text-k-text-quaternary">Sem treinos registrados ainda</p>
+                    <p className="mt-1 text-[11.5px] text-k-text-quaternary">Sem treinos registrados ainda</p>
                 )}
-            </motion.div>
+            </KpiCell>
 
-            {/* MRR — oculto para contas de estúdio */}
+            {/* Receita mensal — oculta para contas de estúdio */}
             {showRevenue && (
-            <motion.div
-                className={cardClass}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                custom={2}
-            >
-                <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium text-[#86868B] dark:text-k-text-tertiary uppercase tracking-wide">Receita mensal</span>
-                    <button
-                        onClick={toggleMrr}
-                        title={mrrVisible ? 'Ocultar receita mensal' : 'Mostrar receita mensal'}
-                        aria-label={mrrVisible ? 'Ocultar receita mensal' : 'Mostrar receita mensal'}
-                        aria-pressed={mrrVisible}
-                        className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
-                    >
-                        {mrrVisible ? <Eye size={14} className="text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : <EyeOff size={14} className="text-emerald-600 dark:text-emerald-400" aria-hidden="true" />}
-                    </button>
-                </div>
-                <div className="flex items-baseline gap-2">
-                    <p className="text-3xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">
-                        {mrrVisible ? formatCurrency(stats.mrr) : 'R$ •••••'}
-                    </p>
-                    {mrrVisible && <TrendBadge current={stats.mrr} previous={stats.mrrLastMonth} />}
-                </div>
-                {mrrVisible && stats.mrr === 0 && (
-                    <p className="mt-1 text-[11px] text-[#AEAEB2] dark:text-k-text-quaternary">Nenhuma assinatura ativa ainda</p>
-                )}
-            </motion.div>
+                <KpiCell
+                    label="Receita mensal"
+                    action={
+                        <button
+                            onClick={toggleMrr}
+                            title={mrrVisible ? 'Ocultar receita mensal' : 'Mostrar receita mensal'}
+                            aria-label={mrrVisible ? 'Ocultar receita mensal' : 'Mostrar receita mensal'}
+                            aria-pressed={mrrVisible}
+                            className="text-k-text-quaternary hover:text-k-text-secondary transition-colors"
+                        >
+                            {mrrVisible ? <Eye size={13} aria-hidden="true" /> : <EyeOff size={13} aria-hidden="true" />}
+                        </button>
+                    }
+                >
+                    <div className="flex items-baseline gap-2">
+                        <p className={valueClass}>
+                            {mrrVisible ? formatCurrency(stats.mrr) : 'R$ •••••'}
+                        </p>
+                        {mrrVisible && <TrendText current={stats.mrr} previous={stats.mrrLastMonth} />}
+                    </div>
+                    {mrrVisible && stats.mrr === 0 && (
+                        <p className="mt-1 text-[11.5px] text-k-text-quaternary">Nenhuma assinatura ativa ainda</p>
+                    )}
+                </KpiCell>
             )}
 
-            {/* Adherence */}
+            {/* Aderência */}
             {showAdherence && (
-                <motion.div
-                    className={cardClass}
-                    variants={cardVariants}
-                    initial="hidden"
-                    animate="visible"
-                    custom={3}
-                >
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-medium text-[#86868B] dark:text-k-text-tertiary uppercase tracking-wide">Aderência geral</span>
-                        <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
-                            <Target size={14} className="text-amber-600 dark:text-amber-400" />
-                        </div>
+                <KpiCell label="Aderência geral">
+                    <div className="flex items-baseline gap-2">
+                        <p className={`${valueClass} ${stats.adherencePercent < 40 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                            {stats.adherencePercent}%
+                        </p>
+                        <TrendText current={stats.adherencePercent} previous={stats.adherenceLastWeek} suffix="%" />
                     </div>
-                    <div className="flex items-center gap-3">
-                        <ProgressRing percent={stats.adherencePercent} />
-                        <div>
-                            <p className="text-3xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">{stats.adherencePercent}%</p>
-                            <TrendBadge current={stats.adherencePercent} previous={stats.adherenceLastWeek} suffix="%" />
-                        </div>
-                    </div>
-                </motion.div>
+                    <SessionProgressBar current={stats.adherencePercent} total={100} />
+                </KpiCell>
             )}
-        </div>
+        </motion.div>
     )
 })

@@ -7,12 +7,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className = '', variant = 'default', size = 'default', ...props }, ref) => {
-        const baseStyles = 'inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]'
+        // Direção "ferramenta profissional" (fase 3): a ação primária é sólida
+        // no token da marca — sem gradiente, sem glow, canto de 8px.
+        const baseStyles = 'inline-flex items-center justify-center rounded-control text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]'
 
         const variants = {
-            default: 'bg-gradient-to-br from-[var(--k-purple-700)] to-[var(--k-purple-500)] text-primary-foreground shadow-[var(--k-shadow-glow-purple)] hover:brightness-[1.06] hover:shadow-[var(--k-shadow-glow-purple)]',
-            outline: 'border border-border bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900',
-            ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+            default: 'bg-primary text-primary-foreground font-semibold shadow-none hover:opacity-90',
+            outline: 'border border-k-border-primary bg-surface-card text-k-text-secondary hover:bg-surface-inset hover:text-k-text-primary',
+            ghost: 'text-k-text-secondary hover:bg-surface-inset hover:text-k-text-primary',
             destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
             link: 'text-primary underline-offset-4 hover:underline',
         }

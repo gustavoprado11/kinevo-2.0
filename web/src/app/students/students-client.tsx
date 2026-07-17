@@ -288,9 +288,9 @@ export function StudentsClient({
 
     const getStatusBadge = (status: Student['status']) => {
         const config = {
-            active: { dot: 'bg-[#34C759] dark:bg-emerald-400', text: 'text-[#34C759] dark:text-emerald-400', label: 'Ativo' },
-            inactive: { dot: 'bg-[#FF3B30] dark:bg-red-400', text: 'text-[#FF3B30] dark:text-muted-foreground', label: 'Inativo' },
-            pending: { dot: 'bg-[#FF9500] dark:bg-amber-400', text: 'text-[#FF9500] dark:text-amber-400', label: 'Pendente' },
+            active: { dot: 'bg-emerald-500 dark:bg-emerald-400', text: 'text-emerald-600 dark:text-emerald-400', label: 'Ativo' },
+            inactive: { dot: 'bg-k-text-quaternary', text: 'text-k-text-tertiary', label: 'Inativo' },
+            pending: { dot: 'bg-amber-500 dark:bg-amber-400', text: 'text-amber-600 dark:text-amber-400', label: 'Pendente' },
         }
         const c = config[status]
         return (
@@ -314,14 +314,14 @@ export function StudentsClient({
         return (
             <th
                 onClick={() => handleSort(sortKeyValue)}
-                className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary cursor-pointer select-none hover:text-[#6E6E73] dark:hover:text-k-text-tertiary transition-colors ${className}`}
+                className={`px-4 py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary cursor-pointer select-none hover:text-k-text-secondary transition-colors ${className}`}
             >
                 <div className="flex items-center gap-1">
                     {label}
                     {isActive && (
                         sortDir === 'asc'
-                            ? <ChevronUp size={12} className="text-[#7C3AED] dark:text-violet-400" />
-                            : <ChevronDown size={12} className="text-[#7C3AED] dark:text-violet-400" />
+                            ? <ChevronUp size={12} className="text-k-text-secondary" />
+                            : <ChevronDown size={12} className="text-k-text-secondary" />
                     )}
                 </div>
             </th>
@@ -338,8 +338,8 @@ export function StudentsClient({
             {/* Page Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-white">
-                        Alunos <span className="font-normal text-[#86868B] dark:text-[#8E8E93]">
+                    <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">
+                        Alunos <span className="font-normal text-k-text-tertiary tabular-nums">
                             {realStudents.length}
                             {/* A linha "Eu" aparece na tabela mas não conta como aluno — sem o sufixo, o contador parecia errado. */}
                             {studentsWithAttention.some(s => s.is_trainer_profile) && <span className="text-sm"> + você</span>}
@@ -349,7 +349,7 @@ export function StudentsClient({
                 <Button
                     data-onboarding="students-add-btn"
                     onClick={() => setIsModalOpen(true)}
-                    className="gap-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 rounded-full dark:rounded-xl px-5 py-2 text-sm font-medium shadow-none dark:shadow-lg dark:shadow-violet-500/20 transition-all"
+                    className="gap-2 bg-primary text-primary-foreground hover:opacity-90 rounded-control px-4 py-2 text-sm font-semibold shadow-none transition-opacity"
                 >
                     <Plus size={14} strokeWidth={2.5} />
                     Novo Aluno
@@ -361,16 +361,16 @@ export function StudentsClient({
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-300/50 bg-violet-50 dark:border-violet-500/30 dark:bg-violet-500/10 px-4 py-3">
                     <div className="flex items-start gap-2.5">
                         <Building2 size={16} className="mt-0.5 shrink-0 text-violet-600 dark:text-violet-400" />
-                        <p className="text-sm text-[#1D1D1F] dark:text-k-text-primary">
+                        <p className="text-sm text-k-text-primary">
                             <span className="font-semibold">
                                 {unclassifiedStudents.length} {unclassifiedStudents.length === 1 ? 'aluno seu precisa' : 'alunos seus precisam'} de classificação
                             </span>
-                            <span className="text-[#6E6E73] dark:text-k-text-tertiary"> — diga quais entram no estúdio e quais são particulares.</span>
+                            <span className="text-k-text-tertiary"> — diga quais entram no estúdio e quais são particulares.</span>
                         </p>
                     </div>
                     <button
                         onClick={() => setIsClassifyOpen(true)}
-                        className="shrink-0 rounded-lg bg-violet-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-violet-500"
+                        className="shrink-0 rounded-control bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
                     >
                         Classificar agora
                     </button>
@@ -380,42 +380,44 @@ export function StudentsClient({
             {/* Search */}
             <div data-onboarding="students-search" className="mb-4">
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#AEAEB2] dark:text-k-text-quaternary" strokeWidth={1.5} />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-k-text-quaternary" strokeWidth={1.5} />
                     <input
                         type="text"
                         placeholder="Buscar por nome ou email..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg py-2.5 pl-10 pr-4 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/40 focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-2 dark:focus:ring-violet-500/10 transition-all"
+                        className="w-full rounded-control border border-k-border-primary bg-surface-card py-2.5 pl-10 pr-4 text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25 transition-all"
                     />
                 </div>
             </div>
 
-            {/* Filter chips */}
+            {/* Filtros — segmentos retangulares (pílula é estado, não filtro) */}
             <div className="flex items-center gap-2 mb-5 overflow-x-auto">
-                {filters.map(f => (
-                    <button
-                        key={f.key}
-                        onClick={() => setActiveFilter(f.key)}
-                        className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                            activeFilter === f.key
-                                ? 'bg-[#7C3AED] dark:bg-violet-600/15 text-white dark:text-violet-400 border border-transparent dark:border-violet-500/30'
-                                : 'bg-white dark:bg-transparent text-[#6E6E73] dark:text-k-text-quaternary border border-[#D2D2D7] dark:border-transparent hover:bg-[#F5F5F7] dark:hover:bg-glass-bg hover:text-[#1D1D1F] dark:hover:text-k-text-tertiary'
-                        }`}
-                    >
-                        {f.label}
-                        <span className={`ml-1.5 ${activeFilter === f.key ? 'text-white/70 dark:text-violet-400/60' : 'text-[#86868B] dark:text-k-text-quaternary/50'}`}>
-                            {f.count}
-                        </span>
-                    </button>
-                ))}
+                <div className="inline-flex shrink-0 rounded-control border border-k-border-primary bg-surface-card overflow-hidden">
+                    {filters.map((f, i) => (
+                        <button
+                            key={f.key}
+                            onClick={() => setActiveFilter(f.key)}
+                            className={`px-3.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${i > 0 ? 'border-l border-k-border-subtle' : ''} ${
+                                activeFilter === f.key
+                                    ? 'bg-surface-inset text-k-text-primary font-semibold'
+                                    : 'text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset/60'
+                            }`}
+                        >
+                            {f.label}
+                            <span className={`ml-1.5 font-mono text-[10.5px] tabular-nums ${activeFilter === f.key ? 'text-k-text-tertiary' : 'text-k-text-quaternary'}`}>
+                                {f.count}
+                            </span>
+                        </button>
+                    ))}
+                </div>
 
                 {/* Estúdio: filtro por treinador responsável */}
                 {isStudioView && studioCoaches.length > 0 && (
                     <select
                         value={coachFilter}
                         onChange={(e) => setCoachFilter(e.target.value)}
-                        className="ml-auto shrink-0 rounded-full border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3.5 py-1.5 text-xs font-medium text-[#6E6E73] dark:text-k-text-tertiary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/40"
+                        className="ml-auto shrink-0 rounded-control border border-k-border-primary bg-surface-card px-3 py-1.5 text-xs font-medium text-k-text-secondary focus:outline-none focus:border-ring"
                     >
                         <option value="all">Todos os treinadores</option>
                         <option value="mine">Meus alunos</option>
@@ -429,15 +431,15 @@ export function StudentsClient({
             </div>
 
             {/* Students Table */}
-            <div className="rounded-xl border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-surface-card shadow-apple-card dark:shadow-xl overflow-hidden">
+            <div className="rounded-panel border border-k-border-subtle bg-surface-card overflow-hidden">
                 {filteredStudents.length === 0 ? (
                     <div className="py-16 text-center">
                         {searchQuery || activeFilter !== 'all' ? (
                             <>
-                                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#F5F5F7] dark:bg-glass-bg border border-[#E8E8ED] dark:border-k-border-subtle">
-                                    <Search className="h-5 w-5 text-[#AEAEB2] dark:text-k-text-quaternary" strokeWidth={1.5} />
+                                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-inset border border-k-border-subtle">
+                                    <Search className="h-5 w-5 text-k-text-quaternary" strokeWidth={1.5} />
                                 </div>
-                                <p className="text-sm text-[#86868B] dark:text-k-text-quaternary">
+                                <p className="text-sm text-k-text-quaternary">
                                     {searchQuery
                                         ? <>Nenhum aluno encontrado para &ldquo;{searchQuery}&rdquo;</>
                                         : 'Nenhum aluno neste filtro'
@@ -446,16 +448,16 @@ export function StudentsClient({
                             </>
                         ) : (
                             <>
-                                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#F5F5F7] dark:bg-glass-bg border border-[#E8E8ED] dark:border-k-border-subtle">
-                                    <Users className="h-6 w-6 text-[#AEAEB2] dark:text-k-text-quaternary" strokeWidth={1.5} />
+                                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-inset border border-k-border-subtle">
+                                    <Users className="h-6 w-6 text-k-text-quaternary" strokeWidth={1.5} />
                                 </div>
-                                <h2 className="text-lg font-bold text-[#1D1D1F] dark:text-white mb-1">Nenhum aluno cadastrado</h2>
-                                <p className="text-sm text-[#86868B] dark:text-k-text-quaternary mb-6 max-w-sm mx-auto">
+                                <h2 className="text-lg font-bold text-k-text-primary mb-1">Nenhum aluno cadastrado</h2>
+                                <p className="text-sm text-k-text-quaternary mb-6 max-w-sm mx-auto">
                                     Cadastre seu primeiro aluno para começar a prescrever programas de treino.
                                 </p>
                                 <Button
                                     onClick={() => setIsModalOpen(true)}
-                                    className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 rounded-full dark:rounded-xl px-5 py-2 text-sm font-medium"
+                                    className="bg-primary text-primary-foreground hover:opacity-90 rounded-control px-4 py-2 text-sm font-semibold transition-opacity"
                                 >
                                     Cadastrar primeiro aluno
                                 </Button>
@@ -466,46 +468,46 @@ export function StudentsClient({
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-transparent">
+                                <tr className="border-b border-k-border-subtle">
                                     <SortHeader label="Aluno" sortKeyValue="name" />
                                     {isStudioView && (
-                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
+                                        <th className="px-4 py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
                                             Responsável
                                         </th>
                                     )}
-                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
+                                    <th className="px-4 py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
                                         Modalidade
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
+                                    <th className="px-4 py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
                                         Programa
                                     </th>
                                     <SortHeader label="Semana" sortKeyValue="weekProgress" />
                                     <SortHeader label="Último Treino" sortKeyValue="lastWorkout" />
-                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
+                                    <th className="px-4 py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
                                         Status
                                     </th>
                                     <th className="px-4 py-3 w-10"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
+                            <tbody className="divide-y divide-k-border-subtle">
                                 {filteredStudents.map((student) => {
                                     const borderColor = student.attention === 'urgent'
-                                        ? 'border-l-[#FF3B30] dark:border-l-red-500'
+                                        ? 'border-l-red-500 dark:border-l-red-400'
                                         : student.attention === 'warning'
-                                            ? 'border-l-[#FF9500] dark:border-l-yellow-500'
+                                            ? 'border-l-amber-500 dark:border-l-amber-400'
                                             : 'border-l-transparent'
 
                                     return (
                                         <tr
                                             key={student.id}
-                                            className={`group cursor-pointer transition-colors hover:bg-[#F5F5F7] dark:hover:bg-glass-bg border-l-2 ${borderColor}`}
+                                            className={`group cursor-pointer transition-colors hover:bg-glass-bg-hover border-l-2 ${borderColor}`}
                                             onClick={() => router.push(`/students/${student.id}`)}
                                             {...(student.is_trainer_profile ? { 'data-onboarding': 'students-self-profile' } : {})}
                                         >
                                             {/* ALUNO */}
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`flex h-9 w-9 items-center justify-center rounded-full overflow-hidden flex-shrink-0 ${student.avatar_url ? 'border border-[#E8E8ED] dark:border-k-border-primary bg-[#F5F5F7] dark:bg-glass-bg' : 'bg-[#F5F5F7] dark:bg-glass-bg dark:border dark:border-k-border-primary'}`}>
+                                                    <div className={`flex h-9 w-9 items-center justify-center rounded-full overflow-hidden flex-shrink-0 ${student.avatar_url ? 'border border-k-border-primary bg-surface-inset' : 'bg-surface-inset border border-k-border-primary'}`}>
                                                         {student.avatar_url ? (
                                                             <Image
                                                                 src={student.avatar_url}
@@ -515,20 +517,20 @@ export function StudentsClient({
                                                                 className="h-9 w-9 rounded-full object-cover"
                                                             />
                                                         ) : (
-                                                            <span className="text-sm font-bold text-[#6E6E73] dark:text-k-text-secondary">
+                                                            <span className="text-sm font-semibold text-k-text-secondary">
                                                                 {student.name.charAt(0).toUpperCase()}
                                                             </span>
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <span className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">{student.name}</span>
+                                                        <span className="text-sm font-medium text-k-text-primary">{student.name}</span>
                                                         {student.is_trainer_profile && (
-                                                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-[#F3F0FF] dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-300 border border-[#E0D7FF] dark:border-violet-500/20">
+                                                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold rounded border border-k-border-primary bg-surface-inset text-k-text-secondary">
                                                                 Eu
                                                             </span>
                                                         )}
                                                         {!student.is_trainer_profile && student.is_private && isStudioView && (
-                                                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-[#F3F0FF] dark:bg-violet-500/10 text-[#7C3AED] dark:text-violet-300 border border-[#E0D7FF] dark:border-violet-500/20">
+                                                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold rounded border border-k-border-primary bg-surface-inset text-k-text-secondary">
                                                                 Particular
                                                             </span>
                                                         )}
@@ -547,25 +549,25 @@ export function StudentsClient({
                                                             disabled={reassignPending && reassigningId === student.id}
                                                             onClick={(e) => e.stopPropagation()}
                                                             onChange={(e) => handleReassign(student.id, e.target.value)}
-                                                            className="rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-2 py-1 text-xs text-[#6E6E73] dark:text-k-text-secondary focus:outline-none focus:border-[#7C3AED] disabled:opacity-50"
+                                                            className="rounded-control border border-k-border-primary bg-surface-card px-2 py-1 text-xs text-k-text-secondary focus:outline-none focus:border-ring disabled:opacity-50"
                                                         >
                                                             {studioCoaches.map(c => (
                                                                 <option key={c.id} value={c.id}>{c.id === trainer.id ? 'Você' : c.name}</option>
                                                             ))}
                                                         </select>
                                                     ) : student.responsibleCoachName ? (
-                                                        <span className={`text-sm ${student.responsibleCoachId === trainer.id ? 'font-semibold text-[#7C3AED] dark:text-violet-300' : 'text-[#6E6E73] dark:text-k-text-secondary'}`}>
+                                                        <span className={`text-sm ${student.responsibleCoachId === trainer.id ? 'font-semibold text-k-text-primary' : 'text-k-text-secondary'}`}>
                                                             {student.responsibleCoachId === trainer.id ? 'Você' : student.responsibleCoachName}
                                                         </span>
                                                     ) : (
-                                                        <span className="text-sm text-[#AEAEB2] dark:text-k-text-quaternary">—</span>
+                                                        <span className="text-sm text-k-text-quaternary">—</span>
                                                     )}
                                                 </td>
                                             )}
 
                                             {/* MODALIDADE */}
                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-quaternary border border-[#E8E8ED] dark:border-k-border-subtle">
+                                                <span className="text-sm text-k-text-secondary">
                                                     {student.modality === 'presential' ? 'Presencial' : 'Online'}
                                                 </span>
                                             </td>
@@ -573,28 +575,28 @@ export function StudentsClient({
                                             {/* PROGRAMA */}
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 {student.programName ? (
-                                                    <span className="text-sm text-[#1D1D1F] dark:text-k-text-secondary font-medium truncate max-w-[160px] block">
+                                                    <span className="text-sm text-k-text-secondary font-medium truncate max-w-[160px] block">
                                                         {student.programName}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-sm text-[#AEAEB2] dark:text-k-text-quaternary">—</span>
+                                                    <span className="text-sm text-k-text-quaternary">—</span>
                                                 )}
                                             </td>
 
                                             {/* ESTA SEMANA */}
                                             <td className="px-4 py-3 whitespace-nowrap">
                                                 {student.expectedPerWeek > 0 ? (
-                                                    <span className={`text-sm font-semibold ${
+                                                    <span className={`text-sm font-semibold tabular-nums ${
                                                         student.sessionsThisWeek >= student.expectedPerWeek
-                                                            ? 'text-[#34C759] dark:text-emerald-400'
+                                                            ? 'text-emerald-600 dark:text-emerald-400'
                                                             : student.sessionsThisWeek > 0
-                                                                ? 'text-[#1D1D1F] dark:text-k-text-secondary'
-                                                                : 'text-[#FF3B30] dark:text-yellow-400'
+                                                                ? 'text-k-text-primary'
+                                                                : 'text-amber-600 dark:text-amber-400'
                                                     }`}>
                                                         {student.sessionsThisWeek}/{student.expectedPerWeek}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-sm text-[#AEAEB2] dark:text-k-text-quaternary">—</span>
+                                                    <span className="text-sm text-k-text-quaternary">—</span>
                                                 )}
                                             </td>
 
@@ -608,13 +610,13 @@ export function StudentsClient({
                                                             const todayKey = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
                                                             const dateKey = last.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
                                                             const days = Math.floor((new Date(todayKey).getTime() - new Date(dateKey).getTime()) / (1000 * 60 * 60 * 24))
-                                                            return days >= 7 ? 'text-[#FF3B30] dark:text-red-400' : days >= 3 ? 'text-[#FF9500] dark:text-yellow-400' : 'text-[#6E6E73] dark:text-k-text-secondary'
+                                                            return days >= 14 ? 'text-red-600 dark:text-red-400' : days >= 7 ? 'text-amber-600 dark:text-amber-400' : 'text-k-text-secondary'
                                                         })()
                                                     }`}>
                                                         {timeAgo(student.lastSessionDate)}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-sm text-[#FF9500] dark:text-yellow-400">Nunca</span>
+                                                    <span className="text-sm text-k-text-quaternary">Nunca</span>
                                                 )}
                                             </td>
 
@@ -625,7 +627,7 @@ export function StudentsClient({
 
                                             {/* CHEVRON */}
                                             <td className="px-4 py-3 whitespace-nowrap text-right">
-                                                <ChevronRight className="w-4 h-4 text-[#AEAEB2] dark:text-k-border-subtle group-hover:text-[#86868B] dark:group-hover:text-k-text-tertiary transition-colors inline-block" strokeWidth={1.5} />
+                                                <ChevronRight className="w-4 h-4 text-k-text-quaternary group-hover:text-k-text-tertiary transition-colors inline-block" strokeWidth={1.5} />
                                             </td>
                                         </tr>
                                     )

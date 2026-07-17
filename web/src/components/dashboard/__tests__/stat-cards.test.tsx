@@ -68,8 +68,9 @@ describe('StatCards', () => {
 
   it('displays correct sessions count with denominator', () => {
     render(<StatCards stats={mockStats} />)
-    expect(screen.getByText('48')).toBeInTheDocument()
-    expect(screen.getByText('/100')).toBeInTheDocument()
+    // Régua (fase 3): valor e denominador vivem no mesmo <p> ("48 / 100")
+    expect(screen.getByText(/\/ 100/)).toBeInTheDocument()
+    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === '48 / 100')).toBeInTheDocument()
   })
 
   it('displays MRR formatted as BRL currency', () => {
@@ -110,9 +111,11 @@ describe('StatCards', () => {
     expect(screen.getByText('+20%')).toBeInTheDocument()
   })
 
-  it('shows session progress bar percentage', () => {
+  it('renders the sessions sparkline with day tooltips', () => {
+    // A legenda "% concluído" saiu no redesign (fase 3) — a barra é visual e a
+    // sparkline carrega os valores por dia via title.
     render(<StatCards stats={mockStats} />)
-    expect(screen.getByText('48% concluído')).toBeInTheDocument()
+    expect(screen.getByTitle('Treinos concluídos por dia esta semana')).toBeInTheDocument()
   })
 
   it('does not show progress bar when expected sessions is 0', () => {

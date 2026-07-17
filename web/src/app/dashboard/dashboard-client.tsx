@@ -254,9 +254,9 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             {/* Gestor na visão pessoal: caminho de volta pra visão do estúdio */}
             {isStudioManager && (
                 <div className="mb-4 flex justify-end">
-                    <div className="flex gap-1 rounded-full bg-white dark:bg-glass-bg p-1 border border-[#E8E8ED] dark:border-k-border-subtle">
-                        <a href="/dashboard" className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary">Estúdio</a>
-                        <span className="rounded-full bg-violet-600 px-3.5 py-1.5 text-xs font-bold text-white">Meu painel</span>
+                    <div className="inline-flex rounded-control border border-k-border-primary bg-surface-card overflow-hidden">
+                        <a href="/dashboard" className="px-3.5 py-1.5 text-xs font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset transition-colors">Estúdio</a>
+                        <span className="border-l border-k-border-subtle bg-surface-inset px-3.5 py-1.5 text-xs font-semibold text-k-text-primary">Meu painel</span>
                     </div>
                 </div>
             )}

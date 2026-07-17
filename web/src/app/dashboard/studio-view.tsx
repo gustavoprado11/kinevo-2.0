@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getWeekRange } from '@kinevo/shared/utils/schedule-projection'
 import { AppLayout } from '@/components/layout'
-import { Users, TrendingUp, Dumbbell, AlertTriangle, User } from 'lucide-react'
+import { User } from 'lucide-react'
 
 const TZ = 'America/Sao_Paulo'
 
@@ -65,38 +65,36 @@ export async function StudioDashboardView({ trainer, organization }: Props) {
                     <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">{organization.name}</h1>
                     <p className="text-sm text-k-text-tertiary mt-0.5">Visão do estúdio</p>
                 </div>
-                <div className="flex gap-1 rounded-full bg-glass-bg p-1 border border-k-border-subtle">
-                    <span className="rounded-full bg-violet-500 px-3.5 py-1.5 text-xs font-bold text-white">Estúdio</span>
-                    <Link href="/dashboard?v=me" className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-k-text-tertiary hover:text-k-text-primary">
+                <div className="inline-flex rounded-control border border-k-border-primary bg-surface-card overflow-hidden">
+                    <span className="bg-surface-inset px-3.5 py-1.5 text-xs font-semibold text-k-text-primary">Estúdio</span>
+                    <Link href="/dashboard?v=me" className="flex items-center gap-1.5 border-l border-k-border-subtle px-3.5 py-1.5 text-xs font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset transition-colors">
                         <User size={12} /> Meu painel
                     </Link>
                 </div>
             </div>
 
-            {/* KPIs (com a semana passada como referência) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-                <KpiCard icon={<Users size={18} className="text-violet-500" />} label="Alunos ativos" value={String(totalActive)} />
-                <KpiCard
-                    icon={<Dumbbell size={18} className="text-emerald-500" />}
+            {/* Régua de KPIs — painel único, divisores hairline; semana passada como referência */}
+            <div className="mb-6 grid grid-cols-2 lg:grid-cols-4 gap-px rounded-panel border border-k-border-subtle bg-k-border-subtle overflow-hidden">
+                <KpiCell label="Alunos ativos" value={String(totalActive)} />
+                <KpiCell
                     label="Treinos na semana"
                     value={`${doneWeek}/${expectedWeek}`}
                     hint={prevExpected > 0 ? `sem. passada: ${prevDone}/${prevExpected}` : undefined}
                 />
-                <KpiCard
-                    icon={<TrendingUp size={18} className="text-blue-500" />}
+                <KpiCell
                     label="Aderência"
                     value={adherence === null ? '—' : `${adherence}%`}
                     hint={prevAdherence === null ? undefined : `sem. passada: ${prevAdherence}%`}
                     trend={adherence !== null && prevAdherence !== null ? adherence - prevAdherence : undefined}
                 />
-                <KpiCard icon={<AlertTriangle size={18} className="text-amber-500" />} label="Em risco" value={String(atRisk)} />
+                <KpiCell label="Em risco" value={String(atRisk)} attention={atRisk > 0} />
             </div>
 
             {/* Por treinador */}
-            <div className="rounded-xl border border-k-border-subtle bg-surface-card overflow-hidden">
+            <div className="rounded-panel border border-k-border-subtle bg-surface-card overflow-hidden">
                 <div className="px-4 py-3 border-b border-k-border-subtle flex items-center justify-between">
                     <h2 className="text-sm font-semibold text-k-text-primary">Por treinador</h2>
-                    <Link href="/estudio/treinadores" className="text-xs font-semibold text-violet-500 hover:text-violet-400">Gerenciar equipe →</Link>
+                    <Link href="/estudio/treinadores" className="text-xs font-medium text-k-text-secondary hover:text-k-text-primary transition-colors">Gerenciar equipe →</Link>
                 </div>
                 {coaches.length === 0 ? (
                     <p className="px-4 py-8 text-center text-sm text-k-text-quaternary">Nenhum treinador com alunos ainda.</p>
@@ -104,25 +102,27 @@ export async function StudioDashboardView({ trainer, organization }: Props) {
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="text-left text-xs uppercase tracking-wider text-k-text-quaternary border-b border-k-border-subtle">
-                                    <th className="px-4 py-2 font-medium">Treinador</th>
-                                    <th className="px-4 py-2 font-medium">Alunos</th>
-                                    <th className="px-4 py-2 font-medium">Semana</th>
-                                    <th className="px-4 py-2 font-medium">Aderência</th>
+                                <tr className="text-left border-b border-k-border-subtle">
+                                    <th className="px-4 py-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">Treinador</th>
+                                    <th className="px-4 py-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary text-right">Alunos</th>
+                                    <th className="px-4 py-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary text-right">Semana</th>
+                                    <th className="px-4 py-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary text-right">Aderência</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {coaches.map(c => (
                                     <tr key={c.coach_id} className="border-b border-k-border-subtle last:border-0">
                                         <td className="px-4 py-2.5 text-k-text-primary font-medium">
-                                            {c.coach_id === trainer.id ? `${c.coach_name} (você)` : c.coach_name}
+                                            {c.coach_id === trainer.id
+                                                ? <>{c.coach_name} <span className="text-k-text-tertiary font-normal">· você</span></>
+                                                : c.coach_name}
                                         </td>
-                                        <td className="px-4 py-2.5 text-k-text-secondary">{c.active_students}</td>
-                                        <td className="px-4 py-2.5 text-k-text-secondary">{c.completed_sessions}/{c.expected_sessions}</td>
-                                        <td className="px-4 py-2.5">
+                                        <td className="px-4 py-2.5 text-k-text-secondary text-right tabular-nums">{c.active_students}</td>
+                                        <td className="px-4 py-2.5 text-k-text-secondary text-right tabular-nums">{c.completed_sessions}/{c.expected_sessions}</td>
+                                        <td className="px-4 py-2.5 text-right tabular-nums">
                                             {c.adherence_pct === null
                                                 ? <span className="text-k-text-quaternary">—</span>
-                                                : <span className={Number(c.adherence_pct) >= 70 ? 'text-emerald-500' : 'text-amber-500'}>{c.adherence_pct}%</span>}
+                                                : <span className={Number(c.adherence_pct) >= 70 ? 'text-k-text-secondary' : 'text-amber-600 dark:text-amber-400'}>{c.adherence_pct}%</span>}
                                         </td>
                                     </tr>
                                 ))}
@@ -132,46 +132,43 @@ export async function StudioDashboardView({ trainer, organization }: Props) {
                 )}
             </div>
 
-            {/* Atalhos: as telas normais são o lugar da operação */}
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <ShortcutCard href="/students" title="Alunos" desc={`${totalActive} ativos${atRisk > 0 ? ` · ${atRisk} em risco` : ''}`} />
-                <ShortcutCard href="/schedule" title="Agenda do estúdio" desc="Sessões de toda a equipe" />
-                <ShortcutCard href="/estudio/plano" title="Plano" desc="Faixa, uso e cobrança" />
+            {/* Atalhos: as telas normais são o lugar da operação — links quietos */}
+            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 px-1">
+                <ShortcutLink href="/students" title="Alunos" desc={`${totalActive} ativos${atRisk > 0 ? ` · ${atRisk} em risco` : ''}`} />
+                <ShortcutLink href="/schedule" title="Agenda do estúdio" desc="toda a equipe" />
+                <ShortcutLink href="/estudio/plano" title="Plano" desc="faixa, uso e cobrança" />
             </div>
         </AppLayout>
     )
 }
 
-function KpiCard({ icon, label, value, hint, trend }: {
-    icon: React.ReactNode
+function KpiCell({ label, value, hint, trend, attention }: {
     label: string
     value: string
     hint?: string
     trend?: number
+    attention?: boolean
 }) {
     return (
-        <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-4">
-            <div className="flex items-center gap-2 mb-2">
-                {icon}
-                <span className="text-[10px] font-bold uppercase tracking-wider text-k-text-quaternary">{label}</span>
-            </div>
-            <p className="text-2xl font-bold text-k-text-primary">{value}</p>
+        <div className="bg-surface-card px-5 py-4 min-w-0">
+            <span className="block font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary mb-1">{label}</span>
+            <p className={`text-[26px] leading-tight font-bold tracking-tight tabular-nums ${attention ? 'text-amber-600 dark:text-amber-400' : 'text-k-text-primary'}`}>{value}</p>
             {hint && (
-                <p className={`mt-1 text-[11px] ${
-                    trend === undefined ? 'text-k-text-quaternary' : trend >= 0 ? 'text-emerald-500' : 'text-amber-500'
-                }`}>
-                    {hint}{trend !== undefined && trend !== 0 ? ` (${trend > 0 ? '+' : ''}${trend}pp)` : ''}
+                <p className="mt-0.5 text-[11.5px] text-k-text-tertiary tabular-nums">
+                    {trend !== undefined && trend !== 0
+                        ? <><span className={trend > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>{trend > 0 ? '+' : ''}{trend}pp</span> · {hint}</>
+                        : hint}
                 </p>
             )}
         </div>
     )
 }
 
-function ShortcutCard({ href, title, desc }: { href: string; title: string; desc: string }) {
+function ShortcutLink({ href, title, desc }: { href: string; title: string; desc: string }) {
     return (
-        <Link href={href} className="rounded-2xl border border-k-border-subtle bg-surface-card p-4 hover:border-violet-500/40 transition-colors">
-            <p className="text-sm font-bold text-k-text-primary">{title}</p>
-            <p className="mt-0.5 text-xs text-k-text-tertiary">{desc}</p>
+        <Link href={href} className="group text-sm">
+            <span className="font-medium text-k-text-secondary group-hover:text-k-text-primary transition-colors">{title}</span>
+            <span className="text-k-text-quaternary"> · {desc} →</span>
         </Link>
     )
 }
