@@ -127,9 +127,10 @@ export function CreateAppointmentModal({
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
 
-    // Student picker (standalone flow)
+    // Student picker (standalone flow) — MULTI: estúdios agendam vários alunos
+    // no MESMO horário (decisão 17/jul); cada aluno vira uma rotina própria.
     const hasPreselectedStudent = !!preselectedStudentId
-    const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
     const [studentQuery, setStudentQuery] = useState('')
     const [studentDropdownOpen, setStudentDropdownOpen] = useState(false)
     const studentPickerRef = useRef<HTMLDivElement | null>(null)
@@ -144,7 +145,7 @@ export function CreateAppointmentModal({
         setNotes('')
         setError(null)
         setLoading(false)
-        setSelectedStudentId(null)
+        setSelectedStudentIds([])
         setStudentQuery('')
         setStudentDropdownOpen(false)
     }, [isOpen, preselectedDate, preselectedTime, todayKey])
@@ -170,12 +171,17 @@ export function CreateAppointmentModal({
         return students.filter((s) => matchesSearch(s.name, studentQuery))
     }, [students, studentQuery])
 
-    const selectedStudent = useMemo(() => {
-        if (!selectedStudentId || !students) return null
-        return students.find((s) => s.id === selectedStudentId) ?? null
-    }, [selectedStudentId, students])
+    const selectedStudents = useMemo(() => {
+        if (!students) return []
+        return selectedStudentIds
+            .map((id) => students.find((s) => s.id === id))
+            .filter((s): s is NonNullable<typeof s> => !!s)
+    }, [selectedStudentIds, students])
 
-    const effectiveStudentId = preselectedStudentId ?? selectedStudentId
+    const effectiveStudentIds = useMemo(
+        () => (preselectedStudentId ? [preselectedStudentId] : selectedStudentIds),
+        [preselectedStudentId, selectedStudentIds],
+    )
 
     const isMonthly = frequency === 'monthly'
     const isOnce = frequency === 'once'
@@ -230,8 +236,8 @@ export function CreateAppointmentModal({
         event.preventDefault()
         setError(null)
 
-        if (!effectiveStudentId) {
-            setError('Selecione um aluno')
+        if (effectiveStudentIds.length === 0) {
+            setError('Selecione ao menos um aluno')
             return
         }
         if (duplicateError) {
@@ -247,38 +253,53 @@ export function CreateAppointmentModal({
                 durationMinutes: resolveDuration(s),
             }))
 
-            // Single slot → keep using the simple action (preserves group_id=NULL)
-            if (normalizedSlots.length === 1) {
-                const result = await createRecurringAppointment({
-                    studentId: effectiveStudentId,
-                    ...normalizedSlots[0],
-                    frequency,
-                    startsOn,
-                    notes: notes.trim() ? notes.trim() : null,
-                })
-                if (result.success && result.data) {
-                    onSuccess?.({ recurringId: result.data.id })
-                    onClose()
-                    return
+            // Uma rotina (ou pacote) POR ALUNO — vários alunos no mesmo horário
+            // é o dia a dia de estúdio. Rotinas independentes: remarcar/cancelar
+            // um aluno não afeta os demais.
+            const failures: string[] = []
+            let firstPayload: { recurringId?: string; groupId?: string } | null = null
+            for (const studentId of effectiveStudentIds) {
+                if (normalizedSlots.length === 1) {
+                    const result = await createRecurringAppointment({
+                        studentId,
+                        ...normalizedSlots[0],
+                        frequency,
+                        startsOn,
+                        notes: notes.trim() ? notes.trim() : null,
+                    })
+                    if (result.success && result.data) {
+                        firstPayload ??= { recurringId: result.data.id }
+                    } else {
+                        failures.push(students?.find((st) => st.id === studentId)?.name ?? 'aluno')
+                    }
+                } else {
+                    const result = await createRecurringAppointmentGroup({
+                        studentId,
+                        slots: normalizedSlots,
+                        frequency,
+                        startsOn,
+                        notes: notes.trim() ? notes.trim() : null,
+                    })
+                    if (result.success && result.data) {
+                        firstPayload ??= { groupId: result.data.groupId }
+                    } else {
+                        failures.push(students?.find((st) => st.id === studentId)?.name ?? 'aluno')
+                    }
                 }
-                setError(result.error ?? 'Erro ao criar rotina')
-                return
             }
 
-            // Multi slot → group action
-            const result = await createRecurringAppointmentGroup({
-                studentId: effectiveStudentId,
-                slots: normalizedSlots,
-                frequency,
-                startsOn,
-                notes: notes.trim() ? notes.trim() : null,
-            })
-            if (result.success && result.data) {
-                onSuccess?.({ groupId: result.data.groupId })
+            if (failures.length === 0 && firstPayload) {
+                onSuccess?.(firstPayload)
                 onClose()
                 return
             }
-            setError(result.error ?? 'Erro ao criar pacote')
+            if (firstPayload) {
+                // Parcial: alguns criados — informa quem falhou (os criados ficam).
+                onSuccess?.(firstPayload)
+                setError(`Não foi possível agendar: ${failures.join(', ')}. Os demais foram criados.`)
+                return
+            }
+            setError('Erro ao criar rotina')
         } catch (err) {
             // AG8: exceção da server action (rede) morria sem feedback — o
             // trainer clicava e nada acontecia.
@@ -350,43 +371,32 @@ export function CreateAppointmentModal({
                                 htmlFor="studentPicker"
                                 className="mb-1.5 block text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide"
                             >
-                                Aluno
+                                Alunos
                             </label>
-                            {selectedStudent ? (
-                                <div className="flex items-center gap-2 rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3 py-2">
-                                    <div className="h-7 w-7 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center overflow-hidden">
-                                        {selectedStudent.avatarUrl ? (
-                                            <Image
-                                                src={selectedStudent.avatarUrl}
-                                                alt={selectedStudent.name}
-                                                width={28}
-                                                height={28}
-                                                className="h-7 w-7 object-cover"
-                                                unoptimized
-                                            />
-                                        ) : (
-                                            <span className="text-xs font-bold text-[#7C3AED] dark:text-primary">
-                                                {selectedStudent.name.charAt(0).toUpperCase()}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <span className="flex-1 text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary truncate">
-                                        {selectedStudent.name}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSelectedStudentId(null)
-                                            setStudentQuery('')
-                                            setStudentDropdownOpen(true)
-                                        }}
-                                        aria-label="Trocar aluno"
-                                        className="h-6 w-6 flex items-center justify-center text-[#AEAEB2] dark:text-muted-foreground/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active rounded-full transition-colors"
-                                    >
-                                        <X className="w-3.5 h-3.5" strokeWidth={1.5} />
-                                    </button>
+                            <p className="-mt-0.5 mb-1.5 text-[11px] text-[#86868B] dark:text-k-text-quaternary">
+                                Adicione mais de um aluno para a mesma turma/horário.
+                            </p>
+                            {selectedStudents.length > 0 && (
+                                <div className="mb-2 flex flex-wrap gap-1.5">
+                                    {selectedStudents.map((st) => (
+                                        <span
+                                            key={st.id}
+                                            className="inline-flex items-center gap-1.5 rounded-full border border-[#E0D7FF] dark:border-violet-500/30 bg-[#F3F0FF] dark:bg-violet-500/10 pl-2.5 pr-1 py-1 text-xs font-semibold text-[#7C3AED] dark:text-violet-300"
+                                        >
+                                            {st.name}
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedStudentIds((prev) => prev.filter((id) => id !== st.id))}
+                                                aria-label={`Remover ${st.name}`}
+                                                className="flex h-4 w-4 items-center justify-center rounded-full hover:bg-[#7C3AED]/15"
+                                            >
+                                                <X className="h-3 w-3" strokeWidth={2} />
+                                            </button>
+                                        </span>
+                                    ))}
                                 </div>
-                            ) : !students || students.length === 0 ? (
+                            )}
+                            {!students || students.length === 0 ? (
                                 <div className="rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F9F9FB] dark:bg-white/5 px-3 py-2.5 text-xs text-[#86868B] dark:text-k-text-quaternary">
                                     Nenhum aluno disponível. Cadastre um aluno antes de criar uma rotina.
                                 </div>
@@ -405,7 +415,7 @@ export function CreateAppointmentModal({
                                             setStudentDropdownOpen(true)
                                         }}
                                         onFocus={() => setStudentDropdownOpen(true)}
-                                        placeholder="Buscar aluno..."
+                                        placeholder={selectedStudents.length > 0 ? 'Adicionar outro aluno no mesmo horário...' : 'Buscar aluno...'}
                                         autoComplete="off"
                                         className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg pl-9 pr-3 py-2.5 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 transition-all"
                                     />
@@ -419,40 +429,47 @@ export function CreateAppointmentModal({
                                                     Nenhum aluno encontrado
                                                 </div>
                                             ) : (
-                                                filteredStudents.map((s) => (
-                                                    <button
-                                                        key={s.id}
-                                                        type="button"
-                                                        role="option"
-                                                        aria-selected={selectedStudentId === s.id}
-                                                        onClick={() => {
-                                                            setSelectedStudentId(s.id)
-                                                            setStudentQuery('')
-                                                            setStudentDropdownOpen(false)
-                                                        }}
-                                                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors text-left"
-                                                    >
-                                                        <div className="h-7 w-7 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center overflow-hidden">
-                                                            {s.avatarUrl ? (
-                                                                <Image
-                                                                    src={s.avatarUrl}
-                                                                    alt={s.name}
-                                                                    width={28}
-                                                                    height={28}
-                                                                    className="h-7 w-7 object-cover"
-                                                                    unoptimized
-                                                                />
-                                                            ) : (
-                                                                <span className="text-xs font-bold text-[#7C3AED] dark:text-primary">
-                                                                    {s.name.charAt(0).toUpperCase()}
-                                                                </span>
+                                                filteredStudents.map((s) => {
+                                                    const isSelected = selectedStudentIds.includes(s.id)
+                                                    return (
+                                                        <button
+                                                            key={s.id}
+                                                            type="button"
+                                                            role="option"
+                                                            aria-selected={isSelected}
+                                                            onClick={() => {
+                                                                setSelectedStudentIds((prev) =>
+                                                                    isSelected ? prev.filter((id) => id !== s.id) : [...prev, s.id],
+                                                                )
+                                                                setStudentQuery('')
+                                                            }}
+                                                            className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors text-left ${isSelected ? 'bg-[#F3F0FF]/60 dark:bg-violet-500/10' : ''}`}
+                                                        >
+                                                            <div className="h-7 w-7 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center overflow-hidden">
+                                                                {s.avatarUrl ? (
+                                                                    <Image
+                                                                        src={s.avatarUrl}
+                                                                        alt={s.name}
+                                                                        width={28}
+                                                                        height={28}
+                                                                        className="h-7 w-7 object-cover"
+                                                                        unoptimized
+                                                                    />
+                                                                ) : (
+                                                                    <span className="text-xs font-bold text-[#7C3AED] dark:text-primary">
+                                                                        {s.name.charAt(0).toUpperCase()}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className="flex-1 text-sm text-[#1D1D1F] dark:text-k-text-primary truncate">
+                                                                {s.name}
+                                                            </span>
+                                                            {isSelected && (
+                                                                <span className="text-[10px] font-bold uppercase text-[#7C3AED] dark:text-violet-400">na turma</span>
                                                             )}
-                                                        </div>
-                                                        <span className="flex-1 text-sm text-[#1D1D1F] dark:text-k-text-primary truncate">
-                                                            {s.name}
-                                                        </span>
-                                                    </button>
-                                                ))
+                                                        </button>
+                                                    )
+                                                })
                                             )}
                                         </div>
                                     )}
@@ -697,11 +714,11 @@ export function CreateAppointmentModal({
                             disabled={
                                 loading ||
                                 !!duplicateError ||
-                                !effectiveStudentId
+                                effectiveStudentIds.length === 0
                             }
                             title={
-                                !effectiveStudentId
-                                    ? 'Selecione um aluno pra continuar'
+                                effectiveStudentIds.length === 0
+                                    ? 'Selecione ao menos um aluno'
                                     : undefined
                             }
                             className="flex-1 px-4 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
@@ -714,7 +731,9 @@ export function CreateAppointmentModal({
                             ) : (
                                 <>
                                     <Check className="w-4 h-4" strokeWidth={2} />
-                                    {slots.length > 1 ? 'Criar pacote' : 'Criar agendamento'}
+                                    {effectiveStudentIds.length > 1
+                                        ? `Agendar ${effectiveStudentIds.length} alunos`
+                                        : slots.length > 1 ? 'Criar pacote' : 'Criar agendamento'}
                                 </>
                             )}
                         </button>

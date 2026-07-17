@@ -111,7 +111,9 @@ export function CreateAppointmentSheet({
         useScheduleAppointmentReminder();
     const [permissionDenied, setPermissionDenied] = useState(false);
 
-    const [studentId, setStudentId] = useState<string | null>(null);
+    // MULTI (decisão 17/jul): estúdio agenda vários alunos no MESMO horário —
+    // uma rotina por aluno. No modo EDIÇÃO segue 1 (a regra é de um aluno).
+    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
     const [date, setDate] = useState<Date>(() => initialDate ?? new Date());
     const [time, setTime] = useState<string>("09:00");
     const [duration, setDuration] = useState<number>(60);
@@ -127,13 +129,13 @@ export function CreateAppointmentSheet({
             sheetRef.current?.expand();
             // Prefill from the rule when editing, otherwise reset to defaults.
             if (editing) {
-                setStudentId(editing.studentId);
+                setSelectedStudentIds([editing.studentId]);
                 setTime(editing.startTime);
                 setDuration(editing.durationMinutes);
                 setFrequency(editing.frequency);
                 setNotes(editing.notes ?? "");
             } else {
-                setStudentId(null);
+                setSelectedStudentIds([]);
                 setTime("09:00");
                 setDuration(60);
                 setFrequency("weekly");
@@ -168,9 +170,12 @@ export function CreateAppointmentSheet({
         return all.filter((s: TrainerStudent) => matchesSearch(s.name, studentSearch));
     }, [studentsListed, studentSearch]);
 
-    const selectedStudent = useMemo(
-        () => studentsListed?.find((s: TrainerStudent) => s.id === studentId) ?? null,
-        [studentsListed, studentId],
+    const selectedStudents = useMemo(
+        () =>
+            selectedStudentIds
+                .map((id) => studentsListed?.find((s: TrainerStudent) => s.id === id))
+                .filter((s): s is TrainerStudent => !!s),
+        [studentsListed, selectedStudentIds],
     );
 
     // Days strip: 60 days from today
@@ -183,8 +188,8 @@ export function CreateAppointmentSheet({
 
     const handleSubmit = useCallback(async () => {
         setError(null);
-        if (!studentId) {
-            setError("Selecione um aluno");
+        if (selectedStudentIds.length === 0) {
+            setError("Selecione ao menos um aluno");
             return;
         }
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -195,7 +200,7 @@ export function CreateAppointmentSheet({
         if (editing) {
             const res = await updateRecurring({
                 id: editing.id,
-                studentId,
+                studentId: selectedStudentIds[0],
                 startTime: time,
                 durationMinutes: duration,
                 frequency,
@@ -218,22 +223,32 @@ export function CreateAppointmentSheet({
         const startsOn = toLocalDateKey(date);
         const dayOfWeek = date.getDay();
 
-        const input: CreateAppointmentInput = {
-            studentId,
-            dayOfWeek,
-            startTime: time,
-            durationMinutes: duration,
-            frequency,
-            startsOn,
-            endsOn: frequency === "once" ? startsOn : endsOn,
-            notes: notes.trim() ? notes.trim() : null,
-        };
+        // Uma rotina POR ALUNO (turma no mesmo horário). Independentes:
+        // remarcar/cancelar um não afeta os demais.
+        const createdIds: string[] = [];
+        const failures: string[] = [];
+        for (const sid of selectedStudentIds) {
+            const input: CreateAppointmentInput = {
+                studentId: sid,
+                dayOfWeek,
+                startTime: time,
+                durationMinutes: duration,
+                frequency,
+                startsOn,
+                endsOn: frequency === "once" ? startsOn : endsOn,
+                notes: notes.trim() ? notes.trim() : null,
+            };
+            const result = await createAppointment(input);
+            if (result.success && result.data) {
+                createdIds.push(result.data.id);
+            } else {
+                failures.push(studentsListed?.find((st: TrainerStudent) => st.id === sid)?.name ?? "aluno");
+            }
+        }
 
-        const result = await createAppointment(input);
-
-        if (!result.success || !result.data) {
+        if (createdIds.length === 0) {
             setSubmitting(false);
-            setError(result.error ?? "Erro ao criar agendamento");
+            setError("Erro ao criar agendamento");
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
         }
@@ -247,7 +262,15 @@ export function CreateAppointmentSheet({
             setPermissionDenied(true);
         }
 
-        await scheduleForRule(result.data.id);
+        for (const rid of createdIds) await scheduleForRule(rid);
+
+        if (failures.length > 0) {
+            setSubmitting(false);
+            setError(`Não foi possível agendar: ${failures.join(", ")}. Os demais foram criados.`);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            onCreated();
+            return;
+        }
 
         setSubmitting(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -255,7 +278,8 @@ export function CreateAppointmentSheet({
         onClose();
     }, [
         editing,
-        studentId,
+        selectedStudentIds,
+        studentsListed,
         date,
         time,
         duration,
@@ -332,99 +356,92 @@ export function CreateAppointmentSheet({
 
                 <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
                     {/* Aluno picker */}
-                    <SectionLabel colors={colors}>Aluno</SectionLabel>
-                    {selectedStudent ? (
-                        <Pressable
-                            onPress={() => {
-                                Haptics.selectionAsync();
-                                setStudentId(null);
-                            }}
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                padding: 12,
-                                borderRadius: 12,
-                                backgroundColor: colors.purple[100],
-                                borderWidth: 1,
-                                borderColor: colors.purple[600],
-                            }}
-                        >
-                            {selectedStudent.avatar_url ? (
-                                <Image
-                                    source={{ uri: selectedStudent.avatar_url }}
-                                    style={{ width: 36, height: 36, borderRadius: 12, marginRight: 10 }}
-                                />
-                            ) : (
-                                <View
-                                    style={{
-                                        width: 36,
-                                        height: 36,
-                                        borderRadius: 12,
-                                        backgroundColor: colors.purple[200],
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        marginRight: 10,
+                    <SectionLabel colors={colors}>{editing ? "Aluno" : "Alunos (um ou mais no horário)"}</SectionLabel>
+{selectedStudents.length > 0 && (
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                            {selectedStudents.map((st) => (
+                                <Pressable
+                                    key={st.id}
+                                    onPress={() => {
+                                        Haptics.selectionAsync();
+                                        setSelectedStudentIds((prev) =>
+                                            editing ? prev : prev.filter((id) => id !== st.id),
+                                        );
                                     }}
+                                    accessibilityLabel={`Remover ${st.name}`}
                                 >
-                                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.purple[600] }}>
-                                        {initialsOf(selectedStudent.name)}
-                                    </Text>
-                                </View>
-                            )}
-                            <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
-                                {selectedStudent.name}
-                            </Text>
-                            <Text style={{ fontSize: 12, color: colors.purple[600], fontWeight: "600" }}>Trocar</Text>
-                        </Pressable>
-                    ) : (
-                        <View
-                            style={{
-                                backgroundColor: colors.surface.card2,
-                                borderRadius: 12,
-                                padding: 8,
-                                borderWidth: 1,
-                                borderColor: colors.border.default,
-                            }}
-                        >
-                            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 4 }}>
-                                <Search size={16} color={colors.text.quaternary} />
-                                <BottomSheetTextInput
-                                    placeholder="Buscar aluno..."
-                                    placeholderTextColor={colors.text.quaternary}
-                                    value={studentSearch}
-                                    onChangeText={setStudentSearch}
-                                    style={{ flex: 1, fontSize: 14, color: colors.text.primary, marginLeft: 8, paddingVertical: 6 }}
-                                />
-                            </View>
-                            {studentsLoading ? (
-                                <ActivityIndicator size="small" color={colors.purple[600]} style={{ marginVertical: 16 }} />
-                            ) : (
-                                // Render the student list inline (no nested vertical
-                                // ScrollView). A nested ScrollView inside
-                                // BottomSheetScrollView caused gesture conflicts that
-                                // made the sheet "jump" while the user scrolled.
-                                // The parent BottomSheetScrollView handles overflow.
-                                <View>
-                                    {filteredStudents.length === 0 ? (
-                                        <Text style={{ textAlign: "center", color: colors.text.quaternary, fontSize: 12, paddingVertical: 16 }}>
-                                            Nenhum aluno encontrado
+                                    <View
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            gap: 6,
+                                            paddingLeft: 10,
+                                            paddingRight: 8,
+                                            paddingVertical: 6,
+                                            borderRadius: 999,
+                                            backgroundColor: colors.purple[100],
+                                            borderWidth: 1,
+                                            borderColor: colors.purple[600],
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: "700", color: colors.purple[600] }}>
+                                            {st.name}
                                         </Text>
-                                    ) : (
-                                        filteredStudents.map((s: TrainerStudent) => (
+                                        {!editing && <X size={12} color={colors.purple[600]} />}
+                                    </View>
+                                </Pressable>
+                            ))}
+                        </View>
+                    )}
+                    <View
+                        style={{
+                            backgroundColor: colors.surface.card2,
+                            borderRadius: 12,
+                            padding: 8,
+                            borderWidth: 1,
+                            borderColor: colors.border.default,
+                        }}
+                    >
+                        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 4 }}>
+                            <Search size={16} color={colors.text.quaternary} />
+                            <BottomSheetTextInput
+                                placeholder={selectedStudents.length > 0 && !editing ? "Adicionar outro aluno no horário..." : "Buscar aluno..."}
+                                placeholderTextColor={colors.text.quaternary}
+                                value={studentSearch}
+                                onChangeText={setStudentSearch}
+                                style={{ flex: 1, fontSize: 14, color: colors.text.primary, marginLeft: 8, paddingVertical: 6 }}
+                            />
+                        </View>
+                        {studentsLoading ? (
+                            <ActivityIndicator size="small" color={colors.purple[600]} style={{ marginVertical: 16 }} />
+                        ) : (
+                            <View>
+                                {filteredStudents.length === 0 ? (
+                                    <Text style={{ textAlign: "center", color: colors.text.quaternary, fontSize: 12, paddingVertical: 16 }}>
+                                        Nenhum aluno encontrado
+                                    </Text>
+                                ) : (
+                                    filteredStudents.map((s: TrainerStudent) => {
+                                        const isSelected = selectedStudentIds.includes(s.id);
+                                        return (
                                             <Pressable
                                                 key={s.id}
                                                 onPress={() => {
                                                     Haptics.selectionAsync();
-                                                    setStudentId(s.id);
+                                                    setSelectedStudentIds((prev) =>
+                                                        editing
+                                                            ? [s.id]
+                                                            : isSelected
+                                                              ? prev.filter((id) => id !== s.id)
+                                                              : [...prev, s.id],
+                                                    );
+                                                    setStudentSearch("");
                                                 }}
                                                 accessibilityRole="button"
-                                                accessibilityLabel={`Selecionar ${s.name}`}
+                                                accessibilityLabel={`${isSelected ? "Remover" : "Selecionar"} ${s.name}`}
                                                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                                             >
-                                                {/* layout em View interna: flex em style-função
-                                                    de Pressable não aplica (gotcha) — a linha
-                                                    empilhava e o nome (flex:1) sumia. */}
-                                                <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 8, borderRadius: 8 }}>
+                                                <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, paddingHorizontal: 8, borderRadius: 8, backgroundColor: isSelected ? colors.purple[100] : "transparent" }}>
                                                 {s.avatar_url ? (
                                                     <Image
                                                         source={{ uri: s.avatar_url }}
@@ -442,21 +459,23 @@ export function CreateAppointmentSheet({
                                                             marginRight: 10,
                                                         }}
                                                     >
-                                                        <Text style={{ fontSize: 11, fontWeight: "700", color: colors.text.tertiary }}>
+                                                        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.text.tertiary }}>
                                                             {initialsOf(s.name)}
                                                         </Text>
                                                     </View>
                                                 )}
-                                                <Text style={{ fontSize: 13, color: colors.text.primary, flex: 1 }}>{s.name}</Text>
-                                                <ChevronRight size={14} color={colors.text.quaternary} />
+                                                <Text style={{ flex: 1, fontSize: 14, color: colors.text.primary }}>{s.name}</Text>
+                                                {isSelected && (
+                                                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.purple[600] }}>NA TURMA</Text>
+                                                )}
                                                 </View>
                                             </Pressable>
-                                        ))
-                                    )}
-                                </View>
-                            )}
-                        </View>
-                    )}
+                                        );
+                                    })
+                                )}
+                            </View>
+                        )}
+                    </View>
 
                     {/* Date picker (horizontal scroll of days) — create only.
                         Moving an existing series' day/date is done via "Remarcar". */}
