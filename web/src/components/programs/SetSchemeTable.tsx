@@ -192,7 +192,7 @@ export function SetSchemeTable({
 
             {/* Linha de seção: título + (rodadas, compound) + toggles RIR/Cadência */}
             <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+                <div className="flex items-center gap-1.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
                     {sectionTitle}
                     {compound && compoundTooltip && (
                         <span
@@ -228,13 +228,13 @@ export function SetSchemeTable({
                 <table className="w-full text-xs text-left">
                     <thead className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
                         <tr>
-                            <th className="py-2 pr-2 font-bold">#</th>
-                            <th className="py-2 pr-2 font-bold">Tipo</th>
-                            <th className="py-2 pr-2 font-bold">Reps</th>
-                            <th className="py-2 pr-2 font-bold">Carga</th>
-                            {showRir && <th className="py-2 pr-2 font-bold">RIR</th>}
-                            <th className="py-2 pr-2 font-bold">Descanso</th>
-                            {showTempo && <th className="py-2 pr-2 font-bold">Cadência</th>}
+                            <th className="py-2 pr-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em]">#</th>
+                            <th className="py-2 pr-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em]">Tipo</th>
+                            <th className="py-2 pr-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em]">Reps</th>
+                            <th className="py-2 pr-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em]">Carga</th>
+                            {showRir && <th className="py-2 pr-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em]">RIR</th>}
+                            <th className="py-2 pr-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em]">Descanso</th>
+                            {showTempo && <th className="py-2 pr-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em]">Cadência</th>}
                             {!readonly && <th className="py-2 pr-2 w-16" aria-label="Ações" />}
                         </tr>
                     </thead>
@@ -286,11 +286,11 @@ function RoundsStepper({
 }) {
     return (
         <div className="inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-inset)] border border-[var(--border-subtle)] pl-2.5 pr-1 py-0.5">
-            <span className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+            <span className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
                 Rodadas
             </span>
             {readonly ? (
-                <span className="px-1 text-sm font-extrabold tabular-nums text-[#7C3AED] dark:text-violet-400">
+                <span className="px-1 font-mono text-sm font-bold tabular-nums text-[var(--text-primary)]">
                     {rounds}
                 </span>
             ) : (
@@ -304,7 +304,7 @@ function RoundsStepper({
                     >
                         <Minus className="w-3 h-3" />
                     </button>
-                    <span className="min-w-[1.1rem] text-center text-sm font-extrabold tabular-nums text-[#7C3AED] dark:text-violet-400">
+                    <span className="min-w-[1.1rem] text-center font-mono text-sm font-bold tabular-nums text-[var(--text-primary)]">
                         {rounds}
                     </span>
                     <button

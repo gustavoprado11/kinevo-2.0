@@ -46,7 +46,7 @@ export function pixelsToTime(pixels: number): string {
 export function TimeGrid() {
     return (
         <div
-            className="relative w-14 flex-shrink-0 border-r border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card"
+            className="relative w-14 flex-shrink-0 border-r border-k-border-subtle bg-surface-card"
             style={{ height: `${CALENDAR_HEIGHT_PX}px` }}
             aria-hidden="true"
         >
@@ -56,7 +56,7 @@ export function TimeGrid() {
                     className="absolute left-0 right-0 flex items-start justify-end pr-1.5 pt-0.5"
                     style={{ top: `${idx * HOUR_HEIGHT_PX - 6}px`, height: `${HOUR_HEIGHT_PX}px` }}
                 >
-                    <span className="text-[10px] font-medium text-[#AEAEB2] dark:text-k-text-quaternary tabular-nums">
+                    <span className="font-mono text-[10px] text-k-text-quaternary tabular-nums">
                         {String(hour).padStart(2, '0')}:00
                     </span>
                 </div>

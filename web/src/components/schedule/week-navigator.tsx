@@ -50,15 +50,15 @@ export function WeekNavigator({
                 type="button"
                 onClick={onPrevious}
                 aria-label="Semana anterior"
-                className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-[#6E6E73] dark:text-k-text-secondary border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
+                className="w-8 h-8 inline-flex items-center justify-center rounded-control text-k-text-secondary border border-k-border-primary bg-surface-card hover:bg-surface-inset transition-colors"
             >
                 <ChevronLeft className="w-4 h-4" strokeWidth={1.75} />
             </button>
             <div className="flex items-center gap-2 min-w-[140px] justify-center px-2">
                 {isNavigating && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#86868B] dark:text-k-text-quaternary" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-k-text-quaternary" />
                 )}
-                <span className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary tabular-nums">
+                <span className="text-sm font-semibold text-k-text-primary tabular-nums">
                     {rangeLabel}
                 </span>
             </div>
@@ -66,14 +66,14 @@ export function WeekNavigator({
                 type="button"
                 onClick={onNext}
                 aria-label="Próxima semana"
-                className="w-8 h-8 inline-flex items-center justify-center rounded-lg text-[#6E6E73] dark:text-k-text-secondary border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
+                className="w-8 h-8 inline-flex items-center justify-center rounded-control text-k-text-secondary border border-k-border-primary bg-surface-card hover:bg-surface-inset transition-colors"
             >
                 <ChevronRight className="w-4 h-4" strokeWidth={1.75} />
             </button>
             <button
                 type="button"
                 onClick={onToday}
-                className="ml-1.5 h-8 px-3 text-[11px] font-semibold text-[#7C3AED] dark:text-violet-400 border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card hover:bg-[#F5F5F7] dark:hover:bg-glass-bg rounded-lg transition-colors"
+                className="ml-1.5 h-8 px-3 text-[11px] font-semibold text-k-text-secondary hover:text-k-text-primary border border-k-border-primary bg-surface-card hover:bg-surface-inset rounded-control transition-colors"
             >
                 Hoje
             </button>

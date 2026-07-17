@@ -153,7 +153,7 @@ function MetricCard({
                 {icon}
             </span>
             <div className="flex-1 min-w-0">
-                <div className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] leading-tight mb-0.5">
+                <div className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-[var(--text-tertiary)] leading-tight mb-0.5">
                     {label}
                 </div>
                 <div className="min-w-0">{children}</div>
@@ -163,11 +163,11 @@ function MetricCard({
 }
 
 const metricInputClass =
-    'w-full bg-transparent text-[var(--text-primary)] text-[13px] font-bold tabular-nums focus:outline-none focus:text-[#7C3AED] dark:focus:text-violet-400 transition-colors placeholder:text-[var(--text-quaternary)] placeholder:font-medium p-0'
+    'w-full bg-transparent font-mono text-[var(--text-primary)] text-[12.5px] font-semibold tabular-nums focus:outline-none focus:text-[#7C3AED] dark:focus:text-violet-400 transition-colors placeholder:text-[var(--text-quaternary)] placeholder:font-medium p-0'
 
 function ReadonlyValue({ value }: { value: string | number }) {
     return (
-        <span className="text-[13px] font-bold text-[var(--text-primary)] tabular-nums">
+        <span className="font-mono text-[12.5px] font-semibold text-[var(--text-primary)] tabular-nums">
             {value}
         </span>
     )
@@ -232,7 +232,7 @@ function SchemeSeriesValue({
     const phases = scheme.length
     if (compound && rounds > 1) {
         return (
-            <div className="text-[13px] font-bold text-[var(--text-primary)] leading-tight tabular-nums">
+            <div className="font-mono text-[12.5px] font-semibold text-[var(--text-primary)] leading-tight tabular-nums">
                 {rounds}{' '}
                 <span className="text-[10.5px] font-medium text-[var(--text-tertiary)]">
                     rodadas × {phases} fases
@@ -241,7 +241,7 @@ function SchemeSeriesValue({
         )
     }
     return (
-        <div className="text-[13px] font-bold text-[var(--text-primary)] leading-tight tabular-nums">
+        <div className="font-mono text-[12.5px] font-semibold text-[var(--text-primary)] leading-tight tabular-nums">
             {phases}{' '}
             <span className="text-[10.5px] font-medium text-[var(--text-tertiary)]">
                 {phases === 1 ? 'fase' : 'fases'}
@@ -261,7 +261,7 @@ function SchemeRepsValue({
 }) {
     const reps = scheme.map((s) => s.reps ?? '—')
     return (
-        <div className="text-[13px] font-bold text-[var(--text-primary)] leading-tight tabular-nums">
+        <div className="font-mono text-[12.5px] font-semibold text-[var(--text-primary)] leading-tight tabular-nums">
             {compactSequence(reps)}
             {compound && rounds > 1 && (
                 <span className="text-[10.5px] font-medium text-[var(--text-tertiary)] ml-1">
@@ -275,7 +275,7 @@ function SchemeRepsValue({
 function SchemeRestValue({ scheme }: { scheme: WorkoutSet[] }) {
     const rest = scheme.map((s) => s.rest_seconds ?? 0)
     return (
-        <div className="text-[13px] font-bold text-[var(--text-primary)] leading-tight tabular-nums">
+        <div className="font-mono text-[12.5px] font-semibold text-[var(--text-primary)] leading-tight tabular-nums">
             {compactSequence(rest)}{' '}
             <span className="text-[10.5px] font-medium text-[var(--text-tertiary)]">s</span>
         </div>

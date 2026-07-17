@@ -179,22 +179,22 @@ function DayColumn({
     }
 
     return (
-        <div className="flex-1 min-w-0 relative border-r border-[#E8E8ED] dark:border-k-border-subtle last:border-r-0">
+        <div className="flex-1 min-w-0 relative border-r border-k-border-subtle last:border-r-0">
             <div
                 ref={setNodeRef}
                 onClick={handleBackgroundClick}
                 role="gridcell"
                 aria-label={`Coluna ${date}`}
                 className={`absolute inset-0 cursor-pointer transition-colors ${
-                    isOver ? 'bg-[#7C3AED]/5 dark:bg-violet-500/10' : ''
-                } ${isToday ? 'bg-[#F5F5F7] dark:bg-glass-bg' : ''}`}
+                    isOver ? 'bg-surface-inset' : ''
+                } ${isToday ? 'bg-surface-inset/50' : ''}`}
                 style={{ height: `${CALENDAR_HEIGHT_PX}px` }}
             >
                 {/* Hour grid lines */}
                 {HOURS.slice(0, -1).map((hour, idx) => (
                     <div
                         key={hour}
-                        className="absolute left-0 right-0 border-b border-[#E8E8ED] dark:border-k-border-subtle pointer-events-none"
+                        className="absolute left-0 right-0 border-b border-k-border-subtle pointer-events-none"
                         style={{ top: `${(idx + 1) * HOUR_HEIGHT_PX}px` }}
                     />
                 ))}
@@ -286,12 +286,12 @@ export function WeeklyCalendar({
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-auto max-h-[calc(100vh-200px)] rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-none"
+                className="flex-1 overflow-auto max-h-[calc(100vh-200px)] rounded-panel border border-k-border-subtle bg-surface-card"
             >
                 {error && (
                     <div
                         role="alert"
-                        className="px-6 py-2 bg-[#FF3B30]/5 dark:bg-red-500/10 border-b border-[#FF3B30]/20 dark:border-red-500/20 text-[#FF3B30] dark:text-red-400 text-xs flex items-center justify-between"
+                        className="px-6 py-2 bg-red-500/5 dark:bg-red-500/10 border-b border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center justify-between"
                     >
                         <span>{error}</span>
                         <button
@@ -305,8 +305,8 @@ export function WeeklyCalendar({
                 )}
 
                 {/* Header row with day labels — sticky */}
-                <div className="sticky top-0 z-30 flex border-b border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card">
-                    <div className="w-14 flex-shrink-0 border-r border-[#E8E8ED] dark:border-k-border-subtle" />
+                <div className="sticky top-0 z-30 flex border-b border-k-border-subtle bg-surface-card">
+                    <div className="w-14 flex-shrink-0 border-r border-k-border-subtle" />
                     {days.map((day) => {
                         const dateObj = parseKey(day)
                         const dayLabel = DAY_ABBR_PT[dateObj.getUTCDay()]
@@ -315,26 +315,20 @@ export function WeeklyCalendar({
                         return (
                             <div
                                 key={day}
-                                className={`flex-1 min-w-0 text-center py-2 border-r border-[#E8E8ED] dark:border-k-border-subtle last:border-r-0 ${
-                                    isToday
-                                        ? 'bg-[#F5F5F7] dark:bg-glass-bg'
-                                        : ''
+                                className={`flex-1 min-w-0 text-center py-2 border-r border-k-border-subtle last:border-r-0 ${
+                                    isToday ? 'bg-surface-inset/60' : ''
                                 }`}
                             >
                                 <div
-                                    className={`text-[10px] font-medium uppercase tracking-wider ${
-                                        isToday
-                                            ? 'text-[#7C3AED] dark:text-violet-400'
-                                            : 'text-[#86868B] dark:text-k-text-quaternary'
+                                    className={`font-mono text-[10px] uppercase tracking-[0.12em] ${
+                                        isToday ? 'text-k-text-primary font-medium' : 'text-k-text-quaternary'
                                     }`}
                                 >
                                     {dayLabel}
                                 </div>
                                 <div
-                                    className={`text-sm font-medium tabular-nums ${
-                                        isToday
-                                            ? 'text-[#7C3AED] dark:text-violet-400'
-                                            : 'text-[#1D1D1F] dark:text-k-text-primary'
+                                    className={`text-sm tabular-nums ${
+                                        isToday ? 'text-k-text-primary font-bold' : 'text-k-text-primary font-medium'
                                     }`}
                                 >
                                     {dayNum}

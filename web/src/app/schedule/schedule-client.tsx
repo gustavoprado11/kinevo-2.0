@@ -297,16 +297,16 @@ export function ScheduleClient({
                 {/* Header da página — fora do card do calendário */}
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                        <h1 className="text-xl font-bold text-[#1D1D1F] dark:text-k-text-primary tracking-tight">
+                        <h1 className="text-2xl font-bold text-k-text-primary tracking-tight">
                             Agenda
                         </h1>
-                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                        <p className="text-xs text-k-text-quaternary mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
                             Calendário semanal de agendamentos
-                            <span className="inline-flex items-center gap-1 text-[11px] text-[#6E6E73] dark:text-k-text-tertiary">
-                                <kbd className="rounded border border-[#D2D2D7] dark:border-k-border-subtle px-1 font-sans leading-none">←</kbd>
-                                <kbd className="rounded border border-[#D2D2D7] dark:border-k-border-subtle px-1 font-sans leading-none">→</kbd>
+                            <span className="inline-flex items-center gap-1 text-[11px] text-k-text-tertiary">
+                                <kbd className="rounded border border-k-border-primary px-1 font-mono text-[10px] leading-none">←</kbd>
+                                <kbd className="rounded border border-k-border-primary px-1 font-mono text-[10px] leading-none">→</kbd>
                                 navegam ·
-                                <kbd className="rounded border border-[#D2D2D7] dark:border-k-border-subtle px-1 font-sans leading-none">T</kbd>
+                                <kbd className="rounded border border-k-border-primary px-1 font-mono text-[10px] leading-none">T</kbd>
                                 hoje
                             </span>
                         </p>
@@ -321,7 +321,7 @@ export function ScheduleClient({
                         />
                         <Button
                             onClick={handleNewAppointment}
-                            className="gap-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 rounded-full dark:rounded-xl px-5 py-2 text-sm font-medium shadow-none dark:shadow-lg dark:shadow-violet-500/20 transition-all"
+                            className="gap-2 px-4 py-2 text-sm"
                         >
                             <Plus size={14} strokeWidth={2.5} />
                             Novo agendamento
@@ -346,7 +346,7 @@ export function ScheduleClient({
                                 />
                             ))}
                         {coachFilter !== 'me' && (
-                            <span className="shrink-0 text-[11px] text-[#86868B] dark:text-k-text-quaternary">
+                            <span className="shrink-0 text-[11px] text-k-text-quaternary">
                                 visão do estúdio — para agendar/remarcar, use a visão &ldquo;Você&rdquo;
                             </span>
                         )}
@@ -389,10 +389,10 @@ function FilterChip({ active, onClick, label }: { active: boolean; onClick: () =
     return (
         <button
             onClick={onClick}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`shrink-0 rounded-control border px-3 py-1.5 text-xs transition-colors ${
                 active
-                    ? 'bg-[#7C3AED] dark:bg-violet-600 text-white'
-                    : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary border border-[#E8E8ED] dark:border-k-border-subtle'
+                    ? 'bg-surface-inset border-k-border-primary text-k-text-primary font-semibold'
+                    : 'bg-surface-card border-k-border-primary text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset/60 font-medium'
             }`}
         >
             {label}

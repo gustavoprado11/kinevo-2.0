@@ -27,12 +27,12 @@ interface Props {
  * app (nenhuma cor "inventada").
  */
 const STUDENT_STRIPE_COLORS = [
-    '#007AFF', // blue
-    '#8b5cf6', // violet (principal do kinevo)
-    '#34C759', // green
-    '#FF9500', // orange
-    '#FF2D92', // pink
-    '#5AC8FA', // teal
+    '#3B82F6', // blue
+    '#8B5CF6', // violet
+    '#10B981', // emerald
+    '#F59E0B', // amber
+    '#EC4899', // pink
+    '#06B6D4', // cyan
 ]
 
 function hashStudentId(id: string): number {
@@ -115,14 +115,13 @@ export function AppointmentCard({
                             borderLeftColor: stripeColor,
                             borderLeftWidth: '3px',
                             borderLeftStyle: 'solid',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                         }}
-                        className="h-full rounded-lg px-2 py-1.5 bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary overflow-hidden"
+                        className="h-full rounded-[6px] px-2 py-1.5 bg-surface-elevated border border-k-border-primary overflow-hidden"
                     >
                         <div className="flex items-start gap-1.5">
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1">
-                                    <p className="text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary truncate">
+                                    <p className="text-xs font-semibold text-k-text-primary truncate">
                                         {student.name}
                                     </p>
                                     {occurrence.groupId && (
@@ -134,23 +133,23 @@ export function AppointmentCard({
                                         />
                                     )}
                                 </div>
-                                <p className="text-[11px] text-[#86868B] dark:text-k-text-quaternary tabular-nums">
+                                <p className="font-mono text-[10px] text-k-text-tertiary tabular-nums">
                                     {occurrence.startTime} – {endTime}
                                 </p>
                             </div>
                         </div>
                         {occurrence.status === 'rescheduled' && (
-                            <p className="text-[9px] font-semibold uppercase tracking-wider mt-0.5 text-[#FF9500] dark:text-amber-400">
+                            <p className="font-mono text-[9px] uppercase tracking-[0.1em] mt-0.5 text-amber-600 dark:text-amber-400">
                                 Remarcado
                             </p>
                         )}
                         {occurrence.status === 'no_show' && (
-                            <p className="text-[9px] font-semibold uppercase tracking-wider mt-0.5 text-[#FF3B30] dark:text-red-400">
+                            <p className="font-mono text-[9px] uppercase tracking-[0.1em] mt-0.5 text-red-600 dark:text-red-400">
                                 Faltou
                             </p>
                         )}
                         {occurrence.status === 'completed' && (
-                            <p className="text-[9px] font-semibold uppercase tracking-wider mt-0.5 text-[#34C759] dark:text-green-400">
+                            <p className="font-mono text-[9px] uppercase tracking-[0.1em] mt-0.5 text-emerald-600 dark:text-emerald-400">
                                 Concluído
                             </p>
                         )}
