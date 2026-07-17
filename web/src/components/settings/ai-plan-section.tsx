@@ -16,11 +16,12 @@
  */
 
 import { useState } from 'react'
-import { Check, ArrowRight, Sparkles } from 'lucide-react'
+import { Check, ArrowRight } from 'lucide-react'
 import { CreditMeter } from '@/components/assistant/credit-meter'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AiTier } from '@/lib/auth/get-ai-tier'
 import { TIER_DISPLAY, type TierFeature } from '@/lib/billing/tiers'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface AiPlanSectionProps {
     /** null quando a leitura de uso falhou — render degrada (sem medidor). */
@@ -50,7 +51,7 @@ function FeatureRow({ feature }: { feature: TierFeature }) {
                 }`}
             >
                 {state === 'off' ? null : state === 'star' ? (
-                    <Sparkles className="h-[9px] w-[9px]" strokeWidth={2.5} />
+                    <AssistantMark className="h-[9px] w-[9px]" strokeWidth={2.5} />
                 ) : (
                     <Check className="h-[10px] w-[10px]" strokeWidth={3} />
                 )}

@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Sparkles, Check, Send, Loader2, ArrowLeft, Pencil, Search, PenLine, ArrowUpRight, Square, AudioLines, Volume2 } from 'lucide-react'
+import { Check, Send, Loader2, ArrowLeft, Pencil, Search, PenLine, ArrowUpRight, Square, AudioLines, Volume2 } from 'lucide-react'
 import { CreditMeter } from '@/components/assistant/credit-meter'
 import { ToolConfirmationCard } from '@/components/assistant/tool-confirmation-card'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
@@ -33,6 +33,7 @@ import { executedText } from '@/lib/assistant/tool-labels'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
 import { MicButton } from './mic-button'
 import { useVoiceMode, VOICE_MODE_ENABLED, type VoiceModeState } from './use-voice-mode'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface PickStudent { id: string; name: string }
 
@@ -152,7 +153,7 @@ export function ConversationView({
                 <div className="flex min-w-0 items-center gap-2.5 pl-1">
                     <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] text-[11.5px] font-bold"
                         style={active.student_id ? { background: av.bg, color: av.fg } : { background: 'var(--primary)', color: '#fff' }}>
-                        {active.student_id ? av.initials : <Sparkles className="h-4 w-4 text-white" strokeWidth={1.7} />}
+                        {active.student_id ? av.initials : <AssistantMark className="h-4 w-4 text-white" strokeWidth={1.7} />}
                     </span>
                     <div className="min-w-0 leading-tight">
                         <b className="block truncate text-[14px] font-semibold tracking-[-0.01em] text-k-text-primary dark:text-foreground">{active.studentName ?? 'Geral · visão geral dos alunos'}</b>
@@ -361,7 +362,7 @@ function PartView({ part, interactive, onConfirmResolved, onSendText }: {
                 <div className="mt-3 max-w-[440px] rounded-2xl border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'var(--primary)' }}>
-                            <Sparkles className="h-4 w-4 text-white" strokeWidth={1.8} />
+                            <AssistantMark className="h-4 w-4 text-white" strokeWidth={1.8} />
                         </span>
                         <div className="min-w-0">
                             <b className="block text-[13.5px] font-semibold text-k-text-primary dark:text-foreground">Programa gerado (rascunho)</b>
@@ -391,7 +392,7 @@ function PartView({ part, interactive, onConfirmResolved, onSendText }: {
                     <div className="mt-3 max-w-[440px] rounded-2xl border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                         <div className="flex items-center gap-2.5">
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'var(--primary)' }}>
-                                <Sparkles className="h-4 w-4 text-white" strokeWidth={1.8} />
+                                <AssistantMark className="h-4 w-4 text-white" strokeWidth={1.8} />
                             </span>
                             <div className="min-w-0">
                                 <b className="block truncate text-[13.5px] font-semibold text-k-text-primary dark:text-foreground">{prog.name || 'Rascunho de programa'}</b>

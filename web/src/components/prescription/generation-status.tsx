@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Brain, Check, Sparkles } from 'lucide-react'
+import { Brain, Check } from 'lucide-react'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 // ============================================================================
 // Props
@@ -101,7 +102,7 @@ export function GenerationStatus({ studentName, phase = 'generating' }: Generati
                     </div>
                     {/* Orbiting sparkle */}
                     <div className="absolute -top-1 -right-1 animate-[spin_3s_linear_infinite]">
-                        <Sparkles className="w-5 h-5 text-violet-400" />
+                        <AssistantMark className="w-5 h-5 text-violet-400" />
                     </div>
                     {/* Ripple rings */}
                     <div className="absolute inset-0 rounded-2xl border-2 border-violet-300/40 animate-[ripple_2s_ease-out_infinite]" />

@@ -9,7 +9,8 @@
  */
 
 import { forwardRef } from 'react'
-import { Sparkles, Zap, Loader2 } from 'lucide-react'
+import { Zap, Loader2 } from 'lucide-react'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface IntentInputProps {
     value: string
@@ -31,7 +32,7 @@ export const IntentInput = forwardRef<HTMLInputElement, IntentInputProps>(
                     {loading ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} />
                     ) : (
-                        <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
+                        <AssistantMark className="h-3.5 w-3.5" strokeWidth={2.5} />
                     )}
                 </span>
                 <input

@@ -2,20 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Users,
-  Calendar,
-  ClipboardList,
-  Wallet,
-  Smartphone,
-  Dumbbell,
-  Sparkles,
-  ChevronLeft,
-  X,
-} from 'lucide-react'
+import { Users, Calendar, ClipboardList, Wallet, Smartphone, Dumbbell, ChevronLeft, X } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { updateTrainerModality } from '@/actions/trainer/update-trainer-modality'
 import type { TrainerModalityFocus } from '@kinevo/shared/types/onboarding'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface WelcomeModalProps {
   trainerName: string
@@ -39,7 +30,7 @@ const CAPABILITY_CARDS = [
     desc: 'Manual, templates ou IA',
   },
   {
-    icon: Sparkles,
+    icon: AssistantMark,
     iconBg: 'bg-amber-500/10',
     iconColor: 'text-amber-400',
     title: 'Avaliações',

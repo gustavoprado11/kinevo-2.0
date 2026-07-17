@@ -10,10 +10,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-    AlertTriangle, CheckCircle2, ChevronRight, ClipboardList, Loader2,
-    OctagonAlert, Pencil, ShieldCheck, Sparkles, Stethoscope, X,
-} from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardList, Loader2, OctagonAlert, Pencil, ShieldCheck, Stethoscope, X } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { generateConsultoriaDraft } from '@/actions/consultoria/generate-consultoria'
 import {
@@ -26,6 +23,7 @@ import {
     startConsultoriaReview,
 } from '@/actions/consultoria/validate-consultoria'
 import { updateTrainerCref } from '@/actions/trainer/update-cref'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 // ── Tipos ──
 
@@ -312,7 +310,7 @@ export function ConsultoriaClient({ items, hasCref, aiEnabled }: ConsultoriaClie
                                             >
                                                 {generatingId === item.id
                                                     ? <><Loader2 size={12} className="animate-spin" /> Gerando…</>
-                                                    : <><Sparkles size={12} /> Gerar rascunho IA</>}
+                                                    : <><AssistantMark size={12} /> Gerar rascunho IA</>}
                                             </button>
                                         )}
                                         {(item.status === 'pending_validation' || item.status === 'blocked') && (

@@ -8,10 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import {
-    Sparkles, Send, Loader2, ChevronDown, ChevronRight, Globe, Check,
-    Wallet, Users, Dumbbell, MessageCircle, Coins, UserPlus, Wand2,
-} from 'lucide-react'
+import { Send, Loader2, ChevronDown, ChevronRight, Globe, Check, Wallet, Users, Dumbbell, MessageCircle, Coins, UserPlus, Wand2 } from 'lucide-react'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AttentionItem } from '@/lib/assistant/home-data'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
@@ -19,6 +16,7 @@ import { attentionKind, KIND_TAG, attentionPrompt } from '@/lib/assistant/attent
 import { avatarFor, greeting, timeShort } from './ui-util'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
 import { MicButton } from './mic-button'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 /**
  * Cada atalho tem `label` (texto curto exibido no card) e `prompt` (instrução
@@ -130,8 +128,8 @@ export function AssistantHome({
             <div className="mx-auto max-w-[720px] px-7 pb-16 pt-[72px]">
                 {/* Hero — plano, sem glow (idioma da conversa) */}
                 <div className="mb-7 text-center">
-                    <span className="mx-auto mb-4 flex h-[52px] w-[52px] items-center justify-center rounded-[16px] bg-[#F5F3FF] dark:bg-violet-500/15">
-                        <Sparkles className="h-[26px] w-[26px] text-primary dark:text-violet-400" strokeWidth={1.6} />
+                    <span className="mx-auto mb-5 flex items-center justify-center">
+                        <AssistantMark size={34} strokeWidth={1.2} className="text-primary" />
                     </span>
                     <div className="mb-2 text-[14px] font-medium text-k-text-tertiary dark:text-muted-foreground">{greeting()}, {firstName}.</div>
                     <h1 className="font-display text-[36px] font-bold leading-[1.1] tracking-[-0.03em] text-k-text-primary dark:text-foreground">
@@ -352,7 +350,7 @@ export function AssistantHome({
                                     <button key={c.id} onClick={() => onOpenConversation(c.id)}
                                         className="group flex items-center gap-3 -mx-2.5 rounded-xl border-b border-k-border-subtle px-2.5 py-2.5 text-left transition-colors last:border-0 hover:border-transparent hover:bg-surface-inset dark:border-k-border-subtle dark:hover:bg-glass-bg">
                                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-[11px] font-bold transition-transform group-hover:scale-[1.04]" style={isGeneral ? { background: 'var(--primary)', color: '#fff' } : { background: av.bg, color: av.fg }}>
-                                            {isGeneral ? <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2} /> : av.initials}
+                                            {isGeneral ? <AssistantMark variant="filled" className="h-3.5 w-3.5 text-white" /> : av.initials}
                                         </span>
                                         <span className="min-w-0 flex-1">
                                             <b className="block text-[13.5px] text-k-text-primary transition-colors group-hover:text-primary dark:text-foreground dark:group-hover:text-violet-300">{c.studentName ?? 'Geral · estúdio'}</b>

@@ -6,11 +6,10 @@
 // ============================================================================
 
 import Link from 'next/link'
-import {
-    Wallet, ArrowRight, Clock3, AlertTriangle, Check, Sparkles, Link2,
-} from 'lucide-react'
+import { Wallet, ArrowRight, Clock3, AlertTriangle, Check, Link2 } from 'lucide-react'
 import type { KinevoWalletStatus, KinevoWalletMode } from '@/lib/asaas'
 import { formatBRL } from '@kinevo/shared/utils/currency'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface Props {
     status: KinevoWalletStatus
@@ -133,7 +132,7 @@ export function WalletStatusCard({ status, mode, balance, rejectionReason }: Pro
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="rounded-xl bg-violet-500/10 p-2.5">
-                        <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" strokeWidth={1.5} />
+                        <AssistantMark className="w-5 h-5 text-violet-600 dark:text-violet-400" strokeWidth={1.5} />
                     </div>
                     <div>
                         <p className="font-semibold text-[#1D1D1F] dark:text-k-text-primary text-sm">

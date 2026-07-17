@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, FileText, X, Loader2, Check, AlertTriangle, RotateCcw } from 'lucide-react'
+import { FileText, X, Loader2, Check, AlertTriangle, RotateCcw } from 'lucide-react'
 import type { Exercise } from '@/types/exercise'
 import type { Workout } from './program-builder-client'
 import type { ParseTextResponse, ParsedExercise } from '@/app/api/prescription/parse-text/types'
 import { extractFrequencyFromName } from '@kinevo/shared/lib/prescription/extract-frequency'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 type PanelState = 'idle' | 'loading' | 'success' | 'error'
 
@@ -233,7 +234,7 @@ export function AiPrescribePanel({
                             disabled={text.trim().length === 0}
                             className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-control text-sm font-semibold text-white bg-primary hover:opacity-90 dark:bg-violet-600 dark:hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                            <Sparkles className="w-4 h-4" />
+                            <AssistantMark className="w-4 h-4" />
                             Gerar Treino
                         </button>
                     </>

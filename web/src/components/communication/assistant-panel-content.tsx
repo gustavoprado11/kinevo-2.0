@@ -18,7 +18,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Send, ExternalLink, MessagesSquare, Loader2, ChevronDown, Globe, Check } from 'lucide-react'
+import { Send, ExternalLink, MessagesSquare, Loader2, ChevronDown, Globe, Check } from 'lucide-react'
 import { useCommunicationStore } from '@/stores/communication-store'
 import { AssistantBanner } from '@/components/assistant/workspace/assistant-banner'
 import { ConversationView } from '@/components/assistant/workspace/conversation-view'
@@ -26,6 +26,7 @@ import { MicButton } from '@/components/assistant/workspace/mic-button'
 import { useAssistantThread, type ThreadStudent } from '@/components/assistant/workspace/use-assistant-thread'
 import { fetchAiAccess } from '@/components/assistant/command-bar/command-bar'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 const initialsOf = (name: string) =>
     name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
@@ -206,7 +207,7 @@ export function AssistantPanelContent() {
                             </span>
                         ) : (
                             <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-500/10">
-                                <Sparkles className="h-3 w-3 text-violet-500" />
+                                <AssistantMark className="h-3 w-3 text-violet-500" />
                             </span>
                         )}
                         <span className="min-w-0 truncate text-[11px] font-medium leading-tight text-muted-foreground">
@@ -308,7 +309,7 @@ export function AssistantPanelContent() {
                             // cartão visual, não mensagem persistida.
                             <div className="flex gap-2">
                                 <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-500/10">
-                                    <Sparkles className="h-3 w-3 text-violet-500" />
+                                    <AssistantMark className="h-3 w-3 text-violet-500" />
                                 </div>
                                 <div className="rounded-2xl rounded-bl-md bg-muted px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
                                     {initialMessage}
@@ -317,7 +318,7 @@ export function AssistantPanelContent() {
                         ) : (
                             <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
                                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/10">
-                                    <Sparkles className="h-6 w-6 text-violet-500" />
+                                    <AssistantMark className="h-6 w-6 text-violet-500" />
                                 </div>
                                 <p className="text-sm text-muted-foreground">
                                     {scopeName

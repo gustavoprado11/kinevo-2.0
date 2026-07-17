@@ -3,8 +3,9 @@
 import { memo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Trophy, Flame, Sparkles } from 'lucide-react'
+import { Trophy, Flame } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 export interface RankedStudent {
     studentId: string
@@ -265,7 +266,7 @@ function EmptyState() {
     return (
         <div className="py-10 px-6 text-center flex flex-col items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-amber-500" aria-hidden="true" />
+                <AssistantMark className="w-4 h-4 text-amber-500" aria-hidden="true" />
             </div>
             <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">
                 O ranking começa quando os alunos treinam

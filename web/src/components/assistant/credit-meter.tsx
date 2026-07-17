@@ -13,9 +13,10 @@
  */
 
 import type { CSSProperties } from 'react'
-import { Sparkles, Coins } from 'lucide-react'
+import { Coins } from 'lucide-react'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AiTier } from '@/lib/auth/get-ai-tier'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 const TIER_LABEL: Record<AiTier, string> = {
     free: 'Kinevo Gratuito',
@@ -116,7 +117,7 @@ export function CreditMeter({ summary, compact = false, pill = false }: CreditMe
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-[200px] flex-1">
                     <span className="inline-flex items-center gap-1.5 rounded-md bg-[#EDE9FE] dark:bg-violet-500/15 px-2.5 py-1 text-xs font-bold text-primary dark:text-violet-400">
-                        <Sparkles className="h-[13px] w-[13px]" strokeWidth={2} />
+                        <AssistantMark className="h-[13px] w-[13px]" strokeWidth={2} />
                         {TIER_LABEL[tier]}
                     </span>
                     <h3 className="mt-2 text-[15px] font-semibold text-k-text-primary dark:text-foreground">

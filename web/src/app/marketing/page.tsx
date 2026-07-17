@@ -1,17 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import {
-    Inbox,
-    Globe,
-    ExternalLink,
-    Sparkles,
-    Pencil,
-    ChevronRight,
-    TrendingUp,
-    UserCheck,
-} from 'lucide-react'
+import { Inbox, Globe, ExternalLink, Pencil, ChevronRight, TrendingUp, UserCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ShareLandingCard } from './share-landing-card'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 export const dynamic = 'force-dynamic'
 
@@ -176,7 +168,7 @@ export default async function MarketingOverviewPage() {
                 {recentLeads.length === 0 ? (
                     <div className="px-5 py-12 text-center">
                         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/12 text-violet-600 dark:text-violet-400">
-                            <Sparkles size={22} strokeWidth={1.6} />
+                            <AssistantMark size={22} strokeWidth={1.6} />
                         </div>
                         <h3 className="text-sm font-bold text-k-text-primary mb-1">Nenhum lead ainda</h3>
                         <p className="mx-auto max-w-sm text-xs text-k-text-tertiary">

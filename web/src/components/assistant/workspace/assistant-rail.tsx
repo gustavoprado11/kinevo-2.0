@@ -8,9 +8,10 @@
  */
 
 import Image from 'next/image'
-import { Search, Sparkles, Trash2 } from 'lucide-react'
+import { Search, Trash2 } from 'lucide-react'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
 import { avatarFor, groupLabel, GROUP_ORDER, timeShort } from './ui-util'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 export interface SidebarStudent {
     id: string
@@ -132,7 +133,7 @@ export function AssistantRail({
                                                 className={`mb-0.5 flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)] dark:bg-glass-bg-active' : 'hover:bg-surface-inset dark:hover:bg-glass-bg'}`}>
                                                 {isGeneral ? (
                                                     <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'var(--primary)' }}>
-                                                        <Sparkles className="h-3.5 w-3.5 text-white" strokeWidth={2} />
+                                                        <AssistantMark variant="filled" className="h-3.5 w-3.5 text-white" />
                                                     </span>
                                                 ) : (
                                                     <Avatar name={c.studentName} url={c.student_id ? studentAvatar.get(c.student_id) ?? null : null} />

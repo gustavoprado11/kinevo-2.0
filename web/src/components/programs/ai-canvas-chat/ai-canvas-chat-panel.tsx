@@ -5,12 +5,13 @@
 // /api/programs/ai-canvas: aplica o evento `program` no canvas pela ponte.
 
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { Sparkles, X, Send, FileText, Loader2 } from 'lucide-react'
+import { X, Send, FileText, Loader2 } from 'lucide-react'
 import { Z } from '@/lib/z-index'
 import type { Exercise } from '@/types/exercise'
 import type { CanvasStreamEvent, RenderedProgram } from '@/lib/programs/ai-canvas/types'
 import { getCanvasApi } from '../helpers/builder-canvas-bridge'
 import { compactCatalog, renderedToWorkouts, workoutsToSnapshot } from './rendered-to-workouts'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface ChatMsg { role: 'user' | 'assistant'; content: string }
 
@@ -151,7 +152,7 @@ export function AiCanvasChatPanel({
             <div className="fixed inset-0 bg-black/20" style={{ zIndex: Z.DRAWER }} onClick={onClose} aria-hidden />
             <div className="fixed right-0 top-0 bottom-0 w-full max-w-[440px] bg-white dark:bg-surface-card border-l border-k-border-primary shadow-2xl flex flex-col" style={{ zIndex: Z.DRAWER }}>
                 <div className="flex items-center gap-2 px-4 h-14 border-b border-k-border-subtle flex-shrink-0">
-                    <Sparkles className="w-5 h-5 text-violet-500" />
+                    <AssistantMark className="w-5 h-5 text-violet-500" />
                     <h3 className="font-bold text-[#1C1C1E] dark:text-white text-sm flex-1 truncate">IA · {studentName}</h3>
                     <button onClick={onUseForm} className="text-[11px] font-medium text-k-text-tertiary hover:text-violet-500 flex items-center gap-1 px-2 py-1 rounded-md hover:bg-violet-500/10 transition-colors">
                         <FileText className="w-3.5 h-3.5" /> usar formulário

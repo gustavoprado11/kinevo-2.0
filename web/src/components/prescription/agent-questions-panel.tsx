@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, ChevronDown, ChevronUp, AlertTriangle, Loader2, Sparkles, Check } from 'lucide-react'
+import { Brain, ChevronDown, ChevronUp, AlertTriangle, Loader2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 import type {
     AgentAnswerEntry,
     PrescriptionAgentQuestion,
@@ -232,7 +233,7 @@ export function AgentQuestionsPanel({
                     <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-500/15
                         border border-violet-200 dark:border-violet-500/30
                         flex items-center justify-center shrink-0">
-                        <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                        <AssistantMark className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                     </div>
                     <div className="min-w-0">
                         <span className="text-sm font-semibold text-k-text-primary block">
@@ -422,7 +423,7 @@ export function AgentQuestionsPanel({
                             </>
                         ) : (
                             <>
-                                <Sparkles className="w-4 h-4" />
+                                <AssistantMark className="w-4 h-4" />
                                 Gerar Programa
                             </>
                         )}

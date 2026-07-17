@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, BookOpen, Sparkles, X } from 'lucide-react'
+import { AlertCircle, BookOpen, X } from 'lucide-react'
 import type {
     AssessmentTest,
     BilateralNumericTest,
@@ -10,6 +10,7 @@ import type {
     ProtocolTest,
 } from '@kinevo/shared/types/assessments'
 import { PROTOCOLS } from '@kinevo/shared/lib/assessment-protocols'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface TestPropertiesPanelProps {
     test: AssessmentTest | null
@@ -411,7 +412,7 @@ function ProtocolFields({ test }: { test: ProtocolTest }) {
                             key={o}
                             className="flex items-center gap-2 text-sm text-k-text-secondary"
                         >
-                            <Sparkles className="h-3 w-3 flex-shrink-0 text-violet-500 dark:text-violet-400" />
+                            <AssistantMark className="h-3 w-3 flex-shrink-0 text-violet-500 dark:text-violet-400" />
                             {o}
                         </li>
                     ))}

@@ -9,7 +9,8 @@
 
 import { useMemo } from 'react'
 import { simulateNet, formatBRL, PAYMENT_METHOD_LABELS, type PaymentMethod } from '@/lib/asaas/fees'
-import { Sparkles } from 'lucide-react'
+import {  } from 'lucide-react'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface Props {
     /** Valor da cobrança em BRL (number ou string aceitando vírgula/ponto). */
@@ -51,7 +52,7 @@ export function FeesSimulationCard({
     return (
         <div className={`rounded-xl border border-k-border-subtle bg-gradient-to-br from-violet-500/[0.04] to-blue-500/[0.04] ${compact ? 'p-3' : 'p-4'}`}>
             <div className="flex items-center gap-1.5 mb-2.5">
-                <Sparkles className="w-3.5 h-3.5 text-violet-500" strokeWidth={2} />
+                <AssistantMark className="w-3.5 h-3.5 text-violet-500" strokeWidth={2} />
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary">
                     {title}
                 </p>

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { Command } from 'cmdk'
-import { Search, Sparkles, ArrowRight } from 'lucide-react'
+import { Search, ArrowRight } from 'lucide-react'
 import { SearchResults, type SearchStudent } from '@/components/search/search-results'
 import { useSearchStore } from '@/stores/search-store'
 import { CommandBar, fetchAiAccess, OPEN_AI_COMMAND_EVENT, type AiAccess } from '@/components/assistant/command-bar/command-bar'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 // ── Types ──
 
@@ -107,7 +108,7 @@ export function CommandPalette({ students = [] }: CommandPaletteProps) {
                             {aiAllowed && (
                                 <div className="flex items-center gap-3 px-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
                                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-[#7C3AED] to-[#A78BFA] text-white">
-                                        <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                                        <AssistantMark className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
                                     </span>
                                     <input
                                         value={aiInput}

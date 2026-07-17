@@ -25,7 +25,7 @@ import { FinancialSidebarCard } from '@/components/students/financial-sidebar-ca
 import { HealthMetricsCard } from '@/components/students/health-metrics-card'
 import { SmartBanner } from '@/components/students/smart-banner'
 import { pickBanner, type BannerContext } from '@/components/students/smart-banner-rules'
-import { AlertCircle, Dumbbell, Clock, FileText, Sparkles, Play, Pencil, Trash2 } from 'lucide-react'
+import { AlertCircle, Dumbbell, Clock, FileText, Play, Pencil, Trash2 } from 'lucide-react'
 import { QuickMessageCard } from '@/components/students/quick-message-card'
 import { StudentInsightsCard } from '@/components/students/student-insights-card'
 import { ProgramDraftEntry } from '@/components/students/program-draft-entry'
@@ -37,6 +37,7 @@ import { useStudioState } from '@/hooks/use-studio-state'
 import { useCommunicationStore } from '@/stores/communication-store'
 import type { InsightItem } from '@/actions/insights'
 import type { DisplayStatus } from '@/types/financial'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 // Modals — only rendered when opened by user. Kept out of the initial bundle.
 const AssignProgramModal = dynamic(
@@ -773,7 +774,7 @@ export function StudentDetailClient({
                                                     </span>
                                                 </div>
                                                 <p className="text-[11px] font-medium text-amber-700/70 dark:text-amber-300/70 flex items-center gap-1">
-                                                    <Sparkles className="w-3 h-3" />
+                                                    <AssistantMark className="w-3 h-3" />
                                                     {workoutCount > 0 && `${workoutCount} ${workoutCount === 1 ? 'treino' : 'treinos'} · `}
                                                     criado pelo assistente · não ativado
                                                 </p>
@@ -813,7 +814,7 @@ export function StudentDetailClient({
                                     {aiDrafts.map(draft => (
                                         <div key={draft.id} className="rounded-xl border border-violet-300/60 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/5 p-4">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <Sparkles className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                                                <AssistantMark className="w-4 h-4 text-violet-500 flex-shrink-0" />
                                                 <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm truncate flex-1">Rascunho gerado pela IA</h4>
                                                 <span className="px-2 py-0.5 rounded bg-violet-500/15 text-[10px] text-violet-600 dark:text-violet-400 font-bold flex-shrink-0">
                                                     Rascunho

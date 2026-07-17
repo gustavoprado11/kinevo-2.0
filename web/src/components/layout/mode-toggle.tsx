@@ -10,7 +10,8 @@
  * - `switchingTo`: durante a navegação ótimista, qual lado já aparece ativo + spinner.
  */
 
-import { LayoutGrid, Sparkles, Loader2 } from 'lucide-react'
+import { LayoutGrid, Loader2 } from 'lucide-react'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface Props {
     active: 'classic' | 'assistant'
@@ -35,7 +36,7 @@ export function ModeToggle({ active, onClassic, onAssistant, switchingTo }: Prop
             <button onClick={onAssistant} className={`${BTN} ${eff === 'assistant' ? ON : OFF}`}>
                 {switchingTo === 'assistant'
                     ? <Loader2 size={14} strokeWidth={2} className="animate-spin" />
-                    : <Sparkles size={14} strokeWidth={2} />} Assistente
+                    : <AssistantMark size={14} strokeWidth={2} />} Assistente
             </button>
         </div>
     )

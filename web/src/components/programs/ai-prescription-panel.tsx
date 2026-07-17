@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
-import { X, Sparkles } from 'lucide-react'
+import { X } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 
 import { usePrescriptionAgent, type PrescriptionAgentPageState } from './ai-prescription-panel/use-prescription-agent'
 import { AiPrescriptionPanelStudentTab } from './ai-prescription-panel/student-tab'
 import type { PrescriptionData } from '@/actions/prescription/get-prescription-data'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 export interface AiPrescriptionPanelProps {
     open: boolean
@@ -82,7 +83,7 @@ export function AiPrescriptionPanel({
             >
                 {/* Header */}
                 <header className="flex-shrink-0 flex items-center gap-3 px-5 h-14 border-b border-k-border-subtle">
-                    <Sparkles className="w-5 h-5 text-violet-500 flex-shrink-0" />
+                    <AssistantMark className="w-5 h-5 text-violet-500 flex-shrink-0" />
                     <h2 className="flex-1 text-sm font-semibold text-k-text-primary truncate">
                         IA · {studentName}
                     </h2>

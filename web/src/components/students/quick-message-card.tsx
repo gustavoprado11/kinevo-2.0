@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, Loader2, Check, MessageCircle, Sparkles } from 'lucide-react'
+import { Send, Loader2, Check, MessageCircle } from 'lucide-react'
 import { sendMessage } from '@/app/messages/actions'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface QuickSuggestion {
     emoji: string
@@ -111,7 +112,7 @@ export function QuickMessageCard({ studentId, studentName, suggestions = [], onO
                         className="w-full text-left px-3 py-2 rounded-lg bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300 text-[12.5px] font-bold transition-colors hover:bg-violet-100 dark:hover:bg-violet-500/15 flex items-start gap-2"
                         data-testid="featured-suggestion"
                     >
-                        <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-70" aria-hidden="true" />
+                        <AssistantMark className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-70" aria-hidden="true" />
                         <span className="italic">&ldquo;{suggestions[0].message}&rdquo;</span>
                     </button>
                     {suggestions.length > 1 && (

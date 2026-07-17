@@ -11,11 +11,12 @@
  * Só apresentação: a confirmação real é delegada ao ToolConfirmationCard.
  */
 
-import { CheckCircle2, Sparkles } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { ToolConfirmationCard } from '@/components/assistant/tool-confirmation-card'
 import { executedText } from '@/lib/assistant/tool-labels'
 import type { ToolConfirmationRequest, ToolConfirmationResult } from '@/lib/assistant/hitl-types'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 export interface CommandTurnResult {
     text: string
@@ -51,7 +52,7 @@ export function ActionPreview({ result, onConfirmationResolved }: ActionPreviewP
             {text && (
                 <div className="flex items-start gap-2.5 px-[18px] py-3">
                     <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#EDE9FE] dark:bg-violet-500/15 text-primary dark:text-violet-400">
-                        <Sparkles className="h-3 w-3" strokeWidth={2.5} />
+                        <AssistantMark className="h-3 w-3" strokeWidth={2.5} />
                     </span>
                     <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-k-text-primary dark:text-foreground">
                         {text}

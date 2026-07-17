@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-    Wallet, Heart, Repeat, ArrowRight, ChevronLeft, Loader2, Sparkles, Check,
-} from 'lucide-react'
+import { Wallet, Heart, Repeat, ArrowRight, ChevronLeft, Loader2, Check } from 'lucide-react'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface FinancialOnboardingProps {
     onComplete: () => void
@@ -129,7 +128,7 @@ function StepActivateWallet({
 
             <div className="rounded-2xl bg-surface-card border border-k-border-primary p-8 mb-8 max-w-md mx-auto">
                 <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-violet-500/10 mx-auto mb-4">
-                    <Sparkles size={24} className="text-violet-600 dark:text-violet-400" />
+                    <AssistantMark size={24} className="text-violet-600 dark:text-violet-400" />
                 </div>
                 <h3 className="text-base font-semibold text-k-text-primary mb-2">
                     Em parceria com a Asaas

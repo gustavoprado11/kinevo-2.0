@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { AlertTriangle, Sparkles, Info } from 'lucide-react'
+import { AlertTriangle, Info } from 'lucide-react'
 import { track } from '@/lib/analytics'
 import {
     pickBanner,
@@ -9,6 +9,7 @@ import {
     type BannerContext,
     type BannerLevel,
 } from './smart-banner-rules'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface SmartBannerProps {
     studentId: string
@@ -42,7 +43,7 @@ const VARIANT_STYLES: Record<BannerLevel, VariantStyle> = {
         container:
             'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30',
         iconBox: 'bg-amber-500',
-        icon: <Sparkles className="w-5 h-5 text-white" aria-hidden="true" />,
+        icon: <AssistantMark className="w-5 h-5 text-white" aria-hidden="true" />,
         primaryButton:
             'bg-amber-500 hover:bg-amber-400 text-white border-transparent shadow-sm',
         secondaryButton:

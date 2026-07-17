@@ -11,7 +11,7 @@ import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibrarySkeleton } from './exercise-library-panel-skeleton'
 import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Sparkles, Settings } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Settings } from 'lucide-react'
 import { KINEVO_DEFAULT_PREFERENCES, type PrescriptionPreferences } from '@/types/prescription-preferences'
 import { usePrescriptionPreferencesStore } from '@/stores/prescription-preferences-store'
 import { PreferencesBanner } from './preferences/preferences-banner'
@@ -193,6 +193,7 @@ import { useProgramSchedule } from './helpers/use-program-schedule'
 import { useCanvasDnd } from './helpers/use-canvas-dnd'
 import { useBuilderChrome } from './helpers/use-builder-chrome'
 import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 /** Persist the materialized children rows for a saved workout_item_template.
  *  A expansão por rounds vive em buildSetSchemeRows (núcleo compartilhado);
@@ -1297,7 +1298,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     }`}
                                     title="Gerar programa com IA"
                                 >
-                                    <Sparkles className="w-4 h-4" />
+                                    <AssistantMark className="w-4 h-4" />
                                     <span className="hidden min-[1700px]:inline">Gerar com IA</span>
                                 </button>
                                 <span className="mx-1 h-5 w-px bg-k-border-subtle" aria-hidden />

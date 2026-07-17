@@ -4,22 +4,9 @@ import Image from 'next/image'
 import { useRef, useState, type ChangeEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFormStatus } from 'react-dom'
-import {
-    Sparkles,
-    Upload,
-    AlertTriangle,
-    Dumbbell,
-    Play,
-    ChevronDown,
-    Home,
-    MessageCircle,
-    Heart,
-    Clock,
-    User,
-    Flame,
-    Award,
-} from 'lucide-react'
+import { Upload, AlertTriangle, Dumbbell, Play, ChevronDown, Home, MessageCircle, Heart, Clock, User, Flame, Award } from 'lucide-react'
 import { updateTrainerBranding } from '@/actions/trainer/update-branding'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 type TrainerBranding = {
     name: string
@@ -135,7 +122,7 @@ export function BrandingSection({ trainer, isStudio = false }: BrandingSectionPr
                     aparece na tela de abertura.
                 </p>
                 <span className="inline-flex flex-none items-center gap-1 rounded-md bg-gradient-to-br from-violet-600 to-violet-800 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                    <Sparkles size={10} /> Pro
+                    <AssistantMark size={10} /> Pro
                 </span>
             </div>
 
@@ -219,7 +206,7 @@ export function BrandingSection({ trainer, isStudio = false }: BrandingSectionPr
                                 className="relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-k-border-primary"
                                 title="Cor personalizada"
                             >
-                                <Sparkles size={14} className="pointer-events-none absolute text-k-text-quaternary" />
+                                <AssistantMark size={14} className="pointer-events-none absolute text-k-text-quaternary" />
                                 <input
                                     type="color"
                                     value={brandColor}

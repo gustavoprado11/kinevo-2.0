@@ -4,13 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import {
-    Users, TrendingUp, Receipt, ArrowRight, Wallet, AlertTriangle,
-    Heart, Plus, Check, DollarSign, ArrowDownToLine, ChevronDown,
-    Send, Repeat, Sparkles, KeyRound, Settings as SettingsIcon, Link2,
-    Lock, Unlock, Loader2, Copy, MessageCircle, Clock, X, RefreshCw,
-    AlertCircle,
-} from 'lucide-react'
+import { Users, TrendingUp, Receipt, ArrowRight, Wallet, AlertTriangle, Heart, Plus, Check, DollarSign, ArrowDownToLine, ChevronDown, Send, Repeat, KeyRound, Settings as SettingsIcon, Link2, Lock, Unlock, Loader2, Copy, MessageCircle, Clock, X, RefreshCw, AlertCircle } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { AppLayout } from '@/components/layout'
 import { ConnectStatusCard } from '@/components/financial/connect-status-card'
@@ -24,6 +18,7 @@ import { useToast } from '@/components/ui/toast'
 import type { FinancialStudent, DisplayStatus } from '@/types/financial'
 import { formatCurrency } from '@/lib/utils/financial'
 import type { KinevoWalletStatus, KinevoWalletMode } from '@/lib/asaas'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface Trainer {
     id: string
@@ -486,7 +481,7 @@ export function FinancialDashboardClient({
                                                 className="w-full flex items-start gap-3 px-4 py-3 hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors text-left border-t border-[#E8E8ED] dark:border-k-border-subtle"
                                             >
                                                 <div className="rounded-lg bg-[#34C759]/10 dark:bg-emerald-500/10 p-2 shrink-0">
-                                                    <Sparkles size={15} className="text-[#34C759] dark:text-emerald-400" />
+                                                    <AssistantMark size={15} className="text-[#34C759] dark:text-emerald-400" />
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">Criar novo plano</p>

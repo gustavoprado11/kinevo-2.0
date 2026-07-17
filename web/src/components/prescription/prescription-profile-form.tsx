@@ -1,11 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import {
-    User, Target, Calendar, Clock, Dumbbell, ShieldAlert,
-    Brain, Save, Loader2, Check, Plus, X, AlertCircle,
-    ChevronDown, ChevronUp, Sparkles, MessageSquare,
-} from 'lucide-react'
+import { User, Target, Calendar, Clock, Dumbbell, ShieldAlert, Brain, Save, Loader2, Check, Plus, X, AlertCircle, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 import { savePrescriptionProfile } from '@/actions/prescription/save-prescription-profile'
@@ -24,6 +20,7 @@ import { VolumePreviewCard } from './volume-preview-card'
 
 import type { RecentSession, ActiveProgram } from '@/actions/prescription/get-prescription-data'
 import type { QuestionnaireData } from '@/lib/prescription/questionnaire-mapper'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 // ============================================================================
 // Props
@@ -881,7 +878,7 @@ export function PrescriptionProfileForm({
                                     className="bg-primary hover:opacity-90 text-primary-foreground gap-2 w-full sm:w-auto group"
                                     title={!existingProfile ? 'Salve o perfil primeiro' : availableDays.length === 0 ? 'Selecione pelo menos 1 dia' : undefined}
                                 >
-                                    <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
+                                    <AssistantMark className="w-4 h-4 group-hover:animate-pulse" />
                                     Gerar Programa
                                 </Button>
                             </>
@@ -896,7 +893,7 @@ export function PrescriptionProfileForm({
                                 {generating ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
-                                    <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
+                                    <AssistantMark className="w-4 h-4 group-hover:animate-pulse" />
                                 )}
                                 {generating ? 'Preparando...' : 'Gerar Programa'}
                             </Button>

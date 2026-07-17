@@ -5,13 +5,9 @@ import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
-import {
-    Wallet, CircleDollarSign, Send, Plus, ArrowDownToLine, KeyRound,
-    Check, Loader2, AlertTriangle, RefreshCw, ChevronRight, Copy,
-    FileText, ExternalLink, FileCheck2, FileX2, Link2, Sparkles,
-    AlertCircle,
-} from 'lucide-react'
+import { Wallet, CircleDollarSign, Send, Plus, ArrowDownToLine, KeyRound, Check, Loader2, AlertTriangle, RefreshCw, ChevronRight, Copy, FileText, ExternalLink, FileCheck2, FileX2, Link2, AlertCircle } from 'lucide-react'
 import type { KinevoWalletSummary, PixKeyType, AsaasDocumentGroup } from '@/lib/asaas'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface PixKeyRow {
     id: string
@@ -294,7 +290,7 @@ function ChooseModeScreen(props: {
                 >
                     <div className="flex items-start gap-3 mb-3">
                         <div className="rounded-xl bg-primary/15 p-2.5 shrink-0">
-                            <Sparkles className="size-5 text-primary" />
+                            <AssistantMark className="size-5 text-primary" />
                         </div>
                         <div>
                             <p className="font-semibold text-slate-900">Ainda não tenho conta Asaas</p>

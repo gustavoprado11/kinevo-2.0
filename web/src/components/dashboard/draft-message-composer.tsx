@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, X, Send, Loader2, AlertTriangle } from 'lucide-react'
+import { X, Send, Loader2, AlertTriangle } from 'lucide-react'
 import { sendMessage } from '@/app/messages/actions'
 import { markInsightActed } from '@/actions/insights'
 import type { InsightItem } from '@/actions/insights'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface DraftMessageComposerProps {
     insight: InsightItem
@@ -104,7 +105,7 @@ export function DraftMessageComposer({
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-[#E8E8ED] px-5 py-4 dark:border-k-border-subtle">
                     <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-violet-500" />
+                        <AssistantMark className="h-4 w-4 text-violet-500" />
                         <div>
                             <h3 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">
                                 Mensagem para {studentName}

@@ -9,11 +9,12 @@ import { FormSubmissionsCard } from '@/components/prescription/form-submissions-
 import { QuestionnaireBadge } from '@/components/prescription/questionnaire-badge'
 import { PrescriptionStepper } from '@/components/prescription/prescription-stepper'
 import { mapQuestionnaireToProfile } from '@/lib/prescription/questionnaire-mapper'
-import { Sparkles, Check } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 import type { PrescriptionData } from '@/actions/prescription/get-prescription-data'
 import type { UsePrescriptionAgentReturn } from './use-prescription-agent'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface StudentTabProps {
     studentId: string
@@ -199,7 +200,7 @@ export function AiPrescriptionPanelStudentTab({
 
                 {pageState === 'error' && (
                     <div className="flex flex-col items-center text-center gap-3 py-8">
-                        <Sparkles className="w-8 h-8 text-red-400" />
+                        <AssistantMark className="w-8 h-8 text-red-400" />
                         <h3 className="text-base font-semibold text-k-text-primary">
                             Algo deu errado
                         </h3>
@@ -224,7 +225,7 @@ export function AiPrescriptionPanelStudentTab({
                                 onClick={reset}
                                 className="w-full rounded-control bg-primary hover:opacity-90 text-primary-foreground h-10 text-sm font-medium flex items-center justify-center gap-2"
                             >
-                                <Sparkles className="w-4 h-4" />
+                                <AssistantMark className="w-4 h-4" />
                                 Ajustar e gerar outro programa
                             </Button>
                             <Button

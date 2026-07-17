@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Dumbbell, FileText, CreditCard, AlertTriangle, MessageCircle, Sparkles, X } from 'lucide-react'
+import { Bell, Dumbbell, FileText, CreditCard, AlertTriangle, MessageCircle, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/time-ago'
 import { useCommunicationStore } from '@/stores/communication-store'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface Notification {
     id: string
@@ -18,7 +19,7 @@ interface Notification {
     created_at: string
 }
 
-const TYPE_ICONS: Record<string, typeof Bell> = {
+const TYPE_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
     workout_completed: Dumbbell,
     form_submitted: FileText,
     payment_received: CreditCard,
@@ -27,7 +28,7 @@ const TYPE_ICONS: Record<string, typeof Bell> = {
     cancellation_alert: AlertTriangle,
     subscription_canceled: AlertTriangle,
     student_message: MessageCircle,
-    assistant_briefing: Sparkles,
+    assistant_briefing: AssistantMark,
 }
 
 const TYPE_COLORS: Record<string, string> = {

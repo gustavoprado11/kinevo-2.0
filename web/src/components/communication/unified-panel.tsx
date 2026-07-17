@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Sparkles, MessageCircle } from 'lucide-react'
+import { X, MessageCircle } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useCommunicationStore } from '@/stores/communication-store'
 import { AssistantPanelContent } from './assistant-panel-content'
 import { MessagesPanelContent } from './messages-panel-content'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface Props {
     /** Modo Assistente: painel ancorado (reserva espaço, sem backdrop, persistente). */
@@ -91,7 +92,7 @@ export function UnifiedCommunicationPanel({ docked = false, onDockDismiss }: Pro
                                         : 'text-muted-foreground hover:text-foreground'
                                 }`}
                             >
-                                <Sparkles className="w-3.5 h-3.5" />
+                                <AssistantMark className="w-3.5 h-3.5" />
                                 Assistente
                                 {activeTab === 'assistant' && (
                                     <motion.div

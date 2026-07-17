@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { inferModality } from '@/actions/trainer/infer-modality'
 import { updateTrainerModality } from '@/actions/trainer/update-trainer-modality'
 import type { TrainerModalityFocus } from '@kinevo/shared/types/onboarding'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 const TIP_KEY = 'modality_inference_v1'
 
@@ -102,7 +103,7 @@ export function ModalityInferenceToast({
 
           <div className="flex items-start gap-3 pr-6">
             <div className="w-9 h-9 bg-violet-500/15 rounded-xl flex items-center justify-center border border-violet-500/30 flex-shrink-0">
-              <Sparkles size={16} className="text-violet-400" />
+              <AssistantMark size={16} className="text-violet-400" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-bold text-foreground">

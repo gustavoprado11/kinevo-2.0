@@ -1,12 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Monitor, Sparkles, MessageCircle } from 'lucide-react'
+import { Monitor, MessageCircle } from 'lucide-react'
 import { useCommunicationStore } from '@/stores/communication-store'
 import { NotificationBell } from '@/components/layout/notification-bell'
 import { useUnreadMessagesCount } from '@/hooks/use-unread-messages-count'
 import { InlineSearchBar } from '@/components/search/inline-search-bar'
 import type { SearchStudent } from '@/components/search/search-results'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface DashboardHeaderProps {
     trainerName: string
@@ -91,7 +92,7 @@ export function DashboardHeader({ trainerName, students = [] }: DashboardHeaderP
                             : 'bg-surface-card border-k-border-primary text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset'
                     }`}
                 >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <AssistantMark className="w-3.5 h-3.5" />
                     <span className="hidden md:inline">Assistente</span>
                 </button>
 

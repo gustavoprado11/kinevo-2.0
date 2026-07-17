@@ -1,24 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import {
-    Inbox,
-    Search,
-    MessageCircle,
-    Mail,
-    Phone,
-    Copy,
-    Check,
-    Clock,
-    Archive,
-    UserPlus,
-    UserCheck,
-    Sparkles,
-    ChevronRight,
-    X,
-    ExternalLink,
-    AlertCircle,
-} from 'lucide-react'
+import { Inbox, Search, MessageCircle, Mail, Phone, Copy, Check, Clock, Archive, UserPlus, UserCheck, ChevronRight, X, ExternalLink, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { updateLeadStatus } from '@/actions/leads/update-lead-status'
@@ -26,6 +9,7 @@ import { convertLeadToStudent } from '@/actions/leads/convert-lead-to-student'
 import { relativeTime, whatsappLink } from '@/lib/leads/format'
 import { StudentAccessDialog } from '@/components/students'
 import { matchesSearch } from '@kinevo/shared/utils/search-text'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 export interface LeadRow {
     id: string
@@ -166,7 +150,7 @@ export function LeadsClient({ leads, hasLanding, landingPublished, publicSlug }:
                             href="/marketing/landing"
                             className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-violet-500/20 transition-colors hover:bg-violet-500"
                         >
-                            <Sparkles size={14} />
+                            <AssistantMark size={14} />
                             {!hasLanding ? 'Criar landing' : 'Publicar landing'}
                         </Link>
                     ) : (

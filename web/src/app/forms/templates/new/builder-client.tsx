@@ -11,25 +11,7 @@ import { updateFormTemplate } from '@/actions/forms/update-form-template'
 import { generateFormDraftWithAI } from '@/actions/forms/generate-form-with-ai'
 import { auditFormQualityWithAI } from '@/actions/forms/audit-form-quality-ai'
 import { useToast } from '@/components/ui/toast'
-import {
-    Plus,
-    Trash2,
-    Sparkles,
-    AlertTriangle,
-    GripVertical,
-    Loader2,
-    Type,
-    AlignLeft,
-    SlidersHorizontal,
-    CircleDot,
-    Camera,
-    MessageSquarePlus,
-    Smartphone,
-    ClipboardList,
-    CheckCircle2,
-    MessageSquare,
-    ThumbsUp,
-} from 'lucide-react'
+import { Plus, Trash2, AlertTriangle, GripVertical, Loader2, Type, AlignLeft, SlidersHorizontal, CircleDot, Camera, MessageSquarePlus, Smartphone, ClipboardList, CheckCircle2, MessageSquare, ThumbsUp } from 'lucide-react'
 import { EvaluationPreview } from '@/components/previews/evaluation-preview/evaluation-preview'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -50,6 +32,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { arrayMove } from '@dnd-kit/sortable'
 import { Z } from '@/lib/z-index'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -657,7 +640,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                 />
                                                 <span className="flex-1">
                                                     <span className="flex items-center gap-1.5 text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">
-                                                        <Sparkles size={14} className="text-[#7C3AED] dark:text-violet-400" />
+                                                        <AssistantMark size={14} className="text-[#7C3AED] dark:text-violet-400" />
                                                         Criar com IA
                                                     </span>
                                                     <span className="mt-0.5 block text-xs text-[#86868B] dark:text-k-text-quaternary">
@@ -680,7 +663,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                     <div className="rounded-2xl border border-[#D2D2D7] bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08)] space-y-6 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
                                         <div className="flex items-center gap-3">
                                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7C3AED]/10 dark:bg-violet-500/10">
-                                                <Sparkles size={20} className="text-[#7C3AED] dark:text-violet-400" />
+                                                <AssistantMark size={20} className="text-[#7C3AED] dark:text-violet-400" />
                                             </div>
                                             <div>
                                                 <h2 className="text-lg font-semibold text-[#1D1D1F] dark:font-bold dark:text-k-text-primary">Assistente IA</h2>
@@ -737,7 +720,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Sparkles size={16} />
+                                                        <AssistantMark size={16} />
                                                         Gerar Draft
                                                     </>
                                                 )}
@@ -762,7 +745,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                             </span>
                                             {draftSource === 'ai_assisted' && (
                                                 <span className="flex items-center gap-1 rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-[10px] font-bold text-[#7C3AED] border border-[#7C3AED]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
-                                                    <Sparkles size={10} strokeWidth={2} />
+                                                    <AssistantMark size={10} strokeWidth={2} />
                                                     IA
                                                 </span>
                                             )}
@@ -791,7 +774,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                         disabled={isAuditingAI || questions.length === 0}
                                                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border border-[#D2D2D7] bg-transparent hover:bg-[#F5F5F7] text-[#7C3AED] transition-all disabled:opacity-40 dark:rounded-lg dark:border-k-border-subtle dark:hover:bg-glass-bg dark:text-k-text-secondary dark:hover:text-violet-400"
                                                     >
-                                                        <Sparkles size={12} />
+                                                        <AssistantMark size={12} />
                                                         {isAuditingAI ? 'Auditando...' : 'Auditar Qualidade'}
                                                     </button>
                                                 </div>

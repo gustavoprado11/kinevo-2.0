@@ -4,10 +4,7 @@ import { useEffect, useState, useRef, useCallback, useTransition } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import {
-    MessageSquarePlus, Headphones,
-    LogOut, BookOpen, ChevronRight, ChevronLeft, Settings, Sparkles,
-} from 'lucide-react'
+import { MessageSquarePlus, Headphones, LogOut, BookOpen, ChevronRight, ChevronLeft, Settings } from 'lucide-react'
 import { useSidebarStore, shouldAutoCollapse } from '@/stores/sidebar-store'
 import { FeedbackModal } from '@/components/feedback/feedback-modal'
 import { createClient } from '@/lib/supabase/client'
@@ -19,6 +16,7 @@ import { MAIN_NAV, BIBLIOTECA_NAV as bibliotecaItems, type NavItem } from '@/com
 import { ModeToggle } from '@/components/layout/mode-toggle'
 import { useCommunicationStore } from '@/stores/communication-store'
 import { Building2 } from 'lucide-react'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface SidebarProps {
     financialBadge?: React.ReactNode
@@ -243,7 +241,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                     return (
                         <div className="relative group/nav">
                             <button type="button" onClick={() => openChat()} className={cls}>
-                                <Sparkles size={16} strokeWidth={1.7} className="shrink-0 text-k-text-tertiary group-hover:text-k-text-secondary transition-colors duration-200" />
+                                <AssistantMark size={16} strokeWidth={1.7} className="shrink-0 text-k-text-tertiary group-hover:text-k-text-secondary transition-colors duration-200" />
                                 <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100 flex-1 text-left'}`}>
                                     Assistente IA
                                 </span>

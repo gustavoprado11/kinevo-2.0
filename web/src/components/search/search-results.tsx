@@ -2,12 +2,9 @@
 
 import { Command } from 'cmdk'
 import { useRouter } from 'next/navigation'
-import {
-    Users, UserPlus, Dumbbell, Monitor, Wallet,
-    FileText, MessageCircle, LayoutDashboard, Calendar,
-    Settings, Sparkles, ClipboardList, BarChart3,
-} from 'lucide-react'
+import { Users, UserPlus, Dumbbell, Monitor, Wallet, FileText, MessageCircle, LayoutDashboard, Calendar, Settings, ClipboardList, BarChart3 } from 'lucide-react'
 import { useAssistantChatStore } from '@/stores/assistant-chat-store'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 export interface SearchStudent {
     id: string
@@ -112,7 +109,7 @@ export function SearchResults({ students = [], onSelect }: SearchResultsProps) {
                     onSelect={() => run(() => router.push('/training-room'))}
                 />
                 <Row
-                    icon={<Sparkles className="w-4 h-4 text-violet-500" />}
+                    icon={<AssistantMark className="w-4 h-4 text-violet-500" />}
                     label="Abrir Assistente IA"
                     value="assistente ia inteligência ajuda"
                     onSelect={() => run(() => openChat())}

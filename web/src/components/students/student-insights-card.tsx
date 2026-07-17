@@ -1,10 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import {
-    Sparkles, AlertTriangle, TrendingUp, Lightbulb, BarChart3,
-    X, ChevronRight, Pin, Plus, Send, MessageCircle, Dumbbell, ClipboardList, Eye, PlusCircle,
-} from 'lucide-react'
+import { AlertTriangle, TrendingUp, Lightbulb, BarChart3, X, ChevronRight, Pin, Plus, Send, MessageCircle, Dumbbell, ClipboardList, Eye, PlusCircle } from 'lucide-react'
 import { dismissInsight, markInsightRead, createPinnedNote, deletePinnedNote } from '@/actions/insights'
 import type { InsightItem } from '@/actions/insights'
 
@@ -180,7 +177,7 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
             <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-violet-500" />
+                        <AssistantMark className="w-4 h-4 text-violet-500" />
                         Insights & Notas
                     </h3>
                     <button
@@ -216,7 +213,7 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-violet-500" />
+                    <AssistantMark className="w-4 h-4 text-violet-500" />
                     Insights & Notas
                     {newCount > 0 && (
                         <span className="px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-500/20 text-[10px] font-bold text-violet-600 dark:text-violet-400">
@@ -344,6 +341,7 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
 // ── Note Input Component ──
 
 import { forwardRef } from 'react'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 const NoteInput = forwardRef<HTMLTextAreaElement, {
     value: string

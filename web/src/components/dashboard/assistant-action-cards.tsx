@@ -4,11 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-    Sparkles, X, AlertTriangle, TrendingUp, Lightbulb, BarChart3,
-    Check, CreditCard, FileText, FolderArchive, ChevronRight,
-    MessageCircle, Dumbbell, Send,
-} from 'lucide-react'
+import { X, AlertTriangle, TrendingUp, Lightbulb, BarChart3, Check, CreditCard, FileText, FolderArchive, ChevronRight, MessageCircle, Dumbbell, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { markInsightRead, dismissInsight } from '@/actions/insights'
 import type { InsightItem } from '@/actions/insights'
@@ -18,6 +14,7 @@ import { useCommunicationStore } from '@/stores/communication-store'
 import { formatCurrency } from '@/lib/utils/financial'
 import { DraftMessageComposer } from './draft-message-composer'
 import { WinbackComposer } from './winback-composer'
+import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 // ── Category config ──
 
@@ -335,7 +332,7 @@ export function AssistantActionCards({
             {/* Header — matches DailyActivityFeed pattern */}
             <div className="flex items-center justify-between border-b border-[#E8E8ED] dark:border-k-border-subtle px-6 py-4">
                 <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-violet-500" />
+                    <AssistantMark className="w-4 h-4 text-violet-500" />
                     <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Assistente Kinevo</h2>
                     {rows.length > 0 && (
                         <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 rounded">
