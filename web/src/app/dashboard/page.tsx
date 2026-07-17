@@ -56,7 +56,8 @@ export default async function DashboardPage({
     // Estúdios (decisão 16/jul): o GESTOR usa o Dashboard normal — a visão do
     // estúdio (KPIs, por treinador, tendências) renderiza AQUI por padrão, com
     // toggle pro painel pessoal (?v=me). Coach comum segue no pessoal.
-    if (checkout !== 'success' && v !== 'me') {
+    let isStudioManager = false
+    if (checkout !== 'success') {
         const { data: mgr } = await supabase
             .from('organization_members')
             .select('organizations(id, name, subscription_status, grace_until)')
@@ -67,7 +68,10 @@ export default async function DashboardPage({
         const mgrOrg = (mgr as { organizations: { id: string; name: string; subscription_status: string; grace_until: string | null } | { id: string; name: string; subscription_status: string; grace_until: string | null }[] | null } | null)?.organizations
         const org = Array.isArray(mgrOrg) ? mgrOrg[0] : mgrOrg
         if (org && isOrgBillingActive(org.subscription_status, org.grace_until)) {
-            return <StudioDashboardView trainer={trainer} organization={{ id: org.id, name: org.name }} />
+            isStudioManager = true
+            if (v !== 'me') {
+                return <StudioDashboardView trainer={trainer} organization={{ id: org.id, name: org.name }} />
+            }
         }
     }
 
@@ -122,6 +126,7 @@ export default async function DashboardPage({
             formTemplates={formTemplates}
             isStudioCoach={isStudioCoach}
             hasPaidSolo={hasPaidSolo}
+            isStudioManager={isStudioManager}
         />
     )
 }

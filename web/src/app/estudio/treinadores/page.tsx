@@ -29,7 +29,7 @@ export default async function EstudioTreinadoresPage() {
         >
             <div className="mb-6">
                 <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">{ctx.organization.name}</h1>
-                <p className="text-sm text-k-text-tertiary mt-0.5">Painel do estúdio — visão do gestor</p>
+                <p className="text-sm text-k-text-tertiary mt-0.5">Administração do estúdio</p>
             </div>
 
             <EstudioNav active="treinadores" />
