@@ -218,7 +218,7 @@ function ClassicDashboard() {
                                 numberOfLines={1}
                                 adjustsFontSizeToFit
                                 style={{
-                                    fontFamily: "PlusJakartaSans_800ExtraBold",
+                                    fontFamily: "MonaSans_800ExtraBold",
                                     fontSize: 28,
                                     lineHeight: 34,
                                     letterSpacing: typography.display.letterSpacing,
@@ -229,7 +229,7 @@ function ClassicDashboard() {
                             </Text>
                             <Text
                                 style={{
-                                    fontFamily: "PlusJakartaSans_500Medium",
+                                    fontFamily: "MonaSans_500Medium",
                                     fontSize: typography.bodySm.size,
                                     color: colors.text.tertiary,
                                     marginTop: spacing[1],
@@ -268,7 +268,7 @@ function ClassicDashboard() {
                                         borderColor: colors.surface.card,
                                     }}
                                 >
-                                    <Text style={{ fontFamily: "PlusJakartaSans_800ExtraBold", fontSize: 10, color: "#FFFFFF" }}>
+                                    <Text style={{ fontFamily: "MonaSans_800ExtraBold", fontSize: 10, color: "#FFFFFF" }}>
                                         {unreadCount > 99 ? "99+" : unreadCount}
                                     </Text>
                                 </View>
@@ -331,10 +331,10 @@ function ClassicDashboard() {
                                     <Play size={18} color="#FFFFFF" fill="#FFFFFF" />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ fontFamily: "PlusJakartaSans_700Bold", fontSize: 16, color: "#FFFFFF", letterSpacing: -0.2 }}>
+                                    <Text style={{ fontFamily: "MonaSans_700Bold", fontSize: 16, color: "#FFFFFF", letterSpacing: -0.2 }}>
                                         Sala de Treino
                                     </Text>
-                                    <Text style={{ fontFamily: "PlusJakartaSans_500Medium", fontSize: 12, color: "rgba(255,255,255,0.78)", marginTop: 2 }}>
+                                    <Text style={{ fontFamily: "MonaSans_500Medium", fontSize: 12, color: "rgba(255,255,255,0.78)", marginTop: 2 }}>
                                         Toque para entrar
                                     </Text>
                                 </View>
@@ -451,7 +451,7 @@ function ClassicDashboard() {
                                             </View>
                                             <Text
                                                 style={{
-                                                    fontFamily: "PlusJakartaSans_600SemiBold",
+                                                    fontFamily: "MonaSans_600SemiBold",
                                                     fontSize: 11,
                                                     color: colors.text.primary,
                                                     letterSpacing: -0.005,
@@ -489,7 +489,7 @@ function SectionLabel({ children }: { children: string }) {
     return (
         <Text
             style={{
-                fontFamily: "PlusJakartaSans_700Bold",
+                fontFamily: "MonaSans_700Bold",
                 fontSize: 11,
                 color: themed.text.tertiary,
                 letterSpacing: 1.4,
@@ -620,7 +620,7 @@ function PendingActionsList({
     if (items.length === 0) {
         return (
             <KCard>
-                <Text style={{ fontFamily: "PlusJakartaSans_500Medium", fontSize: 13, color: colors.text.tertiary }}>
+                <Text style={{ fontFamily: "MonaSans_500Medium", fontSize: 13, color: colors.text.tertiary }}>
                     Tudo em dia. Nenhuma ação pendente. ✓
                 </Text>
             </KCard>
@@ -655,7 +655,7 @@ function PendingActionsList({
                     >
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_600SemiBold",
+                                fontFamily: "MonaSans_600SemiBold",
                                 fontSize: typography.bodySm.size,
                                 color: colors.purple[700],
                             }}
@@ -746,7 +746,7 @@ function PendingActionRow({
                         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[2] }}>
                             <Text
                                 style={{
-                                    fontFamily: "PlusJakartaSans_700Bold",
+                                    fontFamily: "MonaSans_700Bold",
                                     fontSize: 14,
                                     color: colors.text.primary,
                                     flex: 1,
@@ -759,7 +759,7 @@ function PendingActionRow({
                         </View>
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_500Medium",
+                                fontFamily: "MonaSans_500Medium",
                                 fontSize: 12,
                                 color: colors.text.tertiary,
                                 marginTop: 2,
@@ -791,7 +791,7 @@ function DailyActivitySection({ items }: { items: DailyActivityItem[] }) {
                     <Activity size={32} color={colors.text.quaternary} strokeWidth={1.8} />
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontFamily: "MonaSans_500Medium",
                             fontSize: 14,
                             color: colors.text.tertiary,
                             textAlign: "center",
@@ -807,7 +807,7 @@ function DailyActivitySection({ items }: { items: DailyActivityItem[] }) {
                     >
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_600SemiBold",
+                                fontFamily: "MonaSans_600SemiBold",
                                 fontSize: 13,
                                 color: colors.purple[700],
                             }}
@@ -849,7 +849,7 @@ function DailyActivitySection({ items }: { items: DailyActivityItem[] }) {
                     >
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_600SemiBold",
+                                fontFamily: "MonaSans_600SemiBold",
                                 fontSize: 13,
                                 color: colors.purple[700],
                             }}
@@ -909,7 +909,7 @@ function DailyActivityRow({
             <View style={{ flex: 1, minWidth: 0 }}>
                 <Text
                     style={{
-                        fontFamily: "PlusJakartaSans_600SemiBold",
+                        fontFamily: "MonaSans_600SemiBold",
                         fontSize: 13,
                         color: colors.text.primary,
                     }}
@@ -919,7 +919,7 @@ function DailyActivityRow({
                 </Text>
                 <Text
                     style={{
-                        fontFamily: "PlusJakartaSans_500Medium",
+                        fontFamily: "MonaSans_500Medium",
                         fontSize: 12,
                         color: colors.text.tertiary,
                         marginTop: 2,
@@ -931,7 +931,7 @@ function DailyActivityRow({
             </View>
             <Text
                 style={{
-                    fontFamily: "PlusJakartaSans_500Medium",
+                    fontFamily: "MonaSans_500Medium",
                     fontSize: 11,
                     color: colors.text.quaternary,
                 }}

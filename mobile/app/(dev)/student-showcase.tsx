@@ -388,12 +388,12 @@ const styles = StyleSheet.create({
         paddingBottom: spacing[5],
     },
     headerTitle: {
-        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        fontFamily: 'MonaSans_800ExtraBold',
         fontSize: 26,
         letterSpacing: -0.8,
     },
     headerSubtitle: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: 13,
         marginTop: 2,
     },
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     },
     toggleBtnActive: { backgroundColor: colors.purple[600] },
     toggleBtnText: {
-        fontFamily: 'PlusJakartaSans_600SemiBold',
+        fontFamily: 'MonaSans_600SemiBold',
         fontSize: 12,
         color: colors.neutral[700],
     },
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(124,58,237,0.08)',
     },
     anchorText: {
-        fontFamily: 'PlusJakartaSans_600SemiBold',
+        fontFamily: 'MonaSans_600SemiBold',
         fontSize: 10,
         color: colors.purple[700],
         letterSpacing: 0.4,
@@ -440,12 +440,12 @@ const styles = StyleSheet.create({
         borderTopColor: 'rgba(0,0,0,0.06)',
     },
     sectionTitle: {
-        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        fontFamily: 'MonaSans_800ExtraBold',
         fontSize: 20,
         letterSpacing: -0.4,
     },
     sectionSubtitle: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: 12,
         marginTop: 2,
     },
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     setRowsHeaderCell: {
         flex: 1,
         textAlign: 'center',
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 10,
         letterSpacing: 1,
         textTransform: 'uppercase',
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.neutral[200],
     },
     resetBtnText: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 12,
         color: colors.neutral[800],
     },
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     celebrateBtnText: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 14,
         color: '#FFFFFF',
     },
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
         paddingTop: spacing[6],
     },
     footerText: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: 12,
         textAlign: 'center',
     },

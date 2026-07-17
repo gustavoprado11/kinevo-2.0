@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     },
     label: {
         flexShrink: 1,
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 11,
         letterSpacing: 1.1,
         textTransform: 'uppercase',
@@ -251,13 +251,13 @@ const styles = StyleSheet.create({
         gap: spacing[1],
     },
     value: {
-        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        fontFamily: 'MonaSans_800ExtraBold',
         fontSize: 28,
         letterSpacing: -1.1,
         lineHeight: 32,
     },
     valueSub: {
-        fontFamily: 'PlusJakartaSans_600SemiBold',
+        fontFamily: 'MonaSans_600SemiBold',
         fontSize: 14,
     },
     bottomRow: {
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     deltaText: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 12,
     },
 });

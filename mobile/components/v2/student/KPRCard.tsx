@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
         gap: spacing[2],
     },
     exercise: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 14,
         flex: 1,
     },
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
         borderRadius: radius.sm,
     },
     recentBadgeText: {
-        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        fontFamily: 'MonaSans_800ExtraBold',
         fontSize: 9,
         letterSpacing: 0.8,
         color: '#B45309',
@@ -250,17 +250,17 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     value: {
-        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        fontFamily: 'MonaSans_800ExtraBold',
         fontSize: 30,
         letterSpacing: -1.2,
         lineHeight: 34,
     },
     unit: {
-        fontFamily: 'PlusJakartaSans_600SemiBold',
+        fontFamily: 'MonaSans_600SemiBold',
         fontSize: 13,
     },
     delta: {
-        fontFamily: 'PlusJakartaSans_600SemiBold',
+        fontFamily: 'MonaSans_600SemiBold',
         fontSize: 10.5,
         marginTop: spacing[2],
     },

@@ -66,7 +66,7 @@ export function AdaptiveModal({
                                 backgroundColor: colors.surface.card,
                             }}
                         >
-                            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: colors.text.primary }}>
+                            <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 17, color: colors.text.primary }}>
                                 {title}
                             </Text>
                             <TouchableOpacity onPress={onClose} style={{ padding: 6 }} accessibilityRole="button" accessibilityLabel="Fechar">
@@ -126,7 +126,7 @@ export function AdaptiveModal({
                                 backgroundColor: colors.surface.card,
                             }}
                         >
-                            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 17, color: colors.text.primary }}>
+                            <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 17, color: colors.text.primary }}>
                                 {title}
                             </Text>
                             <TouchableOpacity onPress={onClose} style={{ padding: 6 }} accessibilityRole="button" accessibilityLabel="Fechar">

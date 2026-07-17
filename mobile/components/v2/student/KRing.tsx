@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     label: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         letterSpacing: 0.6,
         textTransform: 'uppercase',
     },

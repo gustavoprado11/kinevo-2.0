@@ -120,7 +120,7 @@ export function KSegmented<V extends string = string>({
                     >
                         <Text
                             style={{
-                                fontFamily: isActive ? 'PlusJakartaSans_700Bold' : 'PlusJakartaSans_600SemiBold',
+                                fontFamily: isActive ? 'MonaSans_700Bold' : 'MonaSans_600SemiBold',
                                 fontSize: 13,
                                 color: isActive ? colors.text.primary : colors.text.tertiary,
                                 letterSpacing: -0.005,

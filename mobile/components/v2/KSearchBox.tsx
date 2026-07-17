@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: 14,
         padding: 0,
     },
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
         paddingVertical: 2,
     },
     hintText: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 11,
         letterSpacing: 0.4,
     },

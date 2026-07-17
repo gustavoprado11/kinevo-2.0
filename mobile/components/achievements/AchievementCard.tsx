@@ -68,6 +68,6 @@ export function AchievementCard({ icon, title, subtitle, locked, gold, width, on
 }
 
 const styles = StyleSheet.create({
-    title: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 13 },
-    subtitle: { fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11 },
+    title: { fontFamily: 'MonaSans_700Bold', fontSize: 13 },
+    subtitle: { fontFamily: 'MonaSans_500Medium', fontSize: 11 },
 });

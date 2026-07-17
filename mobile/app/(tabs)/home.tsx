@@ -747,7 +747,7 @@ function AchievementsGrid({
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 2 }}>
                 <Text
                     style={{
-                        fontFamily: 'PlusJakartaSans_700Bold',
+                        fontFamily: 'MonaSans_700Bold',
                         fontSize: 11,
                         letterSpacing: 1.2,
                         textTransform: 'uppercase',
@@ -763,7 +763,7 @@ function AchievementsGrid({
                     accessibilityRole="button"
                     accessibilityLabel="Ver todas as conquistas"
                 >
-                    <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12, color: colors.text.secondary }}>
+                    <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12, color: colors.text.secondary }}>
                         Ver todas
                     </Text>
                     <ChevronRight size={14} color={colors.text.secondary} strokeWidth={2.5} />
@@ -831,20 +831,20 @@ function WeeklySummaryCard({ completed, target }: { completed: number; target: n
         >
             <Text
                 style={{
-                    fontFamily: 'PlusJakartaSans_500Medium',
+                    fontFamily: 'MonaSans_500Medium',
                     fontSize: 13,
                     color: colors.text.secondary,
                     lineHeight: 20,
                 }}
             >
                 Você treinou{' '}
-                <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', color: colors.text.primary }}>
+                <Text style={{ fontFamily: 'MonaSans_700Bold', color: colors.text.primary }}>
                     {completed} {completed === 1 ? 'vez' : 'vezes'}
                 </Text>
                 {target > 0 ? (
                     <>
                         {' '}esta semana — aderência{' '}
-                        <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', color: colors.text.primary }}>
+                        <Text style={{ fontFamily: 'MonaSans_700Bold', color: colors.text.primary }}>
                             {adherence}%
                         </Text>
                         .{' '}

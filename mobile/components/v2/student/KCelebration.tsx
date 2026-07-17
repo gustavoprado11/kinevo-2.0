@@ -340,13 +340,13 @@ const styles = StyleSheet.create({
         marginBottom: spacing[2],
     },
     title: {
-        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        fontFamily: 'MonaSans_800ExtraBold',
         fontSize: 28,
         letterSpacing: -1,
         textAlign: 'center',
     },
     subtitle: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: 15,
         marginTop: 4,
         textAlign: 'center',
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
         borderRadius: radius.pill,
     },
     valueText: {
-        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        fontFamily: 'MonaSans_800ExtraBold',
         fontSize: 18,
         color: '#FFFFFF',
         letterSpacing: -0.2,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.06)',
     },
     btnText: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 14,
     },
     btnPrimaryText: { color: '#FFFFFF' },

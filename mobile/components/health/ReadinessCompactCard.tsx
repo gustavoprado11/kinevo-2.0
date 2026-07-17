@@ -194,7 +194,7 @@ function makeStyles(c: V2Palette, accent: string) {
       elevation: 2,
     },
     eyebrow: {
-      fontFamily: 'PlusJakartaSans_700Bold',
+      fontFamily: 'MonaSans_700Bold',
       fontSize: 10,
       letterSpacing: 1.2,
       textTransform: 'uppercase',
@@ -217,14 +217,14 @@ function makeStyles(c: V2Palette, accent: string) {
       paddingBottom: 1,
     },
     score: {
-      fontFamily: 'PlusJakartaSans_800ExtraBold',
+      fontFamily: 'MonaSans_800ExtraBold',
       fontSize: 23,
       lineHeight: 25,
       color: c.text.primary,
       letterSpacing: -0.5,
     },
     category: {
-      fontFamily: 'PlusJakartaSans_700Bold',
+      fontFamily: 'MonaSans_700Bold',
       fontSize: 10,
       textTransform: 'uppercase',
       letterSpacing: 0.4,
@@ -232,7 +232,7 @@ function makeStyles(c: V2Palette, accent: string) {
     },
     rec: {
       flex: 1,
-      fontFamily: 'PlusJakartaSans_500Medium',
+      fontFamily: 'MonaSans_500Medium',
       fontSize: 12.5,
       lineHeight: 17,
       color: c.text.secondary,
@@ -249,12 +249,12 @@ function makeStyles(c: V2Palette, accent: string) {
       fontSize: 11,
     },
     metricValue: {
-      fontFamily: 'PlusJakartaSans_700Bold',
+      fontFamily: 'MonaSans_700Bold',
       fontSize: 13,
       color: c.text.primary,
     },
     metricLabel: {
-      fontFamily: 'PlusJakartaSans_500Medium',
+      fontFamily: 'MonaSans_500Medium',
       fontSize: 11,
       color: c.text.tertiary,
     },

@@ -208,7 +208,7 @@ function NavTabItem<K extends string>({
 
                 <Text
                     style={{
-                        fontFamily: active ? 'PlusJakartaSans_700Bold' : 'PlusJakartaSans_600SemiBold',
+                        fontFamily: active ? 'MonaSans_700Bold' : 'MonaSans_600SemiBold',
                         fontSize: 10,
                         color: active ? brand.color : colors.text.secondary,
                         marginTop: 2,
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
     },
     badgeText: {
-        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        fontFamily: 'MonaSans_800ExtraBold',
         fontSize: 9,
         color: '#FFFFFF',
         letterSpacing: 0.2,

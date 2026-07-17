@@ -137,7 +137,7 @@ export function KButton({
                     {leadingIcon ? <View style={styles.iconLeading}>{leadingIcon}</View> : null}
                     <Text
                         style={{
-                            fontFamily: 'PlusJakartaSans_700Bold',
+                            fontFamily: 'MonaSans_700Bold',
                             fontSize: dim.font,
                             color: textColor,
                             letterSpacing: -0.01,

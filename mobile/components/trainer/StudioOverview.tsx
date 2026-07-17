@@ -29,8 +29,8 @@ function KpiCard({ label, value, icon }: { label: string; value: string; icon: R
     return (
         <KCard style={{ flex: 1, padding: spacing[3], gap: 6 }}>
             {icon}
-            <Text style={{ fontFamily: "PlusJakartaSans_700Bold", fontSize: 20, color: colors.text.primary }}>{value}</Text>
-            <Text style={{ fontFamily: "PlusJakartaSans_500Medium", fontSize: 11, color: colors.text.tertiary }}>{label}</Text>
+            <Text style={{ fontFamily: "MonaSans_700Bold", fontSize: 20, color: colors.text.primary }}>{value}</Text>
+            <Text style={{ fontFamily: "MonaSans_500Medium", fontSize: 11, color: colors.text.tertiary }}>{label}</Text>
         </KCard>
     );
 }
@@ -42,10 +42,10 @@ function CoachRow({ coach }: { coach: StudioCoachStats }) {
     return (
         <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: spacing[3], paddingHorizontal: spacing[4] }}>
             <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: "PlusJakartaSans_600SemiBold", fontSize: 14, color: colors.text.primary }}>
+                <Text style={{ fontFamily: "MonaSans_600SemiBold", fontSize: 14, color: colors.text.primary }}>
                     {coach.coach_name}
                 </Text>
-                <Text style={{ marginTop: 2, fontFamily: "PlusJakartaSans_500Medium", fontSize: 12, color: colors.text.tertiary }}>
+                <Text style={{ marginTop: 2, fontFamily: "MonaSans_500Medium", fontSize: 12, color: colors.text.tertiary }}>
                     {Number(coach.active_students)} {Number(coach.active_students) === 1 ? "aluno" : "alunos"} · {Number(coach.completed_sessions)}/{Number(coach.expected_sessions)} treinos na semana
                 </Text>
             </View>
@@ -59,10 +59,10 @@ function StudentRiskRow({ student }: { student: StudioStudentOverview }) {
     return (
         <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: spacing[3], paddingHorizontal: spacing[4] }}>
             <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: "PlusJakartaSans_600SemiBold", fontSize: 14, color: colors.text.primary }}>
+                <Text style={{ fontFamily: "MonaSans_600SemiBold", fontSize: 14, color: colors.text.primary }}>
                     {student.student_name}
                 </Text>
-                <Text style={{ marginTop: 2, fontFamily: "PlusJakartaSans_500Medium", fontSize: 12, color: colors.text.tertiary }}>
+                <Text style={{ marginTop: 2, fontFamily: "MonaSans_500Medium", fontSize: 12, color: colors.text.tertiary }}>
                     {student.coach_name ?? "sem responsável"} · último treino {relativeDays(student.last_session)}
                 </Text>
             </View>
@@ -81,7 +81,7 @@ function SectionLabel({ title }: { title: string }) {
     return (
         <Text
             style={{
-                fontFamily: "PlusJakartaSans_600SemiBold",
+                fontFamily: "MonaSans_600SemiBold",
                 fontSize: 12,
                 letterSpacing: 0.6,
                 textTransform: "uppercase",
@@ -121,10 +121,10 @@ export function StudioOverview({ scopeToggle }: { scopeToggle: React.ReactNode }
         >
             <View style={{ marginBottom: spacing[3], flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View style={{ flex: 1, paddingRight: spacing[2] }}>
-                    <Text style={{ fontFamily: "PlusJakartaSans_700Bold", fontSize: 22, color: colors.text.primary }} numberOfLines={1}>
+                    <Text style={{ fontFamily: "MonaSans_700Bold", fontSize: 22, color: colors.text.primary }} numberOfLines={1}>
                         {membership?.orgName ?? "Estúdio"}
                     </Text>
-                    <Text style={{ fontFamily: "PlusJakartaSans_500Medium", fontSize: 12, color: colors.text.tertiary }}>
+                    <Text style={{ fontFamily: "MonaSans_500Medium", fontSize: 12, color: colors.text.tertiary }}>
                         Visão do estúdio
                     </Text>
                 </View>
@@ -145,7 +145,7 @@ export function StudioOverview({ scopeToggle }: { scopeToggle: React.ReactNode }
             <Animated.View entering={FadeInUp.delay(80).duration(300).easing(Easing.out(Easing.cubic))}>
                 <KCard style={{ padding: 0 }}>
                     {coaches.length === 0 ? (
-                        <Text style={{ padding: spacing[4], fontFamily: "PlusJakartaSans_500Medium", fontSize: 13, color: colors.text.tertiary }}>
+                        <Text style={{ padding: spacing[4], fontFamily: "MonaSans_500Medium", fontSize: 13, color: colors.text.tertiary }}>
                             Nenhum treinador ativo no estúdio.
                         </Text>
                     ) : (
@@ -165,7 +165,7 @@ export function StudioOverview({ scopeToggle }: { scopeToggle: React.ReactNode }
                     {atRiskStudents.length === 0 ? (
                         <View style={{ padding: spacing[4], flexDirection: "row", alignItems: "center", gap: spacing[2] }}>
                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: toRgba(colors.brand.primary, 0.9) }} />
-                            <Text style={{ fontFamily: "PlusJakartaSans_500Medium", fontSize: 13, color: colors.text.tertiary }}>
+                            <Text style={{ fontFamily: "MonaSans_500Medium", fontSize: 13, color: colors.text.tertiary }}>
                                 Nenhum aluno em risco — sem programa ou 14+ dias sem treinar.
                             </Text>
                         </View>

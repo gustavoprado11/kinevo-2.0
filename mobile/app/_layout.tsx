@@ -8,12 +8,12 @@ import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-cont
 import Toast from "react-native-toast-message";
 import {
     useFonts,
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
-} from "@expo-google-fonts/plus-jakarta-sans";
+    MonaSans_400Regular,
+    MonaSans_500Medium,
+    MonaSans_600SemiBold,
+    MonaSans_700Bold,
+    MonaSans_800ExtraBold,
+} from "@expo-google-fonts/mona-sans";
 import { AuthProvider } from "../contexts/AuthContext";
 import { RoleModeProvider, useRoleMode } from "../contexts/RoleModeContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -616,11 +616,11 @@ export default function RootLayout() {
     if (__DEV__) console.log("[Layout] Renderizando Provider Wrapper");
 
     const [fontsLoaded, fontsError] = useFonts({
-        PlusJakartaSans_400Regular,
-        PlusJakartaSans_500Medium,
-        PlusJakartaSans_600SemiBold,
-        PlusJakartaSans_700Bold,
-        PlusJakartaSans_800ExtraBold,
+        MonaSans_400Regular,
+        MonaSans_500Medium,
+        MonaSans_600SemiBold,
+        MonaSans_700Bold,
+        MonaSans_800ExtraBold,
     });
 
     React.useEffect(() => {

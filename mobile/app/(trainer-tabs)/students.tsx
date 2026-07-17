@@ -42,7 +42,7 @@ function StudentDetailPlaceholder() {
             <Users size={48} color={colors.text.quaternary} />
             <Text
                 style={{
-                    fontFamily: "PlusJakartaSans_500Medium",
+                    fontFamily: "MonaSans_500Medium",
                     fontSize: 16,
                     color: colors.text.tertiary,
                     marginTop: 12,
@@ -196,7 +196,7 @@ export default function StudentsScreen() {
                 <Animated.View entering={FadeIn.duration(400)}>
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_800ExtraBold",
+                            fontFamily: "MonaSans_800ExtraBold",
                             fontSize: typography.display.size,
                             lineHeight: typography.display.lineHeight,
                             letterSpacing: typography.display.letterSpacing,
@@ -207,7 +207,7 @@ export default function StudentsScreen() {
                     </Text>
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontFamily: "MonaSans_500Medium",
                             fontSize: typography.bodySm.size,
                             color: colors.text.tertiary,
                             marginTop: spacing[1],
@@ -331,7 +331,7 @@ export default function StudentsScreen() {
                         <Lock size={18} color="#FFFFFF" strokeWidth={2.5} />
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_700Bold",
+                                fontFamily: "MonaSans_700Bold",
                                 fontSize: 15,
                                 color: "#FFFFFF",
                                 letterSpacing: -0.01,
@@ -418,7 +418,7 @@ function StudentRow({
                     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[2] }}>
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_700Bold",
+                                fontFamily: "MonaSans_700Bold",
                                 fontSize: typography.title3.size,
                                 color: colors.text.primary,
                                 flex: 1,
@@ -439,7 +439,7 @@ function StudentRow({
                             >
                                 <Text
                                     style={{
-                                        fontFamily: "PlusJakartaSans_700Bold",
+                                        fontFamily: "MonaSans_700Bold",
                                         fontSize: 9,
                                         color: colors.purple[700],
                                         letterSpacing: 0.4,
@@ -459,7 +459,7 @@ function StudentRow({
                             >
                                 <Text
                                     style={{
-                                        fontFamily: "PlusJakartaSans_700Bold",
+                                        fontFamily: "MonaSans_700Bold",
                                         fontSize: 9,
                                         color: colors.purple[700],
                                         letterSpacing: 0.4,
@@ -475,7 +475,7 @@ function StudentRow({
                         <View style={{ marginTop: 4 }}>
                             <Text
                                 style={{
-                                    fontFamily: "PlusJakartaSans_500Medium",
+                                    fontFamily: "MonaSans_500Medium",
                                     fontSize: 12,
                                     color: colors.text.secondary,
                                 }}

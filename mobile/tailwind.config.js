@@ -15,12 +15,12 @@ module.exports = {
                 }
             },
             fontFamily: {
-                sans: ['PlusJakartaSans_500Medium', 'system-ui', 'sans-serif'],
-                'jakarta-regular': ['PlusJakartaSans_400Regular'],
-                'jakarta-medium': ['PlusJakartaSans_500Medium'],
-                'jakarta-semibold': ['PlusJakartaSans_600SemiBold'],
-                'jakarta-bold': ['PlusJakartaSans_700Bold'],
-                'jakarta-extrabold': ['PlusJakartaSans_800ExtraBold'],
+                sans: ['MonaSans_500Medium', 'system-ui', 'sans-serif'],
+                'jakarta-regular': ['MonaSans_400Regular'],
+                'jakarta-medium': ['MonaSans_500Medium'],
+                'jakarta-semibold': ['MonaSans_600SemiBold'],
+                'jakarta-bold': ['MonaSans_700Bold'],
+                'jakarta-extrabold': ['MonaSans_800ExtraBold'],
             }
         },
     },

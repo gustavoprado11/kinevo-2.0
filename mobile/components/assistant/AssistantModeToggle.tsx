@@ -109,7 +109,7 @@ function ToggleItem({
             <Icon size={16} color={color} strokeWidth={active ? 1.9 : 1.8} />
             <Text
                 style={{
-                    fontFamily: active ? 'PlusJakartaSans_700Bold' : 'PlusJakartaSans_600SemiBold',
+                    fontFamily: active ? 'MonaSans_700Bold' : 'MonaSans_600SemiBold',
                     fontSize: 14,
                     color,
                     letterSpacing: -0.005,

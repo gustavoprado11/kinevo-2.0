@@ -96,22 +96,22 @@ function makeStyles(colors: V2Palette) {
     sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 10, alignItems: 'center' },
     grabber: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(120,120,130,0.35)', marginBottom: 18 },
     medal: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-    title: { fontFamily: 'PlusJakartaSans_800ExtraBold', fontSize: 22, letterSpacing: -0.4, marginTop: 14 },
-    sub: { fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 6, paddingHorizontal: 8 },
+    title: { fontFamily: 'MonaSans_800ExtraBold', fontSize: 22, letterSpacing: -0.4, marginTop: 14 },
+    sub: { fontFamily: 'MonaSans_500Medium', fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 6, paddingHorizontal: 8 },
     statsRow: {
         flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', justifyContent: 'center',
         borderWidth: StyleSheet.hairlineWidth, borderRadius: 16, paddingVertical: 16, marginTop: 22,
     },
     stat: { flex: 1, alignItems: 'center' },
     divider: { width: StyleSheet.hairlineWidth, height: 34 },
-    statValue: { fontFamily: 'PlusJakartaSans_800ExtraBold', fontSize: 20, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
-    statLabel: { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 10, marginTop: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
+    statValue: { fontFamily: 'MonaSans_800ExtraBold', fontSize: 20, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+    statLabel: { fontFamily: 'MonaSans_600SemiBold', fontSize: 10, marginTop: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
     primary: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
         backgroundColor: colors.purple[600], borderRadius: 15, paddingVertical: 15, alignSelf: 'stretch', marginTop: 24,
     },
-    primaryText: { fontFamily: 'PlusJakartaSans_800ExtraBold', fontSize: 15, color: '#fff' },
+    primaryText: { fontFamily: 'MonaSans_800ExtraBold', fontSize: 15, color: '#fff' },
     ghost: { paddingVertical: 12, marginTop: 2 },
-    ghostText: { fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14 },
+    ghostText: { fontFamily: 'MonaSans_700Bold', fontSize: 14 },
     });
 }

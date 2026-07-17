@@ -90,11 +90,11 @@ export function ProgramReviewCard({ program = DEMO_PROGRAM }: { program?: Progra
                 }}
             >
                 <Sparkles size={16} color={colors.purple[600]} strokeWidth={1.7} />
-                <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}>
+                <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}>
                     Programa gerado
                 </Text>
                 <View style={{ backgroundColor: colors.purple[100], borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
-                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 9.5, color: colors.purple[600], letterSpacing: 0.3 }}>
+                    <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 9.5, color: colors.purple[600], letterSpacing: 0.3 }}>
                         IA
                     </Text>
                 </View>
@@ -113,15 +113,15 @@ export function ProgramReviewCard({ program = DEMO_PROGRAM }: { program?: Progra
                             justifyContent: 'center',
                         }}
                     >
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12, color: colors.purple[600] }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12, color: colors.purple[600] }}>
                             {program.studentInitials}
                         </Text>
                     </View>
                     <View>
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 14, color: colors.text.primary }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 14, color: colors.text.primary }}>
                             {program.studentName}
                         </Text>
-                        <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11, color: colors.text.tertiary }}>
+                        <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 11, color: colors.text.tertiary }}>
                             {program.studentMeta}
                         </Text>
                     </View>
@@ -131,14 +131,14 @@ export function ProgramReviewCard({ program = DEMO_PROGRAM }: { program?: Progra
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginBottom: 16 }}>
                     {program.tags.map((t) => (
                         <View key={t} style={{ backgroundColor: colors.surface.card2, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 5 }}>
-                            <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11.5, color: colors.text.secondary }}>
+                            <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 11.5, color: colors.text.secondary }}>
                                 {t}
                             </Text>
                         </View>
                     ))}
                     {program.emphasisTag ? (
                         <View style={{ backgroundColor: colors.purple[100], borderRadius: 9, paddingHorizontal: 11, paddingVertical: 5 }}>
-                            <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11.5, color: colors.purple[600] }}>
+                            <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 11.5, color: colors.purple[600] }}>
                                 {program.emphasisTag}
                             </Text>
                         </View>
@@ -148,7 +148,7 @@ export function ProgramReviewCard({ program = DEMO_PROGRAM }: { program?: Progra
                 {/* weekly division */}
                 <Text
                     style={{
-                        fontFamily: 'PlusJakartaSans_700Bold',
+                        fontFamily: 'MonaSans_700Bold',
                         fontSize: 11,
                         letterSpacing: 0.6,
                         textTransform: 'uppercase',
@@ -171,10 +171,10 @@ export function ProgramReviewCard({ program = DEMO_PROGRAM }: { program?: Progra
                                 alignItems: 'center',
                             }}
                         >
-                            <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 10, color: colors.purple[600] }}>
+                            <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 10, color: colors.purple[600] }}>
                                 {d.dow}
                             </Text>
-                            <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 11.5, color: colors.text.primary, marginTop: 3 }}>
+                            <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 11.5, color: colors.text.primary, marginTop: 3 }}>
                                 {d.label}
                             </Text>
                         </View>
@@ -196,11 +196,11 @@ export function ProgramReviewCard({ program = DEMO_PROGRAM }: { program?: Progra
                         }}
                     >
                         <View style={{ backgroundColor: colors.purple[600], borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 10, color: '#FFFFFF' }}>
+                            <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 10, color: '#FFFFFF' }}>
                                 {program.detail.dow}
                             </Text>
                         </View>
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: colors.text.primary }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12.5, color: colors.text.primary }}>
                             {program.detail.title}
                         </Text>
                     </View>
@@ -210,19 +210,19 @@ export function ProgramReviewCard({ program = DEMO_PROGRAM }: { program?: Progra
                                 key={ex.name}
                                 style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: 9, paddingHorizontal: 15 }}
                             >
-                                <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 12, color: colors.text.quaternary, width: 14 }}>
+                                <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 12, color: colors.text.quaternary, width: 14 }}>
                                     {i + 1}
                                 </Text>
-                                <Text style={{ flex: 1, fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13, color: colors.text.primary }}>
+                                <Text style={{ flex: 1, fontFamily: 'MonaSans_500Medium', fontSize: 13, color: colors.text.primary }}>
                                     {ex.name}
                                 </Text>
-                                <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 12, color: colors.text.secondary }}>
+                                <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 12, color: colors.text.secondary }}>
                                     {ex.scheme}
                                 </Text>
                             </View>
                         ))}
                         {program.detail.extra ? (
-                            <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 12, color: colors.purple[600], paddingVertical: 9, paddingHorizontal: 15 }}>
+                            <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 12, color: colors.purple[600], paddingVertical: 9, paddingHorizontal: 15 }}>
                                 {program.detail.extra}
                             </Text>
                         ) : null}

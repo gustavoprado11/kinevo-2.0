@@ -6,7 +6,7 @@
 // aluno); os demais campos persistem no botão Salvar do header.
 //
 // Padrão visual: header custom com botão Salvar trailing à direita, KCard,
-// fontes PlusJakartaSans_*, tokens de spacing/colors.
+// fontes MonaSans_*, tokens de spacing/colors.
 
 import React, { useMemo, useState } from 'react';
 import {
@@ -362,13 +362,13 @@ function createStyles(c: V2Palette) {
             alignItems: 'flex-end',
         },
         headerTitle: {
-            fontFamily: 'PlusJakartaSans_700Bold',
+            fontFamily: 'MonaSans_700Bold',
             fontSize: 17,
             color: c.text.primary,
             letterSpacing: -0.2,
         },
         headerActionText: {
-            fontFamily: 'PlusJakartaSans_700Bold',
+            fontFamily: 'MonaSans_700Bold',
             fontSize: 15,
         },
         headerActionEnabled: {
@@ -384,7 +384,7 @@ function createStyles(c: V2Palette) {
             paddingBottom: spacing[8],
         },
         sectionLabel: {
-            fontFamily: 'PlusJakartaSans_700Bold',
+            fontFamily: 'MonaSans_700Bold',
             fontSize: 11,
             letterSpacing: 1.4,
             color: c.text.tertiary,
@@ -421,7 +421,7 @@ function createStyles(c: V2Palette) {
             justifyContent: 'center',
         },
         fieldLabel: {
-            fontFamily: 'PlusJakartaSans_700Bold',
+            fontFamily: 'MonaSans_700Bold',
             fontSize: 14,
             color: c.text.primary,
         },
@@ -440,13 +440,13 @@ function createStyles(c: V2Palette) {
             borderColor: c.semantic.danger.fg,
         },
         atPrefix: {
-            fontFamily: 'PlusJakartaSans_600SemiBold',
+            fontFamily: 'MonaSans_600SemiBold',
             fontSize: 16,
             color: c.text.tertiary,
         },
         input: {
             flex: 1,
-            fontFamily: 'PlusJakartaSans_500Medium',
+            fontFamily: 'MonaSans_500Medium',
             fontSize: 16,
             color: c.text.primary,
             padding: 0,
@@ -472,7 +472,7 @@ function createStyles(c: V2Palette) {
             backgroundColor: c.purple[600],
         },
         segmentText: {
-            fontFamily: 'PlusJakartaSans_600SemiBold',
+            fontFamily: 'MonaSans_600SemiBold',
             fontSize: 14,
             color: c.text.secondary,
         },
@@ -485,14 +485,14 @@ function createStyles(c: V2Palette) {
             alignItems: 'center',
         },
         errorHint: {
-            fontFamily: 'PlusJakartaSans_500Medium',
+            fontFamily: 'MonaSans_500Medium',
             fontSize: 12,
             color: c.semantic.danger.fg,
             lineHeight: 16,
             marginTop: spacing[2],
         },
         helper: {
-            fontFamily: 'PlusJakartaSans_500Medium',
+            fontFamily: 'MonaSans_500Medium',
             fontSize: 12,
             color: c.text.tertiary,
             lineHeight: 16,

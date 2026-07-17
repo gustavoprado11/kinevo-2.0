@@ -52,7 +52,7 @@ export function KStatus({
     const dotSize = isSm ? 4 : 5;
     const fontSize = isPill ? (isSm ? 10 : 11) : (isSm ? 11 : typography.bodySm.size);
     const fontWeight = isPill ? '700' : '600';
-    const fontFamily = isPill ? 'PlusJakartaSans_700Bold' : 'PlusJakartaSans_600SemiBold';
+    const fontFamily = isPill ? 'MonaSans_700Bold' : 'MonaSans_600SemiBold';
     const letterSpacing = 0;
     const transform = 'none';
 

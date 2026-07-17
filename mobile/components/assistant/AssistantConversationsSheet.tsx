@@ -87,7 +87,7 @@ export function AssistantConversationsSheet({ visible, onClose, onSelect }: Prop
                         onSubmitEditing={saveRename}
                         style={{
                             flex: 1,
-                            fontFamily: 'PlusJakartaSans_600SemiBold',
+                            fontFamily: 'MonaSans_600SemiBold',
                             fontSize: 14,
                             color: colors.text.primary,
                             backgroundColor: colors.surface.card2,
@@ -119,7 +119,7 @@ export function AssistantConversationsSheet({ visible, onClose, onSelect }: Prop
                 ) : items.length === 0 ? (
                     <View style={{ alignItems: 'center', paddingVertical: spacing[6], gap: spacing[2] }}>
                         <MessagesSquare size={28} color={colors.text.quaternary} strokeWidth={1.8} />
-                        <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13, color: colors.text.tertiary }}>
+                        <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 13, color: colors.text.tertiary }}>
                             Nenhuma conversa ainda
                         </Text>
                     </View>
@@ -151,12 +151,12 @@ export function AssistantConversationsSheet({ visible, onClose, onSelect }: Prop
                                     style={{ flex: 1, minWidth: 0 }}
                                 >
                                     <Text
-                                        style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 14, color: colors.text.primary }}
+                                        style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 14, color: colors.text.primary }}
                                         numberOfLines={1}
                                     >
                                         {c.title || 'Nova conversa'}
                                     </Text>
-                                    <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11.5, color: colors.text.tertiary, marginTop: 1 }}>
+                                    <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 11.5, color: colors.text.tertiary, marginTop: 1 }}>
                                         {[c.studentName, timeAgo(c.last_message_at)].filter(Boolean).join(' · ')}
                                     </Text>
                                 </Pressable>

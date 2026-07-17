@@ -556,7 +556,7 @@ function TrainerCardHero({
                     ) : (
                         <Text
                             style={{
-                                fontFamily: 'PlusJakartaSans_800ExtraBold',
+                                fontFamily: 'MonaSans_800ExtraBold',
                                 fontSize: 16,
                                 color: '#FFFFFF',
                             }}
@@ -568,7 +568,7 @@ function TrainerCardHero({
                 <View style={{ flex: 1, gap: 2 }}>
                     <Text
                         style={{
-                            fontFamily: 'PlusJakartaSans_700Bold',
+                            fontFamily: 'MonaSans_700Bold',
                             fontSize: 9.5,
                             letterSpacing: 1,
                             textTransform: 'uppercase',
@@ -579,7 +579,7 @@ function TrainerCardHero({
                     </Text>
                     <Text
                         style={{
-                            fontFamily: 'PlusJakartaSans_800ExtraBold',
+                            fontFamily: 'MonaSans_800ExtraBold',
                             fontSize: 15,
                             letterSpacing: -0.2,
                             color: '#FFFFFF',

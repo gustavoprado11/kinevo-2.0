@@ -149,7 +149,7 @@ export default function LeadsScreen() {
                 <View style={{ flex: 1, marginLeft: spacing[2] }}>
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_700Bold",
+                            fontFamily: "MonaSans_700Bold",
                             fontSize: 18,
                             color: colors.text.primary,
                         }}
@@ -158,7 +158,7 @@ export default function LeadsScreen() {
                     </Text>
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontFamily: "MonaSans_500Medium",
                             fontSize: 12,
                             color: colors.text.tertiary,
                             marginTop: 1,
@@ -195,7 +195,7 @@ export default function LeadsScreen() {
                         <Text
                             style={{
                                 flex: 1,
-                                fontFamily: "PlusJakartaSans_600SemiBold",
+                                fontFamily: "MonaSans_600SemiBold",
                                 fontSize: 13,
                                 color: colors.semantic.danger.fg,
                             }}
@@ -247,7 +247,7 @@ export default function LeadsScreen() {
                     >
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_500Medium",
+                                fontFamily: "MonaSans_500Medium",
                                 fontSize: 13,
                                 color: colors.text.tertiary,
                             }}
@@ -347,7 +347,7 @@ function LeadRow({
                     >
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_700Bold",
+                                fontFamily: "MonaSans_700Bold",
                                 fontSize: 16,
                                 color: colors.brand.primary,
                             }}
@@ -359,7 +359,7 @@ function LeadRow({
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                             <Text
                                 style={{
-                                    fontFamily: isNew ? "PlusJakartaSans_700Bold" : "PlusJakartaSans_600SemiBold",
+                                    fontFamily: isNew ? "MonaSans_700Bold" : "MonaSans_600SemiBold",
                                     fontSize: 14,
                                     color: colors.text.primary,
                                     flexShrink: 1,
@@ -372,7 +372,7 @@ function LeadRow({
                         </View>
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_500Medium",
+                                fontFamily: "MonaSans_500Medium",
                                 fontSize: 12,
                                 color: colors.text.tertiary,
                                 marginTop: 2,
@@ -388,7 +388,7 @@ function LeadRow({
                             <Clock size={10} color={colors.text.quaternary} strokeWidth={2} />
                             <Text
                                 style={{
-                                    fontFamily: "PlusJakartaSans_500Medium",
+                                    fontFamily: "MonaSans_500Medium",
                                     fontSize: 11,
                                     color: colors.text.quaternary,
                                 }}
@@ -469,7 +469,7 @@ function LeadDetail({
                 {lead.source_slug && (
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_700Bold",
+                            fontFamily: "MonaSans_700Bold",
                             fontSize: 10,
                             color: colors.text.quaternary,
                             textTransform: "uppercase",
@@ -523,7 +523,7 @@ function LeadDetail({
                             >
                                 <Text
                                     style={{
-                                        fontFamily: "PlusJakartaSans_700Bold",
+                                        fontFamily: "MonaSans_700Bold",
                                         fontSize: 12,
                                         color: colors.brand.primary,
                                     }}
@@ -543,7 +543,7 @@ function LeadDetail({
                             >
                                 <Text
                                     style={{
-                                        fontFamily: "PlusJakartaSans_700Bold",
+                                        fontFamily: "MonaSans_700Bold",
                                         fontSize: 12,
                                         color: colors.text.secondary,
                                     }}
@@ -563,7 +563,7 @@ function LeadDetail({
                     <KCard>
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_500Medium",
+                                fontFamily: "MonaSans_500Medium",
                                 fontSize: 13.5,
                                 color: colors.text.secondary,
                                 lineHeight: 20,
@@ -589,7 +589,7 @@ function LeadDetail({
                 <View style={{ gap: spacing[2] }}>
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontFamily: "MonaSans_500Medium",
                             fontSize: 12.5,
                             color: colors.text.tertiary,
                             lineHeight: 18,
@@ -612,7 +612,7 @@ function LeadDetail({
                     {convertError && (
                         <Text
                             style={{
-                                fontFamily: "PlusJakartaSans_500Medium",
+                                fontFamily: "MonaSans_500Medium",
                                 fontSize: 12.5,
                                 color: colors.semantic.danger.default,
                             }}
@@ -726,7 +726,7 @@ function CredentialsView({
             </View>
             <Text
                 style={{
-                    fontFamily: "PlusJakartaSans_700Bold",
+                    fontFamily: "MonaSans_700Bold",
                     fontSize: 18,
                     color: colors.text.primary,
                     marginBottom: spacing[1],
@@ -736,7 +736,7 @@ function CredentialsView({
             </Text>
             <Text
                 style={{
-                    fontFamily: "PlusJakartaSans_500Medium",
+                    fontFamily: "MonaSans_500Medium",
                     fontSize: 13.5,
                     color: colors.text.tertiary,
                     lineHeight: 20,
@@ -766,7 +766,7 @@ function CredentialsView({
                     <Text
                         style={{
                             flex: 1,
-                            fontFamily: "PlusJakartaSans_700Bold",
+                            fontFamily: "MonaSans_700Bold",
                             fontSize: 15,
                             color: colors.text.primary,
                             letterSpacing: 0.5,
@@ -820,7 +820,7 @@ function EmptyState({ colors }: { colors: ReturnType<typeof useV2Colors> }) {
             </View>
             <Text
                 style={{
-                    fontFamily: "PlusJakartaSans_700Bold",
+                    fontFamily: "MonaSans_700Bold",
                     fontSize: 18,
                     color: colors.text.primary,
                     marginBottom: spacing[2],
@@ -831,7 +831,7 @@ function EmptyState({ colors }: { colors: ReturnType<typeof useV2Colors> }) {
             </Text>
             <Text
                 style={{
-                    fontFamily: "PlusJakartaSans_500Medium",
+                    fontFamily: "MonaSans_500Medium",
                     fontSize: 13.5,
                     color: colors.text.tertiary,
                     textAlign: "center",
@@ -864,7 +864,7 @@ function SectionHeader({
     return (
         <Text
             style={{
-                fontFamily: "PlusJakartaSans_700Bold",
+                fontFamily: "MonaSans_700Bold",
                 fontSize: 11,
                 color: colors.text.tertiary,
                 textTransform: "uppercase",
@@ -901,7 +901,7 @@ function DetailRow({
             <Text
                 style={{
                     flex: 1,
-                    fontFamily: "PlusJakartaSans_500Medium",
+                    fontFamily: "MonaSans_500Medium",
                     fontSize: 13,
                     color: colors.text.primary,
                 }}
@@ -933,7 +933,7 @@ function StatusPill({ meta }: { meta: { label: string; bg: string; fg: string; d
             <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: meta.dot }} />
             <Text
                 style={{
-                    fontFamily: "PlusJakartaSans_700Bold",
+                    fontFamily: "MonaSans_700Bold",
                     fontSize: 9.5,
                     color: meta.fg,
                     textTransform: "uppercase",

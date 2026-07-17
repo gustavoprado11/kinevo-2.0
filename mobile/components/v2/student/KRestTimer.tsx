@@ -192,12 +192,12 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     timeText: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 12,
         letterSpacing: 0.2,
     },
     nextText: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: 11,
         opacity: 0.85,
     },

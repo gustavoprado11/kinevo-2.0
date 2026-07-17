@@ -80,14 +80,14 @@ export function StudentAlertCard({
                 }}
             >
                 <AlertTriangle size={15} color={colors.semantic.warning.default} strokeWidth={1.9} />
-                <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, color: colors.text.primary }}>
+                <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 13, color: colors.text.primary }}>
                     {title}
                 </Text>
                 {countLabel ? (
                     <Text
                         style={{
                             marginLeft: 'auto',
-                            fontFamily: 'PlusJakartaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             fontSize: 11,
                             color: colors.text.tertiary,
                         }}
@@ -123,26 +123,26 @@ export function StudentAlertCard({
                                 justifyContent: 'center',
                             }}
                         >
-                            <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12, color: t.fg }}>
+                            <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12, color: t.fg }}>
                                 {s.initials}
                             </Text>
                         </View>
                         <View style={{ flex: 1, minWidth: 0 }}>
                             <Text
-                                style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}
+                                style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}
                                 numberOfLines={1}
                             >
                                 {s.name}
                             </Text>
                             <Text
-                                style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11, color: colors.text.tertiary, marginTop: 1 }}
+                                style={{ fontFamily: 'MonaSans_500Medium', fontSize: 11, color: colors.text.tertiary, marginTop: 1 }}
                                 numberOfLines={1}
                             >
                                 {s.meta}
                             </Text>
                         </View>
                         <View style={{ backgroundColor: t.bg, borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4 }}>
-                            <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 10, color: t.fg }}>
+                            <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 10, color: t.fg }}>
                                 {s.badgeLabel}
                             </Text>
                         </View>
@@ -175,7 +175,7 @@ export function StudentAlertCard({
                             }}
                         >
                             <MessageCircle size={15} color="#FFFFFF" strokeWidth={1.8} />
-                            <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, color: '#FFFFFF' }}>
+                            <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 13, color: '#FFFFFF' }}>
                                 {ctaLabel}
                             </Text>
                         </LinearGradient>
@@ -201,13 +201,13 @@ export function AdherenceCard({ value, deltaLabel, deltaDirection = 'down', bars
     return (
         <MetricShell label="Aderência · 30 dias">
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing[2], marginBottom: 14 }}>
-                <Text style={{ fontFamily: 'PlusJakartaSans_800ExtraBold', fontSize: 34, letterSpacing: -0.7, color: colors.text.primary }}>
+                <Text style={{ fontFamily: 'MonaSans_800ExtraBold', fontSize: 34, letterSpacing: -0.7, color: colors.text.primary }}>
                     {value}
                 </Text>
                 {deltaLabel ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 5 }}>
                         <DeltaIcon size={13} color={deltaColor} strokeWidth={2.3} />
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: deltaColor }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12.5, color: deltaColor }}>
                             {deltaLabel}
                         </Text>
                     </View>
@@ -264,13 +264,13 @@ export function RevenueCard({
     return (
         <MetricShell label="Receita · mês">
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing[2], marginBottom: 14 }}>
-                <Text style={{ fontFamily: 'PlusJakartaSans_800ExtraBold', fontSize: 28, letterSpacing: -0.6, color: colors.text.primary }}>
+                <Text style={{ fontFamily: 'MonaSans_800ExtraBold', fontSize: 28, letterSpacing: -0.6, color: colors.text.primary }}>
                     {value}
                 </Text>
                 {deltaLabel ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 4 }}>
                         <DeltaIcon size={13} color={deltaColor} strokeWidth={2.3} />
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: deltaColor }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12.5, color: deltaColor }}>
                             {deltaLabel}
                         </Text>
                     </View>
@@ -280,10 +280,10 @@ export function RevenueCard({
             <View style={{ flexDirection: 'row', gap: spacing[2], marginBottom: noteLabel ? 14 : 0 }}>
                 {stats.map((s, i) => (
                     <View key={i} style={{ flex: 1, backgroundColor: colors.surface.card2, borderRadius: 12, padding: 11 }}>
-                        <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: colors.text.primary }}>
+                        <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 16, color: colors.text.primary }}>
                             {s.value}
                         </Text>
-                        <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 10, color: colors.text.tertiary, marginTop: 2 }}>
+                        <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 10, color: colors.text.tertiary, marginTop: 2 }}>
                             {s.label}
                         </Text>
                     </View>
@@ -309,11 +309,11 @@ export function RevenueCard({
                     }}
                 >
                     <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.semantic.warning.default }} />
-                    <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 12, color: colors.semantic.warning.fg, flex: 1 }}>
+                    <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 12, color: colors.semantic.warning.fg, flex: 1 }}>
                         {noteLabel}
                     </Text>
                     {noteActionLabel ? (
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12, color: colors.purple[600] }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12, color: colors.purple[600] }}>
                             {noteActionLabel} →
                         </Text>
                     ) : null}
@@ -337,7 +337,7 @@ function MetricShell({ label, children }: { label: string; children: React.React
         >
             <Text
                 style={{
-                    fontFamily: 'PlusJakartaSans_700Bold',
+                    fontFamily: 'MonaSans_700Bold',
                     fontSize: 11,
                     letterSpacing: 0.6,
                     textTransform: 'uppercase',

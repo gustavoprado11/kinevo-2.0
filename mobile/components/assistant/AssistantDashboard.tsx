@@ -256,7 +256,7 @@ export function AssistantDashboard() {
                 <View style={{ flex: 1 }}>
                     <Text
                         style={{
-                            fontFamily: 'PlusJakartaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             fontSize: typography.bodySm.size,
                             color: colors.text.tertiary,
                         }}
@@ -267,7 +267,7 @@ export function AssistantDashboard() {
                         numberOfLines={1}
                         adjustsFontSizeToFit
                         style={{
-                            fontFamily: 'PlusJakartaSans_700Bold',
+                            fontFamily: 'MonaSans_700Bold',
                             fontSize: 25,
                             lineHeight: 30,
                             letterSpacing: -0.6,
@@ -310,7 +310,7 @@ export function AssistantDashboard() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginBottom: spacing[3] }}>
                         <Text
                             style={{
-                                fontFamily: 'PlusJakartaSans_700Bold',
+                                fontFamily: 'MonaSans_700Bold',
                                 fontSize: 11.5,
                                 letterSpacing: 1.2,
                                 textTransform: 'uppercase',
@@ -328,7 +328,7 @@ export function AssistantDashboard() {
                                     paddingVertical: 2,
                                 }}
                             >
-                                <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 10, color: colors.semantic.danger.fg }}>
+                                <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 10, color: colors.semantic.danger.fg }}>
                                     {attentionCount}
                                 </Text>
                             </View>
@@ -336,7 +336,7 @@ export function AssistantDashboard() {
                         <Text
                             style={{
                                 marginLeft: 'auto',
-                                fontFamily: 'PlusJakartaSans_500Medium',
+                                fontFamily: 'MonaSans_500Medium',
                                 fontSize: 11.5,
                                 color: colors.text.quaternary,
                             }}
@@ -361,7 +361,7 @@ export function AssistantDashboard() {
                                 borderColor: colors.border.default,
                             }}
                         >
-                            <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13, color: colors.text.tertiary }}>
+                            <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 13, color: colors.text.tertiary }}>
                                 Tudo em dia. Nenhuma pendência. ✓
                             </Text>
                         </View>
@@ -376,7 +376,7 @@ export function AssistantDashboard() {
                     >
                         <Text
                             style={{
-                                fontFamily: 'PlusJakartaSans_700Bold',
+                                fontFamily: 'MonaSans_700Bold',
                                 fontSize: 11.5,
                                 letterSpacing: 1.2,
                                 textTransform: 'uppercase',
@@ -409,7 +409,7 @@ export function AssistantDashboard() {
                     >
                         <Text
                             style={{
-                                fontFamily: 'PlusJakartaSans_700Bold',
+                                fontFamily: 'MonaSans_700Bold',
                                 fontSize: 11.5,
                                 letterSpacing: 1.2,
                                 textTransform: 'uppercase',
@@ -453,14 +453,14 @@ export function AssistantDashboard() {
                                     <View style={{ flex: 1, minWidth: 0 }}>
                                         <Text
                                             numberOfLines={1}
-                                            style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}
+                                            style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}
                                         >
                                             {conv.title}
                                         </Text>
                                         {conv.studentName ? (
                                             <Text
                                                 numberOfLines={1}
-                                                style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11.5, color: colors.text.tertiary, marginTop: 1 }}
+                                                style={{ fontFamily: 'MonaSans_500Medium', fontSize: 11.5, color: colors.text.tertiary, marginTop: 1 }}
                                             >
                                                 {conv.studentName}
                                             </Text>
@@ -530,14 +530,14 @@ function AttentionCard({ data }: { data: AttentionCardData }) {
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
                 <Text
-                    style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 14.5, color: colors.text.primary }}
+                    style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 14.5, color: colors.text.primary }}
                     numberOfLines={1}
                 >
                     {data.title}
                 </Text>
                 {data.subtitle ? (
                     <Text
-                        style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 12.5, color: colors.text.tertiary, marginTop: 1 }}
+                        style={{ fontFamily: 'MonaSans_500Medium', fontSize: 12.5, color: colors.text.tertiary, marginTop: 1 }}
                         numberOfLines={1}
                     >
                         {data.subtitle}
@@ -562,12 +562,12 @@ function MiniStat({ label, value, valueColor }: { label: string; value: string; 
                 borderColor: colors.border.default,
             }}
         >
-            <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11, color: colors.text.tertiary }}>
+            <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 11, color: colors.text.tertiary }}>
                 {label}
             </Text>
             <Text
                 style={{
-                    fontFamily: 'PlusJakartaSans_800ExtraBold',
+                    fontFamily: 'MonaSans_800ExtraBold',
                     fontSize: 24,
                     letterSpacing: -0.5,
                     color: valueColor,

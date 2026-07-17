@@ -155,10 +155,10 @@ export default function AssistantChatScreen() {
                     <Sparkles size={18} color="#FFFFFF" strokeWidth={1.6} />
                 </LinearGradient>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: colors.text.primary }}>
+                    <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 16, color: colors.text.primary }}>
                         Assistente
                     </Text>
-                    <Text numberOfLines={1} style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11, color: colors.text.tertiary }}>
+                    <Text numberOfLines={1} style={{ fontFamily: 'MonaSans_500Medium', fontSize: 11, color: colors.text.tertiary }}>
                         {scopedStudentName ? `Sobre ${scopedStudentName}` : 'Contexto dos seus alunos'}
                     </Text>
                 </View>
@@ -270,7 +270,7 @@ function ThinkingRow({ label }: { label?: string | null }) {
             </LinearGradient>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
                 <ActivityIndicator size="small" color={colors.purple[600]} />
-                <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13, color: colors.text.tertiary }}>
+                <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 13, color: colors.text.tertiary }}>
                     {label || 'Pensando…'}
                 </Text>
             </View>
@@ -302,7 +302,7 @@ function ErrorBanner({ error, onDismiss }: { error: AssistantError; onDismiss: (
             }}
         >
             <AlertCircle size={16} color={tone.fg} strokeWidth={2} style={{ marginTop: 1 }} />
-            <Text style={{ flex: 1, fontFamily: 'PlusJakartaSans_500Medium', fontSize: 12.5, color: tone.fg, lineHeight: 17 }}>
+            <Text style={{ flex: 1, fontFamily: 'MonaSans_500Medium', fontSize: 12.5, color: tone.fg, lineHeight: 17 }}>
                 {error.message}
             </Text>
             <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel="Dispensar" hitSlop={8}>
@@ -324,10 +324,10 @@ function EmptyState({ onPick }: { onPick: (s: string) => void }) {
             >
                 <Sparkles size={26} color="#FFFFFF" strokeWidth={1.6} />
             </LinearGradient>
-            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 18, color: colors.text.primary, textAlign: 'center' }}>
+            <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 18, color: colors.text.primary, textAlign: 'center' }}>
                 Pergunte ou peça algo
             </Text>
-            <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13, color: colors.text.tertiary, textAlign: 'center' }}>
+            <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 13, color: colors.text.tertiary, textAlign: 'center' }}>
                 O assistente conhece seus alunos, programas e financeiro.
             </Text>
             <View style={{ gap: spacing[2], alignSelf: 'stretch', marginTop: spacing[2] }}>
@@ -349,7 +349,7 @@ function EmptyState({ onPick }: { onPick: (s: string) => void }) {
                             paddingHorizontal: 16,
                         }}
                     >
-                        <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13.5, color: colors.text.secondary }}>
+                        <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 13.5, color: colors.text.secondary }}>
                             {s.label}
                         </Text>
                     </Pressable>

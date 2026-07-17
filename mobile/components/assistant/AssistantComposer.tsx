@@ -109,7 +109,7 @@ export const AssistantComposer = forwardRef<AssistantComposerHandle, AssistantCo
                         >
                             <Text
                                 style={{
-                                    fontFamily: 'PlusJakartaSans_500Medium',
+                                    fontFamily: 'MonaSans_500Medium',
                                     fontSize: 12.5,
                                     color: colors.text.secondary,
                                 }}
@@ -152,7 +152,7 @@ export const AssistantComposer = forwardRef<AssistantComposerHandle, AssistantCo
                         multiline
                         style={{
                             flex: 1,
-                            fontFamily: 'PlusJakartaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             fontSize: 14.5,
                             color: colors.text.primary,
                             maxHeight: 96,
@@ -172,7 +172,7 @@ export const AssistantComposer = forwardRef<AssistantComposerHandle, AssistantCo
                     >
                         <Text
                             style={{
-                                fontFamily: 'PlusJakartaSans_500Medium',
+                                fontFamily: 'MonaSans_500Medium',
                                 fontSize: 14.5,
                                 color: colors.text.quaternary,
                             }}

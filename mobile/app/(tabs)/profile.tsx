@@ -196,7 +196,7 @@ export default function ProfileScreen() {
                             <View style={{ flex: 1, gap: 2 }}>
                                 <Text
                                     style={{
-                                        fontFamily: 'PlusJakartaSans_800ExtraBold',
+                                        fontFamily: 'MonaSans_800ExtraBold',
                                         fontSize: 18,
                                         letterSpacing: -0.4,
                                         color: '#FFFFFF',
@@ -513,7 +513,7 @@ export default function ProfileScreen() {
                                 <Text
                                     style={{
                                         flex: 1,
-                                        fontFamily: "PlusJakartaSans_600SemiBold",
+                                        fontFamily: "MonaSans_600SemiBold",
                                         fontSize: 14,
                                         color: colors.text.primary,
                                     }}
@@ -528,7 +528,7 @@ export default function ProfileScreen() {
                     })}
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontFamily: "MonaSans_500Medium",
                             fontSize: 12,
                             color: colors.text.tertiary,
                             marginTop: v2.spacing[2],
@@ -610,7 +610,7 @@ function ProfileStat({ label, value }: { label: string; value: string }) {
         <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
             <Text
                 style={{
-                    fontFamily: 'PlusJakartaSans_800ExtraBold',
+                    fontFamily: 'MonaSans_800ExtraBold',
                     fontSize: 16,
                     letterSpacing: -0.3,
                     color: '#FFFFFF',
@@ -621,7 +621,7 @@ function ProfileStat({ label, value }: { label: string; value: string }) {
             </Text>
             <Text
                 style={{
-                    fontFamily: 'PlusJakartaSans_700Bold',
+                    fontFamily: 'MonaSans_700Bold',
                     fontSize: 9.5,
                     letterSpacing: 0.6,
                     textTransform: 'uppercase',

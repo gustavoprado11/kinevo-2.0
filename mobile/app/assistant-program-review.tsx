@@ -42,7 +42,7 @@ export default function AssistantProgramReviewScreen() {
                 <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Voltar" hitSlop={10}>
                     <ChevronLeft size={24} color={colors.text.secondary} strokeWidth={1.9} />
                 </Pressable>
-                <Text style={{ flex: 1, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: colors.text.primary }}>
+                <Text style={{ flex: 1, fontFamily: 'MonaSans_700Bold', fontSize: 16, color: colors.text.primary }}>
                     Programa para {DEMO_PROGRAM.studentName.split(' ')[0]}
                 </Text>
             </View>
@@ -100,7 +100,7 @@ export default function AssistantProgramReviewScreen() {
                         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing[2], paddingVertical: 14 }}
                     >
                         <Check size={16} color="#FFFFFF" strokeWidth={2.3} />
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 14, color: '#FFFFFF' }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 14, color: '#FFFFFF' }}>
                             Aprovar e atribuir
                         </Text>
                     </LinearGradient>

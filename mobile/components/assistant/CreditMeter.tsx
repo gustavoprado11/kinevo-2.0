@@ -32,7 +32,7 @@ export function CreditMeter({ summary }: { summary: AiUsageSummary | null }) {
             }}
         >
             <Zap size={12} color={fg} strokeWidth={2.2} />
-            <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 11.5, color: fg }}>
+            <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 11.5, color: fg }}>
                 {summary.creditsRemaining}
             </Text>
         </View>

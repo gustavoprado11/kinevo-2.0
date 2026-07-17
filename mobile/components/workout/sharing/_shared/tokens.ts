@@ -71,11 +71,11 @@ export function useShareTokens() {
 // Plus Jakarta Sans — famílias por peso (carregadas no app via expo-font).
 // RN não herda fontFamily para <Text> filhos: setar em cada Text.
 export const FONT = {
-  regular: 'PlusJakartaSans_400Regular',
-  medium: 'PlusJakartaSans_500Medium',
-  semibold: 'PlusJakartaSans_600SemiBold',
-  bold: 'PlusJakartaSans_700Bold',
-  extrabold: 'PlusJakartaSans_800ExtraBold',
+  regular: 'MonaSans_400Regular',
+  medium: 'MonaSans_500Medium',
+  semibold: 'MonaSans_600SemiBold',
+  bold: 'MonaSans_700Bold',
+  extrabold: 'MonaSans_800ExtraBold',
 } as const;
 
 export const CARD_W = 320;

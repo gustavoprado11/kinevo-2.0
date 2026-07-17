@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     setNumText: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 12,
     },
     prevCell: {
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     prevText: {
-        fontFamily: 'PlusJakartaSans_600SemiBold',
+        fontFamily: 'MonaSans_600SemiBold',
         fontSize: 12,
     },
     inputCell: {
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
         borderRadius: radius.sm,
         borderWidth: 1,
         textAlign: 'center',
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 14,
         paddingHorizontal: 4,
     },

@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     initials: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         color: '#FFFFFF',
         letterSpacing: 0.2,
     },

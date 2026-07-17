@@ -548,14 +548,14 @@ const styles = StyleSheet.create({
         paddingBottom: spacing[6],
     },
     headerTitle: {
-        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        fontFamily: 'MonaSans_800ExtraBold',
         fontSize: typography.display.size,
         lineHeight: typography.display.lineHeight,
         letterSpacing: typography.display.letterSpacing,
         color: colors.neutral[950],
     },
     headerSubtitle: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: typography.bodySm.size,
         color: colors.neutral[500],
         marginTop: spacing[1],
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
         borderColor: colors.purple[600],
     },
     toggleBtnText: {
-        fontFamily: 'PlusJakartaSans_600SemiBold',
+        fontFamily: 'MonaSans_600SemiBold',
         fontSize: 11,
         color: colors.neutral[600],
         letterSpacing: 0.4,
@@ -590,14 +590,14 @@ const styles = StyleSheet.create({
         marginBottom: spacing[6],
     },
     sectionTitle: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: typography.title2.size,
         lineHeight: typography.title2.lineHeight,
         letterSpacing: typography.title2.letterSpacing,
         color: colors.neutral[900],
     },
     sectionSubtitle: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: typography.caption.size,
         color: colors.neutral[500],
         marginTop: spacing[1],
@@ -615,17 +615,17 @@ const styles = StyleSheet.create({
         marginTop: spacing[3],
     },
     placeholderText: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: typography.bodySm.size,
         color: colors.neutral[500],
     },
     cardLabel: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: typography.bodySm.size,
         color: colors.neutral[500],
     },
     cardBody: {
-        fontFamily: 'PlusJakartaSans_600SemiBold',
+        fontFamily: 'MonaSans_600SemiBold',
         fontSize: typography.body.size,
         color: colors.neutral[900],
     },
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
         borderRadius: radius.lg,
     },
     footer: {
-        fontFamily: 'PlusJakartaSans_500Medium',
+        fontFamily: 'MonaSans_500Medium',
         fontSize: typography.caption.size,
         color: colors.neutral[400],
         textAlign: 'center',

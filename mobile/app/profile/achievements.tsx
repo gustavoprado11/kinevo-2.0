@@ -103,5 +103,5 @@ export default function AchievementsScreen() {
 }
 
 const styles = StyleSheet.create({
-    intro: { fontFamily: 'PlusJakartaSans_500Medium', fontSize: 13, lineHeight: 19 },
+    intro: { fontFamily: 'MonaSans_500Medium', fontSize: 13, lineHeight: 19 },
 });

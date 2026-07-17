@@ -250,7 +250,7 @@ export default function FormsScreen() {
             <View style={{ paddingHorizontal: v2Tokens.spacing[5], paddingTop: v2Tokens.spacing[4], paddingBottom: v2Tokens.spacing[2] }}>
                 <Text
                     style={{
-                        fontFamily: "PlusJakartaSans_800ExtraBold",
+                        fontFamily: "MonaSans_800ExtraBold",
                         fontSize: v2Tokens.typography.display.size,
                         lineHeight: v2Tokens.typography.display.lineHeight,
                         letterSpacing: v2Tokens.typography.display.letterSpacing,
@@ -261,7 +261,7 @@ export default function FormsScreen() {
                 </Text>
                 <Text
                     style={{
-                        fontFamily: "PlusJakartaSans_500Medium",
+                        fontFamily: "MonaSans_500Medium",
                         fontSize: v2Tokens.typography.bodySm.size,
                         color: dynColors.text.tertiary,
                         marginTop: v2Tokens.spacing[1],

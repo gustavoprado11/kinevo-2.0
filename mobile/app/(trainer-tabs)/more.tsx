@@ -68,7 +68,7 @@ function SectionLabel({ title, delay }: { title: string; delay: number }) {
         <Animated.Text
             entering={FadeInUp.delay(delay).duration(300).easing(Easing.out(Easing.cubic))}
             style={{
-                fontFamily: "PlusJakartaSans_700Bold",
+                fontFamily: "MonaSans_700Bold",
                 fontSize: 11,
                 color: colors.text.tertiary,
                 textTransform: "uppercase",
@@ -119,7 +119,7 @@ function MenuRow({
             <View style={{ flex: 1, marginLeft: spacing[3] }}>
                 <Text
                     style={{
-                        fontFamily: "PlusJakartaSans_600SemiBold",
+                        fontFamily: "MonaSans_600SemiBold",
                         fontSize: 14,
                         color: danger ? colors.semantic.danger.fg : colors.text.primary,
                     }}
@@ -167,7 +167,7 @@ function LeadsMenuRow() {
             sub={
                 <Text
                     style={{
-                        fontFamily: "PlusJakartaSans_500Medium",
+                        fontFamily: "MonaSans_500Medium",
                         fontSize: 12,
                         color: colors.text.tertiary,
                     }}
@@ -199,7 +199,7 @@ function LeadsMenuRow() {
                         >
                             <Text
                                 style={{
-                                    fontFamily: "PlusJakartaSans_700Bold",
+                                    fontFamily: "MonaSans_700Bold",
                                     fontSize: 11,
                                     color: "#fff",
                                 }}
@@ -330,7 +330,7 @@ export default function MoreScreen() {
                 <Animated.View entering={FadeIn.duration(400)}>
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_800ExtraBold",
+                            fontFamily: "MonaSans_800ExtraBold",
                             fontSize: typography.display.size,
                             lineHeight: typography.display.lineHeight,
                             letterSpacing: typography.display.letterSpacing,
@@ -405,7 +405,7 @@ export default function MoreScreen() {
                                 >
                                     <Text
                                         style={{
-                                            fontFamily: "PlusJakartaSans_800ExtraBold",
+                                            fontFamily: "MonaSans_800ExtraBold",
                                             fontSize: 17,
                                             color: "#FFFFFF",
                                             letterSpacing: -0.4,
@@ -428,7 +428,7 @@ export default function MoreScreen() {
                                         >
                                             <Text
                                                 style={{
-                                                    fontFamily: "PlusJakartaSans_800ExtraBold",
+                                                    fontFamily: "MonaSans_800ExtraBold",
                                                     fontSize: 10,
                                                     color: "#FCD34D",
                                                     letterSpacing: 0.6,
@@ -441,7 +441,7 @@ export default function MoreScreen() {
                                 </View>
                                 <Text
                                     style={{
-                                        fontFamily: "PlusJakartaSans_500Medium",
+                                        fontFamily: "MonaSans_500Medium",
                                         fontSize: 12,
                                         color: "rgba(255,255,255,0.6)",
                                         marginTop: 2,
@@ -508,7 +508,7 @@ export default function MoreScreen() {
                                         <Instagram size={11} color={colors.text.tertiary} strokeWidth={2.2} />
                                         <Text
                                             style={{
-                                                fontFamily: "PlusJakartaSans_500Medium",
+                                                fontFamily: "MonaSans_500Medium",
                                                 fontSize: 12,
                                                 color: colors.text.tertiary,
                                             }}
@@ -519,7 +519,7 @@ export default function MoreScreen() {
                                 ) : (
                                     <Text
                                         style={{
-                                            fontFamily: "PlusJakartaSans_500Medium",
+                                            fontFamily: "MonaSans_500Medium",
                                             fontSize: 12,
                                             color: colors.text.tertiary,
                                         }}
@@ -560,7 +560,7 @@ export default function MoreScreen() {
                             sub={
                                 <Text
                                     style={{
-                                        fontFamily: "PlusJakartaSans_500Medium",
+                                        fontFamily: "MonaSans_500Medium",
                                         fontSize: 12,
                                         color: colors.text.tertiary,
                                     }}
@@ -676,7 +676,7 @@ export default function MoreScreen() {
                     <Text
                         style={{
                             textAlign: "center",
-                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontFamily: "MonaSans_500Medium",
                             fontSize: 11,
                             color: colors.text.quaternary,
                             marginTop: spacing[6],
@@ -737,7 +737,7 @@ export default function MoreScreen() {
                                 <Text
                                     style={{
                                         flex: 1,
-                                        fontFamily: "PlusJakartaSans_600SemiBold",
+                                        fontFamily: "MonaSans_600SemiBold",
                                         fontSize: 14,
                                         color: colors.text.primary,
                                     }}
@@ -752,7 +752,7 @@ export default function MoreScreen() {
                     })}
                     <Text
                         style={{
-                            fontFamily: "PlusJakartaSans_500Medium",
+                            fontFamily: "MonaSans_500Medium",
                             fontSize: 12,
                             color: colors.text.tertiary,
                             marginTop: spacing[2],

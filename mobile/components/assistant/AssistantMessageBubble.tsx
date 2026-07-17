@@ -42,7 +42,7 @@ export function AssistantMessageBubble({ role, text, children }: AssistantMessag
                 >
                     <Text
                         style={{
-                            fontFamily: 'PlusJakartaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             fontSize: 14,
                             lineHeight: 20,
                             color: colors.purple[900],
@@ -75,7 +75,7 @@ export function AssistantMessageBubble({ role, text, children }: AssistantMessag
                 {text ? (
                     <Text
                         style={{
-                            fontFamily: 'PlusJakartaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             fontSize: 14,
                             lineHeight: 22,
                             color: colors.text.secondary,

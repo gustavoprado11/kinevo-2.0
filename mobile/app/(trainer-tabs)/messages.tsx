@@ -142,7 +142,7 @@ export default function MessagesScreen() {
                 <Animated.View entering={FadeIn.duration(400)} style={{ paddingTop: spacing[4] }}>
                     <Text
                         style={{
-                            fontFamily: 'PlusJakartaSans_800ExtraBold',
+                            fontFamily: 'MonaSans_800ExtraBold',
                             fontSize: typography.display.size,
                             lineHeight: typography.display.lineHeight,
                             letterSpacing: typography.display.letterSpacing,
@@ -153,7 +153,7 @@ export default function MessagesScreen() {
                     </Text>
                     <Text
                         style={{
-                            fontFamily: 'PlusJakartaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             fontSize: typography.bodySm.size,
                             color: colors.text.tertiary,
                             marginTop: spacing[1],
@@ -265,8 +265,8 @@ function ConversationRow({
                         <Text
                             style={{
                                 fontFamily: isUnread
-                                    ? 'PlusJakartaSans_800ExtraBold'
-                                    : 'PlusJakartaSans_600SemiBold',
+                                    ? 'MonaSans_800ExtraBold'
+                                    : 'MonaSans_600SemiBold',
                                 fontSize: typography.title3.size,
                                 color: colors.text.primary,
                                 flex: 1,
@@ -280,8 +280,8 @@ function ConversationRow({
                             <Text
                                 style={{
                                     fontFamily: isUnread
-                                        ? 'PlusJakartaSans_700Bold'
-                                        : 'PlusJakartaSans_500Medium',
+                                        ? 'MonaSans_700Bold'
+                                        : 'MonaSans_500Medium',
                                     fontSize: 12,
                                     color: isUnread ? colors.purple[600] : colors.text.tertiary,
                                 }}
@@ -303,7 +303,7 @@ function ConversationRow({
                         ) : null}
                         <Text
                             style={{
-                                fontFamily: 'PlusJakartaSans_500Medium',
+                                fontFamily: 'MonaSans_500Medium',
                                 fontSize: 13,
                                 color: isUnread ? colors.text.secondary : colors.text.tertiary,
                                 flex: 1,
@@ -311,7 +311,7 @@ function ConversationRow({
                             numberOfLines={1}
                         >
                             {isFromTrainer ? (
-                                <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold' }}>Você: </Text>
+                                <Text style={{ fontFamily: 'MonaSans_600SemiBold' }}>Você: </Text>
                             ) : null}
                             {previewText}
                         </Text>
@@ -366,7 +366,7 @@ function MessagesEmpty({ searching }: { searching: boolean }) {
             </View>
             <Text
                 style={{
-                    fontFamily: 'PlusJakartaSans_600SemiBold',
+                    fontFamily: 'MonaSans_600SemiBold',
                     fontSize: 14,
                     color: colors.text.secondary,
                     textAlign: 'center',

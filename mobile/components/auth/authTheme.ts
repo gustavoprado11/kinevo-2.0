@@ -2,10 +2,10 @@ import { useColorScheme } from "react-native";
 
 // Famílias Plus Jakarta Sans já carregadas no root layout (app/_layout.tsx).
 export const FONT = {
-    medium: "PlusJakartaSans_500Medium",
-    semibold: "PlusJakartaSans_600SemiBold",
-    bold: "PlusJakartaSans_700Bold",
-    extrabold: "PlusJakartaSans_800ExtraBold",
+    medium: "MonaSans_500Medium",
+    semibold: "MonaSans_600SemiBold",
+    bold: "MonaSans_700Bold",
+    extrabold: "MonaSans_800ExtraBold",
 } as const;
 
 export type AuthScheme = "light" | "dark";

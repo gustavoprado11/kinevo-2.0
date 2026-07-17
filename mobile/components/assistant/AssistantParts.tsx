@@ -232,11 +232,11 @@ function ConfirmationCard({
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
                 <ShieldAlert size={16} color={tone.fg} strokeWidth={2} />
-                <Text style={{ flex: 1, fontFamily: 'PlusJakartaSans_700Bold', fontSize: 14, color: colors.text.primary }}>
+                <Text style={{ flex: 1, fontFamily: 'MonaSans_700Bold', fontSize: 14, color: colors.text.primary }}>
                     {title}
                 </Text>
                 <View style={{ backgroundColor: tone.bg, borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4 }}>
-                    <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 10, color: tone.fg }}>
+                    <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 10, color: tone.fg }}>
                         {destructive ? 'Ação destrutiva' : 'Requer confirmação'}
                     </Text>
                 </View>
@@ -255,23 +255,23 @@ function ConfirmationCard({
                     }}
                 >
                     <User size={14} color={colors.text.tertiary} strokeWidth={2} />
-                    <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 12.5, color: colors.text.tertiary }}>
+                    <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 12.5, color: colors.text.tertiary }}>
                         Para
                     </Text>
-                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 12.5, color: colors.text.primary }}>
+                    <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 12.5, color: colors.text.primary }}>
                         {recipientName}
                     </Text>
                 </View>
             ) : null}
 
-            <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 12.5, color: colors.text.secondary, lineHeight: 18 }}>
+            <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 12.5, color: colors.text.secondary, lineHeight: 18 }}>
                 {summary}
             </Text>
 
             {editableField ? (
                 <View style={{ gap: 6 }}>
                     {editableLabel ? (
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 11, color: colors.text.tertiary }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 11, color: colors.text.tertiary }}>
                             {editableLabel} · revise antes de enviar
                         </Text>
                     ) : null}
@@ -281,7 +281,7 @@ function ConfirmationCard({
                         multiline
                         editable={!disabled}
                         style={{
-                            fontFamily: 'PlusJakartaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             fontSize: 13.5,
                             color: colors.text.primary,
                             backgroundColor: colors.surface.card2,
@@ -321,7 +321,7 @@ function ConfirmationCard({
                     }}
                 >
                     <X size={15} color={colors.text.secondary} strokeWidth={2} />
-                    <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, color: colors.text.secondary }}>
+                    <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 13, color: colors.text.secondary }}>
                         Cancelar
                     </Text>
                 </Pressable>
@@ -344,7 +344,7 @@ function ConfirmationCard({
                         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 }}
                     >
                         <Check size={15} color="#FFFFFF" strokeWidth={2.4} />
-                        <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 13, color: '#FFFFFF' }}>
+                        <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 13, color: '#FFFFFF' }}>
                             {confirmLabel}
                         </Text>
                     </LinearGradient>
@@ -388,12 +388,12 @@ function GeneratedProgramCard({
                 </LinearGradient>
                 <View style={{ flex: 1, minWidth: 0 }}>
                     <Text
-                        style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}
+                        style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}
                         numberOfLines={1}
                     >
                         {title}
                     </Text>
-                    <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 11.5, color: colors.text.tertiary, marginTop: 1 }}>
+                    <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 11.5, color: colors.text.tertiary, marginTop: 1 }}>
                         {subtitle}
                     </Text>
                 </View>
@@ -413,7 +413,7 @@ function GeneratedProgramCard({
                     end={{ x: 1, y: 1 }}
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11 }}
                 >
-                    <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 13, color: '#FFFFFF' }}>
+                    <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 13, color: '#FFFFFF' }}>
                         {actionLabel}
                     </Text>
                     <ArrowUpRight size={15} color="#FFFFFF" strokeWidth={2.2} />
@@ -440,7 +440,7 @@ function ExecutedChip({ toolName, linkLabel, onLink }: { toolName: string; linkL
                 }}
             >
                 <CheckCircle2 size={15} color={colors.semantic.success.fg} strokeWidth={2.2} />
-                <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: colors.semantic.success.fg }}>
+                <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12.5, color: colors.semantic.success.fg }}>
                     {executedLabel(toolName)}
                 </Text>
             </View>
@@ -464,7 +464,7 @@ function ExecutedChip({ toolName, linkLabel, onLink }: { toolName: string; linkL
                         paddingHorizontal: 11,
                     }}
                 >
-                    <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: colors.purple[600] }}>
+                    <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12.5, color: colors.purple[600] }}>
                         {linkLabel}
                     </Text>
                     <ArrowUpRight size={13} color={colors.purple[600]} strokeWidth={2.2} />
@@ -499,7 +499,7 @@ function QuestionBlock({
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
                 <HelpCircle size={15} color={colors.purple[600]} strokeWidth={2} />
-                <Text style={{ flex: 1, fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}>
+                <Text style={{ flex: 1, fontFamily: 'MonaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}>
                     {request.question}
                 </Text>
             </View>
@@ -524,7 +524,7 @@ function QuestionBlock({
                             opacity: disabled && !answered ? 0.5 : 1,
                         }}
                     >
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: answered ? colors.text.tertiary : colors.purple[700] }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12.5, color: answered ? colors.text.tertiary : colors.purple[700] }}>
                             {opt}
                         </Text>
                     </Pressable>
@@ -565,16 +565,16 @@ function ConfirmationNote({
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
                 <ShieldAlert size={15} color={tone.fg} strokeWidth={2} />
-                <Text style={{ flex: 1, fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}>
+                <Text style={{ flex: 1, fontFamily: 'MonaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}>
                     {title}
                 </Text>
             </View>
-            <Text style={{ fontFamily: 'PlusJakartaSans_500Medium', fontSize: 12.5, color: colors.text.secondary, lineHeight: 18 }}>
+            <Text style={{ fontFamily: 'MonaSans_500Medium', fontSize: 12.5, color: colors.text.secondary, lineHeight: 18 }}>
                 {summary}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: 2 }}>
                 <View style={{ backgroundColor: resolved ? colors.surface.card2 : tone.bg, borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4 }}>
-                    <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 10, color: resolved ? colors.text.tertiary : tone.fg }}>
+                    <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 10, color: resolved ? colors.text.tertiary : tone.fg }}>
                         {status === 'confirmed' ? 'Confirmado' : status === 'cancelled' ? 'Cancelado' : destructive ? 'Ação destrutiva' : 'Requer confirmação'}
                     </Text>
                 </View>
@@ -589,7 +589,7 @@ function ConfirmationNote({
                         hitSlop={6}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
                     >
-                        <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 11.5, color: colors.purple[600] }}>
+                        <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 11.5, color: colors.purple[600] }}>
                             {link.label}
                         </Text>
                         <ArrowUpRight size={12} color={colors.purple[600]} strokeWidth={2.2} />
@@ -634,7 +634,7 @@ function ProposalCard({
                 {done !== 'cancelled' ? (
                     <CheckCircle2 size={15} color={colors.semantic.success.fg} strokeWidth={2.2} />
                 ) : null}
-                <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 12.5, color: colors.text.tertiary }}>
+                <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 12.5, color: colors.text.tertiary }}>
                     {label}
                 </Text>
             </View>
@@ -668,7 +668,7 @@ function ProposalCard({
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
                 <ListChecks size={15} color={colors.purple[600]} strokeWidth={2} />
-                <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}>
+                <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 13.5, color: colors.text.primary }}>
                     Proposta · revise e aprove
                 </Text>
             </View>
@@ -679,7 +679,7 @@ function ProposalCard({
                     <View key={`${it.label}-${i}`} style={{ gap: 5 }}>
                         <Text
                             style={{
-                                fontFamily: 'PlusJakartaSans_700Bold',
+                                fontFamily: 'MonaSans_700Bold',
                                 fontSize: 10.5,
                                 letterSpacing: 0.5,
                                 textTransform: 'uppercase',
@@ -694,7 +694,7 @@ function ProposalCard({
                             multiline={multiline}
                             editable={!disabled}
                             style={{
-                                fontFamily: 'PlusJakartaSans_500Medium',
+                                fontFamily: 'MonaSans_500Medium',
                                 fontSize: 13.5,
                                 color: colors.text.primary,
                                 backgroundColor: colors.surface.card2,
@@ -732,7 +732,7 @@ function ProposalCard({
                     }}
                 >
                     <X size={15} color={colors.text.secondary} strokeWidth={2} />
-                    <Text style={{ fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, color: colors.text.secondary }}>
+                    <Text style={{ fontFamily: 'MonaSans_600SemiBold', fontSize: 13, color: colors.text.secondary }}>
                         Cancelar
                     </Text>
                 </Pressable>
@@ -750,7 +750,7 @@ function ProposalCard({
                         style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 }}
                     >
                         <Check size={15} color="#FFFFFF" strokeWidth={2.4} />
-                        <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 13, color: '#FFFFFF' }} numberOfLines={1}>
+                        <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 13, color: '#FFFFFF' }} numberOfLines={1}>
                             {request.approveLabel || 'Aprovar'}
                         </Text>
                     </LinearGradient>

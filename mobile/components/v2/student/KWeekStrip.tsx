@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     range: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 10,
         letterSpacing: 1.2,
         textTransform: 'uppercase',
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
     },
     dayLabel: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 10,
         letterSpacing: 0.6,
         textTransform: 'uppercase',
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
         // gradient bg via LinearGradient; inherits dayNumWrap dims
     },
     dayNum: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         fontSize: 14,
     },
     dot: {

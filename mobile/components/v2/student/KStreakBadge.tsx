@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     label: {
-        fontFamily: 'PlusJakartaSans_700Bold',
+        fontFamily: 'MonaSans_700Bold',
         letterSpacing: 0.2,
     },
 });
