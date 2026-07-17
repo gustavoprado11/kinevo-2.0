@@ -142,7 +142,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     return (
         <aside
             suppressHydrationWarning
-            className={`sidebar-container fixed inset-y-0 left-0 z-sidebar flex flex-col border-r border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-sidebar/60 dark:backdrop-blur-2xl transition-all duration-300 ease-in-out ${
+            className={`sidebar-container fixed inset-y-0 left-0 z-sidebar flex flex-col border-r border-k-border-subtle bg-surface-sidebar transition-all duration-300 ease-in-out ${
                 isCollapsed ? 'w-[68px]' : 'w-64'
             }`}
         >
@@ -157,7 +157,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                         className="rounded-lg shrink-0"
                     />
                     {!isCollapsed && (
-                        <span className="text-lg font-semibold text-[#1D1D1F] dark:text-foreground/90 tracking-tight whitespace-nowrap">
+                        <span className="text-lg font-semibold text-k-text-primary tracking-tight whitespace-nowrap">
                             Kinevo
                         </span>
                     )}
@@ -169,7 +169,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                 onClick={toggle}
                 title={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
                 aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
-                className="absolute top-9 -right-3 z-sidebar w-6 h-6 flex items-center justify-center rounded-full border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-sidebar text-[#AEAEB2] dark:text-muted-foreground/60 hover:text-[#6E6E73] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg shadow-sm transition-colors"
+                className="absolute top-9 -right-3 z-sidebar w-6 h-6 flex items-center justify-center rounded-full border border-k-border-subtle bg-surface-card text-k-text-tertiary hover:text-k-text-secondary hover:bg-surface-inset transition-colors"
             >
                 {isCollapsed ? <ChevronRight size={14} strokeWidth={2} /> : <ChevronLeft size={14} strokeWidth={2} />}
             </button>
@@ -201,23 +201,18 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                                 href={href}
                                 data-onboarding={item.onboardingId}
                                 className={`
-                                    relative flex items-center gap-3 py-2 rounded-lg text-sm tracking-tight transition-all duration-200 ease-out group
+                                    relative flex items-center gap-3 py-2 rounded-control text-sm tracking-tight transition-all duration-200 ease-out group
                                     ${isCollapsed ? 'justify-center px-0' : 'px-3'}
                                     ${active
-                                        ? 'bg-[#7C3AED]/10 dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground font-semibold'
-                                        : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg font-medium'
+                                        ? 'bg-surface-inset text-k-text-primary font-semibold'
+                                        : 'text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg-hover font-medium'
                                     }
                                 `}
                             >
-                                {active && (
-                                    <span
-                                        className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[#7C3AED] dark:bg-violet-500 rounded-r-full"
-                                    />
-                                )}
                                 <Icon
-                                    size={18}
-                                    strokeWidth={1.5}
-                                    className={`shrink-0 transition-colors duration-200 ${active ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`}
+                                    size={16}
+                                    strokeWidth={1.7}
+                                    className={`shrink-0 transition-colors duration-200 ${active ? 'text-k-text-primary' : 'text-k-text-tertiary group-hover:text-k-text-secondary'}`}
                                 />
                                 <span
                                     className={`whitespace-nowrap transition-all duration-300 ${
@@ -231,7 +226,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
 
                             {/* Tooltip — only when collapsed */}
                             {isCollapsed && (
-                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-foreground text-background text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                                     {item.name}
                                 </div>
                             )}
@@ -244,22 +239,17 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                     No modo Assistente este item NÃO existe — lá o próprio "Dashboard"
                     já É o chat. O ⌘K segue como atalho da barra de comando. */}
                 {aiAllowed && !assistantMode && (() => {
-                    const cls = `relative flex items-center gap-3 w-full py-2 rounded-lg text-sm tracking-tight transition-all duration-200 ease-out ${isCollapsed ? 'justify-center px-0' : 'px-3'} font-medium text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#7C3AED] dark:hover:text-foreground hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg`
+                    const cls = `group relative flex items-center gap-3 w-full py-2 rounded-control text-sm tracking-tight transition-all duration-200 ease-out ${isCollapsed ? 'justify-center px-0' : 'px-3'} font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg-hover`
                     return (
                         <div className="relative group/nav">
                             <button type="button" onClick={() => openChat()} className={cls}>
-                                <Sparkles size={18} strokeWidth={1.5} className="shrink-0 text-[#7C3AED] dark:text-violet-400" />
+                                <Sparkles size={16} strokeWidth={1.7} className="shrink-0 text-k-text-tertiary group-hover:text-k-text-secondary transition-colors duration-200" />
                                 <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100 flex-1 text-left'}`}>
                                     Assistente IA
                                 </span>
-                                {!isCollapsed && (
-                                    <span className="ml-auto rounded-md border border-[rgba(124,58,237,0.2)] bg-[#7C3AED]/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#7C3AED]">
-                                        novo
-                                    </span>
-                                )}
                             </button>
                             {isCollapsed && (
-                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-foreground text-background text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                                     Assistente IA
                                 </div>
                             )}
@@ -271,9 +261,9 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                 <div className="mt-1">
                     <button
                         onClick={() => !isCollapsed && setBibliotecaOpen(b => !b)}
-                        className={`group/nav relative flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium transition-all duration-200 text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
+                        className={`group/nav relative flex items-center gap-3 w-full py-2 rounded-control text-sm font-medium transition-all duration-200 text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg-hover ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
                     >
-                        <BookOpen size={18} strokeWidth={1.5} className="shrink-0 text-[#AEAEB2] dark:text-muted-foreground/60" />
+                        <BookOpen size={16} strokeWidth={1.7} className="shrink-0 text-k-text-tertiary" />
                         {!isCollapsed && (
                             <>
                                 <span className="flex-1 text-left">Bibliotecas</span>
@@ -281,7 +271,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                             </>
                         )}
                         {isCollapsed && (
-                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-foreground text-background text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                                 Bibliotecas
                             </div>
                         )}
@@ -296,17 +286,17 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                                         <Link
                                             href={item.href}
                                             data-onboarding={item.onboardingId}
-                                            className={`relative flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                            className={`relative flex items-center gap-3 w-full py-2 rounded-control text-sm font-medium transition-all duration-200 ${
                                                 active
-                                                    ? 'bg-[#7C3AED]/10 dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground font-semibold'
-                                                    : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                                                    ? 'bg-surface-inset text-k-text-primary font-semibold'
+                                                    : 'text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg-hover'
                                             } ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
                                         >
-                                            <item.icon size={18} strokeWidth={1.5} className={`shrink-0 transition-colors duration-200 ${active ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60'}`} />
+                                            <item.icon size={16} strokeWidth={1.7} className={`shrink-0 transition-colors duration-200 ${active ? 'text-k-text-primary' : 'text-k-text-tertiary'}`} />
                                             {!isCollapsed && <span>{item.name}</span>}
                                         </Link>
                                         {isCollapsed && (
-                                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                                            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-foreground text-background text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                                                 {item.name}
                                             </div>
                                         )}
@@ -321,21 +311,21 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                 <div className="relative group/nav">
                     <Link
                         href="/settings"
-                        className={`relative flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        className={`relative flex items-center gap-3 w-full py-2 rounded-control text-sm font-medium transition-all duration-200 ${
                             isActive('/settings')
-                                ? 'bg-[#7C3AED]/10 dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground font-semibold'
-                                : 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
+                                ? 'bg-surface-inset text-k-text-primary font-semibold'
+                                : 'text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg-hover'
                         } ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
                     >
-                        <Settings size={18} strokeWidth={1.5} className={`shrink-0 transition-colors ${
+                        <Settings size={16} strokeWidth={1.7} className={`shrink-0 transition-colors ${
                             isActive('/settings')
-                                ? 'text-[#7C3AED] dark:text-foreground'
-                                : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover/nav:text-[#6E6E73] dark:group-hover/nav:text-foreground'
+                                ? 'text-k-text-primary'
+                                : 'text-k-text-tertiary group-hover/nav:text-k-text-secondary'
                         }`} />
                         {!isCollapsed && <span>Configurações</span>}
                     </Link>
                     {isCollapsed && (
-                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-foreground text-background text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                             Configurações
                         </div>
                     )}
@@ -343,22 +333,22 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
             </nav>
 
             {/* Footer */}
-            <div className={`border-t border-[#E8E8ED] dark:border-k-border-subtle pt-2 pb-1 space-y-1 ${isCollapsed ? 'px-2' : 'px-4'}`}>
+            <div className={`border-t border-k-border-subtle pt-2 pb-1 space-y-1 ${isCollapsed ? 'px-2' : 'px-4'}`}>
                 {/* Feedback */}
                 <div className="relative group/nav">
                     <button
                         onClick={() => setFeedbackOpen(true)}
-                        className={`flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-out text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg ${
+                        className={`flex items-center gap-3 w-full py-2 rounded-control text-sm font-medium transition-all duration-200 ease-out text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg-hover ${
                             isCollapsed ? 'justify-center px-0' : 'px-3'
                         }`}
                     >
-                        <MessageSquarePlus size={18} strokeWidth={1.5} className="shrink-0 text-[#AEAEB2] dark:text-muted-foreground/60 group-hover/nav:text-[#6E6E73] dark:group-hover/nav:text-foreground transition-colors" />
+                        <MessageSquarePlus size={16} strokeWidth={1.7} className="shrink-0 text-k-text-tertiary group-hover/nav:text-k-text-secondary transition-colors" />
                         <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
                             Feedback e Bugs
                         </span>
                     </button>
                     {isCollapsed && (
-                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-foreground text-background text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                             Feedback e Bugs
                         </div>
                     )}
@@ -368,43 +358,43 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
                 <div className="relative group/nav">
                     <button
                         onClick={() => window.open(`https://wa.me/${SUPPORT_PHONE}?text=${encodeURIComponent('Olá! Preciso de ajuda com o Kinevo.')}`, '_blank')}
-                        className={`flex items-center gap-3 w-full py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-out text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-glass-bg ${
+                        className={`flex items-center gap-3 w-full py-2 rounded-control text-sm font-medium transition-all duration-200 ease-out text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg-hover ${
                             isCollapsed ? 'justify-center px-0' : 'px-3'
                         }`}
                     >
-                        <Headphones size={18} strokeWidth={1.5} className="shrink-0 text-[#AEAEB2] dark:text-muted-foreground/60 group-hover/nav:text-[#6E6E73] dark:group-hover/nav:text-foreground transition-colors" />
+                        <Headphones size={16} strokeWidth={1.7} className="shrink-0 text-k-text-tertiary group-hover/nav:text-k-text-secondary transition-colors" />
                         <span className={`whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
                             Suporte
                         </span>
                     </button>
                     {isCollapsed && (
-                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-foreground text-background text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover/nav:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                             Suporte
                         </div>
                     )}
                 </div>
 
                 {/* Divider */}
-                <div className="border-t border-[#E8E8ED] dark:border-k-border-subtle my-1" />
+                <div className="border-t border-k-border-subtle my-1" />
 
                 {/* Profile with popover */}
                 <div className="relative" ref={profileRef}>
                     <button
                         onClick={() => setProfileOpen(o => !o)}
-                        className={`flex items-center gap-3 w-full py-2 rounded-lg hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
+                        className={`flex items-center gap-3 w-full py-2 rounded-control hover:bg-glass-bg-hover transition-colors ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}
                     >
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center ring-2 ring-[#E8E8ED] dark:ring-border flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-surface-inset border border-k-border-primary flex items-center justify-center flex-shrink-0">
                             {trainerAvatarUrl ? (
                                 <Image src={trainerAvatarUrl} alt="Avatar" width={32} height={32} className="w-8 h-8 rounded-full object-cover" unoptimized />
                             ) : (
-                                <span className="text-white text-xs font-medium">{initials}</span>
+                                <span className="text-k-text-secondary text-xs font-semibold">{initials}</span>
                             )}
                         </div>
                         {!isCollapsed && (
                             <div className="flex-1 min-w-0 text-left">
-                                <p className="text-sm font-medium text-[#1D1D1F] dark:text-foreground leading-tight truncate">{trainerName}</p>
+                                <p className="text-sm font-medium text-k-text-primary leading-tight truncate">{trainerName}</p>
                                 {trainerEmail && (
-                                    <p className="text-xs text-[#86868B] dark:text-muted-foreground leading-tight truncate">{trainerEmail}</p>
+                                    <p className="text-xs text-k-text-tertiary leading-tight truncate">{trainerEmail}</p>
                                 )}
                             </div>
                         )}
@@ -412,24 +402,24 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
 
                     {/* Collapsed tooltip */}
                     {isCollapsed && !profileOpen && (
-                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-[#1D1D1F] dark:bg-white text-white dark:text-[#1D1D1F] text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
+                        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1 rounded-md bg-foreground text-background text-xs font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-modal shadow-lg">
                             {trainerName}
                         </div>
                     )}
 
                     {/* Profile popover */}
                     {profileOpen && (
-                        <div className={`absolute bottom-full mb-2 w-56 bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-primary rounded-xl shadow-xl z-modal overflow-hidden ${isCollapsed ? 'left-full ml-2' : 'left-0'}`}>
-                            <div className="px-4 py-3 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                                <p className="text-sm font-medium text-[#1D1D1F] dark:text-foreground truncate">{trainerName}</p>
+                        <div className={`absolute bottom-full mb-2 w-56 bg-surface-card border border-k-border-primary rounded-panel shadow-xl z-modal overflow-hidden ${isCollapsed ? 'left-full ml-2' : 'left-0'}`}>
+                            <div className="px-4 py-3 border-b border-k-border-subtle">
+                                <p className="text-sm font-medium text-k-text-primary truncate">{trainerName}</p>
                                 {trainerEmail && (
-                                    <p className="text-xs text-[#86868B] dark:text-muted-foreground truncate">{trainerEmail}</p>
+                                    <p className="text-xs text-k-text-tertiary truncate">{trainerEmail}</p>
                                 )}
                             </div>
                             <div className="py-1">
                                 <button
                                     onClick={handleLogout}
-                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-[#FF3B30] hover:bg-[#F5F5F7] dark:hover:bg-glass-bg transition-colors"
+                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-destructive hover:bg-glass-bg-hover transition-colors"
                                 >
                                     <LogOut size={16} strokeWidth={1.5} />
                                     Sair

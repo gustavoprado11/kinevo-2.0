@@ -290,13 +290,9 @@ body {
    Dark Mode is completely unaffected.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* Sidebar: white bg with subtle right shadow for depth */
-:root .sidebar-container {
-  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06), 2px 0 8px rgba(0, 0, 0, 0.03);
-}
-
-/* Remove sidebar shadow in Dark Mode */
-.dark .sidebar-container {
+/* Sidebar plana (fase 2): a hairline de borda faz a separação — sem sombra.
+   A regra fica registrada porque componentes antigos ainda usam a classe. */
+.sidebar-container {
   box-shadow: none;
 }
 

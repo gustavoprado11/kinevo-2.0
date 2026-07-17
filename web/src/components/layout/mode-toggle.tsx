@@ -19,14 +19,14 @@ interface Props {
     switchingTo?: 'classic' | 'assistant'
 }
 
-const BTN = 'flex flex-1 items-center justify-center gap-1.5 rounded-[8px] py-[7px] text-[12px] font-semibold transition-all duration-200'
-const ON = 'bg-white dark:bg-glass-bg-active text-[#7C3AED] dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
-const OFF = 'text-[#6E6E73] dark:text-muted-foreground/60 hover:text-[#1D1D1F] dark:hover:text-foreground'
+const BTN = 'flex flex-1 items-center justify-center gap-1.5 rounded-[6px] py-[7px] text-[12px] font-semibold transition-all duration-200'
+const ON = 'bg-surface-card text-k-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
+const OFF = 'text-k-text-secondary hover:text-k-text-primary'
 
 export function ModeToggle({ active, onClassic, onAssistant, switchingTo }: Props) {
     const eff = switchingTo ?? active
     return (
-        <div className="mx-4 mb-3 flex gap-[3px] rounded-[11px] border border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-glass-bg p-[3px]">
+        <div className="mx-4 mb-3 flex gap-[3px] rounded-control border border-k-border-subtle bg-surface-inset p-[3px]">
             <button onClick={onClassic} className={`${BTN} ${eff === 'classic' ? ON : OFF}`}>
                 {switchingTo === 'classic'
                     ? <Loader2 size={14} strokeWidth={2} className="animate-spin" />

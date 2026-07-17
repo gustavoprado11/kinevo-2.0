@@ -17,10 +17,6 @@ const CommandPaletteWrapper = dynamic(
     () => import('@/components/command-palette').then(m => m.CommandPalette),
     { ssr: false }
 )
-const AssistantLauncher = dynamic(
-    () => import('@/components/assistant/assistant-launcher').then(m => m.AssistantLauncher),
-    { ssr: false }
-)
 import { useSidebarStore } from '@/stores/sidebar-store'
 import { useCommunicationStore } from '@/stores/communication-store'
 import { useAiAccessState } from '@/hooks/use-ai-access'
@@ -133,8 +129,8 @@ export function AppLayout({ children, trainerName, trainerEmail, trainerAvatarUr
             {/* Command Palette — global, ⌘K to open */}
             <CommandPaletteWrapper students={students} />
 
-            {/* Floating launcher — abre o mesmo dock */}
-            <AssistantLauncher />
+            {/* Fase 2 do redesign: o launcher flutuante (FAB) saiu — o dock do
+                Assistente abre pelo item da sidebar e pela paleta ⌘K. */}
         </div>
     )
 }
