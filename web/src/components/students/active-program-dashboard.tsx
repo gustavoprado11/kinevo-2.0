@@ -328,7 +328,7 @@ export function ActiveProgramDashboard({
                     <div className="flex items-center justify-center gap-2">
                         <button
                             onClick={onCreateProgram}
-                            className="px-3 py-1.5 text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-all"
+                            className="px-3 py-1.5 text-xs font-bold bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-all"
                         >
                             + Criar Novo
                         </button>

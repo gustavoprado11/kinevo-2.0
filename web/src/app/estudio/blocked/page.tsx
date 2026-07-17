@@ -35,7 +35,7 @@ export default async function EstudioBlockedPage() {
                         <h1 className="text-2xl font-black text-white tracking-tight mb-2">Estúdio suspenso</h1>
                         <p className="text-k-text-tertiary mb-1">{ctx.organization.name}</p>
                         <p className="text-k-text-tertiary mb-8">O acesso do estúdio está suspenso. Fale com o gestor para regularizar.</p>
-                        <Link href="/dashboard" className="inline-block w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-black rounded-xl transition-all">
+                        <Link href="/dashboard" className="inline-block w-full py-3 px-4 bg-primary hover:opacity-90 text-primary-foreground text-[11px] font-black rounded-control transition-all">
                             Voltar ao painel
                         </Link>
                     </div>

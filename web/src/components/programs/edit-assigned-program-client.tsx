@@ -897,7 +897,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         <Button
                             onClick={() => saveProgram()}
                             disabled={saving}
-                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-3 min-[1700px]:px-5 py-2 h-9 text-sm font-medium transition-all lg:min-w-[160px] whitespace-nowrap"
+                            className="bg-primary hover:opacity-90 text-primary-foreground rounded-control px-3 min-[1700px]:px-5 py-2 h-9 text-sm font-medium transition-all lg:min-w-[160px] whitespace-nowrap"
                         >
                             {saving ? (
                                 <Loader2 className="animate-spin w-4 h-4" />
@@ -918,7 +918,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             <button
                                 type="button"
                                 onClick={restoreDraft}
-                                className="px-3 py-1 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium transition-colors"
+                                className="px-3 py-1 rounded-control bg-primary hover:opacity-90 text-primary-foreground text-xs font-medium transition-colors"
                             >
                                 Restaurar
                             </button>
@@ -1082,7 +1082,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                         </DndContext>
                                         <button
                                             onClick={addWorkout}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-k-text-primary hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg transition-all ml-2"
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset transition-all ml-2"
                                             title="Adicionar Treino"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1259,7 +1259,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
                                     <button
                                         onClick={addWorkout}
-                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-k-text-primary hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg transition-all ml-1 shrink-0"
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset transition-all ml-1 shrink-0"
                                         title="Adicionar Treino"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1410,7 +1410,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                             <Button
                                 onClick={() => saveAsTemplate()}
                                 disabled={!templateName.trim() || savingTemplate}
-                                className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all"
+                                className="bg-primary hover:opacity-90 text-primary-foreground rounded-control px-5 py-2 h-9 text-sm font-medium transition-all"
                             >
                                 {savingTemplate ? <Loader2 className="animate-spin w-4 h-4" /> : 'Salvar Modelo'}
                             </Button>

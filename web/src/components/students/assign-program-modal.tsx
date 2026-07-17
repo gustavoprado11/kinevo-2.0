@@ -374,7 +374,7 @@ export function AssignProgramModal({
                             <button
                                 onClick={handleConfirm}
                                 disabled={assigning}
-                                className="flex-[1.5] py-4 bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-black rounded-2xl transition-all shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-glass-bg-active disabled:shadow-none"
+                                className="flex-[1.5] py-4 bg-primary hover:opacity-90 text-primary-foreground text-[11px] font-black rounded-2xl transition-all shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-glass-bg-active disabled:shadow-none"
                             >
                                 {assigning ? (
                                     <>

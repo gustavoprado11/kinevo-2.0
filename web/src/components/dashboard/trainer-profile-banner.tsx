@@ -69,7 +69,7 @@ export function TrainerProfileBanner({ selfStudentId }: TrainerProfileBannerProp
                 <div className="pl-[52px]">
                     <button
                         onClick={handleNavigate}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-xs font-semibold rounded-full dark:rounded-xl transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold rounded-control transition-all"
                     >
                         Ver Meu Perfil
                         <ArrowRight size={14} />

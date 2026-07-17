@@ -93,7 +93,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
 
             <button
                 onClick={onNext}
-                className="inline-flex items-center gap-2 px-8 py-3 text-sm font-medium rounded-xl bg-violet-600 hover:bg-violet-500 text-white transition-colors shadow-lg shadow-violet-500/20"
+                className="inline-flex items-center gap-2 px-8 py-3 text-sm font-medium rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors shadow-lg shadow-violet-500/20"
             >
                 Começar
                 <ArrowRight size={16} />
@@ -149,7 +149,7 @@ function StepActivateWallet({
                 <button
                     onClick={goToWallet}
                     disabled={navigating}
-                    className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium rounded-xl bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors disabled:opacity-50"
                 >
                     {navigating ? (
                         <Loader2 size={16} className="animate-spin" />
@@ -301,7 +301,7 @@ function StepCreatePlan({
                 <button
                     onClick={handleCreate}
                     disabled={loading}
-                    className="w-full mt-6 inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium rounded-xl bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50"
+                    className="w-full mt-6 inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors disabled:opacity-50"
                 >
                     {loading && <Loader2 size={16} className="animate-spin" />}
                     Criar Plano

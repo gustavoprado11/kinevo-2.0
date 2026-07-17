@@ -325,7 +325,7 @@ function ApplyToStudentDialog({
                     <button
                         onClick={handleApply}
                         disabled={!selectedId || isAssigning}
-                        className="px-5 py-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-full transition-all flex items-center gap-2"
+                        className="px-5 py-2 bg-primary hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-control transition-all flex items-center gap-2"
                     >
                         {isAssigning && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                         Aplicar

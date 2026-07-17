@@ -379,7 +379,7 @@ function ExerciseRow({ item, index, isEditing, onEdit, onCancel, onSave }: Exerc
                         <span className="text-[11px] text-k-text-quaternary ml-2">{item.exercise_muscle_group}</span>
                     </div>
                     <div className="flex gap-2">
-                        <Button size="sm" onClick={handleSave} disabled={saving} className="bg-violet-600 hover:bg-violet-500 text-white gap-1.5 h-7 text-xs">
+                        <Button size="sm" onClick={handleSave} disabled={saving} className="bg-primary hover:opacity-90 text-primary-foreground gap-1.5 h-7 text-xs">
                             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                             Salvar
                         </Button>

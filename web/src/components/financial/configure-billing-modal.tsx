@@ -313,7 +313,7 @@ export function ConfigureBillingModal({
                                 <button
                                     type="button"
                                     onClick={() => setStep('type')}
-                                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all active:scale-95"
+                                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-all active:scale-95"
                                 >
                                     <ArrowRightLeft size={16} />
                                     Confirmar e prosseguir
@@ -353,7 +353,7 @@ export function ConfigureBillingModal({
                                                 </p>
                                                 <a
                                                     href="/api/stripe/connect/onboard"
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <ExternalLink size={12} />
@@ -640,7 +640,7 @@ export function ConfigureBillingModal({
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-all active:scale-95 disabled:opacity-50"
                                 >
                                     {loading ? (
                                         <>
@@ -712,7 +712,7 @@ export function ConfigureBillingModal({
                                 <button
                                     type="button"
                                     onClick={handleCopyLink}
-                                    className="inline-flex items-center justify-center gap-2 py-3 text-sm font-medium bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all active:scale-95"
+                                    className="inline-flex items-center justify-center gap-2 py-3 text-sm font-medium bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-all active:scale-95"
                                 >
                                     {copied ? (
                                         <>

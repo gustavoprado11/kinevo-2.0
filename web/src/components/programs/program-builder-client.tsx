@@ -1207,7 +1207,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                 }
                                             }}
                                             disabled={saving}
-                                            className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full px-3 sm:px-5 py-2 h-9 text-sm font-medium transition-all whitespace-nowrap"
+                                            className="bg-primary hover:opacity-90 text-primary-foreground rounded-control px-3 sm:px-5 py-2 h-9 text-sm font-medium transition-all whitespace-nowrap"
                                         >
                                             {saving ? (
                                                 <Loader2 className="animate-spin w-4 h-4" />
@@ -1235,7 +1235,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     <Button
                                         onClick={() => saveProgram()}
                                         disabled={saving}
-                                        className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all min-w-[130px]"
+                                        className="bg-primary hover:opacity-90 text-primary-foreground rounded-control px-5 py-2 h-9 text-sm font-medium transition-all min-w-[130px]"
                                     >
                                         {saving ? (
                                             <Loader2 className="animate-spin w-4 h-4" />
@@ -1527,7 +1527,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                         </DndContext>
                                         <button
                                             onClick={addWorkout}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-k-text-primary hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg transition-all ml-2"
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset transition-all ml-2"
                                             title="Adicionar Treino"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1704,7 +1704,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
                                     <button
                                         onClick={addWorkout}
-                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#7C3AED] dark:hover:text-k-text-primary hover:bg-[#7C3AED]/10 dark:hover:bg-glass-bg transition-all ml-1 shrink-0"
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset transition-all ml-1 shrink-0"
                                         title="Adicionar Treino"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1859,7 +1859,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     setShowExitConfirm(false)
                                     saveDraftAndLeave()
                                 }}
-                                className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-full transition-colors"
+                                className="w-full py-3 bg-primary hover:opacity-90 text-primary-foreground text-xs font-bold rounded-control transition-colors"
                             >
                                 Salvar como rascunho
                             </button>
@@ -1949,7 +1949,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 const firstMissing = workouts.find(w => !w.frequency || w.frequency.length === 0)
                                 if (firstMissing) setActiveWorkoutId(firstMissing.id)
                             }}
-                            className="w-full py-3 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-bold rounded-full transition-colors"
+                            className="w-full py-3 bg-primary hover:opacity-90 text-primary-foreground text-sm font-bold rounded-control transition-colors"
                         >
                             Entendi
                         </button>
@@ -2021,7 +2021,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             <Button
                                 onClick={() => { setShowActivateConfirm(false); saveProgram('immediate') }}
                                 disabled={saving}
-                                className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all"
+                                className="bg-primary hover:opacity-90 text-primary-foreground rounded-control px-5 py-2 h-9 text-sm font-medium transition-all"
                             >
                                 {saving ? <Loader2 className="animate-spin w-4 h-4" /> : 'Confirmar Ativação'}
                             </Button>
@@ -2079,7 +2079,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             <Button
                                 onClick={() => saveAsTemplate()}
                                 disabled={!templateName.trim() || savingTemplate}
-                                className="bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full px-5 py-2 h-9 text-sm font-medium transition-all"
+                                className="bg-primary hover:opacity-90 text-primary-foreground rounded-control px-5 py-2 h-9 text-sm font-medium transition-all"
                             >
                                 {savingTemplate ? <Loader2 className="animate-spin w-4 h-4" /> : 'Salvar Modelo'}
                             </Button>

@@ -413,7 +413,7 @@ export function AgentQuestionsPanel({
                     <Button
                         onClick={onSubmit}
                         disabled={!allAnswered || isSubmitting}
-                        className="bg-violet-600 hover:bg-violet-500 text-white gap-2 rounded-full px-5"
+                        className="bg-primary hover:opacity-90 text-primary-foreground gap-2 rounded-control px-5"
                     >
                         {isSubmitting ? (
                             <>

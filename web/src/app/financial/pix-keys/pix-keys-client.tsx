@@ -139,7 +139,7 @@ export function PixKeysClient({ trainer, pixKeys }: Props) {
                     {!adding && (
                         <button
                             onClick={() => setAdding(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98]"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-control bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium transition-colors active:scale-[0.98]"
                         >
                             <Plus size={15} />
                             Adicionar chave
@@ -189,7 +189,7 @@ export function PixKeysClient({ trainer, pixKeys }: Props) {
                         </p>
                         <button
                             onClick={() => setAdding(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-medium"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-control bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium"
                         >
                             <Plus size={15} />
                             Adicionar primeira chave
@@ -460,7 +460,7 @@ function AddKeyForm({
                     onClick={submit}
                     disabled={!canSubmit}
                     title={missingFieldHint ?? undefined}
-                    className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-control bg-primary hover:opacity-90 text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {busy && <Loader2 size={14} className="animate-spin" />}
                     Validar e salvar

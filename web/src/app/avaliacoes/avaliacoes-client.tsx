@@ -184,7 +184,7 @@ export function AvaliacoesClient({
                                 setPresetStudentIdForCreate(undefined)
                                 setCreateSessionOpen(true)
                             }}
-                            className="flex items-center gap-2 px-4 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-medium rounded-full transition-all dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium rounded-control transition-all dark:bg-violet-600 dark:hover:bg-violet-500"
                         >
                             <Plus size={14} />
                             Nova avaliação

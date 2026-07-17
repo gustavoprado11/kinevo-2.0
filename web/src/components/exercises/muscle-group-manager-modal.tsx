@@ -120,7 +120,7 @@ export function MuscleGroupManagerModal({ isOpen, onClose, trainerId, manager }:
                         <button
                             onClick={handleCreate}
                             disabled={isCreating || !newName.trim()}
-                            className="px-4 py-2 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 disabled:opacity-50 text-white font-medium text-sm rounded-full dark:rounded-lg shadow-sm dark:shadow-lg dark:shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap"
+                            className="px-4 py-2 bg-primary hover:opacity-90 disabled:opacity-50 text-white font-medium text-sm rounded-control dark:rounded-control shadow-sm transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap"
                         >
                             {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" strokeWidth={2.5} />}
                             Adicionar

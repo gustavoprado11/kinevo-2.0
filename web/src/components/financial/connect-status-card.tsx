@@ -105,7 +105,7 @@ export function ConnectStatusCard({
                         <button
                             onClick={handleConnect}
                             disabled={loading}
-                            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-xl bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50"
+                            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors disabled:opacity-50"
                         >
                             {loading ? (
                                 <Loader2 size={16} className="animate-spin" />

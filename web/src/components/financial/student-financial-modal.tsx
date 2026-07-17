@@ -387,7 +387,7 @@ export function StudentFinancialModal({
                                     </p>
                                     <button
                                         onClick={handleConfigureBilling}
-                                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors"
                                     >
                                         <CreditCard size={14} />
                                         Configurar cobrança
@@ -406,7 +406,7 @@ export function StudentFinancialModal({
                                             <button
                                                 onClick={handleResendLink}
                                                 disabled={actionLoading}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors disabled:opacity-50"
                                             >
                                                 {actionLoading ? <Loader2 size={12} className="animate-spin" /> : <ExternalLink size={12} />}
                                                 Gerar novo link
@@ -445,7 +445,7 @@ export function StudentFinancialModal({
                                                 <button
                                                     type="button"
                                                     onClick={handleCopyLink}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors"
                                                 >
                                                     {copied ? <Check size={12} /> : <Copy size={12} />}
                                                     {copied ? 'Copiado!' : 'Copiar link'}
@@ -570,7 +570,7 @@ export function StudentFinancialModal({
                                     <div className="flex items-center gap-2 mt-3">
                                         <button
                                             onClick={handleConfigureBilling}
-                                            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors"
                                         >
                                             <CreditCard size={14} />
                                             Configurar nova cobrança
@@ -596,7 +596,7 @@ export function StudentFinancialModal({
                                     <div className="flex items-center gap-2 mt-3">
                                         <button
                                             onClick={handleConfigureBilling}
-                                            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors"
                                         >
                                             <CreditCard size={14} />
                                             Configurar cobrança
@@ -655,7 +655,7 @@ export function StudentFinancialModal({
                                                 <button
                                                     onClick={() => handleToggleBlock(true)}
                                                     disabled={actionLoading}
-                                                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors disabled:opacity-50"
+                                                    className="px-3 py-1.5 text-xs font-semibold rounded-control bg-primary hover:opacity-90 text-primary-foreground transition-colors disabled:opacity-50"
                                                 >
                                                     {actionLoading ? <Loader2 size={12} className="animate-spin" /> : 'Confirmar'}
                                                 </button>

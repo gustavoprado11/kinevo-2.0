@@ -700,7 +700,7 @@ export function PrescriptionProfileForm({
                                             type="button"
                                             size="sm"
                                             onClick={applyConditionSuggestions}
-                                            className="bg-violet-600 hover:bg-violet-500 text-white text-xs gap-1.5"
+                                            className="bg-primary hover:opacity-90 text-primary-foreground text-xs gap-1.5"
                                         >
                                             <Check className="w-3.5 h-3.5" />
                                             Aplicar sugestões
@@ -878,7 +878,7 @@ export function PrescriptionProfileForm({
                                 <Button
                                     onClick={handleGenerate}
                                     disabled={!existingProfile || availableDays.length === 0}
-                                    className="bg-violet-600 hover:bg-violet-500 text-white gap-2 w-full sm:w-auto group"
+                                    className="bg-primary hover:opacity-90 text-primary-foreground gap-2 w-full sm:w-auto group"
                                     title={!existingProfile ? 'Salve o perfil primeiro' : availableDays.length === 0 ? 'Selecione pelo menos 1 dia' : undefined}
                                 >
                                     <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
@@ -890,7 +890,7 @@ export function PrescriptionProfileForm({
                             <Button
                                 onClick={handleSaveAndGenerate}
                                 disabled={generating || availableDays.length === 0}
-                                className="bg-violet-600 hover:bg-violet-500 text-white gap-2 w-full sm:w-auto group"
+                                className="bg-primary hover:opacity-90 text-primary-foreground gap-2 w-full sm:w-auto group"
                                 title={availableDays.length === 0 ? 'Selecione pelo menos 1 dia' : undefined}
                             >
                                 {generating ? (

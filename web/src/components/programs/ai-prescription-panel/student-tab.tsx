@@ -222,7 +222,7 @@ export function AiPrescriptionPanelStudentTab({
                                 a different program. */}
                             <Button
                                 onClick={reset}
-                                className="w-full rounded-full bg-violet-600 hover:bg-violet-500 text-white h-10 text-sm font-medium flex items-center justify-center gap-2"
+                                className="w-full rounded-control bg-primary hover:opacity-90 text-primary-foreground h-10 text-sm font-medium flex items-center justify-center gap-2"
                             >
                                 <Sparkles className="w-4 h-4" />
                                 Ajustar e gerar outro programa
@@ -239,7 +239,7 @@ export function AiPrescriptionPanelStudentTab({
                     {pageState === 'error' && (
                         <Button
                             onClick={reset}
-                            className="w-full rounded-full bg-violet-600 hover:bg-violet-500 text-white h-10 text-sm font-medium"
+                            className="w-full rounded-control bg-primary hover:opacity-90 text-primary-foreground h-10 text-sm font-medium"
                         >
                             Tentar de novo
                         </Button>

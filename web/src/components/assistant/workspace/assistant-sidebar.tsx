@@ -225,7 +225,7 @@ export function AssistantSidebar({
                         : navLinkClass}`}>
                     {activeNavItem && ActiveIcon ? (
                         <>
-                            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#7C3AED] dark:bg-violet-500" />
+                            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />
                             <ActiveIcon className="h-[18px] w-[18px] shrink-0 text-[#7C3AED] dark:text-violet-400" strokeWidth={1.5} />
                             <span className="flex-1 text-left">{activeNavItem.name}</span>
                         </>
@@ -247,7 +247,7 @@ export function AssistantSidebar({
                                         className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${isHome
                                             ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED] dark:bg-glass-bg-active dark:text-violet-400'
                                             : 'font-medium text-[#6E6E73] dark:text-muted-foreground hover:bg-[#F5F5F7] hover:text-[#1D1D1F] dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
-                                        {isHome && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#7C3AED] dark:bg-violet-500" />}
+                                        {isHome && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />}
                                         <Icon className={`h-[18px] w-[18px] shrink-0 ${isHome ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
                                         <span className="flex-1 text-left">{n.name}</span>
                                     </button>
@@ -259,7 +259,7 @@ export function AssistantSidebar({
                                     className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
                                         ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED] dark:bg-glass-bg-active dark:text-violet-400'
                                         : 'font-medium text-[#6E6E73] dark:text-muted-foreground hover:bg-[#F5F5F7] hover:text-[#1D1D1F] dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
-                                    {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#7C3AED] dark:bg-violet-500" />}
+                                    {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />}
                                     <Icon className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
                                     <span className="flex-1">{n.name}</span>
                                 </Link>
@@ -296,7 +296,7 @@ export function AssistantSidebar({
                                     className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
                                         ? 'bg-[#7C3AED]/10 font-semibold text-[#7C3AED] dark:bg-glass-bg-active dark:text-violet-400'
                                         : 'font-medium text-[#6E6E73] dark:text-muted-foreground hover:bg-[#F5F5F7] hover:text-[#1D1D1F] dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
-                                    {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#7C3AED] dark:bg-violet-500" />}
+                                    {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />}
                                     <Settings className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-[#7C3AED] dark:text-violet-400' : 'text-[#AEAEB2] dark:text-muted-foreground/60 group-hover:text-[#6E6E73] dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
                                     <span className="flex-1">Configurações</span>
                                 </Link>

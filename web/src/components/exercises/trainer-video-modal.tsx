@@ -322,7 +322,7 @@ export function TrainerVideoModal({
                                 <div className="space-y-2">
                                     <div className="h-1.5 bg-[#F5F5F7] dark:bg-surface-inset rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-[#7C3AED] dark:bg-violet-500 rounded-full transition-all duration-300"
+                                            className="h-full bg-k-text-secondary rounded-full transition-all duration-300"
                                             style={{ width: `${uploadProgress}%` }}
                                         />
                                     </div>

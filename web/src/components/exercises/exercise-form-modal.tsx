@@ -522,7 +522,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                                     />
                                     {videoUploading && videoProgress > 0 && (
                                         <div className="h-1.5 bg-[#F5F5F7] dark:bg-surface-inset rounded-full overflow-hidden">
-                                            <div className="h-full bg-[#7C3AED] dark:bg-violet-500 rounded-full transition-all duration-300" style={{ width: `${videoProgress}%` }} />
+                                            <div className="h-full bg-k-text-secondary rounded-full transition-all duration-300" style={{ width: `${videoProgress}%` }} />
                                         </div>
                                     )}
                                 </div>
@@ -580,7 +580,7 @@ export function ExerciseFormModal({ isOpen, onClose, onSuccess, exercise, traine
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="px-6 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white rounded-full font-medium transition-all disabled:bg-[#D2D2D7] dark:disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm dark:shadow-lg dark:shadow-violet-500/20 active:scale-95 text-sm"
+                        className="px-6 py-2.5 bg-primary hover:opacity-90 text-primary-foreground rounded-control font-medium transition-all disabled:bg-[#D2D2D7] dark:disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm active:scale-95 text-sm"
                     >
                         {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                         Salvar Exercício

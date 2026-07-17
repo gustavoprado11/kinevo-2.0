@@ -506,7 +506,7 @@ export function ContractDetailModal({
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                            className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-all active:scale-95 disabled:opacity-50"
                         >
                             {loading ? (
                                 <>

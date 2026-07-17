@@ -76,7 +76,7 @@ export function TrainerProfileWelcomeModal() {
                 {/* CTA */}
                 <button
                     onClick={handleDismiss}
-                    className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/20 text-sm"
+                    className="w-full py-3 px-4 bg-primary hover:opacity-90 text-primary-foreground font-semibold rounded-control transition-all shadow-lg shadow-violet-500/20 text-sm"
                 >
                     Entendi!
                 </button>

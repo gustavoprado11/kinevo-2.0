@@ -197,7 +197,7 @@ export function GoogleCalendarClient({
                             type="button"
                             onClick={handleSaveCalendar}
                             disabled={saving || !selectedId}
-                            className="w-full px-4 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2.5 bg-primary hover:opacity-90 text-primary-foreground text-sm font-semibold rounded-control transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                         >
                             {saving ? (
                                 <>
@@ -277,7 +277,7 @@ export function GoogleCalendarClient({
                                 </div>
                                 <a
                                     href="/settings/integrations/google-calendar/start"
-                                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-semibold rounded-full transition-all active:scale-95"
+                                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:opacity-90 text-primary-foreground text-sm font-semibold rounded-control transition-all active:scale-95"
                                 >
                                     <Link2 className="w-4 h-4" />
                                     Conectar Google Calendar

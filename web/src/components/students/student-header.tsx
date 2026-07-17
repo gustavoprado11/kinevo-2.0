@@ -263,7 +263,7 @@ export function StudentHeader({ student, onEdit, onDelete, onSchedule, onStartTo
                             {onSchedule && (
                                 <button
                                     onClick={onSchedule}
-                                    className="px-3.5 py-2 text-[11px] font-semibold text-white bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 rounded-xl transition-all flex items-center gap-1.5 shadow-sm dark:shadow-lg dark:shadow-violet-500/20 active:scale-95"
+                                    className="px-3.5 py-2 text-[11px] font-semibold text-white bg-violet-500 dark:bg-violet-600 hover:bg-violet-600 dark:hover:bg-violet-500 rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
                                 >
                                     <CalendarPlus className="w-3.5 h-3.5" />
                                     Agendar

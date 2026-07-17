@@ -454,7 +454,7 @@ export function SubscriptionsClient({
                     <div className="flex items-center gap-2 shrink-0">
                         <button
                             onClick={() => handleOpenConfigModal('new')}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#7C3AED] dark:bg-violet-600 hover:bg-[#6D28D9] dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98]"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-control bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium transition-colors active:scale-[0.98]"
                         >
                             <Plus size={15} />
                             Nova assinatura

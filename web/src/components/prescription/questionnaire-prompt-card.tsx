@@ -89,7 +89,7 @@ export function QuestionnairePromptCard({
                         <Button
                             onClick={handleSend}
                             disabled={status === 'sending'}
-                            className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+                            className="bg-primary hover:opacity-90 text-primary-foreground gap-2"
                         >
                             {status === 'sending' ? (
                                 <>

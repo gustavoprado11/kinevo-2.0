@@ -299,7 +299,7 @@ export function InboxClient({ trainer, submissions: initialSubmissions, students
                                 setPreselectedTemplateId(null)
                                 setAssignModalOpen(true)
                             }}
-                            className="bg-violet-600 hover:bg-violet-500 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 w-fit"
+                            className="bg-primary hover:opacity-90 text-primary-foreground rounded-control px-6 py-2.5 text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all active:scale-95 flex items-center gap-2 w-fit"
                         >
                             <Send size={18} strokeWidth={2} />
                             Enviar Formulário

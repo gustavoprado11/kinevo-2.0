@@ -447,7 +447,7 @@ export function FinancialDashboardClient({
                                 <div ref={chargeBtnRef} className="relative">
                                     <button
                                         onClick={() => setChargeDropdownOpen(o => !o)}
-                                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] dark:bg-violet-600 dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98] shadow-[0_4px_10px_-2px_rgba(0,122,255,0.35)] dark:shadow-[0_4px_10px_-2px_rgba(124,58,237,0.35)]"
+                                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-control bg-primary hover:opacity-90 dark:bg-violet-600 dark:hover:bg-violet-500 text-white text-sm font-medium transition-colors active:scale-[0.98]"
                                     >
                                         <Send size={15} />
                                         Cobrar aluno

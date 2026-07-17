@@ -728,7 +728,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                             <button
                                                 onClick={handleGenerateAI}
                                                 disabled={isGeneratingAI || !aiGoal.trim()}
-                                                className="h-11 px-8 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-full font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-2 dark:bg-violet-600 dark:hover:bg-violet-500 dark:rounded-xl"
+                                                className="h-11 px-8 bg-primary hover:opacity-90 text-primary-foreground rounded-control font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-2 dark:bg-violet-600 dark:hover:bg-violet-500"
                                             >
                                                 {isGeneratingAI ? (
                                                     <>

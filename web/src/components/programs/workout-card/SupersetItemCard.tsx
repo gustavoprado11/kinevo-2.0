@@ -118,7 +118,7 @@ export function SupersetItemCard({
                                 <button
                                     type="button"
                                     onClick={onDuplicate}
-                                    className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#7C3AED] dark:hover:text-violet-400 hover:bg-[#7C3AED]/10 dark:hover:bg-violet-400/10 transition-colors"
+                                    className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-inset)] transition-colors"
                                     title="Duplicar superset"
                                     aria-label="Duplicar superset"
                                 >
@@ -129,7 +129,7 @@ export function SupersetItemCard({
                                 <button
                                     type="button"
                                     onClick={onDissolveSuperset}
-                                    className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[#7C3AED] dark:hover:text-violet-400 hover:bg-[#7C3AED]/10 dark:hover:bg-violet-400/10 transition-colors"
+                                    className="p-1.5 rounded-md text-[var(--text-quaternary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-inset)] transition-colors"
                                     title="Dissolver superset"
                                     aria-label="Dissolver superset"
                                 >

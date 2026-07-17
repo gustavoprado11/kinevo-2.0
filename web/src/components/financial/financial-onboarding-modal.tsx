@@ -262,7 +262,7 @@ export function FinancialOnboardingModal() {
                                 )}
                                 <button
                                     onClick={handleNext}
-                                    className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all active:scale-[0.97] shadow-lg shadow-violet-500/20"
+                                    className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-all active:scale-[0.97] shadow-lg shadow-violet-500/20"
                                 >
                                     {isLast ? 'Começar' : 'Próximo'}
                                     {!isLast && <ChevronRight size={14} />}

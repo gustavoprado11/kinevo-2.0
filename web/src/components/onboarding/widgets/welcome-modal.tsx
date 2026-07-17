@@ -235,7 +235,7 @@ export function WelcomeModal({ trainerName }: WelcomeModalProps) {
                 <div className="mt-7 flex flex-col items-center">
                   <button
                     onClick={handleContinue}
-                    className="px-8 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/20 text-sm active:scale-[0.98]"
+                    className="px-8 py-3 bg-primary hover:opacity-90 text-primary-foreground font-semibold rounded-control transition-all shadow-lg shadow-violet-500/20 text-sm active:scale-[0.98]"
                   >
                     Continuar
                   </button>

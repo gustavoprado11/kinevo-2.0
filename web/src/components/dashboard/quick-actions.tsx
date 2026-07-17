@@ -11,62 +11,15 @@ interface QuickActionsProps {
     onNewStudent: () => void
 }
 
+// Fase de varredura do redesign: os chips de ícone coloridos (um matiz por
+// ação) saíram — atalho é navegação, não festa de cor. Ícone em tinta,
+// destaque só no hover.
 const actions = [
-    {
-        id: 'new-student',
-        label: 'Novo aluno',
-        icon: UserPlus,
-        onboardingId: 'dashboard-new-student',
-        color: 'text-[#007AFF] dark:text-blue-400',
-        bg: 'bg-[#007AFF]/5 dark:bg-blue-500/10',
-        hoverBg: 'group-hover:bg-[#007AFF]/15 dark:group-hover:bg-blue-500/20',
-        hoverBorder: 'hover:border-[#007AFF]/40 dark:hover:border-blue-500/40',
-        hoverRing: 'hover:shadow-[0_4px_14px_rgba(0,122,255,0.18)]',
-    },
-    {
-        id: 'new-program',
-        label: 'Novo programa',
-        icon: Dumbbell,
-        href: '/programs/new',
-        color: 'text-violet-600 dark:text-violet-400',
-        bg: 'bg-violet-500/5 dark:bg-violet-500/10',
-        hoverBg: 'group-hover:bg-violet-500/15 dark:group-hover:bg-violet-500/20',
-        hoverBorder: 'hover:border-violet-500/40 dark:hover:border-violet-500/40',
-        hoverRing: 'hover:shadow-[0_4px_14px_rgba(139,92,246,0.18)]',
-    },
-    {
-        id: 'send-form',
-        label: 'Enviar avaliação',
-        icon: ClipboardList,
-        href: '/forms',
-        color: 'text-teal-600 dark:text-teal-400',
-        bg: 'bg-teal-500/5 dark:bg-teal-500/10',
-        hoverBg: 'group-hover:bg-teal-500/15 dark:group-hover:bg-teal-500/20',
-        hoverBorder: 'hover:border-teal-500/40 dark:hover:border-teal-500/40',
-        hoverRing: 'hover:shadow-[0_4px_14px_rgba(20,184,166,0.18)]',
-    },
-    {
-        id: 'share-app',
-        label: 'Compartilhar aplicativo',
-        icon: Share2,
-        onboardingId: 'dashboard-share-app',
-        color: 'text-emerald-600 dark:text-emerald-400',
-        bg: 'bg-emerald-500/5 dark:bg-emerald-500/10',
-        hoverBg: 'group-hover:bg-emerald-500/15 dark:group-hover:bg-emerald-500/20',
-        hoverBorder: 'hover:border-emerald-500/40 dark:hover:border-emerald-500/40',
-        hoverRing: 'hover:shadow-[0_4px_14px_rgba(16,185,129,0.18)]',
-    },
-    {
-        id: 'sell-plan',
-        label: 'Vender plano',
-        icon: Wallet,
-        href: '/financial/subscriptions',
-        color: 'text-amber-600 dark:text-amber-400',
-        bg: 'bg-amber-500/5 dark:bg-amber-500/10',
-        hoverBg: 'group-hover:bg-amber-500/15 dark:group-hover:bg-amber-500/20',
-        hoverBorder: 'hover:border-amber-500/40 dark:hover:border-amber-500/40',
-        hoverRing: 'hover:shadow-[0_4px_14px_rgba(245,158,11,0.18)]',
-    },
+    { id: 'new-student', label: 'Novo aluno', icon: UserPlus, onboardingId: 'dashboard-new-student' },
+    { id: 'new-program', label: 'Novo programa', icon: Dumbbell, href: '/programs/new' },
+    { id: 'send-form', label: 'Enviar avaliação', icon: ClipboardList, href: '/forms' },
+    { id: 'share-app', label: 'Compartilhar aplicativo', icon: Share2, onboardingId: 'dashboard-share-app' },
+    { id: 'sell-plan', label: 'Vender plano', icon: Wallet, href: '/financial/subscriptions' },
 ]
 
 export function QuickActions({ onNewStudent }: QuickActionsProps) {
@@ -92,32 +45,20 @@ export function QuickActions({ onNewStudent }: QuickActionsProps) {
         <nav aria-label="Ações rápidas" className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
             {visibleActions.map((action) => {
                 const Icon = action.icon
-                const label = action.label
                 return (
                     <button
                         key={action.id}
                         data-onboarding={action.onboardingId}
                         onClick={() => handleClick(action)}
-                        className={`
-                            group relative flex items-center gap-2 px-4 py-2.5 rounded-xl
-                            border border-[#D2D2D7] dark:border-k-border-primary
-                            bg-white dark:bg-surface-card
-                            shadow-apple-card dark:shadow-none
-                            text-sm font-medium whitespace-nowrap cursor-pointer
-                            transition-[transform,box-shadow,border-color] duration-200 ease-out
-                            hover:-translate-y-0.5
-                            ${action.hoverBorder}
-                            ${action.hoverRing}
-                            active:translate-y-0 active:scale-[0.98] active:transition-transform active:duration-75
-                        `}
+                        className="group flex items-center gap-2 px-3.5 py-2 rounded-control border border-k-border-primary bg-surface-card text-sm font-medium whitespace-nowrap cursor-pointer transition-colors hover:bg-surface-inset"
                     >
-                        <div
-                            className={`w-7 h-7 rounded-lg ${action.bg} ${action.hoverBg} flex items-center justify-center flex-shrink-0 transition-colors duration-200`}
+                        <Icon
+                            size={15}
+                            strokeWidth={1.7}
+                            className="flex-shrink-0 text-k-text-tertiary transition-colors group-hover:text-k-text-secondary"
                             aria-hidden="true"
-                        >
-                            <Icon size={15} className={`${action.color} transition-transform duration-200 group-hover:scale-110`} />
-                        </div>
-                        <span className="text-[#1D1D1F] dark:text-k-text-secondary">{label}</span>
+                        />
+                        <span className="text-k-text-secondary transition-colors group-hover:text-k-text-primary">{action.label}</span>
                     </button>
                 )
             })}

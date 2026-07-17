@@ -116,7 +116,7 @@ export function ModalityInferenceToast({
                 <button
                   onClick={() => void handleAccept()}
                   disabled={busy}
-                  className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold rounded-control transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {busy ? 'Salvando…' : 'Sim, ajustar'}
                 </button>

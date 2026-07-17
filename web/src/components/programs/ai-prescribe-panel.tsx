@@ -231,7 +231,7 @@ export function AiPrescribePanel({
                         <button
                             onClick={handleGenerate}
                             disabled={text.trim().length === 0}
-                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#7C3AED] hover:bg-[#6D28D9] dark:bg-violet-600 dark:hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-control text-sm font-semibold text-white bg-primary hover:opacity-90 dark:bg-violet-600 dark:hover:bg-violet-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             <Sparkles className="w-4 h-4" />
                             Gerar Treino

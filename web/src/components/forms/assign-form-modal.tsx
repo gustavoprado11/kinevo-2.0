@@ -136,7 +136,7 @@ export function AssignFormModal({
             disabled={isAssigning || !canSubmit}
             className={`w-full h-11 font-bold rounded-full transition-all flex items-center justify-center gap-2 dark:rounded-xl ${
                 canSubmit
-                    ? 'bg-[#7C3AED] hover:bg-[#6D28D9] text-white dark:bg-violet-600 dark:hover:bg-violet-500 dark:shadow-lg dark:shadow-violet-600/20'
+                    ? 'bg-primary hover:opacity-90 text-primary-foreground dark:bg-violet-600 dark:hover:bg-violet-500 dark:shadow-lg dark:shadow-violet-600/20'
                     : 'text-[#AEAEB2] cursor-not-allowed dark:bg-surface-elevated dark:text-k-text-quaternary'
             }`}
         >

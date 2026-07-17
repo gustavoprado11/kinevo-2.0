@@ -825,7 +825,7 @@ export function StudentDetailClient({
                                             <div className="flex items-center gap-2 mt-3">
                                                 <button
                                                     onClick={() => router.push(`/students/${student.id}/program/new?generationId=${draft.id}`)}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-lg transition-colors"
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-primary hover:opacity-90 text-primary-foreground text-xs font-bold rounded-control transition-colors"
                                                 >
                                                     <Pencil className="w-3.5 h-3.5" /> Revisar no builder
                                                 </button>
@@ -902,7 +902,7 @@ export function StudentDetailClient({
                                     <div className="flex items-center justify-center gap-2">
                                         <button
                                             onClick={handleCreateScheduled}
-                                            className="px-3 py-1.5 text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-all"
+                                            className="px-3 py-1.5 text-xs font-bold bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-all"
                                         >
                                             + Criar Novo
                                         </button>
@@ -1112,7 +1112,7 @@ export function StudentDetailClient({
                         </p>
                         <button
                             onClick={() => setActivationBlock(null)}
-                            className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold rounded-full transition-colors"
+                            className="w-full py-3 bg-primary hover:opacity-90 text-primary-foreground text-sm font-bold rounded-control transition-colors"
                         >
                             Entendi
                         </button>
