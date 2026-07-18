@@ -25,7 +25,7 @@ export function MiniBars({
     width = 130,
     height = 48,
     gap = 3,
-    activeColor = '#7C3AED',
+    activeColor = '#6D28D9',
     emptyColor = '#EDE9FE',
     style,
 }: MiniBarsProps) {

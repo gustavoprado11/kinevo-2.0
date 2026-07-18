@@ -39,7 +39,7 @@ export function ReadinessCard({ result, recommendation, hrToday, hrv, onPress }:
   return (
     <Pressable onPress={onPress} disabled={!onPress}>
       <LinearGradient
-        colors={['#1E1B4B', '#312E81']}
+        colors={['#18181B', '#312E81']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.card}
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   score: {
     fontSize: 56,
     fontWeight: '800',
-    color: '#F1F5F9',
+    color: '#F4F3F1',
     letterSpacing: -2,
     lineHeight: 60,
   },
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#F1F5F9',
+    color: '#F4F3F1',
     marginTop: 1,
   },
   statDivider: {

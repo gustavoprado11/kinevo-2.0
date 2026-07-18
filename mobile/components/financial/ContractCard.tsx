@@ -14,16 +14,16 @@ const STATUS_CONFIG: Record<DisplayStatus, { bg: string; text: string; label: st
     grace_period: { bg: "rgba(249,115,22,0.12)", text: "#f97316", label: "Vence hoje" },
     canceling: { bg: "rgba(245,158,11,0.12)", text: "#f59e0b", label: "Cancelando" },
     overdue: { bg: "rgba(239,68,68,0.12)", text: "#ef4444", label: "Inadimplente" },
-    canceled: { bg: "rgba(148,163,184,0.16)", text: "#94a3b8", label: "Encerrado" },
+    canceled: { bg: "rgba(148,163,184,0.16)", text: "#8A8681", label: "Encerrado" },
     expired: { bg: "rgba(239,68,68,0.12)", text: "#ef4444", label: "Expirado" },
 };
 
 const BILLING_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
-    asaas_auto: { bg: "rgba(124,58,237,0.12)", text: "#7c3aed", label: "Carteira" },
-    asaas_auto_recurring: { bg: "rgba(124,58,237,0.12)", text: "#7c3aed", label: "Carteira" },
-    stripe_auto: { bg: "rgba(124,58,237,0.12)", text: "#7c3aed", label: "Stripe" },
+    asaas_auto: { bg: "rgba(124,58,237,0.12)", text: "#6D28D9", label: "Carteira" },
+    asaas_auto_recurring: { bg: "rgba(124,58,237,0.12)", text: "#6D28D9", label: "Carteira" },
+    stripe_auto: { bg: "rgba(124,58,237,0.12)", text: "#6D28D9", label: "Stripe" },
     manual_recurring: { bg: "rgba(59,130,246,0.12)", text: "#3b82f6", label: "Manual" },
-    manual_one_off: { bg: "rgba(148,163,184,0.16)", text: "#94a3b8", label: "Avulso" },
+    manual_one_off: { bg: "rgba(148,163,184,0.16)", text: "#8A8681", label: "Avulso" },
     courtesy: { bg: "rgba(34,197,94,0.12)", text: "#16a34a", label: "Cortesia" },
 };
 

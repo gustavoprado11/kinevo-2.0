@@ -505,7 +505,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                     <Text style={styles.completedTitle}>Aeróbio concluído</Text>
                     <Text style={styles.completedTime}>{summary}</Text>
                     {EquipmentIcon ? (
-                        <EquipmentIcon size={16} color="#9ca3af" />
+                        <EquipmentIcon size={16} color="#8A8681" />
                     ) : null}
                     <TouchableOpacity
                         onPress={handleToggleComplete}
@@ -563,16 +563,16 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                     <View style={{ flex: 1 }} />
 
                     <TouchableOpacity onPress={handleSkipPhase} style={styles.controlCircle} activeOpacity={0.7}>
-                        <SkipForward size={14} color="#6b7280" />
+                        <SkipForward size={14} color="#57534E" />
                     </TouchableOpacity>
 
                     {isRunning ? (
                         <TouchableOpacity onPress={handlePause} style={styles.controlCircle} activeOpacity={0.7}>
-                            <Pause size={14} color="#6b7280" />
+                            <Pause size={14} color="#57534E" />
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity onPress={handleResume} style={styles.controlCircle} activeOpacity={0.7}>
-                            <Play size={14} color="#6b7280" />
+                            <Play size={14} color="#57534E" />
                         </TouchableOpacity>
                     )}
 
@@ -593,7 +593,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                     </View>
                     {equipmentLabel && EquipmentIcon ? (
                         <View style={styles.equipmentInline}>
-                            <EquipmentIcon size={14} color="#9ca3af" />
+                            <EquipmentIcon size={14} color="#8A8681" />
                             <Text style={styles.equipmentText}>{equipmentLabel}</Text>
                         </View>
                     ) : null}
@@ -607,7 +607,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
 
                 <View style={styles.dotsRow}>
                     {Array.from({ length: totalRounds }, (_, i) => {
-                        let dotColor = '#d1d5db';
+                        let dotColor = '#D6D3D0';
                         if (i < currentRound - 1) dotColor = '#06b6d4';
                         else if (i === currentRound - 1) dotColor = phaseColor;
                         return (
@@ -635,11 +635,11 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
 
                     {isRunning ? (
                         <TouchableOpacity onPress={handlePause} style={styles.controlCircle} activeOpacity={0.7}>
-                            <Pause size={14} color="#6b7280" />
+                            <Pause size={14} color="#57534E" />
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity onPress={handleResume} style={styles.controlCircle} activeOpacity={0.7}>
-                            <Play size={14} color="#6b7280" />
+                            <Play size={14} color="#57534E" />
                         </TouchableOpacity>
                     )}
 
@@ -654,7 +654,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
 
                 {equipmentLabel && EquipmentIcon ? (
                     <View style={styles.equipmentInline}>
-                        <EquipmentIcon size={14} color="#9ca3af" />
+                        <EquipmentIcon size={14} color="#8A8681" />
                         <Text style={styles.equipmentText}>{equipmentLabel}</Text>
                     </View>
                 ) : null}
@@ -711,7 +711,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                     activeOpacity={0.7}
                     disabled={disabled}
                 >
-                    <Play size={14} color="#6b7280" />
+                    <Play size={14} color="#57534E" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -726,7 +726,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
 
             {equipmentLabel && EquipmentIcon ? (
                 <View style={[styles.equipmentInline, { marginTop: 4 }]}>
-                    <EquipmentIcon size={16} color="#6b7280" />
+                    <EquipmentIcon size={16} color="#57534E" />
                     <Text style={styles.equipmentLabelBold}>{equipmentLabel}</Text>
                 </View>
             ) : null}

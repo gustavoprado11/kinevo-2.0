@@ -76,7 +76,7 @@ const TYPE_CONFIG: Record<KCelebrationType, {
     'workout-complete': {
         defaultTitle: 'Treino completo!',
         emoji: '💪',
-        accent: '#7C3AED',
+        accent: '#6D28D9',
         accentBg: 'rgba(124,58,237,0.16)',
         palette: 'purple',
     },

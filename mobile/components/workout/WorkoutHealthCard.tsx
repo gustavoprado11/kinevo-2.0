@@ -51,7 +51,7 @@ function StatBlock({ value, unit, caption }: { value: number | null; unit: strin
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#18181B',
     borderRadius: 16,
     marginTop: 16,
     overflow: 'hidden',
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#F1F5F9',
+    color: '#F4F3F1',
     letterSpacing: -0.6,
   },
   statUnit: {

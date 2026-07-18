@@ -145,7 +145,7 @@ export default function PlansScreen() {
                             value={search}
                             onChangeText={setSearch}
                             placeholder="Buscar planos..."
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor="#8A8681"
                             style={{
                                 flex: 1,
                                 paddingVertical: 10,
@@ -178,7 +178,7 @@ export default function PlansScreen() {
                         }
                         ListEmptyComponent={
                             <EmptyState
-                                icon={<Wallet size={40} color="#cbd5e1" />}
+                                icon={<Wallet size={40} color="#D6D3D0" />}
                                 title={search ? "Nenhum plano encontrado" : "Nenhum plano criado"}
                                 description={search ? "Tente ajustar o termo de busca" : "Crie seu primeiro plano para começar a cobrar"}
                             />

@@ -52,7 +52,7 @@ export function ProgramPreview({ output, source, violations, isApproving, onAppr
             {/* Header */}
             <View style={{ backgroundColor: "#ffffff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#1a1a2e", flex: 1 }}>
+                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#18181B", flex: 1 }}>
                         {output.program_name || "Programa Gerado"}
                     </Text>
                     <View
@@ -81,13 +81,13 @@ export function ProgramPreview({ output, source, violations, isApproving, onAppr
 
                 <View style={{ flexDirection: "row", gap: 16 }}>
                     {!!output.duration_weeks && (
-                        <Text style={{ fontSize: 13, color: "#64748b" }}>{output.duration_weeks} semanas</Text>
+                        <Text style={{ fontSize: 13, color: "#57534E" }}>{output.duration_weeks} semanas</Text>
                     )}
-                    <Text style={{ fontSize: 13, color: "#64748b" }}>{output.workouts.length} treinos</Text>
+                    <Text style={{ fontSize: 13, color: "#57534E" }}>{output.workouts.length} treinos</Text>
                 </View>
 
                 {output.reasoning?.rationale && (
-                    <Text style={{ fontSize: 13, color: "#475569", marginTop: 10, lineHeight: 18 }}>
+                    <Text style={{ fontSize: 13, color: "#57534E", marginTop: 10, lineHeight: 18 }}>
                         {output.reasoning.rationale}
                     </Text>
                 )}
@@ -116,8 +116,8 @@ export function ProgramPreview({ output, source, violations, isApproving, onAppr
             {output.workouts.map((workout, wIdx) => (
                 <View key={wIdx} style={{ backgroundColor: "#ffffff", borderRadius: 14, marginBottom: 12, overflow: "hidden" }}>
                     <View style={{ padding: 14, borderBottomWidth: 0.5, borderBottomColor: "rgba(0,0,0,0.06)" }}>
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#1a1a2e" }}>{workout.name}</Text>
-                        <Text style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#18181B" }}>{workout.name}</Text>
+                        <Text style={{ fontSize: 12, color: "#57534E", marginTop: 2 }}>
                             {workout.items.length} exercícios
                         </Text>
                     </View>
@@ -133,10 +133,10 @@ export function ProgramPreview({ output, source, violations, isApproving, onAppr
                                 borderBottomColor: "rgba(0,0,0,0.04)",
                             }}
                         >
-                            <Text style={{ flex: 1, fontSize: 14, color: "#1a1a2e" }}>
+                            <Text style={{ flex: 1, fontSize: 14, color: "#18181B" }}>
                                 {item.exercise_name}
                             </Text>
-                            <Text style={{ fontSize: 13, color: "#64748b" }}>
+                            <Text style={{ fontSize: 13, color: "#57534E" }}>
                                 {item.sets}x{item.reps}
                                 {item.rest_seconds ? ` · ${item.rest_seconds}s` : ""}
                             </Text>

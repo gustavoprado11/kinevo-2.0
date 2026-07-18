@@ -282,7 +282,7 @@ export default function FinancialDashboardScreen() {
                             )}
                             {feed.length === 0 && (
                                 <View style={{ padding: 24, alignItems: "center" }}>
-                                    <DollarSign size={32} color="#cbd5e1" style={{ marginBottom: 8 }} />
+                                    <DollarSign size={32} color="#D6D3D0" style={{ marginBottom: 8 }} />
                                     <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.tertiary }}>Nenhuma transação ainda</Text>
                                     <Text style={{ fontSize: 12, color: colors.text.quaternary, marginTop: 4, textAlign: "center" }}>Conforme seus alunos pagarem, os recebimentos aparecem aqui.</Text>
                                 </View>

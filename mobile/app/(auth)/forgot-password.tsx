@@ -294,7 +294,7 @@ const makeStyles = (colors: V2Palette) => StyleSheet.create({
     heroSub: {
         fontSize: 14,
         fontWeight: "500",
-        color: "#A1A1AA",
+        color: "#8A8681",
         textAlign: "center",
         paddingHorizontal: 8,
         lineHeight: 20,
@@ -399,7 +399,7 @@ const makeStyles = (colors: V2Palette) => StyleSheet.create({
     successBody: {
         fontSize: 13,
         fontWeight: "400",
-        color: "#A1A1AA",
+        color: "#8A8681",
         textAlign: "center",
         lineHeight: 19,
         paddingHorizontal: 8,

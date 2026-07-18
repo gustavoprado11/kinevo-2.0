@@ -57,7 +57,7 @@ export function PerfectWeekShareModal({ visible, onClose, data }: PerfectWeekSha
 
                 <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
                     <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-                        <X size={18} color="#94A3B8" strokeWidth={2.5} />
+                        <X size={18} color="#8A8681" strokeWidth={2.5} />
                     </Pressable>
                 </View>
 
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16 },
     closeBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
     body: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22, paddingHorizontal: 24 },
-    title: { fontSize: 17, fontWeight: '700', color: '#F8FAFC' },
+    title: { fontSize: 17, fontWeight: '700', color: '#FAFAF9' },
     shareBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 15, paddingVertical: 15, paddingHorizontal: 28, alignSelf: 'stretch' },
     shareText: { fontSize: 16, fontWeight: '800', color: '#fff' },
     offscreen: { position: 'absolute', left: -9999, top: 0, width: CARD_W, height: CARD_H },

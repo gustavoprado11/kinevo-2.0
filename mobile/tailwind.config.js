@@ -10,8 +10,8 @@ module.exports = {
         extend: {
             colors: {
                 kinevo: {
-                    background: '#0D0D17',
-                    surface: '#1A1A2E'
+                    background: '#111113',
+                    surface: '#18181B'
                 }
             },
             fontFamily: {

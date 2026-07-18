@@ -67,12 +67,12 @@ export function AvatarPicker({ avatarUrl, isUploading, onPick, size = 80 }: Avat
                             width: size,
                             height: size,
                             borderRadius,
-                            backgroundColor: "#f1f5f9",
+                            backgroundColor: "#F4F3F1",
                             alignItems: "center",
                             justifyContent: "center",
                         }}
                     >
-                        <User size={size * 0.45} color="#94a3b8" strokeWidth={1.5} />
+                        <User size={size * 0.45} color="#8A8681" strokeWidth={1.5} />
                     </View>
                 )}
 

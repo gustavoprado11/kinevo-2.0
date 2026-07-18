@@ -105,12 +105,12 @@ export default function PrivacyScreen() {
                                 marginRight: 14,
                             }}
                         >
-                            <FileText size={20} color="#64748b" strokeWidth={1.5} />
+                            <FileText size={20} color="#57534E" strokeWidth={1.5} />
                         </View>
                         <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary, flex: 1 }}>
                             Termos de Uso
                         </Text>
-                        <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
+                        <ChevronRight size={16} color="#57534E" strokeWidth={1.5} />
                     </TouchableOpacity>
 
                     <View style={{ height: 1, backgroundColor: colors.neutral[100], marginHorizontal: 20 }} />
@@ -136,12 +136,12 @@ export default function PrivacyScreen() {
                                 marginRight: 14,
                             }}
                         >
-                            <Shield size={20} color="#64748b" strokeWidth={1.5} />
+                            <Shield size={20} color="#57534E" strokeWidth={1.5} />
                         </View>
                         <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary, flex: 1 }}>
                             Política de Privacidade
                         </Text>
-                        <ChevronRight size={16} color="#475569" strokeWidth={1.5} />
+                        <ChevronRight size={16} color="#57534E" strokeWidth={1.5} />
                     </TouchableOpacity>
                 </View>
 

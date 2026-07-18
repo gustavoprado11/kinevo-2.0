@@ -344,11 +344,11 @@ export function WarmupCard({ exercise, disabled, onTimerStart, onTimerStop }: Wa
 
                     {timerState === 'running' ? (
                         <TouchableOpacity onPress={handlePause} style={styles.controlCircle} activeOpacity={0.7}>
-                            <Pause size={14} color="#6b7280" />
+                            <Pause size={14} color="#57534E" />
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity onPress={handleResume} style={styles.controlCircle} activeOpacity={0.7}>
-                            <Play size={14} color="#6b7280" />
+                            <Play size={14} color="#57534E" />
                         </TouchableOpacity>
                     )}
 
@@ -401,7 +401,7 @@ export function WarmupCard({ exercise, disabled, onTimerStart, onTimerStop }: Wa
                         activeOpacity={0.7}
                         disabled={disabled}
                     >
-                        <Play size={14} color="#6b7280" />
+                        <Play size={14} color="#57534E" />
                     </TouchableOpacity>
                 ) : null}
 

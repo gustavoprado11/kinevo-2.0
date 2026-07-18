@@ -6,7 +6,7 @@ import { useV2Colors } from "../../hooks/useV2Colors";
 import { formatBRL as formatCurrency } from "@/lib/currency";
 
 const INTERVAL_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-    month: { label: "Mensal", color: "#7c3aed", bg: "rgba(124,58,237,0.12)" },
+    month: { label: "Mensal", color: "#6D28D9", bg: "rgba(124,58,237,0.12)" },
     quarter: { label: "Trimestral", color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
     year: { label: "Anual", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
 };

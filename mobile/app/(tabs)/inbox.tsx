@@ -39,7 +39,7 @@ type IconTheme = {
 
 function getIconTheme(type: InboxItem["type"]): IconTheme {
     if (type === "form_request")
-        return { Icon: FileText, fg: '#7C3AED', grad: ['#EDE9FE', '#DDD6FE'] };
+        return { Icon: FileText, fg: '#6D28D9', grad: ['#EDE9FE', '#DDD6FE'] };
     if (type === "feedback")
         return { Icon: MessageSquare, fg: '#047857', grad: ['#D1FAE5', '#A7F3D0'] };
     if (type === "program_report_published")
@@ -177,13 +177,13 @@ function AnimatedSegmentedControl({
                     gap: 6,
                 }}
             >
-                <MessageCircle size={16} color={activeTab === 'messages' ? '#0f172a' : '#64748b'} />
+                <MessageCircle size={16} color={activeTab === 'messages' ? '#1C1917' : '#57534E'} />
                 <Text
                     style={{
                         fontSize: 13,
                         fontWeight: activeTab === 'messages' ? '700' : '500',
                         letterSpacing: 0.5,
-                        color: activeTab === 'messages' ? '#0f172a' : '#64748b',
+                        color: activeTab === 'messages' ? '#1C1917' : '#57534E',
                     }}
                 >
                     Mensagens
@@ -204,13 +204,13 @@ function AnimatedSegmentedControl({
                     gap: 6,
                 }}
             >
-                <Bell size={16} color={activeTab === 'notifications' ? '#0f172a' : '#64748b'} />
+                <Bell size={16} color={activeTab === 'notifications' ? '#1C1917' : '#57534E'} />
                 <Text
                     style={{
                         fontSize: 13,
                         fontWeight: activeTab === 'notifications' ? '700' : '500',
                         letterSpacing: 0.5,
-                        color: activeTab === 'notifications' ? '#0f172a' : '#64748b',
+                        color: activeTab === 'notifications' ? '#1C1917' : '#57534E',
                     }}
                 >
                     Notificações

@@ -235,7 +235,7 @@ export function StudentPickerModal({ visible, onClose, initialStudentId }: Stude
                     }}
                 />
             )}
-            <ChevronRight size={16} color="#94a3b8" />
+            <ChevronRight size={16} color="#8A8681" />
         </TouchableOpacity>
     );
 
@@ -256,7 +256,7 @@ export function StudentPickerModal({ visible, onClose, initialStudentId }: Stude
                         paddingTop: 16,
                         paddingBottom: 12,
                         borderBottomWidth: 1,
-                        borderBottomColor: '#f1f5f9',
+                        borderBottomColor: '#F4F3F1',
                     }}
                 >
                     {selectedStudent ? (
@@ -275,7 +275,7 @@ export function StudentPickerModal({ visible, onClose, initialStudentId }: Stude
                         </Text>
                     )}
                     <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
-                        <X size={22} color="#64748b" />
+                        <X size={22} color="#57534E" />
                     </TouchableOpacity>
                 </View>
 
@@ -347,7 +347,7 @@ export function StudentPickerModal({ visible, onClose, initialStudentId }: Stude
                                 borderRadius: 14,
                                 marginBottom: 20,
                                 borderWidth: 1,
-                                borderColor: '#f1f5f9',
+                                borderColor: '#F4F3F1',
                             }}
                         >
                             {selectedStudent.avatar_url ? (
@@ -534,19 +534,19 @@ function WorkoutOptionButton({
                     width: 32,
                     height: 32,
                     borderRadius: 10,
-                    backgroundColor: isSelected ? toRgba(colors.purple[600], 0.12) : '#f8fafc',
+                    backgroundColor: isSelected ? toRgba(colors.purple[600], 0.12) : '#FAFAF9',
                     alignItems: 'center',
                     justifyContent: 'center',
                 }}
             >
-                <Dumbbell size={16} color={isSelected ? colors.purple[600] : '#94a3b8'} />
+                <Dumbbell size={16} color={isSelected ? colors.purple[600] : '#8A8681'} />
             </View>
             <Text
                 style={{
                     flex: 1,
                     fontSize: 14,
                     fontWeight: '500',
-                    color: isSelected ? colors.purple[600] : '#0f172a',
+                    color: isSelected ? colors.purple[600] : '#1C1917',
                 }}
             >
                 {workout.name}

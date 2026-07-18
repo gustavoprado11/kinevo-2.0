@@ -7,7 +7,7 @@ export default function ChatScreen() {
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
-            <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }} edges={['top']}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#F4F3F1' }} edges={['top']}>
                 <ChatView showBackButton={true} />
             </SafeAreaView>
         </>

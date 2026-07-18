@@ -137,7 +137,7 @@ export default function VerifyEmailScreen() {
 
                             {/* Botão: Sim, enviar código */}
                             <TouchableOpacity
-                                className={`bg-purple-600 rounded-xl py-4 items-center mb-4 ${loading ? "opacity-70" : ""}`}
+                                className={`bg-violet-700 rounded-xl py-4 items-center mb-4 ${loading ? "opacity-70" : ""}`}
                                 onPress={handleSendOtp}
                                 disabled={loading}
                             >
@@ -159,7 +159,7 @@ export default function VerifyEmailScreen() {
                                 onPress={() => setMode("change")}
                                 disabled={loading}
                             >
-                                <Text className="text-purple-400 font-medium text-sm">
+                                <Text className="text-violet-400 font-medium text-sm">
                                     Não, quero trocar o e-mail
                                 </Text>
                             </TouchableOpacity>
@@ -174,19 +174,19 @@ export default function VerifyEmailScreen() {
                             {/* Input novo e-mail */}
                             <View
                                 className={`flex-row items-center bg-gray-900 rounded-xl border ${
-                                    isNewEmailFocused ? "border-purple-500" : "border-transparent"
+                                    isNewEmailFocused ? "border-violet-500" : "border-transparent"
                                 } px-4 py-1 mb-6`}
                             >
                                 <Feather
                                     name="mail"
                                     size={20}
-                                    color={isNewEmailFocused ? colors.purple[400] : "#9ca3af"}
+                                    color={isNewEmailFocused ? colors.purple[400] : "#8A8681"}
                                     style={{ marginRight: 12 }}
                                 />
                                 <TextInput
                                     className="flex-1 text-white text-base py-4 font-medium"
                                     placeholder="novo@email.com"
-                                    placeholderTextColor="#6b7280"
+                                    placeholderTextColor="#57534E"
                                     autoCapitalize="none"
                                     keyboardType="email-address"
                                     value={newEmail}
@@ -199,7 +199,7 @@ export default function VerifyEmailScreen() {
 
                             {/* Botão: Atualizar e enviar */}
                             <TouchableOpacity
-                                className={`bg-purple-600 rounded-xl py-4 items-center mb-4 ${loading ? "opacity-70" : ""}`}
+                                className={`bg-violet-700 rounded-xl py-4 items-center mb-4 ${loading ? "opacity-70" : ""}`}
                                 onPress={handleChangeEmail}
                                 disabled={loading}
                             >
@@ -221,7 +221,7 @@ export default function VerifyEmailScreen() {
                                 }}
                                 disabled={loading}
                             >
-                                <Feather name="arrow-left" size={16} color="#9ca3af" style={{ marginRight: 6 }} />
+                                <Feather name="arrow-left" size={16} color="#8A8681" style={{ marginRight: 6 }} />
                                 <Text className="text-gray-400 font-medium text-sm">
                                     Voltar
                                 </Text>

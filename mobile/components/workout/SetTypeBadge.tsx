@@ -29,7 +29,7 @@ interface BadgeStyle {
 }
 
 const STYLE_BY_TYPE: Record<Exclude<SetType, 'normal'>, BadgeStyle> = {
-    warmup:  { bg: 'rgba(148, 163, 184, 0.18)', fg: '#475569', Icon: Flame },
+    warmup:  { bg: 'rgba(148, 163, 184, 0.18)', fg: '#57534E', Icon: Flame },
     top:     { bg: 'rgba(249, 115, 22, 0.16)',  fg: '#c2410c', Icon: ArrowUp },
     backoff: { bg: 'rgba(14, 165, 233, 0.14)',  fg: '#0369a1', Icon: ArrowDown },
     drop:    { bg: 'rgba(244, 63, 94, 0.16)',   fg: '#be123c', Icon: ChevronsDown },

@@ -96,7 +96,7 @@ export const PhotoOverlayTemplate = ({
 
 const styles = StyleSheet.create({
     container: { width: CARD_W, height: CARD_H, backgroundColor: '#0A0A0A', overflow: 'hidden' },
-    placeholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#1e293b' },
+    placeholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#292524' },
     placeholderText: { color: SHARE_TOKENS.textTertiary, marginTop: 12, fontSize: 16, fontFamily: FONT.medium },
 
     datePill: {

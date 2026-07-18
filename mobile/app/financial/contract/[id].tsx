@@ -47,7 +47,7 @@ const STATUS_CONFIG: Record<DisplayStatus, { bg: string; text: string; label: st
     grace_period: { bg: "rgba(249,115,22,0.12)", text: "#f97316", label: "Vence hoje" },
     canceling: { bg: "rgba(245,158,11,0.12)", text: "#f59e0b", label: "Cancelando" },
     overdue: { bg: "rgba(239,68,68,0.12)", text: "#ef4444", label: "Inadimplente" },
-    canceled: { bg: "rgba(148,163,184,0.16)", text: "#94a3b8", label: "Encerrado" },
+    canceled: { bg: "rgba(148,163,184,0.16)", text: "#8A8681", label: "Encerrado" },
     expired: { bg: "rgba(239,68,68,0.12)", text: "#ef4444", label: "Expirado" },
 };
 

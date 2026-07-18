@@ -143,7 +143,7 @@ function useReportColors() {
     };
 }
 
-const PROGRESSION_COLORS = ["#7c3aed", "#3b82f6", "#f59e0b"];
+const PROGRESSION_COLORS = ["#6D28D9", "#3b82f6", "#f59e0b"];
 
 // ── Main Screen ──
 
@@ -1283,5 +1283,5 @@ function formatDeltaPct(v: number): string {
 function deltaColor(v: number): string {
     if (v > 0) return "#16a34a";
     if (v < 0) return "#ef4444";
-    return "#94a3b8";
+    return "#8A8681";
 }

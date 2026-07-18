@@ -19,13 +19,13 @@ import { useV2Colors } from "../../hooks/useV2Colors";
 
 const EVENT_CONFIG: Record<ContractEventType, { icon: LucideIcon; color: string; label: string }> = {
     student_registered: { icon: UserPlus, color: "#3b82f6", label: "Aluno registrado" },
-    contract_created: { icon: FileText, color: "#7c3aed", label: "Contrato criado" },
+    contract_created: { icon: FileText, color: "#6D28D9", label: "Contrato criado" },
     contract_migrated: { icon: ArrowRightLeft, color: "#0ea5e9", label: "Contrato migrado" },
     payment_received: { icon: DollarSign, color: "#16a34a", label: "Pagamento recebido" },
     payment_failed: { icon: XCircle, color: "#ef4444", label: "Pagamento falhou" },
     contract_canceled: { icon: Ban, color: "#ef4444", label: "Contrato cancelado" },
     contract_overdue: { icon: AlertTriangle, color: "#f59e0b", label: "Contrato inadimplente" },
-    plan_changed: { icon: ArrowRightLeft, color: "#7c3aed", label: "Plano alterado" },
+    plan_changed: { icon: ArrowRightLeft, color: "#6D28D9", label: "Plano alterado" },
     access_blocked: { icon: Lock, color: "#ef4444", label: "Acesso bloqueado" },
     access_unblocked: { icon: Unlock, color: "#16a34a", label: "Acesso liberado" },
 };

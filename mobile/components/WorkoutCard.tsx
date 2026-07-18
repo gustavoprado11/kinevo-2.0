@@ -62,7 +62,7 @@ export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0
                         style={{
                             fontSize: 15,
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: '#1C1917',
                             marginBottom: 3,
                         }}
                     >
@@ -73,7 +73,7 @@ export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0
                         <Text
                             style={{
                                 fontSize: 12,
-                                color: '#64748b',
+                                color: '#57534E',
                                 fontWeight: '400',
                                 marginBottom: 2,
                             }}
@@ -86,7 +86,7 @@ export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0
                     <Text
                         style={{
                             fontSize: 12,
-                            color: '#94a3b8',
+                            color: '#8A8681',
                             fontWeight: '400',
                         }}
                     >
@@ -95,7 +95,7 @@ export function WorkoutCard({ title, subtitle, exerciseCount, onPress, index = 0
                 </View>
 
                 {/* Chevron */}
-                <ChevronRight size={18} color="#cbd5e1" strokeWidth={1.5} />
+                <ChevronRight size={18} color="#D6D3D0" strokeWidth={1.5} />
             </View>
         </PressableScale>
     );

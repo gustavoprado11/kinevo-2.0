@@ -34,7 +34,7 @@ export function HeroStatBlock({
 
   return (
     <LinearGradient
-      colors={['#1E1B4B', '#312E81']}
+      colors={['#18181B', '#312E81']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.card}

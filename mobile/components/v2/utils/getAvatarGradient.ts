@@ -11,7 +11,7 @@
 export type AvatarGradient = readonly [string, string];
 
 const GRADIENT_POOL: readonly AvatarGradient[] = [
-    ['#7C3AED', '#EC4899'], // purple → pink (Kinevo signature)
+    ['#6D28D9', '#EC4899'], // purple → pink (Kinevo signature)
     ['#3B82F6', '#06B6D4'], // blue → cyan
     ['#F59E0B', '#EF4444'], // amber → red
     ['#10B981', '#14B8A6'], // emerald → teal

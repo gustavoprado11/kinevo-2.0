@@ -243,7 +243,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                         value={title}
                         onChangeText={setTitle}
                         placeholder="Ex: Check-in Semanal"
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor="#8A8681"
                         style={inputStyle}
                     />
 
@@ -253,7 +253,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                         value={description}
                         onChangeText={setDescription}
                         placeholder="Instruções para o aluno..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor="#8A8681"
                         multiline
                         style={[inputStyle, { minHeight: 60, textAlignVertical: "top" }]}
                     />
@@ -443,7 +443,7 @@ export function FormBuilderModal({ visible, template, onClose, onSave, isSaving 
                         disabled={!canSave || isSaving}
                         activeOpacity={0.7}
                         style={{
-                            backgroundColor: canSave ? colors.purple[600] : "#d1d5db",
+                            backgroundColor: canSave ? colors.purple[600] : "#D6D3D0",
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: "center",

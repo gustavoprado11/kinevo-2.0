@@ -52,14 +52,14 @@ function IntensityGauge({ value }: { value: number | null }) {
                     width: 72,
                     height: 72,
                     borderRadius: 36,
-                    backgroundColor: "#f8fafc",
+                    backgroundColor: "#FAFAF9",
                     borderWidth: 2,
-                    borderColor: "#e2e8f0",
+                    borderColor: "#E7E5E4",
                     alignItems: "center",
                     justifyContent: "center",
                 }}
             >
-                <Text style={{ fontSize: 11, fontWeight: "800", color: "#cbd5e1" }}>N/A</Text>
+                <Text style={{ fontSize: 11, fontWeight: "800", color: "#D6D3D0" }}>N/A</Text>
             </View>
         );
     }
@@ -81,7 +81,7 @@ function IntensityGauge({ value }: { value: number | null }) {
             }}
         >
             <Text style={{ fontSize: 9, fontWeight: "900", color, letterSpacing: 1 }}>PSE</Text>
-            <Text style={{ fontSize: 28, fontWeight: "900", color: "#0f172a", marginTop: -2 }}>
+            <Text style={{ fontSize: 28, fontWeight: "900", color: "#1C1917", marginTop: -2 }}>
                 {value}
             </Text>
         </View>
@@ -105,7 +105,7 @@ function StatCard({
         <View
             style={{
                 flex: 1,
-                backgroundColor: "#f8fafc",
+                backgroundColor: "#FAFAF9",
                 borderRadius: 12,
                 padding: 12,
                 borderWidth: 1,
@@ -114,11 +114,11 @@ function StatCard({
         >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
                 <Icon size={12} color={iconColor} />
-                <Text style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <Text style={{ fontSize: 10, fontWeight: "700", color: "#8A8681", textTransform: "uppercase", letterSpacing: 0.5 }}>
                     {label}
                 </Text>
             </View>
-            <Text style={{ fontSize: 16, fontWeight: "800", color: "#0f172a" }}>{value}</Text>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: "#1C1917" }}>{value}</Text>
         </View>
     );
 }
@@ -141,7 +141,7 @@ function ExerciseLogItem({ item }: { item: SessionItem }) {
         <View style={{ marginBottom: 4 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#0f172a" }} numberOfLines={1}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#1C1917" }} numberOfLines={1}>
                         {item.exerciseName || "Exercício"}
                     </Text>
                     {functionLabel && (
@@ -151,19 +151,19 @@ function ExerciseLogItem({ item }: { item: SessionItem }) {
                     )}
                 </View>
                 {item.setsPrescribed != null && (
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: "#94a3b8" }}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: "#8A8681" }}>
                         {item.setLogs.length}/{item.setsPrescribed} séries
                     </Text>
                 )}
             </View>
 
             {hasLogs ? (
-                <View style={{ backgroundColor: "#f8fafc", borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: "rgba(0,0,0,0.04)" }}>
+                <View style={{ backgroundColor: "#FAFAF9", borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: "rgba(0,0,0,0.04)" }}>
                     {/* Header */}
-                    <View style={{ flexDirection: "row", backgroundColor: "#f1f5f9", paddingHorizontal: 12, paddingVertical: 8 }}>
-                        <Text style={{ flex: 1, fontSize: 10, fontWeight: "800", color: "#94a3b8" }}>Série</Text>
-                        <Text style={{ flex: 1, fontSize: 10, fontWeight: "800", color: "#94a3b8", textAlign: "center" }}>Carga</Text>
-                        <Text style={{ flex: 1, fontSize: 10, fontWeight: "800", color: "#94a3b8", textAlign: "right" }}>Reps</Text>
+                    <View style={{ flexDirection: "row", backgroundColor: "#F4F3F1", paddingHorizontal: 12, paddingVertical: 8 }}>
+                        <Text style={{ flex: 1, fontSize: 10, fontWeight: "800", color: "#8A8681" }}>Série</Text>
+                        <Text style={{ flex: 1, fontSize: 10, fontWeight: "800", color: "#8A8681", textAlign: "center" }}>Carga</Text>
+                        <Text style={{ flex: 1, fontSize: 10, fontWeight: "800", color: "#8A8681", textAlign: "right" }}>Reps</Text>
                     </View>
                     {/* Rows */}
                     {item.setLogs.map((set, idx) => (
@@ -177,20 +177,20 @@ function ExerciseLogItem({ item }: { item: SessionItem }) {
                                 borderTopColor: "rgba(0,0,0,0.04)",
                             }}
                         >
-                            <Text style={{ flex: 1, fontSize: 12, color: "#94a3b8", fontVariant: ["tabular-nums"] }}>
+                            <Text style={{ flex: 1, fontSize: 12, color: "#8A8681", fontVariant: ["tabular-nums"] }}>
                                 {set.setNumber}
                             </Text>
-                            <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: "#0f172a", textAlign: "center" }}>
+                            <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: "#1C1917", textAlign: "center" }}>
                                 {set.weight > 0 ? `${set.weight}${set.weightUnit || "kg"}` : "—"}
                             </Text>
-                            <Text style={{ flex: 1, fontSize: 13, color: "#475569", textAlign: "right", fontVariant: ["tabular-nums"] }}>
+                            <Text style={{ flex: 1, fontSize: 13, color: "#57534E", textAlign: "right", fontVariant: ["tabular-nums"] }}>
                                 {set.reps}
                             </Text>
                         </View>
                     ))}
                 </View>
             ) : (
-                <Text style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>
+                <Text style={{ fontSize: 12, color: "#8A8681", fontStyle: "italic" }}>
                     Sem séries registradas{item.repsPrescribed ? ` (prescrito: ${item.setsPrescribed}×${item.repsPrescribed})` : ""}
                 </Text>
             )}
@@ -213,9 +213,9 @@ function WarmupLogItem({ item }: { item: SessionItem }) {
                 <Flame size={16} color="#f97316" />
             </View>
             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f172a" }}>{label}</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#1C1917" }}>{label}</Text>
                 {(config?.description || duration) && (
-                    <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }} numberOfLines={1}>
+                    <Text style={{ fontSize: 11, color: "#8A8681", marginTop: 2 }} numberOfLines={1}>
                         {duration ? `${duration} min` : ""}{duration && config?.description ? " · " : ""}{config?.description || ""}
                     </Text>
                 )}
@@ -246,9 +246,9 @@ function CardioLogItem({ item }: { item: SessionItem }) {
                 <Heart size={16} color="#3b82f6" />
             </View>
             <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f172a" }}>{equipmentLabel}</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#1C1917" }}>{equipmentLabel}</Text>
                 {details.length > 0 && (
-                    <Text style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{details.join(" · ")}</Text>
+                    <Text style={{ fontSize: 11, color: "#8A8681", marginTop: 2 }}>{details.join(" · ")}</Text>
                 )}
             </View>
         </View>
@@ -260,9 +260,9 @@ function CardioLogItem({ item }: { item: SessionItem }) {
 function NoteLogItem({ item }: { item: SessionItem }) {
     if (!item.notes) return null;
     return (
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, backgroundColor: "#f8fafc", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "rgba(0,0,0,0.04)" }}>
-            <StickyNote size={14} color="#94a3b8" />
-            <Text style={{ flex: 1, fontSize: 12, color: "#64748b", fontStyle: "italic", lineHeight: 18 }}>{item.notes}</Text>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, backgroundColor: "#FAFAF9", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "rgba(0,0,0,0.04)" }}>
+            <StickyNote size={14} color="#8A8681" />
+            <Text style={{ flex: 1, fontSize: 12, color: "#57534E", fontStyle: "italic", lineHeight: 18 }}>{item.notes}</Text>
         </View>
     );
 }
@@ -280,7 +280,7 @@ function SupersetLogItem({ item }: { item: SessionItem }) {
                 <Layers size={13} color={colors.purple[600]} />
                 <Text style={{ fontSize: 10, fontWeight: "800", color: colors.purple[600], textTransform: "uppercase", letterSpacing: 1 }}>{label}</Text>
                 {item.restSeconds != null && (
-                    <Text style={{ fontSize: 10, color: "#94a3b8", marginLeft: "auto" as any }}>Descanso: {item.restSeconds}s</Text>
+                    <Text style={{ fontSize: 10, color: "#8A8681", marginLeft: "auto" as any }}>Descanso: {item.restSeconds}s</Text>
                 )}
             </View>
             <View style={{ padding: 14, gap: 16 }}>
@@ -340,9 +340,9 @@ export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetai
                     }}
                 >
                     <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
-                        <ChevronLeft size={24} color="#0f172a" />
+                        <ChevronLeft size={24} color="#1C1917" />
                     </TouchableOpacity>
-                    <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: "#0f172a", textAlign: "center", marginRight: 28 }}>
+                    <Text style={{ flex: 1, fontSize: 16, fontWeight: "700", color: "#1C1917", textAlign: "center", marginRight: 28 }}>
                         Detalhes da Sessão
                     </Text>
                 </View>
@@ -351,18 +351,18 @@ export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetai
                 {isLoading ? (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <ActivityIndicator size="large" color={colors.purple[600]} />
-                        <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 12 }}>Carregando...</Text>
+                        <Text style={{ fontSize: 13, color: "#8A8681", marginTop: 12 }}>Carregando...</Text>
                     </View>
                 ) : error ? (
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
                         <X size={32} color="#ef4444" />
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#0f172a", marginTop: 12 }}>Erro ao carregar</Text>
-                        <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 4, textAlign: "center" }}>{error}</Text>
+                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#1C1917", marginTop: 12 }}>Erro ao carregar</Text>
+                        <Text style={{ fontSize: 13, color: "#8A8681", marginTop: 4, textAlign: "center" }}>{error}</Text>
                         <TouchableOpacity
                             onPress={onClose}
-                            style={{ marginTop: 20, backgroundColor: "#f1f5f9", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}
+                            style={{ marginTop: 20, backgroundColor: "#F4F3F1", paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}
                         >
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#0f172a" }}>Fechar</Text>
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#1C1917" }}>Fechar</Text>
                         </TouchableOpacity>
                     </View>
                 ) : data ? (
@@ -373,10 +373,10 @@ export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetai
                                 <Text style={{ fontSize: 10, fontWeight: "900", color: colors.purple[600], textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6 }}>
                                     Treino Executado
                                 </Text>
-                                <Text style={{ fontSize: 22, fontWeight: "900", color: "#0f172a", letterSpacing: -0.5 }} numberOfLines={2}>
+                                <Text style={{ fontSize: 22, fontWeight: "900", color: "#1C1917", letterSpacing: -0.5 }} numberOfLines={2}>
                                     {data.workoutName}
                                 </Text>
-                                <Text style={{ fontSize: 12, fontWeight: "600", color: "#94a3b8", marginTop: 4 }}>
+                                <Text style={{ fontSize: 12, fontWeight: "600", color: "#8A8681", marginTop: 4 }}>
                                     {formatDate(data.completed_at)} • {formatTime(data.completed_at)}
                                 </Text>
                             </View>
@@ -406,7 +406,7 @@ export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetai
                         {/* Workout Items */}
                         {data.items.length > 0 && (
                             <View>
-                                <Text style={{ fontSize: 10, fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12 }}>
+                                <Text style={{ fontSize: 10, fontWeight: "900", color: "#8A8681", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12 }}>
                                     Log do Treino
                                 </Text>
                                 <View style={{ gap: 14 }}>
@@ -419,18 +419,18 @@ export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetai
 
                         {data.items.length === 0 && (
                             <View style={{ alignItems: "center", paddingVertical: 32 }}>
-                                <Text style={{ fontSize: 13, color: "#94a3b8" }}>Nenhum exercício registrado nesta sessão</Text>
+                                <Text style={{ fontSize: 13, color: "#8A8681" }}>Nenhum exercício registrado nesta sessão</Text>
                             </View>
                         )}
 
                         {/* Feedback */}
                         {data.feedback && (
                             <View style={{ marginTop: 24 }}>
-                                <Text style={{ fontSize: 10, fontWeight: "900", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>
+                                <Text style={{ fontSize: 10, fontWeight: "900", color: "#8A8681", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>
                                     Feedback do Aluno
                                 </Text>
-                                <View style={{ backgroundColor: "#f8fafc", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "rgba(0,0,0,0.04)" }}>
-                                    <Text style={{ fontSize: 13, color: "#475569", fontStyle: "italic", lineHeight: 20 }}>
+                                <View style={{ backgroundColor: "#FAFAF9", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "rgba(0,0,0,0.04)" }}>
+                                    <Text style={{ fontSize: 13, color: "#57534E", fontStyle: "italic", lineHeight: 20 }}>
                                         &ldquo;{data.feedback}&rdquo;
                                     </Text>
                                 </View>

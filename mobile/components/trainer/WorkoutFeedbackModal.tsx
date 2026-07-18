@@ -65,7 +65,7 @@ export function WorkoutFeedbackModal({
                 // Android com undefined = sem proteção → o teclado cobria as
                 // Observações e o rodapé. "height" encolhe a coluna e sobe o footer.
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1, backgroundColor: '#f8fafc' }}
+                style={{ flex: 1, backgroundColor: '#FAFAF9' }}
             >
                 {/* Header */}
                 <View
@@ -77,19 +77,19 @@ export function WorkoutFeedbackModal({
                         paddingTop: 16,
                         paddingBottom: 12,
                         borderBottomWidth: 1,
-                        borderBottomColor: '#f1f5f9',
+                        borderBottomColor: '#F4F3F1',
                     }}
                 >
                     <View>
-                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#0f172a' }}>
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: '#1C1917' }}>
                             Concluir Treino
                         </Text>
-                        <Text style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                        <Text style={{ fontSize: 12, color: '#57534E', marginTop: 2 }}>
                             {studentName} — {workoutName}
                         </Text>
                     </View>
                     <TouchableOpacity onPress={onCancel} style={{ padding: 4 }}>
-                        <X size={22} color="#64748b" />
+                        <X size={22} color="#57534E" />
                     </TouchableOpacity>
                 </View>
 
@@ -102,7 +102,7 @@ export function WorkoutFeedbackModal({
                         style={{
                             fontSize: 11,
                             fontWeight: '700',
-                            color: '#94a3b8',
+                            color: '#8A8681',
                             textTransform: 'uppercase',
                             letterSpacing: 1.5,
                             marginBottom: 12,
@@ -138,7 +138,7 @@ export function WorkoutFeedbackModal({
                                         borderWidth: 1,
                                         borderColor: isSelected
                                             ? toRgba(colors.purple[600], 0.3)
-                                            : '#f1f5f9',
+                                            : '#F4F3F1',
                                     }}
                                 >
                                     <Text style={{ fontSize: 18 }}>{option.emoji}</Text>
@@ -146,7 +146,7 @@ export function WorkoutFeedbackModal({
                                         style={{
                                             fontSize: 14,
                                             fontWeight: '700',
-                                            color: isSelected ? colors.purple[600] : '#0f172a',
+                                            color: isSelected ? colors.purple[600] : '#1C1917',
                                             marginTop: 2,
                                         }}
                                     >
@@ -177,7 +177,7 @@ export function WorkoutFeedbackModal({
                         style={{
                             fontSize: 11,
                             fontWeight: '700',
-                            color: '#94a3b8',
+                            color: '#8A8681',
                             textTransform: 'uppercase',
                             letterSpacing: 1.5,
                             marginBottom: 8,
@@ -189,7 +189,7 @@ export function WorkoutFeedbackModal({
                         value={feedback}
                         onChangeText={setFeedback}
                         placeholder="Como foi o treino?"
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor="#8A8681"
                         multiline
                         numberOfLines={4}
                         textAlignVertical="top"
@@ -198,10 +198,10 @@ export function WorkoutFeedbackModal({
                             borderRadius: 12,
                             padding: 14,
                             fontSize: 14,
-                            color: '#0f172a',
+                            color: '#1C1917',
                             minHeight: 100,
                             borderWidth: 1,
-                            borderColor: '#e2e8f0',
+                            borderColor: '#E7E5E4',
                         }}
                     />
                 </ScrollView>
@@ -215,7 +215,7 @@ export function WorkoutFeedbackModal({
                         paddingBottom: 34,
                         paddingTop: 12,
                         borderTopWidth: 1,
-                        borderTopColor: '#f1f5f9',
+                        borderTopColor: '#F4F3F1',
                     }}
                 >
                     <TouchableOpacity
@@ -228,10 +228,10 @@ export function WorkoutFeedbackModal({
                             paddingVertical: 14,
                             alignItems: 'center',
                             borderWidth: 1,
-                            borderColor: '#e2e8f0',
+                            borderColor: '#E7E5E4',
                         }}
                     >
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#64748b' }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#57534E' }}>
                             Cancelar
                         </Text>
                     </TouchableOpacity>

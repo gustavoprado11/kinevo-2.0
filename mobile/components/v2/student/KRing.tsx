@@ -38,7 +38,7 @@ export type KRingVariant = 'single' | 'triple';
 export type KRingColor = 'purple' | 'red' | 'green' | 'cyan' | 'gold';
 
 const COLOR_MAP: Record<KRingColor, string> = {
-    purple: '#7C3AED',
+    purple: '#6D28D9',
     red: '#FF375F',
     green: '#10B981',
     cyan: '#5AC8FA',

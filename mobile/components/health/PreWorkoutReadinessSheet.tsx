@@ -35,10 +35,10 @@ const CATEGORY_COLOR: Record<ReadinessCategory, string> = {
 };
 
 const CATEGORY_GRADIENT: Record<ReadinessCategory, [string, string]> = {
-  otimo: ['#7c3aed', '#22C55E'],
-  bom: ['#7c3aed', '#A78BFA'],
-  regular: ['#7c3aed', '#F59E0B'],
-  reduzido: ['#7c3aed', '#EF4444'],
+  otimo: ['#6D28D9', '#22C55E'],
+  bom: ['#6D28D9', '#A78BFA'],
+  regular: ['#6D28D9', '#F59E0B'],
+  reduzido: ['#6D28D9', '#EF4444'],
 };
 
 // CTA positivo e coerente com a nota — nunca "mesmo assim" (enquadramento

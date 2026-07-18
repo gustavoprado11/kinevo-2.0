@@ -158,7 +158,7 @@ export function ExerciseVideoModal({ visible, onClose, videoUrl }: ExerciseVideo
                                 justifyContent: 'center',
                             }}
                         >
-                            <Text style={{ color: '#64748b', fontSize: 14 }}>
+                            <Text style={{ color: '#57534E', fontSize: 14 }}>
                                 Vídeo não disponível
                             </Text>
                         </View>

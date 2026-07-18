@@ -50,18 +50,18 @@ const STATUS_COLORS: Record<CalendarDay["status"], string> = {
     done: "#22c55e",
     done_historic: "#22c55e",
     missed: "#ef4444",
-    compensated: "#94a3b8",
-    scheduled: "#94a3b8",
+    compensated: "#8A8681",
+    scheduled: "#8A8681",
     rest: "transparent",
     out_of_program: "transparent",
 };
 
 const STATUS_DOT_COLORS: Record<CalendarDay["status"], string | null> = {
-    done: "#7c3aed",
+    done: "#6D28D9",
     done_historic: "#a78bfa",
     missed: "#ef4444",
-    compensated: "#94a3b8",
-    scheduled: "#94a3b8",
+    compensated: "#8A8681",
+    scheduled: "#8A8681",
     rest: null,
     out_of_program: null,
 };

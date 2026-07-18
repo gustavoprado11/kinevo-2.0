@@ -151,7 +151,7 @@ export function StudentOverviewTab({ data }: Props) {
                                 {!!session.rpe && (
                                     <View
                                         style={{
-                                            backgroundColor: session.rpe >= 8 ? "#fef2f2" : "#f8fafc",
+                                            backgroundColor: session.rpe >= 8 ? "#fef2f2" : "#FAFAF9",
                                             paddingHorizontal: 8,
                                             paddingVertical: 3,
                                             borderRadius: 8,
@@ -161,14 +161,14 @@ export function StudentOverviewTab({ data }: Props) {
                                             style={{
                                                 fontSize: 12,
                                                 fontWeight: "600",
-                                                color: session.rpe >= 8 ? "#ef4444" : "#64748b",
+                                                color: session.rpe >= 8 ? "#ef4444" : "#57534E",
                                             }}
                                         >
                                             PSE {session.rpe}
                                         </Text>
                                     </View>
                                 )}
-                                <ChevronRight size={16} color="#cbd5e1" />
+                                <ChevronRight size={16} color="#D6D3D0" />
                             </View>
                         </TouchableOpacity>
                     ))}

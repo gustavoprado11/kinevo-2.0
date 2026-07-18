@@ -183,7 +183,7 @@ export function AssignTemplateToStudentSheet({
                                     value={search}
                                     onChangeText={setSearch}
                                     placeholder="Buscar aluno..."
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor="#8A8681"
                                     style={{ flex: 1, fontSize: 14, color: colors.text.primary }}
                                     accessibilityLabel="Buscar aluno"
                                 />

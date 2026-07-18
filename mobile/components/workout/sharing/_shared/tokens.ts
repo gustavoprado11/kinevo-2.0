@@ -23,10 +23,10 @@ export const SHARE_TOKENS = {
   textCream: '#5C5247', // sobre cream band
 
   // Brand
-  brand: '#7C3AED',
+  brand: '#6D28D9',
   brandText: '#5B21B6',
   brandSoft: '#EFE9FE',
-  brandStripe: ['#3730A3', '#7C3AED', '#A855F7'] as const,
+  brandStripe: ['#3730A3', '#6D28D9', '#A855F7'] as const,
 
   // Status (light variants)
   goldText: '#8B5A0F',
@@ -38,7 +38,7 @@ export const SHARE_TOKENS = {
 
   // Apple-style activity ring
   ringRed: '#FF3B30',
-  ringViolet: '#7C3AED',
+  ringViolet: '#6D28D9',
   ringGreen: '#16A34A',
   ringRedSoft: '#FFE5E2',
   ringVioletSoft: '#E8DFFE',

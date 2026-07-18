@@ -133,8 +133,8 @@ export function VideoUploadField({ videoFile, currentVideoUrl, onSelectVideo, on
                         gap: 8,
                     }}
                 >
-                    <Video size={18} color="#94a3b8" />
-                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#94a3b8" }}>
+                    <Video size={18} color="#8A8681" />
+                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#8A8681" }}>
                         Selecionar vídeo
                     </Text>
                 </TouchableOpacity>

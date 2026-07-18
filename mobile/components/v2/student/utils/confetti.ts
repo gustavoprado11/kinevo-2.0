@@ -30,9 +30,9 @@ export type ConfettiPalette = 'gold' | 'purple' | 'warm' | 'mixed';
 
 const PALETTES: Record<ConfettiPalette, readonly string[]> = {
     gold: ['#F59E0B', '#FCD34D', '#FBBF24', '#FEF3C7', '#D97706'],
-    purple: ['#7C3AED', '#A78BFA', '#C4B5FD', '#EDE9FE', '#5B21B6'],
+    purple: ['#6D28D9', '#A78BFA', '#C4B5FD', '#EDE9FE', '#5B21B6'],
     warm: ['#F59E0B', '#EF4444', '#EC4899', '#FBBF24', '#F97316'],
-    mixed: ['#7C3AED', '#F59E0B', '#10B981', '#EF4444', '#3B82F6', '#EC4899'],
+    mixed: ['#6D28D9', '#F59E0B', '#10B981', '#EF4444', '#3B82F6', '#EC4899'],
 };
 
 /**

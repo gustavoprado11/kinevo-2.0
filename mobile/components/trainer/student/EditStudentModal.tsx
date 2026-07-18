@@ -127,7 +127,7 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
         >
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
-                style={{ flex: 1, backgroundColor: "#F2F2F7" }}
+                style={{ flex: 1, backgroundColor: "#F4F3F1" }}
             >
                 {/* Header */}
                 <View
@@ -150,9 +150,9 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
                         accessibilityRole="button"
                         disabled={isUpdating}
                     >
-                        <X size={24} color="#64748b" />
+                        <X size={24} color="#57534E" />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#1a1a2e" }}>
+                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#18181B" }}>
                         Editar aluno
                     </Text>
                     <View style={{ width: 24 }} />
@@ -182,12 +182,12 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
                     {/* Name */}
                     <Text style={labelStyle}>Nome completo</Text>
                     <View style={inputRow}>
-                        <User size={16} color="#94a3b8" />
+                        <User size={16} color="#8A8681" />
                         <TextInput
                             value={name}
                             onChangeText={setName}
                             placeholder="Nome do aluno"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor="#8A8681"
                             style={inputStyle}
                             autoCapitalize="words"
                             accessibilityLabel="Nome do aluno"
@@ -198,12 +198,12 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
                     {/* Email */}
                     <Text style={labelStyle}>Email</Text>
                     <View style={inputRow}>
-                        <Mail size={16} color="#94a3b8" />
+                        <Mail size={16} color="#8A8681" />
                         <TextInput
                             value={email}
                             onChangeText={setEmail}
                             placeholder="aluno@email.com"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor="#8A8681"
                             style={inputStyle}
                             keyboardType="email-address"
                             autoCapitalize="none"
@@ -222,8 +222,8 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
                                 paddingHorizontal: 2,
                             }}
                         >
-                            <AlertCircle size={12} color="#94a3b8" style={{ marginTop: 2 }} />
-                            <Text style={{ flex: 1, fontSize: 12, color: "#64748b", lineHeight: 16 }}>
+                            <AlertCircle size={12} color="#8A8681" style={{ marginTop: 2 }} />
+                            <Text style={{ flex: 1, fontSize: 12, color: "#57534E", lineHeight: 16 }}>
                                 Ao alterar o email, o aluno precisará fazer login novamente com o novo endereço.
                             </Text>
                         </View>
@@ -232,12 +232,12 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
                     {/* Phone */}
                     <Text style={labelStyle}>Telefone (WhatsApp)</Text>
                     <View style={inputRow}>
-                        <Phone size={16} color="#94a3b8" />
+                        <Phone size={16} color="#8A8681" />
                         <TextInput
                             value={phone}
                             onChangeText={setPhone}
                             placeholder="(11) 99999-9999"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor="#8A8681"
                             style={inputStyle}
                             keyboardType="phone-pad"
                             accessibilityLabel="Telefone do aluno"
@@ -282,12 +282,12 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
                                         backgroundColor: isActive ? colors.purple[600] : "transparent",
                                     }}
                                 >
-                                    <Icon size={16} color={isActive ? "#ffffff" : "#94a3b8"} />
+                                    <Icon size={16} color={isActive ? "#ffffff" : "#8A8681"} />
                                     <Text
                                         style={{
                                             fontSize: 13,
                                             fontWeight: "600",
-                                            color: isActive ? "#ffffff" : "#64748b",
+                                            color: isActive ? "#ffffff" : "#57534E",
                                         }}
                                     >
                                         {opt === "online" ? "Online" : "Presencial"}
@@ -316,7 +316,7 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
                         accessibilityLabel="Salvar alterações"
                         accessibilityRole="button"
                         style={{
-                            backgroundColor: canSubmit ? colors.purple[600] : "#d1d5db",
+                            backgroundColor: canSubmit ? colors.purple[600] : "#D6D3D0",
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: "center",
@@ -339,7 +339,7 @@ export function EditStudentModal({ visible, onClose, onSuccess, student }: EditS
 const labelStyle = {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: "#64748b",
+    color: "#57534E",
     textTransform: "uppercase" as const,
     letterSpacing: 1,
     marginBottom: 8,
@@ -361,5 +361,5 @@ const inputStyle = {
     flex: 1,
     paddingVertical: 14,
     fontSize: 14,
-    color: "#1a1a2e",
+    color: "#18181B",
 };

@@ -63,7 +63,7 @@ export default function DebugLogsScreen() {
     if (log.includes('✅')) return '#44ff44';
     if (log.includes('📩') || log.includes('📥')) return '#44aaff';
     if (log.includes('📦')) return '#cc88ff';
-    return '#94a3b8';
+    return '#8A8681';
   };
 
   return (
@@ -71,8 +71,8 @@ export default function DebugLogsScreen() {
       <Stack.Screen
         options={{
           title: 'Debug Logs',
-          headerStyle: { backgroundColor: '#0D0D17' },
-          headerTintColor: '#e2e8f0',
+          headerStyle: { backgroundColor: '#111113' },
+          headerTintColor: '#E7E5E4',
         }}
       />
 
@@ -93,7 +93,7 @@ export default function DebugLogsScreen() {
       <ScrollView
         style={styles.logList}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7c3aed" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6D28D9" />
         }
       >
         {logs.length === 0 ? (
@@ -116,7 +116,7 @@ export default function DebugLogsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D17',
+    backgroundColor: '#111113',
   },
   header: {
     flexDirection: 'row',
@@ -125,10 +125,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1A1A2E',
+    borderBottomColor: '#18181B',
   },
   title: {
-    color: '#e2e8f0',
+    color: '#E7E5E4',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   button: {
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#18181B',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b1a1a',
   },
   buttonText: {
-    color: '#e2e8f0',
+    color: '#E7E5E4',
     fontSize: 16,
   },
   logList: {
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   emptyText: {
-    color: '#64748b',
+    color: '#57534E',
     textAlign: 'center',
     marginTop: 60,
     fontSize: 14,

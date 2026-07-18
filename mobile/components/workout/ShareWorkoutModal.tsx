@@ -284,7 +284,7 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                     <View style={styles.header}>
                         <Text style={styles.title}>Compartilhar Resultado</Text>
                         <OpacityButton onPress={onClose} style={styles.closeButton}>
-                            <X size={18} color="#64748b" strokeWidth={2.5} />
+                            <X size={18} color="#57534E" strokeWidth={2.5} />
                         </OpacityButton>
                     </View>
 
@@ -321,11 +321,11 @@ export function ShareWorkoutModal({ visible, onClose, data, sessionId }: ShareWo
                     {selectedTemplate === 'photo' && (
                         <View style={styles.photoControls}>
                             <OpacityButton onPress={handlePickImage} style={styles.photoButton}>
-                                <ImageIcon size={20} color="#475569" />
+                                <ImageIcon size={20} color="#57534E" />
                                 <Text style={styles.photoButtonText}>Galeria</Text>
                             </OpacityButton>
                             <OpacityButton onPress={handleTakePhoto} style={styles.photoButton}>
-                                <Camera size={20} color="#475569" />
+                                <Camera size={20} color="#57534E" />
                                 <Text style={styles.photoButtonText}>Câmera</Text>
                             </OpacityButton>
                         </View>

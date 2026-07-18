@@ -148,13 +148,13 @@ function AnimatedSegmentedControl({
                     gap: 8,
                 }}
             >
-                <Calendar size={16} color={activeTab === 'history' ? '#0f172a' : '#64748b'} />
+                <Calendar size={16} color={activeTab === 'history' ? '#1C1917' : '#57534E'} />
                 <Text
                     style={{
                         fontSize: 13,
                         fontWeight: activeTab === 'history' ? '700' : '500',
                         letterSpacing: 0.5,
-                        color: activeTab === 'history' ? '#0f172a' : '#64748b',
+                        color: activeTab === 'history' ? '#1C1917' : '#57534E',
                     }}
                 >
                     Histórico
@@ -174,13 +174,13 @@ function AnimatedSegmentedControl({
                     gap: 8,
                 }}
             >
-                <Trophy size={16} color={activeTab === 'performance' ? '#0f172a' : '#64748b'} />
+                <Trophy size={16} color={activeTab === 'performance' ? '#1C1917' : '#57534E'} />
                 <Text
                     style={{
                         fontSize: 13,
                         fontWeight: activeTab === 'performance' ? '700' : '500',
                         letterSpacing: 0.5,
-                        color: activeTab === 'performance' ? '#0f172a' : '#64748b',
+                        color: activeTab === 'performance' ? '#1C1917' : '#57534E',
                     }}
                 >
                     Desempenho

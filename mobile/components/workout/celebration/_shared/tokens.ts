@@ -13,16 +13,16 @@ export const CELEB_TOKENS = {
   // Ring colors (V1 — Apple Fitness)
   ringMove: '#FF3B30',
   ringMoveTrack: '#FFE5E2',
-  ringExercise: '#7C3AED',
+  ringExercise: '#6D28D9',
   ringExerciseTrack: '#E8DFFE',
   ringStand: '#16A34A',
   ringStandTrack: '#D6F0DC',
 
-  statDots: ['#FF3B30', '#7C3AED', '#16A34A', '#86868B'] as const,
+  statDots: ['#FF3B30', '#6D28D9', '#16A34A', '#86868B'] as const,
 
   // Brand
-  brand: '#7C3AED',
-  brandStripe: ['#3730A3', '#7C3AED', '#A855F7'] as const,
+  brand: '#6D28D9',
+  brandStripe: ['#3730A3', '#6D28D9', '#A855F7'] as const,
   brandSoft: '#F3EFFE',
   brandSoftBorder: '#C6B7F2',
   brandSoftText: '#5B21B6',

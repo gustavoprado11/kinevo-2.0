@@ -81,12 +81,12 @@ export default function SettingsScreen() {
                                 marginRight: 14,
                             }}
                         >
-                            <Bell size={20} color="#64748b" strokeWidth={1.5} />
+                            <Bell size={20} color="#57534E" strokeWidth={1.5} />
                         </View>
                         <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary, flex: 1 }}>
                             Notificações
                         </Text>
-                        <ChevronRight size={18} color="#94a3b8" strokeWidth={1.5} />
+                        <ChevronRight size={18} color="#8A8681" strokeWidth={1.5} />
                     </TouchableOpacity>
 
                     <View style={{ height: 1, backgroundColor: colors.neutral[100], marginHorizontal: 20 }} />
@@ -113,7 +113,7 @@ export default function SettingsScreen() {
                                 marginRight: 14,
                             }}
                         >
-                            <KeyRound size={20} color="#64748b" strokeWidth={1.5} />
+                            <KeyRound size={20} color="#57534E" strokeWidth={1.5} />
                         </View>
                         <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary, flex: 1 }}>
                             Alterar Senha
@@ -267,7 +267,7 @@ export default function SettingsScreen() {
                             marginRight: 14,
                         }}
                     >
-                        <Info size={20} color="#64748b" strokeWidth={1.5} />
+                        <Info size={20} color="#57534E" strokeWidth={1.5} />
                     </View>
                     <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary, flex: 1 }}>
                         Versão do App

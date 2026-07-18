@@ -18,7 +18,7 @@ export default function TrainerSubscriptionBlockedScreen() {
     const { switchToStudent } = useRoleMode();
     const router = useRouter();
     const colors = useV2Colors();
-    // M4: esta tela hardcodava cores claras (#F2F2F7/#fff/#0f172a), então
+    // M4: esta tela hardcodava cores claras (#F4F3F1/#fff/#1C1917), então
     // renderizava light dentro de um app escuro. Agora segue o tema (useV2Colors).
     const isDark = useIsDark();
 

@@ -12,7 +12,7 @@ import { useV2Colors } from "@/hooks/useV2Colors";
  *  colorida quando o tipo é `normal` — comportamento atual byte-a-byte. */
 const SET_TYPE_BORDER_COLOR: Record<SetType, string | null> = {
     normal: null,
-    warmup: "#a1a1aa",   // zinc-400
+    warmup: "#8A8681",   // zinc-400
     top: "#fb923c",      // orange-400
     backoff: "#38bdf8",  // sky-400
     drop: "#f43f5e",     // rose-500

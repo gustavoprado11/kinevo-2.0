@@ -157,7 +157,7 @@ export default function EnterCodeScreen() {
 
                     {/* Botão Verificar */}
                     <TouchableOpacity
-                        className={`bg-purple-600 rounded-xl py-4 items-center mt-6 ${loading || code.length < 6 ? "opacity-50" : ""
+                        className={`bg-violet-700 rounded-xl py-4 items-center mt-6 ${loading || code.length < 6 ? "opacity-50" : ""
                             }`}
                         onPress={() => handleVerify()}
                         disabled={loading || code.length < 6}
@@ -178,7 +178,7 @@ export default function EnterCodeScreen() {
                         disabled={cooldown > 0}
                     >
                         <Text
-                            className={`font-medium text-sm ${cooldown > 0 ? "text-gray-600" : "text-purple-400"
+                            className={`font-medium text-sm ${cooldown > 0 ? "text-gray-600" : "text-violet-400"
                                 }`}
                         >
                             {cooldown > 0
@@ -193,7 +193,7 @@ export default function EnterCodeScreen() {
                         onPress={() => router.back()}
                         disabled={loading}
                     >
-                        <Feather name="arrow-left" size={16} color="#9ca3af" style={{ marginRight: 6 }} />
+                        <Feather name="arrow-left" size={16} color="#8A8681" style={{ marginRight: 6 }} />
                         <Text className="text-gray-400 font-medium text-sm">
                             Voltar
                         </Text>

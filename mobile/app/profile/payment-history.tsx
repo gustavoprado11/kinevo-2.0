@@ -21,8 +21,8 @@ const statusConfig: Record<string, { label: string; color: string }> = {
     paid: { label: "Pago", color: "#34d399" },
     pending: { label: "Pendente", color: "#fbbf24" },
     failed: { label: "Falhou", color: "#f87171" },
-    canceled: { label: "Cancelado", color: "#64748b" },
-    refunded: { label: "Estornado", color: "#64748b" },
+    canceled: { label: "Cancelado", color: "#57534E" },
+    refunded: { label: "Estornado", color: "#57534E" },
 };
 
 function formatCurrency(value: number, currency: string = "brl"): string {

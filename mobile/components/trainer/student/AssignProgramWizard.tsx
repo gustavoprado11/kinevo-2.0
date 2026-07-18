@@ -117,7 +117,7 @@ export function AssignProgramWizard({
 
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-            <View style={{ flex: 1, backgroundColor: "#F2F2F7" }}>
+            <View style={{ flex: 1, backgroundColor: "#F4F3F1" }}>
                 {/* Header */}
                 <View
                     style={{
@@ -133,9 +133,9 @@ export function AssignProgramWizard({
                     }}
                 >
                     <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Fechar" accessibilityRole="button">
-                        <X size={24} color="#64748b" />
+                        <X size={24} color="#57534E" />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#1a1a2e" }}>
+                    <Text style={{ fontSize: 17, fontWeight: "700", color: "#18181B" }}>
                         {step === "select" && "Selecionar Programa"}
                         {step === "configure" && "Configurar"}
                         {step === "confirm" && "Confirmar"}
@@ -155,7 +155,7 @@ export function AssignProgramWizard({
                                 backgroundColor:
                                     idx <= ["select", "configure", "confirm"].indexOf(step)
                                         ? colors.purple[600]
-                                        : "#e2e8f0",
+                                        : "#E7E5E4",
                             }}
                         />
                     ))}
@@ -179,10 +179,10 @@ export function AssignProgramWizard({
                                 <ActivityIndicator style={{ marginTop: 40 }} color={colors.purple[600]} />
                             ) : (
                                 <View style={{ alignItems: "center", marginTop: 60 }}>
-                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#94a3b8" }}>
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#8A8681" }}>
                                         Nenhum template
                                     </Text>
-                                    <Text style={{ fontSize: 13, color: "#94a3b8", marginTop: 4, textAlign: "center" }}>
+                                    <Text style={{ fontSize: 13, color: "#8A8681", marginTop: 4, textAlign: "center" }}>
                                         Crie templates de programa{"\n"}pelo site para usá-los aqui
                                     </Text>
                                 </View>
@@ -196,10 +196,10 @@ export function AssignProgramWizard({
                     <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
                         {/* Selected template summary */}
                         <View style={{ backgroundColor: "#ffffff", borderRadius: 14, padding: 16, marginBottom: 20 }}>
-                            <Text style={{ fontSize: 16, fontWeight: "600", color: "#1a1a2e" }}>
+                            <Text style={{ fontSize: 16, fontWeight: "600", color: "#18181B" }}>
                                 {selectedTemplate.name}
                             </Text>
-                            <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                            <Text style={{ fontSize: 13, color: "#57534E", marginTop: 4 }}>
                                 {selectedTemplate.duration_weeks ? `${selectedTemplate.duration_weeks} semanas · ` : ""}
                                 {selectedTemplate.workout_count} treinos
                             </Text>
@@ -225,7 +225,7 @@ export function AssignProgramWizard({
                         )}
 
                         {/* Start options */}
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: "#57534E", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
                             Quando iniciar
                         </Text>
 
@@ -240,10 +240,10 @@ export function AssignProgramWizard({
                                 borderColor: isImmediate ? colors.purple[600] : "transparent",
                             }}
                         >
-                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#1a1a2e" }}>
+                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#18181B" }}>
                                 Iniciar Imediatamente
                             </Text>
-                            <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                            <Text style={{ fontSize: 13, color: "#57534E", marginTop: 4 }}>
                                 O programa começa agora e o anterior (se houver) é encerrado
                             </Text>
                         </TouchableOpacity>
@@ -259,10 +259,10 @@ export function AssignProgramWizard({
                                 borderColor: !isImmediate ? colors.purple[600] : "transparent",
                             }}
                         >
-                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#1a1a2e" }}>
+                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#18181B" }}>
                                 Agendar para Depois
                             </Text>
-                            <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                            <Text style={{ fontSize: 13, color: "#57534E", marginTop: 4 }}>
                                 O programa fica agendado e não afeta o programa atual
                             </Text>
                         </TouchableOpacity>
@@ -291,7 +291,7 @@ export function AssignProgramWizard({
                 {step === "confirm" && selectedTemplate && (
                     <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
                         <View style={{ backgroundColor: "#ffffff", borderRadius: 14, padding: 20, marginBottom: 20 }}>
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#57534E", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
                                 Resumo
                             </Text>
                             <ConfirmRow label="Aluno" value={studentName} />
@@ -334,7 +334,7 @@ export function AssignProgramWizard({
                             onPress={() => setStep("configure")}
                             style={{ alignItems: "center", marginTop: 14 }}
                         >
-                            <Text style={{ fontSize: 14, color: "#64748b" }}>Voltar</Text>
+                            <Text style={{ fontSize: 14, color: "#57534E" }}>Voltar</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -354,8 +354,8 @@ function ConfirmRow({ label, value }: { label: string; value: string }) {
                 borderBottomColor: "rgba(0,0,0,0.04)",
             }}
         >
-            <Text style={{ fontSize: 14, color: "#64748b" }}>{label}</Text>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#1a1a2e" }}>{value}</Text>
+            <Text style={{ fontSize: 14, color: "#57534E" }}>{label}</Text>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#18181B" }}>{value}</Text>
         </View>
     );
 }

@@ -159,7 +159,7 @@ export default function SubscriptionScreen() {
                             marginBottom: 16,
                         }}
                     >
-                        <FileText size={28} color="#94a3b8" strokeWidth={1.5} />
+                        <FileText size={28} color="#8A8681" strokeWidth={1.5} />
                     </View>
                     <Text
                         style={{
@@ -303,7 +303,7 @@ export default function SubscriptionScreen() {
 
                     {/* Billing Type */}
                     <DetailRow
-                        icon={<Tag size={20} color="#64748b" strokeWidth={1.5} />}
+                        icon={<Tag size={20} color="#57534E" strokeWidth={1.5} />}
                         label="Tipo de Cobrança"
                         value={
                             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text.primary }}>
@@ -317,7 +317,7 @@ export default function SubscriptionScreen() {
                         <>
                             <Divider />
                             <DetailRow
-                                icon={<Calendar size={20} color="#64748b" strokeWidth={1.5} />}
+                                icon={<Calendar size={20} color="#57534E" strokeWidth={1.5} />}
                                 label="Próxima Cobrança"
                                 value={
                                     <Text
@@ -419,7 +419,7 @@ export default function SubscriptionScreen() {
                             marginRight: 14,
                         }}
                     >
-                        <Clock size={20} color="#64748b" strokeWidth={1.5} />
+                        <Clock size={20} color="#57534E" strokeWidth={1.5} />
                     </View>
                     <Text
                         style={{
@@ -431,7 +431,7 @@ export default function SubscriptionScreen() {
                     >
                         Histórico de Pagamentos
                     </Text>
-                    <ChevronRight size={16} color="#94a3b8" strokeWidth={1.5} />
+                    <ChevronRight size={16} color="#8A8681" strokeWidth={1.5} />
                 </TouchableOpacity>
 
                 {/* Cancel Subscription Button */}

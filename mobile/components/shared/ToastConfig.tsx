@@ -40,8 +40,8 @@ const ACCENT: Record<
     subtitle: "#991b1b",
   },
   info: {
-    borderLeft: "#7c3aed",
-    icon: "#7c3aed",
+    borderLeft: "#6D28D9",
+    icon: "#6D28D9",
     title: "#6d28d9",
     subtitle: "#5b21b6",
   },

@@ -40,7 +40,7 @@ function FilterChip({ label, active, onPress }: FilterChipProps) {
                     fontSize: 13,
                     fontWeight: '600',
                     lineHeight: 16,
-                    color: active ? colors.text.inverse : '#475569',
+                    color: active ? colors.text.inverse : '#57534E',
                 }}
             >
                 {label}

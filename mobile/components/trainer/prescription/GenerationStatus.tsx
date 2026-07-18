@@ -54,11 +54,11 @@ export function GenerationStatus({ elapsedSeconds, onCancel }: Props) {
                 <Sparkles size={48} color={colors.purple[600]} />
             </Animated.View>
 
-            <Text style={{ fontSize: 18, fontWeight: "700", color: "#1a1a2e", marginBottom: 8, textAlign: "center" }}>
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "#18181B", marginBottom: 8, textAlign: "center" }}>
                 Gerando Programa
             </Text>
 
-            <Text style={{ fontSize: 14, color: "#64748b", textAlign: "center", marginBottom: 20, lineHeight: 20 }}>
+            <Text style={{ fontSize: 14, color: "#57534E", textAlign: "center", marginBottom: 20, lineHeight: 20 }}>
                 {MESSAGES[messageIndex]}
             </Text>
 
@@ -71,13 +71,13 @@ export function GenerationStatus({ elapsedSeconds, onCancel }: Props) {
                             width: 6,
                             height: 6,
                             borderRadius: 3,
-                            backgroundColor: idx <= messageIndex ? colors.purple[600] : "#e2e8f0",
+                            backgroundColor: idx <= messageIndex ? colors.purple[600] : "#E7E5E4",
                         }}
                     />
                 ))}
             </View>
 
-            <Text style={{ fontSize: 12, color: "#94a3b8", marginBottom: 24 }}>
+            <Text style={{ fontSize: 12, color: "#8A8681", marginBottom: 24 }}>
                 {elapsedSeconds}s
             </Text>
 
@@ -100,7 +100,7 @@ export function GenerationStatus({ elapsedSeconds, onCancel }: Props) {
                 </View>
             ) : (
                 <TouchableOpacity onPress={onCancel}>
-                    <Text style={{ fontSize: 14, color: "#94a3b8" }}>Cancelar</Text>
+                    <Text style={{ fontSize: 14, color: "#8A8681" }}>Cancelar</Text>
                 </TouchableOpacity>
             )}
         </View>

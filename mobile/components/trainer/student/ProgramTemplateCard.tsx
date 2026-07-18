@@ -25,26 +25,26 @@ export function ProgramTemplateCard({ template, isSelected, onPress }: Props) {
                 borderColor: isSelected ? colors.purple[600] : "transparent",
             }}
         >
-            <Text style={{ fontSize: 16, fontWeight: "600", color: "#1a1a2e" }}>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#18181B" }}>
                 {template.name}
             </Text>
             {template.description && (
-                <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }} numberOfLines={2}>
+                <Text style={{ fontSize: 13, color: "#57534E", marginTop: 4 }} numberOfLines={2}>
                     {template.description}
                 </Text>
             )}
             <View style={{ flexDirection: "row", gap: 16, marginTop: 8 }}>
                 {!!template.duration_weeks && (
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <Calendar size={13} color="#64748b" />
-                        <Text style={{ fontSize: 12, color: "#64748b" }}>
+                        <Calendar size={13} color="#57534E" />
+                        <Text style={{ fontSize: 12, color: "#57534E" }}>
                             {template.duration_weeks} semanas
                         </Text>
                     </View>
                 )}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    <Dumbbell size={13} color="#64748b" />
-                    <Text style={{ fontSize: 12, color: "#64748b" }}>
+                    <Dumbbell size={13} color="#57534E" />
+                    <Text style={{ fontSize: 12, color: "#57534E" }}>
                         {template.workout_count} treino(s)
                     </Text>
                 </View>

@@ -483,7 +483,7 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
                 </>
             ) : (
                 <View style={{ alignItems: "center", marginTop: 40, marginBottom: 20 }}>
-                    <Calendar size={40} color="#d1d5db" />
+                    <Calendar size={40} color="#D6D3D0" />
                     <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.tertiary, marginTop: 12 }}>
                         Nenhum programa ativo
                     </Text>

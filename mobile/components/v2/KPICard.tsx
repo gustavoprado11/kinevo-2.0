@@ -40,7 +40,7 @@ export interface KPICardProps {
 }
 
 const ACCENT_MAP: Record<KPIAccent, { fg: string; bg: string }> = {
-    purple: { fg: '#7C3AED', bg: 'rgba(124,58,237,0.10)' },
+    purple: { fg: '#6D28D9', bg: 'rgba(124,58,237,0.10)' },
     success: { fg: '#10B981', bg: 'rgba(16,185,129,0.10)' },
     warning: { fg: '#F59E0B', bg: 'rgba(245,158,11,0.10)' },
     info: { fg: '#3B82F6', bg: 'rgba(59,130,246,0.10)' },

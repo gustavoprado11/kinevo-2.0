@@ -131,14 +131,14 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                             alignItems: "center",
                             backgroundColor: trainingLevel === lvl.value ? colors.purple[600] : "#ffffff",
                             borderWidth: trainingLevel === lvl.value ? 0 : 1,
-                            borderColor: "#e2e8f0",
+                            borderColor: "#E7E5E4",
                         }}
                     >
                         <Text
                             style={{
                                 fontSize: 13,
                                 fontWeight: "600",
-                                color: trainingLevel === lvl.value ? "#ffffff" : "#475569",
+                                color: trainingLevel === lvl.value ? "#ffffff" : "#57534E",
                             }}
                         >
                             {lvl.label}
@@ -161,14 +161,14 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                             alignItems: "center",
                             backgroundColor: goal === g.value ? colors.purple[600] : "#ffffff",
                             borderWidth: goal === g.value ? 0 : 1,
-                            borderColor: "#e2e8f0",
+                            borderColor: "#E7E5E4",
                         }}
                     >
                         <Text
                             style={{
                                 fontSize: 13,
                                 fontWeight: "600",
-                                color: goal === g.value ? "#ffffff" : "#475569",
+                                color: goal === g.value ? "#ffffff" : "#57534E",
                             }}
                         >
                             {g.label}
@@ -194,14 +194,14 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                                 alignItems: "center",
                                 backgroundColor: selected ? colors.purple[600] : "#ffffff",
                                 borderWidth: selected ? 0 : 1,
-                                borderColor: "#e2e8f0",
+                                borderColor: "#E7E5E4",
                             }}
                         >
                             <Text
                                 style={{
                                     fontSize: 12,
                                     fontWeight: "600",
-                                    color: selected ? "#ffffff" : "#475569",
+                                    color: selected ? "#ffffff" : "#57534E",
                                 }}
                             >
                                 {name}
@@ -224,14 +224,14 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                             borderRadius: 10,
                             backgroundColor: sessionDuration === d ? colors.purple[600] : "#ffffff",
                             borderWidth: sessionDuration === d ? 0 : 1,
-                            borderColor: "#e2e8f0",
+                            borderColor: "#E7E5E4",
                         }}
                     >
                         <Text
                             style={{
                                 fontSize: 13,
                                 fontWeight: "600",
-                                color: sessionDuration === d ? "#ffffff" : "#475569",
+                                color: sessionDuration === d ? "#ffffff" : "#57534E",
                             }}
                         >
                             {d}min
@@ -255,14 +255,14 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                                 borderRadius: 10,
                                 backgroundColor: selected ? colors.purple[100] : "#ffffff",
                                 borderWidth: selected ? 2 : 1,
-                                borderColor: selected ? colors.purple[600] : "#e2e8f0",
+                                borderColor: selected ? colors.purple[600] : "#E7E5E4",
                             }}
                         >
                             <Text
                                 style={{
                                     fontSize: 13,
                                     fontWeight: "500",
-                                    color: selected ? colors.purple[600] : "#475569",
+                                    color: selected ? colors.purple[600] : "#57534E",
                                 }}
                             >
                                 {eq.label}
@@ -286,7 +286,7 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                         marginBottom: 8,
                     }}
                 >
-                    <Text style={{ flex: 1, fontSize: 14, color: "#1a1a2e" }}>{r.description}</Text>
+                    <Text style={{ flex: 1, fontSize: 14, color: "#18181B" }}>{r.description}</Text>
                     <TouchableOpacity onPress={() => removeRestriction(idx)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <X size={16} color="#ef4444" />
                     </TouchableOpacity>
@@ -306,8 +306,8 @@ export function PrescriptionProfileForm({ existingProfile, isSaving, onSubmit }:
                     value={newRestriction}
                     onChangeText={setNewRestriction}
                     placeholder="Ex: Dor no joelho direito"
-                    placeholderTextColor="#94a3b8"
-                    style={{ flex: 1, paddingVertical: 12, fontSize: 14, color: "#1a1a2e" }}
+                    placeholderTextColor="#8A8681"
+                    style={{ flex: 1, paddingVertical: 12, fontSize: 14, color: "#18181B" }}
                     returnKeyType="done"
                     onSubmitEditing={addRestriction}
                 />
@@ -354,7 +354,7 @@ function SectionLabel({ children }: { children: string }) {
             style={{
                 fontSize: 12,
                 fontWeight: "600",
-                color: "#64748b",
+                color: "#57534E",
                 textTransform: "uppercase",
                 letterSpacing: 1,
                 marginBottom: 10,

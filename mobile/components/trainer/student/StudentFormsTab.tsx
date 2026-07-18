@@ -25,7 +25,7 @@ export function StudentFormsTab({ data, onSubmissionPress }: Props) {
     if (data.formSubmissions.length === 0) {
         return (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", marginTop: 60 }}>
-                <ClipboardList size={40} color="#d1d5db" />
+                <ClipboardList size={40} color="#D6D3D0" />
                 <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text.tertiary, marginTop: 12 }}>
                     Nenhum formulário
                 </Text>

@@ -76,10 +76,10 @@ export default function RoleSelectScreen() {
                                 <Dumbbell size={24} color="#16a34a" />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 17, fontWeight: "700", color: "#0f172a" }}>
+                                <Text style={{ fontSize: 17, fontWeight: "700", color: "#1C1917" }}>
                                     Modo Aluno
                                 </Text>
-                                <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                                <Text style={{ fontSize: 13, color: "#57534E", marginTop: 4 }}>
                                     Acessar meus treinos e acompanhar meu progresso
                                 </Text>
                             </View>
@@ -120,10 +120,10 @@ export default function RoleSelectScreen() {
                                 <Users size={24} color={colors.purple[600]} />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 17, fontWeight: "700", color: "#0f172a" }}>
+                                <Text style={{ fontSize: 17, fontWeight: "700", color: "#1C1917" }}>
                                     Modo Treinador
                                 </Text>
-                                <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                                <Text style={{ fontSize: 13, color: "#57534E", marginTop: 4 }}>
                                     Gerenciar alunos e acompanhar treinos
                                 </Text>
                             </View>

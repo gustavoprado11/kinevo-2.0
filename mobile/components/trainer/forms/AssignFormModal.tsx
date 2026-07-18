@@ -235,7 +235,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                     style={{
                                         fontSize: 13,
                                         fontWeight: "600",
-                                        color: deadlineDays === opt.days ? "#ffffff" : "#64748b",
+                                        color: deadlineDays === opt.days ? "#ffffff" : "#57534E",
                                     }}
                                 >
                                     {opt.label}
@@ -280,7 +280,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         }}
                     >
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                            <RefreshCw size={16} color={isRecurring ? colors.purple[600] : "#94a3b8"} />
+                            <RefreshCw size={16} color={isRecurring ? colors.purple[600] : "#8A8681"} />
                             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text.primary }}>
                                 Envio recorrente
                             </Text>
@@ -290,7 +290,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                 width: 44,
                                 height: 24,
                                 borderRadius: 12,
-                                backgroundColor: isRecurring ? colors.purple[600] : "#d1d5db",
+                                backgroundColor: isRecurring ? colors.purple[600] : "#D6D3D0",
                                 justifyContent: "center",
                                 paddingHorizontal: 2,
                             }}
@@ -323,7 +323,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                                         style={{
                                             fontSize: 13,
                                             fontWeight: "600",
-                                            color: frequency === opt.key ? "#ffffff" : "#64748b",
+                                            color: frequency === opt.key ? "#ffffff" : "#57534E",
                                         }}
                                     >
                                         {opt.label}
@@ -460,7 +460,7 @@ export function AssignFormModal({ visible, template, onClose, onSuccess }: Props
                         onPress={handleSend}
                         disabled={selectedIds.size === 0 || isSending}
                         style={{
-                            backgroundColor: selectedIds.size === 0 ? "#d1d5db" : colors.purple[600],
+                            backgroundColor: selectedIds.size === 0 ? "#D6D3D0" : colors.purple[600],
                             borderRadius: 14,
                             paddingVertical: 16,
                             alignItems: "center",

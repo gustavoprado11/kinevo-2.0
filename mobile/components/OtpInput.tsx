@@ -94,7 +94,7 @@ export default function OtpInput({
 
     const getBorderColor = (index: number): string => {
         if (error) return "border-red-500";
-        if (focusedIndex === index) return "border-purple-500";
+        if (focusedIndex === index) return "border-violet-500";
         if (digits[index]) return "border-gray-600";
         return "border-gray-700";
     };
