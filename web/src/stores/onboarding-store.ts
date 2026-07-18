@@ -6,6 +6,7 @@ import type {
   TrainerModalityFocus,
 } from '@kinevo/shared/types/onboarding'
 import { DEFAULT_ONBOARDING_STATE } from '@kinevo/shared/types/onboarding'
+import { track } from '@/lib/analytics'
 
 // ---------------------------------------------------------------------------
 // Tour step type (consumed by TourRunner in Phase 2)
@@ -185,6 +186,9 @@ export const useOnboardingStore = create<OnboardingStore>()(
       },
 
       completeTour(tourId) {
+        if (!get().state.tours_completed.includes(tourId)) {
+          track('tour_completed', { tour: tourId })
+        }
         set((s) => {
           const tours = s.state.tours_completed.includes(tourId)
             ? s.state.tours_completed
@@ -223,6 +227,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
       // ----- Milestones -----
       completeMilestone(key) {
+        const already = get().state.milestones[key]
         set((s) => {
           if (s.state.milestones[key]) return s
           return {
@@ -232,6 +237,8 @@ export const useOnboardingStore = create<OnboardingStore>()(
             },
           }
         })
+        // Funil de ativação (migração 266): só a PRIMEIRA conquista vira evento.
+        if (!already) track(`milestone_${key}`)
         get()._syncToServer()
       },
 
@@ -266,6 +273,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
       // ----- Welcome -----
       completeWelcomeTour() {
+        if (!get().state.welcome_tour_completed) track('welcome_tour_completed')
         set((s) => ({
           state: { ...s.state, welcome_tour_completed: true },
         }))

@@ -1,8 +1,9 @@
 'use server'
 
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { trackServer } from '@/lib/analytics-server'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { checkPasswordPwned } from '@/lib/auth/hibp-check'
 import { verifyTurnstileToken } from '@/lib/auth/turnstile'
@@ -160,13 +161,32 @@ export async function signupTrainer(input: SignupTrainerInput): Promise<SignupTr
     // their auth_user_id directly, (b) we want a single failure mode
     // (network/DB) instead of also having to debug RLS visibility for
     // brand-new sessions.
-    const { error: trainerErr } = await supabaseAdmin.from('trainers').insert({
-        auth_user_id: signUpData.user.id,
-        name,
-        email,
-    })
+    // Attribution first-touch (migração 266): o cookie kv_attr é gravado no
+    // middleware na primeira visita com UTM/referrer externo. Persistimos a
+    // origem no perfil — a coorte de maio/2026 foi inexplicável por falta disso.
+    let signupSource: Record<string, string> | null = null
+    try {
+        const raw = (await cookies()).get('kv_attr')?.value
+        if (raw) {
+            const parsed: unknown = JSON.parse(decodeURIComponent(raw))
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                signupSource = parsed as Record<string, string>
+            }
+        }
+    } catch { /* attribution jamais bloqueia signup */ }
 
-    if (trainerErr) {
+    const { data: newTrainer, error: trainerErr } = await supabaseAdmin
+        .from('trainers')
+        .insert({
+            auth_user_id: signUpData.user.id,
+            name,
+            email,
+            ...(signupSource ? { signup_source: signupSource } : {}),
+        })
+        .select('id')
+        .single()
+
+    if (trainerErr || !newTrainer) {
         // Auth user was created but trainer insert failed. The cleanup cron
         // (see api/cron/cleanup-orphan-signups) sweeps these eventually.
         // Return error so the client doesn't redirect to checkout with a
@@ -174,6 +194,11 @@ export async function signupTrainer(input: SignupTrainerInput): Promise<SignupTr
         console.error('[signupTrainer] trainer insert failed:', trainerErr)
         return { success: false, error: 'Erro ao criar perfil. Tente novamente.' }
     }
+
+    void trackServer('signup_completed', {
+        trainerId: newTrainer.id,
+        props: signupSource ? { source: signupSource } : {},
+    })
 
     return { success: true }
 }

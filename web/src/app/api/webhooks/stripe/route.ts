@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { trackServer } from '@/lib/analytics-server'
 import { getPeriodEnd, getPriceId, orgFieldsFromSubscription } from '@/lib/studio/org-billing-sync'
 import Stripe from 'stripe'
 
@@ -136,6 +137,10 @@ async function handleOrgCheckout(session: Stripe.Checkout.Session, organizationI
         throw error
     }
     console.log(`[webhook:checkout:org] org ${organizationId} → ${subscription.status}`)
+
+    void trackServer('studio_subscription_started', {
+        props: { organization_id: organizationId, status: subscription.status },
+    })
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
@@ -176,6 +181,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
 
     console.log(`[webhook:checkout] Subscription upserted for trainer ${trainerId}`)
+
+    void trackServer('subscription_started', {
+        trainerId,
+        props: { status: subscription.status, price_id: getPriceId(subscription) },
+    })
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {

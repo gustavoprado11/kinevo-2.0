@@ -15,9 +15,10 @@
  * light do Kinevo (bg #F5F5F7, violeta #7C3AED, azul #007AFF).
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, ArrowRight } from 'lucide-react'
 import { CreditMeter } from '@/components/assistant/credit-meter'
+import { track } from '@/lib/analytics'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AiTier } from '@/lib/auth/get-ai-tier'
 import { TIER_DISPLAY, type TierFeature } from '@/lib/billing/tiers'
@@ -63,6 +64,11 @@ function FeatureRow({ feature }: { feature: TierFeature }) {
 
 export function AiPlanSection({ summary }: AiPlanSectionProps) {
     const currentTier = summary?.tier ?? 'free'
+
+    // Funil de upgrade (auditoria 13/jul): registrar que os planos foram VISTOS.
+    useEffect(() => {
+        track('upgrade_plans_viewed')
+    }, [])
     const [loadingTier, setLoadingTier] = useState<AiTier | null>(null)
     const [error, setError] = useState<string | null>(null)
 

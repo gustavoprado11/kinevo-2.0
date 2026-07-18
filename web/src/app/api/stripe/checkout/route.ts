@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { stripe } from '@/lib/stripe'
 import { priceToTier, priceIdForTier, type AiTier } from '@/lib/auth/get-ai-tier'
+import { trackServer } from '@/lib/analytics-server'
 import { assertCanDowngradeToFree, StudentDowngradeError } from '@/lib/limits/student-cap'
 
 const PAID_TIERS: ReadonlySet<string> = new Set<AiTier>(['essencial', 'pro_ia', 'premium_ia'])
@@ -131,6 +132,8 @@ export async function POST(request: NextRequest) {
             trainer_id: trainer.id,
         },
     })
+
+    void trackServer('checkout_started', { trainerId: trainer.id, props: { tier: requestedTier } })
 
     return NextResponse.json({ url: session.url })
 }

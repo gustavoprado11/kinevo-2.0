@@ -2779,6 +2779,36 @@ export type Database = {
         }
         Relationships: []
       }
+      product_events: {
+        Row: {
+          event: string
+          id: number
+          occurred_at: string
+          props: Json
+          source: string
+          student_id: string | null
+          trainer_id: string | null
+        }
+        Insert: {
+          event: string
+          id?: never
+          occurred_at?: string
+          props?: Json
+          source?: string
+          student_id?: string | null
+          trainer_id?: string | null
+        }
+        Update: {
+          event?: string
+          id?: never
+          occurred_at?: string
+          props?: Json
+          source?: string
+          student_id?: string | null
+          trainer_id?: string | null
+        }
+        Relationships: []
+      }
       prescription_generations: {
         Row: {
           agent_conversation: Json | null
@@ -4469,6 +4499,7 @@ export type Database = {
           name: string
           notification_preferences: Json | null
           onboarding_state: Json | null
+          signup_source: Json | null
           prescription_patterns: Json | null
           prescription_preferences: Json | null
           prescription_style: Json | null
@@ -4516,6 +4547,7 @@ export type Database = {
           name: string
           notification_preferences?: Json | null
           onboarding_state?: Json | null
+          signup_source?: Json | null
           prescription_patterns?: Json | null
           prescription_preferences?: Json | null
           prescription_style?: Json | null
@@ -4563,6 +4595,7 @@ export type Database = {
           name?: string
           notification_preferences?: Json | null
           onboarding_state?: Json | null
+          signup_source?: Json | null
           prescription_patterns?: Json | null
           prescription_preferences?: Json | null
           prescription_style?: Json | null
@@ -5118,6 +5151,10 @@ export type Database = {
         }[]
       }
       activate_draft_program: { Args: { p_program_id: string }; Returns: Json }
+      log_product_event: {
+        Args: { p_event: string; p_props?: Json; p_source?: string }
+        Returns: undefined
+      }
       assign_form_to_students:
         | {
             Args: {
