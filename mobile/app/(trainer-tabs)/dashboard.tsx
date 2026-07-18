@@ -40,6 +40,7 @@ import {
     KSkeletonKPICard,
 } from "../../components/v2";
 import { useV2Colors } from "../../hooks/useV2Colors";
+import { toRgba } from "../../lib/brandColor";
 import { useAssistantMode, syncAssistantModeFromServer } from "../../hooks/useAssistantMode";
 import { useAssistantAccess } from "../../hooks/useAssistantAccess";
 import { AssistantModeToggle } from "../../components/assistant/AssistantModeToggle";
@@ -371,8 +372,8 @@ function ClassicDashboard() {
                                     <KPICard
                                         label="Alunos"
                                         value={String(stats.activeStudentsCount)}
-                                        icon={<Users size={14} color={colors.purple[600]} strokeWidth={2.5} />}
-                                        accent="purple"
+                                        icon={<Users size={14} color={colors.text.tertiary} strokeWidth={2} />}
+                                        accent="neutral"
                                         data={[]}
                                     />
                                 </KPICol>
@@ -381,8 +382,8 @@ function ClassicDashboard() {
                                         label="Treinos"
                                         value={String(stats.sessionsThisWeek)}
                                         valueSub={`/${stats.expectedSessionsThisWeek}`}
-                                        icon={<Dumbbell size={14} color={colors.semantic.success.default} strokeWidth={2.5} />}
-                                        accent="success"
+                                        icon={<Dumbbell size={14} color={colors.text.tertiary} strokeWidth={2} />}
+                                        accent="neutral"
                                         data={[]}
                                     />
                                 </KPICol>
@@ -390,8 +391,8 @@ function ClassicDashboard() {
                                     <KPICard
                                         label="Receita Mensal"
                                         value={formatCurrency(stats.mrr)}
-                                        icon={<DollarSign size={14} color={colors.semantic.info.default} strokeWidth={2.5} />}
-                                        accent="info"
+                                        icon={<DollarSign size={14} color={colors.text.tertiary} strokeWidth={2} />}
+                                        accent="neutral"
                                         data={[]}
                                     />
                                 </KPICol>
@@ -403,11 +404,11 @@ function ClassicDashboard() {
                                         icon={
                                             <TrendingUp
                                                 size={14}
-                                                color={stats.adherencePercent >= 70 ? colors.semantic.success.default : colors.semantic.warning.default}
-                                                strokeWidth={2.5}
+                                                color={stats.adherencePercent >= 70 ? colors.text.tertiary : colors.semantic.warning.default}
+                                                strokeWidth={2}
                                             />
                                         }
-                                        accent={stats.adherencePercent >= 70 ? "success" : "warning"}
+                                        accent={stats.adherencePercent >= 70 ? "neutral" : "warning"}
                                         data={[]}
                                     />
                                 </KPICol>
@@ -423,9 +424,9 @@ function ClassicDashboard() {
                         <SectionLabel>Acesso rápido</SectionLabel>
                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing[2] }}>
                             {QUICK_ACCESS.map((q) => {
-                                // Atalho da Agenda usa a marca; resolve com o hook
-                                // (o array é module-level e não enxerga a marca custom).
-                                const qColor = q.key === "agenda" ? colors.purple[600] : q.color;
+                                // Redesign (5B): atalho é navegação — ícone em tinta,
+                                // sem um matiz por item (mesma decisão do web).
+                                const qColor = colors.text.secondary;
                                 return (
                                 <View key={q.key} style={{ width: "48%" }}>
                                     <KCard
@@ -442,12 +443,12 @@ function ClassicDashboard() {
                                                     width: 32,
                                                     height: 32,
                                                     borderRadius: radius.sm,
-                                                    backgroundColor: qColor + "1A",
+                                                    backgroundColor: toRgba(colors.text.primary, 0.05),
                                                     alignItems: "center",
                                                     justifyContent: "center",
                                                 }}
                                             >
-                                                <q.icon size={16} color={qColor} strokeWidth={2.4} />
+                                                <q.icon size={16} color={qColor} strokeWidth={2} />
                                             </View>
                                             <Text
                                                 style={{

@@ -15,7 +15,7 @@ import { toRgba } from '../../lib/brandColor';
 
 const { spacing, radius, shadows } = v2;
 
-export type KPIAccent = 'purple' | 'success' | 'warning' | 'info';
+export type KPIAccent = 'purple' | 'success' | 'warning' | 'info' | 'neutral';
 
 export interface KPIDelta {
     direction: 'up' | 'down';
@@ -39,8 +39,7 @@ export interface KPICardProps {
     style?: StyleProp<ViewStyle>;
 }
 
-const ACCENT_MAP: Record<KPIAccent, { fg: string; bg: string }> = {
-    purple: { fg: '#6D28D9', bg: 'rgba(124,58,237,0.10)' },
+const ACCENT_MAP: Record<Exclude<KPIAccent, 'neutral' | 'purple'>, { fg: string; bg: string }> = {
     success: { fg: '#10B981', bg: 'rgba(16,185,129,0.10)' },
     warning: { fg: '#F59E0B', bg: 'rgba(245,158,11,0.10)' },
     info: { fg: '#3B82F6', bg: 'rgba(59,130,246,0.10)' },
@@ -123,11 +122,14 @@ export function KPICard({
     style,
 }: KPICardProps) {
     const colors = useV2Colors();
-    // Accent roxo segue a marca do estúdio (rebrand via colors.purple[N]);
-    // demais accents mantêm cores semânticas fixas.
-    const accentPair = accent === 'purple'
-        ? { fg: colors.purple[600], bg: toRgba(colors.purple[600], 0.10) }
-        : ACCENT_MAP[accent];
+    // Redesign (fase 5B): 'neutral' é o accent padrão de métrica — tinta sobre
+    // inset, sem festa de cor; cor fica pros estados semânticos (warning etc.).
+    // Accent roxo segue a marca do estúdio (rebrand via colors.purple[N]).
+    const accentPair = accent === 'neutral'
+        ? { fg: colors.text.secondary, bg: toRgba(colors.text.primary, 0.05) }
+        : accent === 'purple'
+            ? { fg: colors.purple[600], bg: toRgba(colors.purple[600], 0.10) }
+            : ACCENT_MAP[accent as Exclude<KPIAccent, 'neutral' | 'purple'>];
 
     const a11y = accessibilityLabel
         ?? `${label}: ${value}${valueSub ?? ''}${delta ? `, variação ${delta.direction === 'up' ? 'positiva' : 'negativa'} ${delta.label}` : ''}`;
@@ -146,7 +148,9 @@ export function KPICard({
                 style,
             ]}
         >
-            <View style={[styles.topBorder, { backgroundColor: accentPair.fg, opacity: 0.6 }]} />
+            {accent !== 'neutral' && (
+                <View style={[styles.topBorder, { backgroundColor: accentPair.fg, opacity: 0.6 }]} />
+            )}
 
             <View style={styles.topRow}>
                 <View style={[styles.iconBox, { backgroundColor: accentPair.bg }]}>
