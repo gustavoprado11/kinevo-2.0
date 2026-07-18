@@ -48,7 +48,7 @@ function PriceCard({ t }: { t: TierDisplay }) {
     return (
         <div style={card}>
             {featured && (
-                <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--kv-brand-600)', padding: '5px 14px', borderRadius: 999, whiteSpace: 'nowrap' }}>
+                <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--kv-brand-600)', padding: '5px 14px', borderRadius: 10, whiteSpace: 'nowrap' }}>
                     ★ Recomendado
                 </span>
             )}
