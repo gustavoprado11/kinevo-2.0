@@ -628,7 +628,7 @@ export function StudentDetailClient({
                     onEdit={handleEditStudent}
                     onDelete={handleDeleteStudent}
                     onSchedule={student.is_trainer_profile || !isOwnStudent ? undefined : () => setIsScheduleModalOpen(true)}
-                    onStartTour={student.is_trainer_profile ? undefined : () => useOnboardingStore.getState().startTour('student_detail')}
+                    onStartTour={student.is_trainer_profile ? undefined : () => useOnboardingStore.getState().startTour('student_detail', 'manual')}
                     onConsultoria={
                         // Beta fechado (migration 251): sem o flag, o item nem aparece no menu.
                         student.is_trainer_profile || trainer.consultoria_enabled !== true

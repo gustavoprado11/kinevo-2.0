@@ -24,6 +24,8 @@ interface WizardShellProps {
     children: ReactNode
     /** Footer com botões (Voltar/Pular/Próximo/Finalizar). */
     footer?: ReactNode
+    /** Conteúdo extra no header, antes do X (ex.: TourHelpButton). */
+    headerExtra?: ReactNode
 }
 
 // M9 — sheet slide-in da direita compartilhado por wizards multi-step.
@@ -38,6 +40,7 @@ export function WizardShell({
     totalSteps = 2,
     children,
     footer,
+    headerExtra,
 }: WizardShellProps) {
     useEffect(() => {
         if (!open) return
@@ -102,6 +105,7 @@ export function WizardShell({
                                     Onboarding · Step {currentStep} de {totalSteps}
                                 </div>
                             </div>
+                            {headerExtra}
                             <button
                                 type="button"
                                 onClick={onRequestClose}

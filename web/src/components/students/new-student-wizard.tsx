@@ -11,6 +11,7 @@ import { assignFormToStudents } from '@/actions/forms/assign-form'
 import { createAssessmentSession } from '@/actions/assessments/create-session'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 
 export interface WizardStudent {
     id: string
@@ -367,6 +368,7 @@ export function NewStudentWizard({
             currentStep={currentStep}
             totalSteps={2}
             footer={currentStep === 1 ? step1Footer : step2Footer}
+            headerExtra={currentStep === 1 ? <TourHelpButton tourId="tour_new_student_wizard" /> : undefined}
         >
             {currentStep === 1 && (
                 <Step1Anamnese
@@ -397,14 +399,13 @@ export function NewStudentWizard({
                 />
             )}
 
-            {/* M9/B3 — tour de primeira vez. Dispara apenas no step 1 (selectors
-                do step 2 só aparecem após avançar; TourRunner auto-skipa se
-                target ausente). Auto-completa via store após último step. */}
+            {/* M9/B3 — tour sob demanda (TourHelpButton no header). Montado apenas
+                no step 1 (selectors do step 2 só aparecem após avançar; TourRunner
+                auto-skipa se target ausente). */}
             {currentStep === 1 && (
                 <TourRunner
                     tourId="tour_new_student_wizard"
                     steps={TOUR_STEPS.tour_new_student_wizard}
-                    autoStart
                 />
             )}
         </WizardShell>

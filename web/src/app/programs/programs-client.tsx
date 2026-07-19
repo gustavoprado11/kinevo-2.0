@@ -12,6 +12,7 @@ import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 import { duplicateProgram } from './actions/duplicate-program'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 import { useToast } from '@/components/ui/toast'
 import { matchesSearch } from '@kinevo/shared/utils/search-text'
 
@@ -406,6 +407,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                     <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] dark:bg-glass-bg text-xs font-bold text-[#6E6E73] dark:text-k-text-tertiary border border-transparent dark:border-k-border-subtle">
                         {programs.length}
                     </span>
+                    <TourHelpButton tourId="programs" />
                 </div>
                 <button
                     data-onboarding="programs-create-btn"
@@ -568,7 +570,7 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
             )}
 
             {/* Tour */}
-            <TourRunner tourId="programs" steps={TOUR_STEPS.programs} autoStart />
+            <TourRunner tourId="programs" steps={TOUR_STEPS.programs} />
         </AppLayout>
     )
 }

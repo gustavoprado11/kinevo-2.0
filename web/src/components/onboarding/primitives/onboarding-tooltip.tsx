@@ -2,7 +2,7 @@
 
 import { useRef, useLayoutEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { SpotlightRect } from '@/hooks/use-spotlight-position'
 
 type Placement = 'top' | 'bottom' | 'left' | 'right'
@@ -194,6 +194,15 @@ export function OnboardingTooltip({
     >
       {/* Arrow */}
       <div style={getArrowStyles(actualPlacement)} />
+
+      {/* Close */}
+      <button
+        onClick={onSkip}
+        aria-label="Fechar tour"
+        className="absolute top-3 right-3 p-1 rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-glass-bg transition-colors"
+      >
+        <X size={14} />
+      </button>
 
       {/* Step counter */}
       <p className="text-[10px] font-bold text-muted-foreground/40 mb-2">

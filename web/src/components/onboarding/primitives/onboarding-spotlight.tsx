@@ -7,6 +7,8 @@ interface OnboardingSpotlightProps {
   rect: SpotlightRect | null
   visible: boolean
   borderRadius?: number
+  /** Clique no overlay escuro encerra o tour (cancelamento fácil). */
+  onDismiss?: () => void
   children: React.ReactNode
 }
 
@@ -18,11 +20,13 @@ interface OnboardingSpotlightProps {
  * - The cutout is VISUAL ONLY (via box-shadow inset) — no click-through
  * - Only tooltip children (z-[71]) are interactive
  * - Prevents accidental navigation during tours (e.g. clicking sidebar links)
+ * - Clicking the dark overlay calls onDismiss (dismiss-anywhere, never traps the user)
  */
 export function OnboardingSpotlight({
   rect,
   visible,
   borderRadius = 12,
+  onDismiss,
   children,
 }: OnboardingSpotlightProps) {
   return (
@@ -37,6 +41,7 @@ export function OnboardingSpotlight({
             transition={{ duration: 0.25 }}
             className="fixed inset-0 z-onboarding"
             style={{ pointerEvents: 'all' }}
+            onClick={onDismiss}
           >
             {/* Semi-transparent overlay with cutout via box-shadow */}
             <motion.div

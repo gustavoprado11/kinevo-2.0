@@ -20,6 +20,7 @@ import { track } from '@/lib/analytics'
 import dynamic from 'next/dynamic'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import type { Exercise } from '@/types/exercise'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
@@ -1168,6 +1169,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
                                     </svg>
                                 </button>
+                                <TourHelpButton tourId="program_builder" className="shrink-0" />
                             </div>
                         </div>
 
@@ -1958,12 +1960,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 </div>
             )}
 
-            {/* Tour: Program Builder (auto-start só na criação do zero). Ao revisar um
-                rascunho gerado pela IA (?generationId=) NÃO inicia o tour — não é um
-                momento de "primeira vez aprendendo o builder", e a hidratação do store
-                de onboarding nessa rota não é confiável (skipHydration), fazendo o tour
-                reaparecer mesmo já concluído. */}
-            <TourRunner tourId="program_builder" steps={TOUR_STEPS.program_builder} autoStart={!prescriptionGenerationId} />
+            {/* Tour: Program Builder (sob demanda via TourHelpButton no header). */}
+            <TourRunner tourId="program_builder" steps={TOUR_STEPS.program_builder} />
 
             {/* AI Prescription Panel (Fase 1) */}
             {aiPanelAvailable && studentContext && prescriptionData && (

@@ -132,14 +132,40 @@ export function TourRunner({ tourId, steps: stepsProp, delay = 500, autoStart = 
     skipTour()
   }, [skipTour])
 
-  // Don't render if tour is not active, not ready, or already completed
-  if (!isActive || !ready || isTourCompleted(tourId)) return null
+  // Global keyboard: Escape always exits; arrows navigate (unless typing in a field)
+  useEffect(() => {
+    if (!isActive || !ready) return
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        skipTour()
+        return
+      }
+      const target = e.target as HTMLElement | null
+      const isTyping =
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      if (isTyping) return
+      if (e.key === 'ArrowRight') handleNext()
+      if (e.key === 'ArrowLeft') handlePrev()
+    }
+
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [isActive, ready, skipTour, handleNext, handlePrev])
+
+  // Don't render if tour is not active or not ready. Tours já completos PODEM
+  // rodar de novo quando iniciados manualmente (TourHelpButton) — a gate de
+  // "já visto" vale só para o auto-start acima.
+  if (!isActive || !ready) return null
 
   return (
     <OnboardingSpotlight
       rect={rect}
       visible={!!rect}
       borderRadius={currentStep?.spotlightPadding ? 16 : 12}
+      onDismiss={handleSkip}
     >
       {rect && currentStep && (
         <OnboardingTooltip

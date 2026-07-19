@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 
 import { usePrescriptionAgent, type PrescriptionAgentPageState } from './ai-prescription-panel/use-prescription-agent'
 import { AiPrescriptionPanelStudentTab } from './ai-prescription-panel/student-tab'
@@ -87,6 +88,7 @@ export function AiPrescriptionPanel({
                     <h2 className="flex-1 text-sm font-semibold text-k-text-primary truncate">
                         IA · {studentName}
                     </h2>
+                    <TourHelpButton tourId="prescribe" />
                     <button
                         onClick={onClose}
                         aria-label="Fechar painel de IA"
@@ -115,7 +117,7 @@ export function AiPrescriptionPanel({
             </aside>
 
             {/* Tour (lives with the panel now that /prescribe is gone) */}
-            <TourRunner tourId="prescribe" steps={TOUR_STEPS.prescribe} autoStart />
+            <TourRunner tourId="prescribe" steps={TOUR_STEPS.prescribe} />
         </>
     )
 }

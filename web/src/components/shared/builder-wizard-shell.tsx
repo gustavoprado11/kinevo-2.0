@@ -33,6 +33,8 @@ export interface BuilderWizardShellProps {
     onSave?: () => void | Promise<void>
     /** Disparado quando user pede saída (header voltar). Shell mostra modal "Sair sem salvar?" se dirty. */
     onExit: () => void
+    /** Conteúdo extra no header, após o título (ex.: TourHelpButton). */
+    headerExtra?: ReactNode
     /** Conteúdo do step ativo. */
     children: ReactNode
 }
@@ -59,6 +61,7 @@ export function BuilderWizardShell({
     onBack,
     onSave,
     onExit,
+    headerExtra,
     children,
 }: BuilderWizardShellProps) {
     const [confirmExitOpen, setConfirmExitOpen] = useState(false)
@@ -111,6 +114,7 @@ export function BuilderWizardShell({
                         </div>
                     )}
                 </div>
+                {headerExtra}
                 {statusLabel && (
                     <span className="text-[11px] text-k-text-tertiary whitespace-nowrap">
                         {statusLabel}

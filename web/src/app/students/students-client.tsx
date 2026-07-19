@@ -11,6 +11,7 @@ import Image from 'next/image'
 import { Plus, Search, ChevronRight, ChevronUp, ChevronDown, Users, Building2 } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 import { matchesSearch } from '@kinevo/shared/utils/search-text'
 import { reassignStudent } from '@/actions/organizations/reassign-student'
 import { useToast } from '@/components/ui/toast'
@@ -345,6 +346,7 @@ export function StudentsClient({
                             {studentsWithAttention.some(s => s.is_trainer_profile) && <span className="text-sm"> + você</span>}
                         </span>
                     </h1>
+                    <TourHelpButton tourId="students" />
                 </div>
                 <Button
                     data-onboarding="students-add-btn"
@@ -674,7 +676,7 @@ export function StudentsClient({
             />
 
             {/* Tour: Students (auto-start on first visit) */}
-            <TourRunner tourId="students" steps={TOUR_STEPS.students} autoStart />
+            <TourRunner tourId="students" steps={TOUR_STEPS.students} />
         </AppLayout>
     )
 }

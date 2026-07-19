@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 import { FormsAvaliacoesSegmented } from '@/components/forms/forms-avaliacoes-segmented'
 
 // --- Helpers ---
@@ -319,6 +320,7 @@ export function FormsDashboardClient({
                                 {submissions.length}
                             </span>
                         )}
+                        <TourHelpButton tourId="tour_forms_first_time" />
                     </div>
                     <p className="mt-1 text-sm text-[#86868B] dark:text-k-text-tertiary">
                         Anamneses, check-ins e pesquisas que o aluno responde no app
@@ -688,7 +690,6 @@ export function FormsDashboardClient({
             <TourRunner
                 tourId="tour_forms_first_time"
                 steps={TOUR_STEPS.tour_forms_first_time}
-                autoStart
             />
         </AppLayout>
     )

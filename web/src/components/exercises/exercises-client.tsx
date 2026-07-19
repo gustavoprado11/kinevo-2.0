@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Plus, Search, Settings2, LayoutGrid, List, ChevronDown, Check, Layers, User } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 import { revalidateMyExerciseLibrary } from '@/actions/exercises/revalidate-library'
 import { useToast } from '@/components/ui/toast'
 import { patternLabel, sortPatternLabels } from '@/lib/movement-patterns'
@@ -402,6 +403,7 @@ export function ExercisesClient({
                     <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] dark:bg-glass-bg text-sm font-medium text-[#86868B] dark:text-k-text-tertiary border border-[#E8E8ED] dark:border-k-border-subtle">
                         {deduplicatedExercises.length}
                     </span>
+                    <TourHelpButton tourId="exercises" />
                 </div>
                 <div className="flex items-center gap-3">
                     <ConciergeButton onClick={() => { setConciergeSource('biblioteca_button'); setIsConciergeOpen(true) }} />
@@ -593,7 +595,7 @@ export function ExercisesClient({
             )}
 
             {/* Tour */}
-            <TourRunner tourId="exercises" steps={TOUR_STEPS.exercises} autoStart />
+            <TourRunner tourId="exercises" steps={TOUR_STEPS.exercises} />
 
             {/* Concierge — pedido p/ a equipe montar a biblioteca em 24h */}
             <ConciergeModal

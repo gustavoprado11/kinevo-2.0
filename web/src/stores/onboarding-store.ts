@@ -56,11 +56,11 @@ interface OnboardingStore {
   hydrate: (serverState: OnboardingState) => void
 
   // Tour control
-  startTour: (tourId: string) => void
+  startTour: (tourId: string, source?: 'auto' | 'manual') => void
   nextStep: () => void
   prevStep: () => void
   skipTour: () => void
-  completeTour: (tourId: string) => void
+  completeTour: (tourId: string, options?: { silent?: boolean }) => void
   isTourCompleted: (tourId: string) => boolean
 
   // Tips
@@ -89,17 +89,68 @@ interface OnboardingStore {
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null
 const SYNC_DEBOUNCE_MS = 800
+const SYNC_MAX_ATTEMPTS = 3
+
+// Marcador de sync pendente: gravado SINCRONAMENTE quando uma mutação agenda o
+// sync (sobrevive a navegação/unload antes do debounce disparar) e limpo só
+// após o server confirmar. Se a escrita falhar (rede, action retornando
+// { error }), o snapshot fica aqui e o hydrate da próxima sessão o reenvia —
+// é o que garante que "dispensei" nunca reaparece.
+const PENDING_SYNC_KEY = 'kinevo-onboarding-pending'
+
+function writePendingSync(state: OnboardingState) {
+  try {
+    localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(state))
+  } catch {
+    // localStorage indisponível (SSR/quota) — sync ainda tenta normalmente
+  }
+}
+
+function clearPendingSync() {
+  try {
+    localStorage.removeItem(PENDING_SYNC_KEY)
+  } catch {
+    // noop
+  }
+}
+
+export function readPendingSync(): Partial<OnboardingState> | null {
+  try {
+    const raw = localStorage.getItem(PENDING_SYNC_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null) return null
+    return parsed as Partial<OnboardingState>
+  } catch {
+    return null
+  }
+}
 
 async function syncToServer(state: OnboardingState) {
   try {
     const { updateOnboardingState } = await import(
       '@/actions/onboarding/update-onboarding-state'
     )
-    await updateOnboardingState(state)
+    for (let attempt = 1; attempt <= SYNC_MAX_ATTEMPTS; attempt++) {
+      try {
+        const result = await updateOnboardingState(state)
+        if (!result.error) {
+          clearPendingSync()
+          return
+        }
+      } catch {
+        // rede/exceção — cai no retry abaixo
+      }
+      if (attempt < SYNC_MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, attempt * 1500))
+      }
+    }
   } catch {
-    // Fire-and-forget: never block UI
-    console.warn('[Onboarding] Failed to sync state to server')
+    // import falhou — mantém pendência
   }
+  // Todas as tentativas falharam: garante o snapshot pra próxima sessão
+  writePendingSync(state)
+  console.warn('[Onboarding] Failed to sync state to server — kept pending for retry on next load')
 }
 
 // ---------------------------------------------------------------------------
@@ -132,14 +183,53 @@ export const useOnboardingStore = create<OnboardingStore>()(
         // (ex.: logo após revalidatePath, antes da escrita propagar) SOBRESCREVER
         // a dispensa otimista de volta pra false — o banner/modal reaparecia e o
         // sync seguinte ainda mandava false. OR-merge elimina esse clobber.
-        const currentLocal = get().state
+        // Snapshot de um sync que falhou (ou não chegou a disparar) na sessão
+        // anterior: fold no estado local antes do merge com o server, e reenvia.
+        // Sem isso, uma dispensa que não persistiu reapareceria aqui.
+        const pending = readPendingSync()
+        const rawLocal = get().state
+        const currentLocal: OnboardingState = pending
+          ? {
+              welcome_tour_completed:
+                pending.welcome_tour_completed === true || rawLocal.welcome_tour_completed,
+              checklist_dismissed:
+                pending.checklist_dismissed === true || rawLocal.checklist_dismissed,
+              checklist_snoozed_until:
+                (typeof pending.checklist_snoozed_until === 'string'
+                  ? pending.checklist_snoozed_until
+                  : null) ?? rawLocal.checklist_snoozed_until,
+              tours_completed: Array.from(
+                new Set([
+                  ...(Array.isArray(pending.tours_completed) ? pending.tours_completed : []),
+                  ...rawLocal.tours_completed,
+                ]),
+              ),
+              tips_dismissed: Array.from(
+                new Set([
+                  ...(Array.isArray(pending.tips_dismissed) ? pending.tips_dismissed : []),
+                  ...rawLocal.tips_dismissed,
+                ]),
+              ),
+              milestones: {
+                ...rawLocal.milestones,
+                ...Object.fromEntries(
+                  Object.entries(pending.milestones ?? {}).filter(([, v]) => v === true),
+                ),
+              } as OnboardingMilestones,
+            }
+          : rawLocal
+
         const merged: OnboardingState = {
           welcome_tour_completed:
             serverState.welcome_tour_completed || currentLocal.welcome_tour_completed,
           checklist_dismissed:
             serverState.checklist_dismissed || currentLocal.checklist_dismissed,
-          // Server-wins pra snooze: usuário pode ter feito snooze em outro device.
-          checklist_snoozed_until: serverState.checklist_snoozed_until ?? null,
+          // Server-wins pra snooze — exceto quando há pendência local (intenção
+          // mais recente do usuário que ainda não chegou ao server).
+          checklist_snoozed_until:
+            (pending ? currentLocal.checklist_snoozed_until : null) ??
+            serverState.checklist_snoozed_until ??
+            null,
           tours_completed: Array.from(
             new Set([
               ...serverState.tours_completed,
@@ -161,10 +251,14 @@ export const useOnboardingStore = create<OnboardingStore>()(
         }
 
         set({ state: merged, isHydrated: true })
+
+        // Reenvia a pendência da sessão anterior agora que temos sessão ativa.
+        if (pending) get()._syncToServer()
       },
 
       // ----- Tour control -----
-      startTour(tourId) {
+      startTour(tourId, source = 'auto') {
+        track('tour_started', { tour: tourId, source })
         set({ activeTourId: tourId, currentStepIndex: 0 })
       },
 
@@ -179,14 +273,16 @@ export const useOnboardingStore = create<OnboardingStore>()(
       },
 
       skipTour() {
-        const { activeTourId } = get()
+        const { activeTourId, currentStepIndex } = get()
         if (activeTourId) {
-          get().completeTour(activeTourId)
+          track('tour_skipped', { tour: activeTourId, step: currentStepIndex })
+          // silent: pular marca como visto (não reaparece), mas não conta como conclusão
+          get().completeTour(activeTourId, { silent: true })
         }
       },
 
-      completeTour(tourId) {
-        if (!get().state.tours_completed.includes(tourId)) {
+      completeTour(tourId, options) {
+        if (!options?.silent && !get().state.tours_completed.includes(tourId)) {
           track('tour_completed', { tour: tourId })
         }
         set((s) => {
@@ -280,8 +376,11 @@ export const useOnboardingStore = create<OnboardingStore>()(
         get()._syncToServer()
       },
 
-      // ----- Server sync (debounced, fire-and-forget) -----
+      // ----- Server sync (debounced; pendência persistida até confirmação) -----
       _syncToServer() {
+        // Snapshot síncrono ANTES do debounce: se o usuário navegar/fechar a aba
+        // nos próximos 800ms, o estado não se perde — o próximo hydrate reenvia.
+        writePendingSync(get().state)
         if (syncTimer) clearTimeout(syncTimer)
         syncTimer = setTimeout(() => {
           syncToServer(get().state)

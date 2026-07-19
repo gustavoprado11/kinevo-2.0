@@ -7,6 +7,7 @@ import type { OnboardingState } from '@kinevo/shared/types/onboarding'
 import { Plus, Activity, Send, ChevronRight } from 'lucide-react'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 import { FormsAvaliacoesSegmented } from '@/components/forms/forms-avaliacoes-segmented'
 import { SessionListItem } from '@/components/assessments/session-list-item'
 import { CreateSessionModal } from '@/components/assessments/create-session-modal'
@@ -171,6 +172,7 @@ export function AvaliacoesClient({
                                 {headerCount}
                             </span>
                         )}
+                        <TourHelpButton tourId="tour_assessments_first_time" />
                     </div>
                     <p className="mt-1 text-sm text-[#86868B] dark:text-k-text-tertiary">
                         Sessões presenciais com captura de medições
@@ -413,7 +415,6 @@ export function AvaliacoesClient({
             <TourRunner
                 tourId="tour_assessments_first_time"
                 steps={TOUR_STEPS.tour_assessments_first_time}
-                autoStart
             />
         </AppLayout>
     )

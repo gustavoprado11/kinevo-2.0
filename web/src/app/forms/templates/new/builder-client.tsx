@@ -15,6 +15,7 @@ import { Plus, Trash2, AlertTriangle, GripVertical, Loader2, Type, AlignLeft, Sl
 import { EvaluationPreview } from '@/components/previews/evaluation-preview/evaluation-preview'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 import {
     DndContext,
     closestCenter,
@@ -497,6 +498,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                             : `v${existingTemplate?.version ?? 1}`)
                         : null
                 }
+                headerExtra={<TourHelpButton tourId="form_builder" />}
                 currentStep={step}
                 hideStepIndicator={isEditing}
                 onExit={() => router.push('/forms/templates')}
@@ -1029,8 +1031,8 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
 
             </BuilderWizardShell>
 
-            {/* Tour: Form Builder (auto-start on first visit) */}
-            <TourRunner tourId="form_builder" steps={TOUR_STEPS.form_builder} autoStart />
+            {/* Tour: Form Builder (sob demanda via TourHelpButton no header) */}
+            <TourRunner tourId="form_builder" steps={TOUR_STEPS.form_builder} />
         </AppLayout>
     )
 }
