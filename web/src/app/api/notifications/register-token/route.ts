@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { trackServer } from '@/lib/analytics-server'
+import type { Json } from '@kinevo/shared/types/database'
 
 export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
@@ -61,6 +63,38 @@ export async function POST(request: NextRequest) {
     if (error) {
         console.error('[register-token] Upsert error:', error.message)
         return NextResponse.json({ error: 'Erro ao registrar token' }, { status: 500 })
+    }
+
+    // Milestone "Entre no App Mobile": o registro de push token é o primeiro
+    // sinal server-side de que o treinador entrou no app. O mobile não sincroniza
+    // onboarding_state, então este era o único item do checklist que nunca
+    // completava sozinho. Best-effort: falha aqui não afeta o registro do token.
+    if (role === 'trainer' && trainerId) {
+        try {
+            const { data: trainer } = await supabaseAdmin
+                .from('trainers')
+                .select('onboarding_state')
+                .eq('id', trainerId)
+                .single()
+
+            const state = (trainer?.onboarding_state ?? {}) as Record<string, unknown>
+            const milestones = (state.milestones ?? {}) as Record<string, unknown>
+
+            if (milestones.mobile_logged_in !== true) {
+                await supabaseAdmin
+                    .from('trainers')
+                    .update({
+                        onboarding_state: {
+                            ...state,
+                            milestones: { ...milestones, mobile_logged_in: true },
+                        } as Json,
+                    })
+                    .eq('id', trainerId)
+                await trackServer('milestone_mobile_logged_in', { trainerId })
+            }
+        } catch (milestoneError) {
+            console.error('[register-token] milestone mobile_logged_in:', milestoneError)
+        }
     }
 
     return NextResponse.json({ success: true })
