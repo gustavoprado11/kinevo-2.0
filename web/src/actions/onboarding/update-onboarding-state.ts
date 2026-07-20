@@ -148,6 +148,9 @@ export async function updateOnboardingState(
         landing_published:
           sanitizeBool(incomingMilestones.landing_published) ||
           sanitizeBool(currentMilestones.landing_published),
+        first_assistant_chat:
+          sanitizeBool(incomingMilestones.first_assistant_chat) ||
+          sanitizeBool(currentMilestones.first_assistant_chat),
       },
     }
 

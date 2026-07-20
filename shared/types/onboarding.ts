@@ -27,6 +27,7 @@ export interface OnboardingMilestones {
   mobile_logged_in: boolean
   first_training_room_session: boolean
   landing_published: boolean
+  first_assistant_chat: boolean
 }
 
 export interface OnboardingState {
@@ -56,7 +57,8 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
     mobile_logged_in: false,
     first_training_room_session: false,
     landing_published: false,
+    first_assistant_chat: false,
   },
 }
 
-export const TOTAL_MILESTONES = 10
+export const TOTAL_MILESTONES = 11

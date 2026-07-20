@@ -379,6 +379,55 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
       placement: 'bottom',
     },
   ],
+
+  // =============================================
+  // ASSISTENTE — tour sob demanda da tela /assistente (TourHelpButton no
+  // canto da AssistantHome). Âncoras vivem em assistant-home.tsx; os passos
+  // de seções condicionais (ex.: "Precisa de atenção") são auto-skipados
+  // pelo TourRunner quando a seção não está renderizada.
+  // =============================================
+  assistente: [
+    {
+      id: 'assistente-1',
+      targetSelector: '[data-onboarding="assistant-composer"]',
+      title: 'Peça em português, ele executa',
+      description:
+        'Descreva o que precisa — montar um treino, cobrar um aluno, enviar uma anamnese. O assistente age de verdade na plataforma, e toda ação importante pede sua confirmação antes.',
+      placement: 'bottom',
+    },
+    {
+      id: 'assistente-2',
+      targetSelector: '[data-onboarding="assistant-scope"]',
+      title: 'Geral ou um aluno em foco',
+      description:
+        'Converse sobre a carteira toda ou coloque um aluno em foco: com foco, as respostas usam o contexto dele — treinos, medidas, histórico e financeiro.',
+      placement: 'bottom',
+    },
+    {
+      id: 'assistente-3',
+      targetSelector: '[data-onboarding="assistant-attention"]',
+      title: 'Ele avisa o que precisa de você',
+      description:
+        'Estagnação, pagamento atrasado, check-in sem resposta: o assistente vigia sua carteira e traz aqui. Toque num card pra resolver direto na conversa.',
+      placement: 'top',
+    },
+    {
+      id: 'assistente-4',
+      targetSelector: '[data-onboarding="assistant-starters"]',
+      title: 'Sem saber por onde começar?',
+      description:
+        'Prompts prontos por área — financeiro, alunos, treinos e comunicação. Tocar preenche o campo; você ajusta e envia.',
+      placement: 'top',
+    },
+    {
+      id: 'assistente-5',
+      targetSelector: '[data-onboarding="assistant-composer"]',
+      title: 'Disponível em qualquer tela',
+      description:
+        'Fora daqui, pressione ⌘K (Ctrl+K no Windows) pra chamar o assistente e agir na tela em que você estiver.',
+      placement: 'bottom',
+    },
+  ],
 }
 
 /**

@@ -15,6 +15,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { bannerFromError, type AssistantBannerData } from './assistant-banner'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { ConversationListItem, AssistantMessage } from '@/lib/assistant/conversations'
+import { markFirstAssistantChat } from '@/lib/assistant/onboarding-milestone'
 
 export interface ThreadStudent { id: string; name: string }
 
@@ -208,6 +209,7 @@ export function useAssistantThread({ initialSummary = null, initialConversations
                 if (updated.title === 'Nova conversa') updated.title = text.slice(0, 70)
                 return [updated, ...prev.filter((c) => c.id !== convId)]
             })
+            markFirstAssistantChat()
             return final.message ?? null
         } catch (e) {
             // U-ERR: não engole a falha. Parar (AbortError) é intencional — mantém a msg

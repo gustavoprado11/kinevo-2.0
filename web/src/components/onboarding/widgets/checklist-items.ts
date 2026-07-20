@@ -13,6 +13,7 @@ import {
   Smartphone,
   Activity,
   Globe,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -36,9 +37,9 @@ export interface ChecklistItem {
  * Fase 17b — ordem reflete a sequência sugerida do onboarding.
  *
  * Counts resolvidos por `getChecklistItemsForModality`:
- * - presencial: 7 (universais 6 + training_room)
- * - online: 8 (universais 6 + form + financial)
- * - ambos/null: 9 (todos)
+ * - presencial: 9 (universais 8 + training_room)
+ * - online: 10 (universais 8 + form + financial)
+ * - ambos/null: 11 (todos)
  */
 export const ALL_CHECKLIST_ITEMS: ChecklistItem[] = [
   {
@@ -108,6 +109,13 @@ export const ALL_CHECKLIST_ITEMS: ChecklistItem[] = [
     description: 'Publique um programa para alguém',
     href: '/students',
     icon: Send,
+  },
+  {
+    key: 'first_assistant_chat',
+    label: 'Converse com o Assistente IA',
+    description: 'Peça em português — ele executa por você',
+    href: '/assistente',
+    icon: Sparkles,
   },
   {
     key: 'landing_published',

@@ -17,6 +17,9 @@ import { avatarFor, greeting, timeShort } from './ui-util'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
 import { MicButton } from './mic-button'
 import { AssistantMark } from '@/components/assistant/assistant-mark'
+import { TourRunner } from '@/components/onboarding/tours/tour-runner'
+import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 
 /**
  * Cada atalho tem `label` (texto curto exibido no card) e `prompt` (instrução
@@ -124,7 +127,12 @@ export function AssistantHome({
     }
 
     return (
-        <main className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-surface-card">
+        <main className="relative min-h-0 flex-1 overflow-y-auto bg-white dark:bg-surface-card">
+            {/* Tour sob demanda (modelo híbrido — nunca auto-inicia) */}
+            <div className="absolute right-5 top-5">
+                <TourHelpButton tourId="assistente" />
+            </div>
+            <TourRunner tourId="assistente" steps={TOUR_STEPS.assistente} />
             <div className="mx-auto max-w-[720px] px-7 pb-16 pt-[72px]">
                 {/* Hero — plano, sem glow (idioma da conversa) */}
                 <div className="mb-7 text-center">
@@ -138,7 +146,7 @@ export function AssistantHome({
                 </div>
 
                 {/* Composer — mesma moldura/foco da conversa (flat, cinza suave) */}
-                <div className="rounded-[22px] border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-elevated p-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_4px_rgba(60,60,67,0.07)]">
+                <div data-onboarding="assistant-composer" className="rounded-[22px] border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-elevated p-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_4px_rgba(60,60,67,0.07)]">
                     <textarea
                         ref={composerRef}
                         data-assistant-composer
@@ -172,7 +180,7 @@ export function AssistantHome({
                 )}
 
                 {/* Contexto */}
-                <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
+                <div data-onboarding="assistant-scope" className="mt-3.5 flex flex-wrap items-center gap-2.5">
                     {!hasStudents ? (
                         <Link href="/students" className="inline-flex items-center gap-2 rounded-full border border-[rgba(124,58,237,0.25)] dark:border-violet-400/30 bg-[rgba(124,58,237,0.08)] dark:bg-violet-500/10 px-3.5 py-[7px] text-[12.5px] font-semibold text-primary dark:text-violet-300 transition hover:bg-[rgba(124,58,237,0.14)] dark:hover:bg-violet-500/20">
                             <UserPlus className="h-3.5 w-3.5" strokeWidth={2} /> Crie seu primeiro aluno
@@ -237,7 +245,7 @@ export function AssistantHome({
 
                 {/* Precisa de atenção */}
                 {attention.length > 0 && (
-                    <section className="mt-9">
+                    <section data-onboarding="assistant-attention" className="mt-9">
                         <div className="mb-3 flex items-center gap-2">
                             <span className="text-[11.5px] font-bold uppercase tracking-[0.09em] text-k-text-tertiary dark:text-muted-foreground">Precisa de atenção</span>
                             <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-[#F59E0B] px-1.5 py-px text-[10.5px] font-bold leading-none text-white [font-variant-numeric:tabular-nums]">{attention.length}</span>
@@ -316,7 +324,7 @@ export function AssistantHome({
                 )}
 
                 {/* Comece por aqui */}
-                <section className="mt-9">
+                <section data-onboarding="assistant-starters" className="mt-9">
                     <div className="mb-3 text-[11.5px] font-bold uppercase tracking-[0.09em] text-k-text-tertiary dark:text-muted-foreground">Comece por aqui</div>
                     <div className="grid grid-cols-2 gap-2.5">
                         {STARTERS.map((s) => (

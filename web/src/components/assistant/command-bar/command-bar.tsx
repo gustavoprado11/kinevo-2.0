@@ -23,6 +23,7 @@ import { CreditMeter } from '@/components/assistant/credit-meter'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AiTier } from '@/lib/auth/get-ai-tier'
 import type { ToolConfirmationResult } from '@/lib/assistant/hitl-types'
+import { markFirstAssistantChat } from '@/lib/assistant/onboarding-milestone'
 
 // ----------------------------------------------------------------------------
 // Acesso (gate de UI) — compartilhado por sidebar e command-palette.
@@ -217,6 +218,7 @@ export function CommandBar({
                     return
                 }
                 setTurn(data as CommandTurnResult)
+                markFirstAssistantChat()
             } catch {
                 setBanner('Falha de conexão. Tente novamente.')
             } finally {
