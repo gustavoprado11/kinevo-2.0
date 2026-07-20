@@ -21,8 +21,6 @@ const VIEWBOX_W = 380
 const VIEWBOX_H = 28
 const PAD_X = 6
 const PAD_Y = 4
-const LINE_COLOR = '#6B46FF'
-const LOW_COLOR = '#EF4444'
 const LOW_THRESHOLD = 50
 
 function normalize(rate: number): number {
@@ -66,27 +64,27 @@ export function AdherenceTrendStrip({ weeklyAdherence, onWeekClick }: AdherenceT
         <div
             role="img"
             aria-label={ariaLabel}
-            className="flex items-center gap-4 rounded-xl border border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFB] dark:bg-white/3 px-4 py-2.5"
+            className="flex items-center gap-4 rounded-panel border border-k-border-subtle px-4 py-2.5"
         >
-            {/* Bloco esquerdo: label + número grande + delta */}
+            {/* Bloco esquerdo: label mono + número tabular + delta */}
             <div className="flex flex-col items-start min-w-[112px]">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
+                <span className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary">
                     {periodLabel}
                 </span>
                 <div className="flex items-baseline gap-2 mt-0.5">
-                    <span className="text-xl font-black text-[#1C1C1E] dark:text-white tracking-tight leading-none">
+                    <span className="text-xl font-bold text-k-text-primary tracking-tight leading-none tabular-nums">
                         {avg}%
                     </span>
-                    <span className="text-[10px] font-medium text-[#86868B] dark:text-k-text-quaternary">
+                    <span className="text-[10px] font-medium text-k-text-quaternary">
                         média
                     </span>
                 </div>
                 {hasDelta && delta !== 0 && (
                     <span
-                        className={`mt-1 inline-flex items-center gap-0.5 text-[10px] font-bold ${
+                        className={`mt-1 inline-flex items-center gap-0.5 text-[10px] font-semibold tabular-nums ${
                             delta > 0
                                 ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-red-500 dark:text-red-400'
+                                : 'text-amber-600 dark:text-amber-400'
                         }`}
                     >
                         {delta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -96,27 +94,24 @@ export function AdherenceTrendStrip({ weeklyAdherence, onWeekClick }: AdherenceT
                 )}
             </div>
 
-            {/* Sparkline */}
+            {/* Sparkline — linha em tinta; ponto vermelho só quando a semana
+                ficou abaixo de 50% (alerta real, não decoração) */}
             <svg
                 viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-                className="flex-1 h-7"
+                className="flex-1 h-7 text-k-text-tertiary"
                 preserveAspectRatio="none"
                 aria-hidden="true"
             >
-                <path d={pathD} fill="none" stroke={LINE_COLOR} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={pathD} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
                 {points.map((p) => {
                     const isLow = p.v < LOW_THRESHOLD
-                    const fill = isLow ? LOW_COLOR : LINE_COLOR
                     return (
                         <circle
                             key={`${p.week}`}
                             cx={p.x}
                             cy={p.y}
                             r={2.5}
-                            fill={fill}
-                            stroke="white"
-                            strokeWidth={0.5}
-                            className={onWeekClick ? 'cursor-pointer' : ''}
+                            className={`${isLow ? 'text-red-500' : 'text-k-text-secondary'} fill-current ${onWeekClick ? 'cursor-pointer' : ''}`}
                             onClick={onWeekClick ? () => onWeekClick(p.week) : undefined}
                             data-testid={`trend-point-${p.week}`}
                         >

@@ -1,13 +1,16 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { FileText, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { BuilderDraftSummary } from '@/components/programs/helpers/use-builder-draft'
 
 /**
- * Entrada de "rascunho não salvo" no card "Próximos Programas" do aluno.
+ * Entrada de "rascunho não salvo" na fila "Próximo ciclo" do aluno.
  * O rascunho vive no localStorage (autosave do builder); aqui o treinador
  * retoma a montagem de onde parou ou descarta.
+ *
+ * Redesign: linha da fila unificada (ponto de status + rótulo mono), não
+ * mais um card âmbar — a origem do rascunho é texto, não cor.
  */
 export function ProgramDraftEntry({
     draft,
@@ -22,35 +25,31 @@ export function ProgramDraftEntry({
         : ''
 
     return (
-        <div className="rounded-xl border border-amber-300/60 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-4">
-            <div className="flex items-center gap-2 mb-1">
-                <FileText className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm truncate">
+        <div className="flex items-center gap-2.5 py-2.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary flex-none" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] font-semibold text-k-text-primary truncate">
                     {draft.name.trim() || 'Programa sem nome'}
-                </h4>
-                <span className="px-2 py-0.5 rounded bg-amber-500/15 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex-shrink-0">
-                    Rascunho
-                </span>
+                </p>
+                <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.06em] text-k-text-tertiary truncate">
+                    Rascunho · não salvo
+                    {draft.workoutCount > 0 && ` · ${draft.workoutCount} ${draft.workoutCount === 1 ? 'treino' : 'treinos'}`}
+                    {savedLabel && ` · ${savedLabel}`}
+                </p>
             </div>
-            <p className="text-[11px] font-medium text-amber-700/70 dark:text-amber-300/70">
-                {draft.workoutCount > 0 && `${draft.workoutCount} ${draft.workoutCount === 1 ? 'treino' : 'treinos'} · `}
-                {savedLabel ? `não salvo · ${savedLabel}` : 'não salvo'}
-            </p>
-            <div className="flex items-center gap-2 mt-3">
-                <button
-                    onClick={() => router.push(draft.route)}
-                    className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors"
-                >
-                    Continuar montando
-                </button>
-                <button
-                    onClick={onDiscard}
-                    aria-label="Descartar rascunho"
-                    className="p-2 text-amber-700/60 dark:text-amber-400/60 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                >
-                    <X className="w-4 h-4" />
-                </button>
-            </div>
+            <button
+                onClick={() => router.push(draft.route)}
+                className="text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity flex-none"
+            >
+                Continuar
+            </button>
+            <button
+                onClick={onDiscard}
+                aria-label="Descartar rascunho"
+                className="p-1.5 text-k-text-quaternary hover:text-red-500 hover:bg-red-500/10 rounded-control transition-colors flex-none"
+            >
+                <X className="w-3.5 h-3.5" />
+            </button>
         </div>
     )
 }

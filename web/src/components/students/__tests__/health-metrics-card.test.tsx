@@ -71,8 +71,10 @@ describe('HealthMetricsCard', () => {
                 bodyMetrics={{ weight: '78', bodyFat: '21', updatedAt: '2026-04-01T00:00:00Z' }}
             />,
         )
-        expect(screen.getByText(/78 kg/)).toBeInTheDocument()
-        expect(screen.getByText(/21%/)).toBeInTheDocument()
+        // Número e unidade vivem em nós separados no markup novo
+        // (78 <span>kg</span>) — matcher por conteúdo do elemento inteiro.
+        expect(screen.getByText((_, el) => el?.tagName === 'P' && /78\s*kg/.test(el.textContent ?? ''))).toBeInTheDocument()
+        expect(screen.getByText((_, el) => el?.tagName === 'P' && /21\s*%/.test(el.textContent ?? ''))).toBeInTheDocument()
     })
 
     it('renderiza banner de "Reavaliação pendente" quando há pendingForms', () => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { AlertTriangle, Check, Loader2 } from 'lucide-react'
 
 interface CompleteProgramModalProps {
     isOpen: boolean
@@ -32,7 +33,7 @@ export function CompleteProgramModal({
     }
 
     return (
-        <div className="fixed inset-0 z-modal flex items-center justify-center">
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -40,71 +41,53 @@ export function CompleteProgramModal({
             />
 
             {/* Modal */}
-            <div className="relative bg-muted rounded-2xl border border-border shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="relative bg-surface-card rounded-panel border border-k-border-primary shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-border">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-semibold text-foreground">Concluir Programa</h2>
-                            <p className="text-sm text-muted-foreground">Finalizar ciclo de treino</p>
-                        </div>
-                    </div>
+                <div className="px-6 py-5 border-b border-k-border-subtle">
+                    <h2 className="text-lg font-bold text-k-text-primary">Concluir programa</h2>
+                    <p className="text-sm text-k-text-tertiary">Finalizar ciclo de treino</p>
                 </div>
 
                 {/* Content */}
                 <div className="px-6 py-5">
-                    <p className="text-foreground/80 mb-4">
+                    <p className="text-sm text-k-text-secondary mb-3">
                         Você está prestes a concluir o programa:
                     </p>
-                    <div className="bg-card rounded-xl border border-border px-4 py-3 mb-4">
-                        <span className="text-foreground font-medium">{programName}</span>
+                    <div className="rounded-control border border-k-border-subtle bg-surface-primary px-4 py-3 mb-4">
+                        <span className="text-k-text-primary font-medium text-sm">{programName}</span>
                     </div>
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
-                        <div className="flex items-start gap-3">
-                            <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <div>
-                                <p className="text-amber-400 text-sm font-medium">Este programa será movido para o histórico</p>
-                                <p className="text-amber-400/70 text-sm mt-1">O aluno não poderá mais executar treinos deste programa no app.</p>
-                            </div>
+                    <div className="flex items-start gap-2.5 rounded-control border border-k-border-subtle border-l-2 border-l-amber-500 px-3.5 py-3">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-k-text-primary text-sm font-medium">Este programa será movido para o histórico</p>
+                            <p className="text-k-text-tertiary text-sm mt-0.5">O aluno não poderá mais executar treinos deste programa no app.</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 bg-background/30 flex items-center justify-end gap-3">
+                <div className="px-6 py-4 border-t border-k-border-subtle flex items-center justify-end gap-3">
                     <button
                         onClick={onClose}
                         disabled={completing}
-                        className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        className="px-4 py-2 text-sm text-k-text-tertiary hover:text-k-text-primary transition-colors disabled:opacity-50"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleConfirm}
                         disabled={completing}
-                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-muted text-foreground text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                        className="px-5 py-2 bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground text-sm font-semibold rounded-control transition-opacity flex items-center gap-2"
                     >
                         {completing ? (
                             <>
-                                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
+                                <Loader2 className="animate-spin w-4 h-4" />
                                 Concluindo...
                             </>
                         ) : (
                             <>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                Concluir Programa
+                                <Check className="w-4 h-4" />
+                                Concluir programa
                             </>
                         )}
                     </button>

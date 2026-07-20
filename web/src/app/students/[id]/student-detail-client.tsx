@@ -25,13 +25,13 @@ import { FinancialSidebarCard } from '@/components/students/financial-sidebar-ca
 import { HealthMetricsCard } from '@/components/students/health-metrics-card'
 import { SmartBanner } from '@/components/students/smart-banner'
 import { pickBanner, type BannerContext } from '@/components/students/smart-banner-rules'
-import { AlertCircle, Dumbbell, Clock, FileText, Play, Pencil, Trash2 } from 'lucide-react'
+import { AlertCircle, FileText, Play, Pencil, Trash2 } from 'lucide-react'
 import { QuickMessageCard } from '@/components/students/quick-message-card'
 import { StudentInsightsCard } from '@/components/students/student-insights-card'
 import { ProgramDraftEntry } from '@/components/students/program-draft-entry'
 import { buildDraftKey, readDraftSummary, removeBuilderDraft, type BuilderDraftSummary } from '@/components/programs/helpers/use-builder-draft'
 import { KeyboardShortcuts } from '@/components/students/keyboard-shortcuts'
-import { StudentStatusBar } from '@/components/students/student-status-bar'
+import { StudentKpiRuler } from '@/components/students/student-kpi-ruler'
 import { useToast } from '@/components/ui/toast'
 import { useStudioState } from '@/hooks/use-studio-state'
 import { useCommunicationStore } from '@/stores/communication-store'
@@ -332,6 +332,21 @@ export function StudentDetailClient({
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [processingId, setProcessingId] = useState<string | null>(null)
     const [activationBlock, setActivationBlock] = useState<{ workoutNames: string[] } | null>(null)
+
+    // Confirmação genérica no padrão do app — substitui os confirm() nativos
+    // do browser (ativar/remover programas da fila, descartar rascunhos).
+    const [confirmDialog, setConfirmDialog] = useState<{
+        title: string
+        message: string
+        confirmLabel: string
+        danger?: boolean
+        onConfirm: () => void
+    } | null>(null)
+
+    // Prorrogar programa — substitui o prompt() nativo por um dialog com input.
+    const [isExtendOpen, setIsExtendOpen] = useState(false)
+    const [extendWeeks, setExtendWeeks] = useState('4')
+    const [extendError, setExtendError] = useState<string | null>(null)
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
     const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0)
     // null = ainda carregando; 0 = sem rotinas (esconder); >0 = mostrar.
@@ -373,15 +388,21 @@ export function StudentDetailClient({
         setIsCompleteModalOpen(false)
     }
 
-    const handleExtendProgram = async () => {
+    const handleExtendProgram = () => {
         if (!activeProgram) return
-        const weeksStr = prompt('Quantas semanas deseja prorrogar? (1-12)')
-        if (!weeksStr) return
-        const weeks = parseInt(weeksStr, 10)
+        setExtendWeeks('4')
+        setExtendError(null)
+        setIsExtendOpen(true)
+    }
+
+    const handleConfirmExtend = async () => {
+        if (!activeProgram) return
+        const weeks = parseInt(extendWeeks, 10)
         if (isNaN(weeks) || weeks < 1 || weeks > 12) {
-            toast({ message: 'Informe um número entre 1 e 12.', type: 'error' })
+            setExtendError('Informe um número entre 1 e 12.')
             return
         }
+        setIsExtendOpen(false)
         const result = await extendProgram(activeProgram.id, student.id, weeks)
         if (result.success) {
             router.refresh()
@@ -419,23 +440,8 @@ export function StudentDetailClient({
     }
 
     // --- Scheduled Program Actions ---
-    const handleActivateScheduled = async (programId: string) => {
-        // Validate all workouts have scheduled days before activation
-        const program = scheduledPrograms.find(p => p.id === programId)
-        if (program?.assigned_workouts) {
-            const missing = program.assigned_workouts.filter(w => !w.scheduled_days || w.scheduled_days.length === 0)
-            if (missing.length > 0) {
-                setActivationBlock({ workoutNames: missing.map(w => w.name) })
-                return
-            }
-        }
-
-        if (activeProgram) {
-            if (!confirm('Ao ativar este programa, o programa atual será encerrado. Deseja continuar?')) return
-        } else {
-            if (!confirm('Deseja ativar este programa agora?')) return
-        }
-
+    // Execução compartilhada por agendados e rascunhos do banco.
+    const runActivateProgram = async (programId: string) => {
         setProcessingId(programId)
         try {
             const result = await activateProgram(programId)
@@ -445,9 +451,7 @@ export function StudentDetailClient({
         }
     }
 
-    const handleDeleteScheduled = async (programId: string) => {
-        if (!confirm('Tem certeza que deseja remover este programa da fila?')) return
-
+    const runDeleteProgram = async (programId: string) => {
         setProcessingId(programId)
         try {
             const result = await deleteProgram(programId)
@@ -455,6 +459,44 @@ export function StudentDetailClient({
         } finally {
             setProcessingId(null)
         }
+    }
+
+    // Valida dias agendados e pede confirmação no padrão do app.
+    const confirmActivation = (
+        programId: string,
+        programs: Array<{ id: string; assigned_workouts?: Array<{ name: string; scheduled_days: number[] }> }>,
+    ) => {
+        const program = programs.find(p => p.id === programId)
+        if (program?.assigned_workouts) {
+            const missing = program.assigned_workouts.filter(w => !w.scheduled_days || w.scheduled_days.length === 0)
+            if (missing.length > 0) {
+                setActivationBlock({ workoutNames: missing.map(w => w.name) })
+                return
+            }
+        }
+
+        setConfirmDialog({
+            title: 'Ativar programa agora?',
+            message: activeProgram
+                ? 'Ao ativar este programa, o programa atual será encerrado.'
+                : 'O programa passa a valer imediatamente para o aluno.',
+            confirmLabel: 'Ativar',
+            onConfirm: () => void runActivateProgram(programId),
+        })
+    }
+
+    const handleActivateScheduled = (programId: string) => {
+        confirmActivation(programId, scheduledPrograms)
+    }
+
+    const handleDeleteScheduled = (programId: string) => {
+        setConfirmDialog({
+            title: 'Remover da fila?',
+            message: 'O programa agendado será removido da fila deste aluno.',
+            confirmLabel: 'Remover',
+            danger: true,
+            onConfirm: () => void runDeleteProgram(programId),
+        })
     }
 
     const handleEditScheduled = (programId: string) => {
@@ -462,58 +504,43 @@ export function StudentDetailClient({
     }
 
     // ── Rascunhos no banco (criados fora do builder, ex.: assistente via MCP) ──
-    const handleActivateDraft = async (programId: string) => {
+    const handleActivateDraft = (programId: string) => {
         // Mesma validação dos agendados: todo treino precisa de dia marcado.
-        const program = draftPrograms.find(p => p.id === programId)
-        if (program?.assigned_workouts) {
-            const missing = program.assigned_workouts.filter(w => !w.scheduled_days || w.scheduled_days.length === 0)
-            if (missing.length > 0) {
-                setActivationBlock({ workoutNames: missing.map(w => w.name) })
-                return
-            }
-        }
-
-        if (activeProgram) {
-            if (!confirm('Ao ativar este programa, o programa atual será encerrado. Deseja continuar?')) return
-        } else {
-            if (!confirm('Deseja ativar este programa agora?')) return
-        }
-
-        setProcessingId(programId)
-        try {
-            const result = await activateProgram(programId)
-            if (!result.success) toast({ message: result.error ?? '', type: 'error' })
-        } finally {
-            setProcessingId(null)
-        }
+        confirmActivation(programId, draftPrograms)
     }
 
-    const handleDeleteDraft = async (programId: string) => {
-        if (!confirm('Tem certeza que deseja descartar este rascunho?')) return
-
-        setProcessingId(programId)
-        try {
-            const result = await deleteProgram(programId)
-            if (!result.success) toast({ message: result.error ?? '', type: 'error' })
-        } finally {
-            setProcessingId(null)
-        }
+    const handleDeleteDraft = (programId: string) => {
+        setConfirmDialog({
+            title: 'Descartar rascunho?',
+            message: 'O rascunho criado pelo assistente será excluído.',
+            confirmLabel: 'Descartar',
+            danger: true,
+            onConfirm: () => void runDeleteProgram(programId),
+        })
     }
 
     // ── Geração de IA pendente de revisão (prescription_generations) ──
     // Descartar usa o mesmo rejectProgram do fluxo de prescrição: troca o
     // status para 'rejected' (reversível, NÃO apaga) e revalida a rota, então
     // o card sai da fila sozinho. Artefato distinto do draftProgram acima.
-    const handleRejectGeneration = async (generationId: string) => {
-        if (!confirm('Tem certeza que deseja descartar este rascunho gerado pela IA?')) return
-
-        setProcessingId(generationId)
-        try {
-            const result = await rejectProgram(generationId)
-            if (!result.success) toast({ message: result.error ?? '', type: 'error' })
-        } finally {
-            setProcessingId(null)
-        }
+    const handleRejectGeneration = (generationId: string) => {
+        setConfirmDialog({
+            title: 'Descartar rascunho da IA?',
+            message: 'A geração volta para o histórico de prescrições e sai da fila. Você pode gerar outra quando quiser.',
+            confirmLabel: 'Descartar',
+            danger: true,
+            onConfirm: () => {
+                void (async () => {
+                    setProcessingId(generationId)
+                    try {
+                        const result = await rejectProgram(generationId)
+                        if (!result.success) toast({ message: result.error ?? '', type: 'error' })
+                    } finally {
+                        setProcessingId(null)
+                    }
+                })()
+            },
+        })
     }
 
     // ── Onda 3 — SmartBanner ────────────────────────────────────────────
@@ -616,18 +643,16 @@ export function StudentDetailClient({
             trainerTheme={trainer.theme ?? undefined}
         >
             <div className="min-h-screen bg-surface-primary -m-8 p-8 space-y-6">
-                {/* Student Header — com barra de status consolidada dentro.
-                    Antes havia 3 faixas horizontais empilhadas abaixo do header
-                    (pontos de atenção, "Sem treino há N dias", ContextualAlerts)
-                    que cortavam a tela antes do dashboard começar. Tudo isso foi
-                    consolidado dentro do StudentStatusBar, passado como children
-                    do header para virar uma única barra horizontal no rodapé
-                    dele. */}
+                {/* Student Header — cabeçalho de página (sem card). Os stats
+                    operacionais que viviam na StudentStatusBar (e duplicados
+                    nos hero-stats do card de programa) foram consolidados na
+                    régua de sinais vitais logo abaixo. */}
                 <StudentHeader
                     student={student}
                     onEdit={handleEditStudent}
                     onDelete={handleDeleteStudent}
                     onSchedule={student.is_trainer_profile || !isOwnStudent ? undefined : () => setIsScheduleModalOpen(true)}
+                    onMessage={student.is_trainer_profile || !isOwnStudent ? undefined : handleOpenMessages}
                     onStartTour={student.is_trainer_profile ? undefined : () => useOnboardingStore.getState().startTour('student_detail', 'manual')}
                     onConsultoria={
                         // Beta fechado (migration 251): sem o flag, o item nem aparece no menu.
@@ -635,21 +660,16 @@ export function StudentDetailClient({
                             ? undefined
                             : handleStartConsultoria
                     }
-                >
-                    <StudentStatusBar
-                        historySummary={historySummary}
-                        recentSessions={recentSessions}
-                        tonnageMap={tonnageMap}
-                        weeklyAdherence={weeklyAdherence}
-                        activeProgram={activeProgram}
-                        financialStatus={displayStatus}
-                        hasPendingForms={pendingForms.length > 0}
-                        studentName={student.name}
-                        studentPhone={student.phone}
-                        onSendMessage={isOwnStudent ? handleOpenMessages : undefined}
-                        mode="compact"
-                    />
-                </StudentHeader>
+                />
+
+                {/* Régua de sinais vitais — padrão da régua do dashboard.
+                    Carrega a âncora do tour "student-history-summary". */}
+                <StudentKpiRuler
+                    historySummary={historySummary}
+                    recentSessions={recentSessions}
+                    weeklyAdherence={weeklyAdherence}
+                    activeProgram={activeProgram}
+                />
 
                 {/* Onda 3 — SmartBanner: 1 banner dominante baseado no estado
                     do aluno (critical/high/info). Substitui os chips de alerta
@@ -662,13 +682,13 @@ export function StudentDetailClient({
                     />
                 )}
 
-                {/* Main Content Grid - New Layout */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                {/* Main Content Grid — programa protagonista em 2/3 da largura,
+                    rail de apoio em 1/3 (redesign "ferramenta profissional") */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
                     {/* Left Column: Active Program Dashboard + Load Chart */}
-                    <div className="space-y-6" data-onboarding="student-actions">
+                    <div className="space-y-6 xl:col-span-2" data-onboarding="student-actions">
                         <ActiveProgramDashboard
                             program={activeProgram}
-                            summary={historySummary}
                             recentSessions={recentSessions}
                             calendarInitialSessions={calendarInitialSessions}
                             weeklyAdherence={weeklyAdherence}
@@ -704,8 +724,8 @@ export function StudentDetailClient({
                         )}
                     </div>
 
-                    {/* Right Column: Próximos Programas (prioridade) → Mensagem → Insights → Avaliações → Financeiro → Histórico */}
-                    <div className="space-y-6 lg:col-span-1">
+                    {/* Right Column: Próximo ciclo (prioridade) → Mensagem → Insights → Avaliações → Financeiro → Histórico */}
+                    <div className="space-y-4">
                         {/* Scheduled Programs — FIRST: ação mais recorrente quando o ciclo termina.
                             Card só aparece quando o treinador realmente precisa olhar a fila:
                             - há programas agendados, OU
@@ -727,32 +747,27 @@ export function StudentDetailClient({
                                 programProgress >= 0.75
                             if (!shouldShow) return null
                             return (
-                        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                                    Próximos Programas
-                                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
-                                        Fila
-                                    </span>
-                                </h3>
-                                {scheduledPrograms && scheduledPrograms.length > 0 && (
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={handleCreateScheduled} className="p-1.5 text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-lg transition-all">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                            </svg>
-                                        </button>
-                                        <button onClick={handleAssignScheduled} className="p-1.5 text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg rounded-lg transition-all">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                )}
+                        <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
+                            {/* Fila unificada "Próximo ciclo": rascunho do builder,
+                                rascunhos do assistente e agendados viram linhas de
+                                UMA lista — ponto de status + rótulo mono no lugar
+                                dos 3 estilos de card colorido. */}
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                                    Próximo ciclo
+                                </span>
+                                <div className="flex items-center gap-3">
+                                    <button onClick={handleCreateScheduled} className="text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity">
+                                        + Criar
+                                    </button>
+                                    <button onClick={handleAssignScheduled} className="text-[11px] font-medium text-k-text-tertiary hover:text-k-text-primary transition-colors">
+                                        Atribuir
+                                    </button>
+                                </div>
                             </div>
 
                             {studentDraft && (
-                                <div className="mb-3">
+                                <div className="border-b border-k-border-subtle last:border-b-0">
                                     <ProgramDraftEntry draft={studentDraft} onDiscard={discardStudentDraft} />
                                 </div>
                             )}
@@ -760,207 +775,169 @@ export function StudentDetailClient({
                             {/* Rascunhos salvos no banco (criados fora do builder, ex.: assistente via MCP).
                                 Diferente do studentDraft acima (rascunho do builder no localStorage):
                                 estes já são programas persistidos e só precisam ser revisados/ativados. */}
-                            {draftPrograms.length > 0 && (
-                                <div className="space-y-3 mb-3">
-                                    {draftPrograms.map(program => {
-                                        const workoutCount = program.assigned_workouts?.length ?? 0
-                                        return (
-                                            <div key={program.id} className="rounded-xl border border-amber-300/60 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-4">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <FileText className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                                                    <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm truncate flex-1">{program.name}</h4>
-                                                    <span className="px-2 py-0.5 rounded bg-amber-500/15 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex-shrink-0">
-                                                        Rascunho
-                                                    </span>
-                                                </div>
-                                                <p className="text-[11px] font-medium text-amber-700/70 dark:text-amber-300/70 flex items-center gap-1">
-                                                    <AssistantMark className="w-3 h-3" />
-                                                    {workoutCount > 0 && `${workoutCount} ${workoutCount === 1 ? 'treino' : 'treinos'} · `}
-                                                    criado pelo assistente · não ativado
-                                                </p>
-                                                <div className="flex items-center gap-2 mt-3">
-                                                    <button
-                                                        onClick={() => handleActivateDraft(program.id)}
-                                                        disabled={!!processingId}
-                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
-                                                    >
-                                                        <Play className="w-3.5 h-3.5" /> Ativar
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleEditScheduled(program.id)}
-                                                        aria-label="Revisar rascunho"
-                                                        className="p-2 text-amber-700/70 dark:text-amber-400/70 hover:text-[#1D1D1F] dark:hover:text-white hover:bg-amber-500/10 rounded-lg transition-colors"
-                                                    >
-                                                        <Pencil className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteDraft(program.id)}
-                                                        disabled={!!processingId}
-                                                        aria-label="Descartar rascunho"
-                                                        className="p-2 text-amber-700/60 dark:text-amber-400/60 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
+                            {draftPrograms.length > 0 && draftPrograms.map(program => {
+                                const workoutCount = program.assigned_workouts?.length ?? 0
+                                return (
+                                    <div key={program.id} className="flex items-center gap-2.5 py-2.5 border-b border-k-border-subtle last:border-b-0">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary flex-none" aria-hidden="true" />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[12.5px] font-semibold text-k-text-primary truncate">{program.name}</p>
+                                            <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.06em] text-k-text-tertiary truncate">
+                                                Rascunho · assistente
+                                                {workoutCount > 0 && ` · ${workoutCount} ${workoutCount === 1 ? 'treino' : 'treinos'}`}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleActivateDraft(program.id)}
+                                            disabled={!!processingId}
+                                            aria-label="Ativar rascunho"
+                                            title="Ativar"
+                                            className="p-1.5 text-k-text-tertiary hover:text-k-text-primary hover:bg-surface-inset rounded-control transition-colors disabled:opacity-50 flex-none"
+                                        >
+                                            <Play className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleEditScheduled(program.id)}
+                                            aria-label="Revisar rascunho"
+                                            title="Revisar"
+                                            className="p-1.5 text-k-text-tertiary hover:text-k-text-primary hover:bg-surface-inset rounded-control transition-colors flex-none"
+                                        >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteDraft(program.id)}
+                                            disabled={!!processingId}
+                                            aria-label="Descartar rascunho"
+                                            title="Descartar"
+                                            className="p-1.5 text-k-text-quaternary hover:text-red-500 hover:bg-red-500/10 rounded-control transition-colors disabled:opacity-50 flex-none"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                )
+                            })}
 
                             {/* Rascunhos gerados pela IA (geração pendente de revisão) — abrir no builder. */}
-                            {aiDrafts.length > 0 && (
-                                <div className="space-y-3 mb-3">
-                                    {aiDrafts.map(draft => (
-                                        <div key={draft.id} className="rounded-xl border border-violet-300/60 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/5 p-4">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <AssistantMark className="w-4 h-4 text-violet-500 flex-shrink-0" />
-                                                <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm truncate flex-1">Rascunho gerado pela IA</h4>
-                                                <span className="px-2 py-0.5 rounded bg-violet-500/15 text-[10px] text-violet-600 dark:text-violet-400 font-bold flex-shrink-0">
-                                                    Rascunho
-                                                </span>
-                                            </div>
-                                            <p className="text-[11px] font-medium text-violet-700/70 dark:text-violet-300/70">
-                                                Gerado pelo assistente · pendente de revisão
-                                            </p>
-                                            <div className="flex items-center gap-2 mt-3">
-                                                <button
-                                                    onClick={() => router.push(`/students/${student.id}/program/new?generationId=${draft.id}`)}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-primary hover:opacity-90 text-primary-foreground text-xs font-bold rounded-control transition-colors"
-                                                >
-                                                    <Pencil className="w-3.5 h-3.5" /> Revisar no builder
-                                                </button>
-                                                <button
-                                                    onClick={() => handleRejectGeneration(draft.id)}
-                                                    disabled={!!processingId}
-                                                    aria-label="Descartar rascunho gerado pela IA"
-                                                    className="p-2 text-violet-700/60 dark:text-violet-400/60 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {!scheduledPrograms || scheduledPrograms.length === 0 ? (
-                                <div className="text-center py-4">
-                                    {(() => {
-                                        if (!activeProgram) {
-                                            return (
-                                                <div className="rounded-xl border-2 border-dashed border-[#D2D2D7] dark:border-k-border-subtle p-4 mb-3">
-                                                    <div className="w-10 h-10 bg-violet-50 dark:bg-violet-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
-                                                        <Dumbbell className="w-5 h-5 text-violet-500" />
-                                                    </div>
-                                                    <p className="text-sm font-medium text-[#1C1C1E] dark:text-k-text-secondary">Sem programa ativo</p>
-                                                    <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-0.5">Crie o primeiro programa para {student.name.split(' ')[0]}</p>
-                                                </div>
-                                            )
-                                        }
-                                        if ((activeProgram.status as string) === 'expired') {
-                                            return (
-                                                <div className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/5 p-4 mb-3">
-                                                    <div className="flex items-center gap-2 justify-center mb-1">
-                                                        <AlertCircle className="w-4 h-4 text-red-500" />
-                                                        <span className="text-sm font-semibold text-red-600 dark:text-red-400">Programa expirado!</span>
-                                                    </div>
-                                                    <p className="text-xs text-red-500/80 dark:text-red-400/60">Conclua, prorrogue ou atribua um novo programa.</p>
-                                                </div>
-                                            )
-                                        }
-                                        const programProgress = activeProgram?.started_at && activeProgram?.duration_weeks
-                                            ? (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks) / activeProgram.duration_weeks
-                                            : 0
-                                        const remainingWeeks = activeProgram?.started_at && activeProgram?.duration_weeks
-                                            ? Math.max(0, activeProgram.duration_weeks - (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks))
-                                            : 0
-                                        if (programProgress >= 0.75) {
-                                            return (
-                                                <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-4 mb-3">
-                                                    <div className="flex items-center gap-2 justify-center mb-1">
-                                                        <Clock className="w-4 h-4 text-amber-500" />
-                                                        <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{remainingWeeks === 0 ? 'Última semana!' : `Faltam ${remainingWeeks} semana${remainingWeeks !== 1 ? 's' : ''}!`}</span>
-                                                    </div>
-                                                    <p className="text-xs text-amber-600/70 dark:text-amber-400/60">Prepare o próximo ciclo de treinamento.</p>
-                                                </div>
-                                            )
-                                        }
-                                        if (programProgress >= 0.5) {
-                                            return (
-                                                <div className="rounded-xl border border-[#D2D2D7] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-white/3 p-4 mb-3">
-                                                    <p className="text-sm text-[#6E6E73] dark:text-k-text-tertiary">Programa em {Math.round(programProgress * 100)}%</p>
-                                                    <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-0.5">Bom momento para planejar o próximo.</p>
-                                                </div>
-                                            )
-                                        }
-                                        return (
-                                            <div className="rounded-xl border-2 border-dashed border-[#D2D2D7] dark:border-k-border-subtle p-4 mb-3">
-                                                <p className="text-sm text-[#86868B] dark:text-k-text-quaternary">Nenhum programa na fila.</p>
-                                            </div>
-                                        )
-                                    })()}
-                                    <div className="flex items-center justify-center gap-2">
-                                        <button
-                                            onClick={handleCreateScheduled}
-                                            className="px-3 py-1.5 text-xs font-bold bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-all"
-                                        >
-                                            + Criar Novo
-                                        </button>
-                                        <button
-                                            onClick={handleAssignScheduled}
-                                            className="px-3 py-1.5 text-xs font-bold text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary border border-[#D2D2D7] dark:border-k-border-subtle rounded-lg transition-all"
-                                        >
-                                            Atribuir
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    <div className="rounded-xl border border-violet-200 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/5 p-4">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Clock className="w-4 h-4 text-violet-500" />
-                                            <span className="text-sm font-semibold text-violet-700 dark:text-violet-300">
-                                                {getScheduledActivationLabel(scheduledPrograms[0]?.scheduled_start_date)}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-violet-700/70 dark:text-violet-300/70">
-                                            O programa mais antigo elegível na fila será ativado automaticamente nessa data.
+                            {aiDrafts.length > 0 && aiDrafts.map(draft => (
+                                <div key={draft.id} className="flex items-center gap-2.5 py-2.5 border-b border-k-border-subtle last:border-b-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary flex-none" aria-hidden="true" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[12.5px] font-semibold text-k-text-primary truncate flex items-center gap-1.5">
+                                            <AssistantMark className="w-3 h-3 text-k-text-tertiary flex-none" aria-hidden="true" />
+                                            Rascunho gerado pela IA
+                                        </p>
+                                        <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.06em] text-k-text-tertiary truncate">
+                                            Rascunho · IA · pendente de revisão
                                         </p>
                                     </div>
+                                    <button
+                                        onClick={() => router.push(`/students/${student.id}/program/new?generationId=${draft.id}`)}
+                                        className="text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity flex-none"
+                                    >
+                                        Revisar
+                                    </button>
+                                    <button
+                                        onClick={() => handleRejectGeneration(draft.id)}
+                                        disabled={!!processingId}
+                                        aria-label="Descartar rascunho gerado pela IA"
+                                        title="Descartar"
+                                        className="p-1.5 text-k-text-quaternary hover:text-red-500 hover:bg-red-500/10 rounded-control transition-colors disabled:opacity-50 flex-none"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            ))}
 
-                                    {scheduledPrograms.map(program => (
-                                        <div key={program.id} className="bg-glass-bg rounded-xl p-4 border border-k-border-subtle hover:border-violet-500/30 transition-all group relative overflow-hidden">
-                                            <div className="flex justify-between items-start">
-                                                <div className="relative z-sticky">
-                                                    <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm group-hover:text-violet-300 transition-colors">{program.name}</h4>
-                                                    <div className="flex items-center gap-3 text-[10px] font-bold text-k-text-quaternary mt-1">
-                                                        {program.duration_weeks && <span>{program.duration_weeks} sem</span>}
-                                                        {program.scheduled_start_date && (
-                                                            <span className="text-violet-400">
-                                                                {formatBrDate(program.scheduled_start_date)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p className="mt-2 text-[11px] font-medium text-violet-600/80 dark:text-violet-300/80">
-                                                        {getScheduledActivationLabel(program.scheduled_start_date)}
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all relative z-sticky">
-                                                    <button onClick={() => handleActivateScheduled(program.id)} disabled={!!processingId} className="p-1.5 text-violet-400 hover:text-white hover:bg-violet-600 rounded-lg transition-all">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg>
-                                                    </button>
-                                                    <button onClick={() => handleEditScheduled(program.id)} className="p-1.5 text-k-text-tertiary hover:text-k-text-primary rounded-lg transition-all">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                                    </button>
-                                                    <button onClick={() => handleDeleteScheduled(program.id)} disabled={!!processingId} className="p-1.5 text-k-text-tertiary hover:text-red-400 rounded-lg transition-all">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                    </button>
+                            {!scheduledPrograms || scheduledPrograms.length === 0 ? (
+                                (() => {
+                                    if (!activeProgram) {
+                                        return (
+                                            <div className="flex items-center gap-2.5 py-3">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-k-text-quaternary flex-none" aria-hidden="true" />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[12.5px] font-medium text-k-text-secondary">Sem programa ativo</p>
+                                                    <p className="text-[11px] text-k-text-quaternary">Crie o primeiro programa para {student.name.split(' ')[0]}.</p>
                                                 </div>
                                             </div>
-                                            <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                        )
+                                    }
+                                    if ((activeProgram.status as string) === 'expired') {
+                                        return (
+                                            <div className="flex items-center gap-2.5 py-3">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-none" aria-hidden="true" />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[12.5px] font-medium text-red-600 dark:text-red-400">Programa expirado</p>
+                                                    <p className="text-[11px] text-k-text-quaternary">Conclua, prorrogue ou atribua um novo programa.</p>
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+                                    const programProgress = activeProgram?.started_at && activeProgram?.duration_weeks
+                                        ? (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks) / activeProgram.duration_weeks
+                                        : 0
+                                    const remainingWeeks = activeProgram?.started_at && activeProgram?.duration_weeks
+                                        ? Math.max(0, activeProgram.duration_weeks - (getProgramWeek(new Date(), activeProgram.started_at, activeProgram.duration_weeks) ?? activeProgram.duration_weeks))
+                                        : 0
+                                    if (programProgress >= 0.75) {
+                                        return (
+                                            <div className="flex items-center gap-2.5 py-3">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-none" aria-hidden="true" />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[12.5px] font-medium text-amber-600 dark:text-amber-400">
+                                                        {remainingWeeks === 0 ? 'Última semana' : `Faltam ${remainingWeeks} semana${remainingWeeks !== 1 ? 's' : ''}`}
+                                                    </p>
+                                                    <p className="text-[11px] text-k-text-quaternary">Prepare o próximo ciclo de treinamento.</p>
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+                                    if (programProgress >= 0.5) {
+                                        return (
+                                            <div className="flex items-center gap-2.5 py-3">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-k-text-quaternary flex-none" aria-hidden="true" />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[12.5px] font-medium text-k-text-secondary tabular-nums">Programa em {Math.round(programProgress * 100)}%</p>
+                                                    <p className="text-[11px] text-k-text-quaternary">Bom momento para planejar o próximo.</p>
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+                                    return (
+                                        <p className="py-3 text-[12.5px] text-k-text-quaternary">Nenhum programa na fila.</p>
+                                    )
+                                })()
+                            ) : (
+                                <div>
+                                    {scheduledPrograms.map(program => (
+                                        <div key={program.id} className="flex items-center gap-2.5 py-2.5 border-b border-k-border-subtle last:border-b-0 group">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-k-text-quaternary flex-none" aria-hidden="true" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[12.5px] font-semibold text-k-text-primary truncate">{program.name}</p>
+                                                <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.06em] text-k-text-tertiary truncate">
+                                                    {getScheduledActivationLabel(program.scheduled_start_date)}
+                                                </p>
+                                            </div>
+                                            {program.duration_weeks && (
+                                                <span className="font-mono text-[10px] text-k-text-quaternary tabular-nums flex-none group-hover:hidden">
+                                                    {program.duration_weeks} sem
+                                                </span>
+                                            )}
+                                            <div className="hidden group-hover:flex items-center flex-none">
+                                                <button onClick={() => handleActivateScheduled(program.id)} disabled={!!processingId} aria-label="Ativar agora" title="Ativar agora" className="p-1.5 text-k-text-tertiary hover:text-k-text-primary hover:bg-surface-inset rounded-control transition-colors disabled:opacity-50">
+                                                    <Play className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => handleEditScheduled(program.id)} aria-label="Editar programa agendado" title="Editar" className="p-1.5 text-k-text-tertiary hover:text-k-text-primary hover:bg-surface-inset rounded-control transition-colors">
+                                                    <Pencil className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => handleDeleteScheduled(program.id)} disabled={!!processingId} aria-label="Remover da fila" title="Remover" className="p-1.5 text-k-text-quaternary hover:text-red-500 hover:bg-red-500/10 rounded-control transition-colors disabled:opacity-50">
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
+                                    <p className="mt-2 text-[10.5px] text-k-text-quaternary">
+                                        O programa mais antigo elegível na fila será ativado automaticamente na data agendada.
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -992,22 +969,22 @@ export function StudentDetailClient({
                             studentName={student.name}
                             onOpenThread={handleOpenMessages}
                             suggestions={(() => {
-                                const s: { emoji: string; label: string; message: string }[] = []
+                                const s: { label: string; message: string }[] = []
                                 const firstName = student.name.split(' ')[0]
                                 if (historySummary.completedThisWeek >= historySummary.expectedPerWeek && historySummary.expectedPerWeek > 0) {
-                                    s.push({ emoji: '🎉', label: 'Parabenizar', message: `Parabéns ${firstName}! Atingiu a meta da semana, excelente dedicação!` })
+                                    s.push({ label: 'Parabenizar', message: `Parabéns ${firstName}! Atingiu a meta da semana, excelente dedicação!` })
                                 }
                                 if (historySummary.streak >= 3) {
-                                    s.push({ emoji: '🔥', label: 'Sequência', message: `${firstName}, ${historySummary.streak} treinos seguidos! Continue assim, o resultado vem!` })
+                                    s.push({ label: 'Sequência', message: `${firstName}, ${historySummary.streak} treinos seguidos! Continue assim, o resultado vem!` })
                                 }
                                 if (historySummary.lastSessionDate) {
                                     const daysSince = Math.floor((Date.now() - new Date(historySummary.lastSessionDate).getTime()) / (1000 * 60 * 60 * 24))
                                     if (daysSince >= 3) {
-                                        s.push({ emoji: '💪', label: 'Motivar', message: `E aí ${firstName}, tudo bem? Bora voltar aos treinos, estou te esperando!` })
+                                        s.push({ label: 'Motivar', message: `E aí ${firstName}, tudo bem? Bora voltar aos treinos, estou te esperando!` })
                                     }
                                 }
                                 if (s.length === 0) {
-                                    s.push({ emoji: '👋', label: 'Check-in', message: `Oi ${firstName}, como está se sentindo com os treinos?` })
+                                    s.push({ label: 'Check-in', message: `Oi ${firstName}, como está se sentindo com os treinos?` })
                                 }
                                 return s
                             })()}
@@ -1097,26 +1074,100 @@ export function StudentDetailClient({
             {activationBlock && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setActivationBlock(null)} />
-                    <div className="relative bg-surface-card border border-k-border-primary rounded-2xl shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
-                        <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
-                            <AlertCircle className="w-6 h-6 text-amber-400" />
-                        </div>
-                        <h3 className="text-lg font-bold text-white text-center mb-2">Treinos sem dia agendado</h3>
-                        <p className="text-sm text-k-text-tertiary text-center mb-1">
+                    <div className="relative bg-surface-card border border-k-border-primary rounded-panel shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
+                        <h3 className="text-lg font-bold text-k-text-primary mb-2 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-amber-500" />
+                            Treinos sem dia agendado
+                        </h3>
+                        <p className="text-sm text-k-text-secondary mb-1">
                             {activationBlock.workoutNames.length === 1
                                 ? `O treino "${activationBlock.workoutNames[0]}" não possui dias da semana atribuídos.`
                                 : `Os seguintes treinos não possuem dias da semana atribuídos: ${activationBlock.workoutNames.map(n => `"${n}"`).join(', ')}.`
                             }
                         </p>
-                        <p className="text-xs text-amber-400/80 text-center mb-6">
+                        <p className="text-xs text-k-text-tertiary mb-6">
                             Atribua pelo menos um dia a cada treino antes de ativar o programa.
                         </p>
                         <button
                             onClick={() => setActivationBlock(null)}
-                            className="w-full py-3 bg-primary hover:opacity-90 text-primary-foreground text-sm font-bold rounded-control transition-colors"
+                            className="w-full py-2.5 bg-primary hover:opacity-90 text-primary-foreground text-sm font-semibold rounded-control transition-opacity"
                         >
                             Entendi
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmação genérica — substitui os confirm() nativos */}
+            {confirmDialog && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmDialog(null)} />
+                    <div className="relative bg-surface-card border border-k-border-primary rounded-panel shadow-2xl p-6 max-w-sm w-full animate-in zoom-in-95 fade-in duration-200">
+                        <h3 className="text-lg font-bold text-k-text-primary mb-2">{confirmDialog.title}</h3>
+                        <p className="text-sm text-k-text-secondary mb-6">{confirmDialog.message}</p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmDialog(null)}
+                                className="flex-1 px-4 py-2.5 bg-surface-inset hover:bg-surface-inset/70 text-k-text-primary text-sm font-semibold rounded-control transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const action = confirmDialog.onConfirm
+                                    setConfirmDialog(null)
+                                    action()
+                                }}
+                                className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-control transition-colors ${
+                                    confirmDialog.danger
+                                        ? 'bg-red-500 hover:bg-red-600 text-white'
+                                        : 'bg-primary hover:opacity-90 text-primary-foreground transition-opacity'
+                                }`}
+                            >
+                                {confirmDialog.confirmLabel}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Prorrogar programa — substitui o prompt() nativo */}
+            {isExtendOpen && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsExtendOpen(false)} />
+                    <div className="relative bg-surface-card border border-k-border-primary rounded-panel shadow-2xl p-6 max-w-sm w-full animate-in zoom-in-95 fade-in duration-200">
+                        <h3 className="text-lg font-bold text-k-text-primary mb-2">Prorrogar programa</h3>
+                        <p className="text-sm text-k-text-secondary mb-4">
+                            Por quantas semanas o programa atual deve ser prorrogado?
+                        </p>
+                        <input
+                            type="number"
+                            min={1}
+                            max={12}
+                            value={extendWeeks}
+                            onChange={(e) => { setExtendWeeks(e.target.value); setExtendError(null) }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') void handleConfirmExtend() }}
+                            autoFocus
+                            className="w-full font-mono text-sm text-k-text-primary bg-surface-inset border border-k-border-subtle rounded-control px-3.5 py-2.5 outline-none focus:border-ring focus:ring-1 focus:ring-ring/25 tabular-nums"
+                            aria-label="Semanas de prorrogação (1 a 12)"
+                        />
+                        {extendError && (
+                            <p className="mt-1.5 text-[11px] text-red-500 dark:text-red-400">{extendError}</p>
+                        )}
+                        <div className="flex gap-3 mt-5">
+                            <button
+                                onClick={() => setIsExtendOpen(false)}
+                                className="flex-1 px-4 py-2.5 bg-surface-inset hover:bg-surface-inset/70 text-k-text-primary text-sm font-semibold rounded-control transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => void handleConfirmExtend()}
+                                className="flex-1 px-4 py-2.5 bg-primary hover:opacity-90 text-primary-foreground text-sm font-semibold rounded-control transition-opacity"
+                            >
+                                Prorrogar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1125,30 +1176,30 @@ export function StudentDetailClient({
             {createChoice && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCreateChoice(null)} />
-                    <div className="relative bg-surface-card border border-k-border-primary rounded-2xl shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
-                        <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
-                            <FileText className="w-6 h-6 text-amber-400" />
-                        </div>
-                        <h3 className="text-lg font-bold text-white text-center mb-2">Há um rascunho em andamento</h3>
-                        <p className="text-sm text-k-text-tertiary text-center mb-6">
+                    <div className="relative bg-surface-card border border-k-border-primary rounded-panel shadow-2xl p-6 max-w-md w-full animate-in zoom-in-95 fade-in duration-200">
+                        <h3 className="text-lg font-bold text-k-text-primary mb-2 flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-amber-500" />
+                            Há um rascunho em andamento
+                        </h3>
+                        <p className="text-sm text-k-text-secondary mb-6">
                             Você tem um rascunho não salvo deste aluno{studentDraft?.name?.trim() ? ` ("${studentDraft.name.trim()}")` : ''}. Deseja continuar de onde parou ou começar um novo programa do zero?
                         </p>
                         <div className="flex flex-col gap-2">
                             <button
                                 onClick={continueDraftFromChoice}
-                                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-full transition-colors"
+                                className="w-full py-2.5 bg-primary hover:opacity-90 text-primary-foreground text-sm font-semibold rounded-control transition-opacity"
                             >
                                 Continuar rascunho
                             </button>
                             <button
                                 onClick={startFreshFromChoice}
-                                className="w-full py-3 bg-transparent hover:bg-[#FF3B30]/10 text-[#FF3B30] dark:text-red-400 text-sm font-bold rounded-full transition-colors border border-[#FF3B30]/20 dark:border-red-500/20"
+                                className="w-full py-2.5 bg-transparent hover:bg-red-500/10 text-red-500 dark:text-red-400 text-sm font-semibold rounded-control transition-colors border border-red-500/20"
                             >
                                 Começar do zero (descarta o rascunho)
                             </button>
                             <button
                                 onClick={() => setCreateChoice(null)}
-                                className="w-full py-3 bg-transparent hover:bg-glass-bg-active text-k-text-tertiary text-sm font-bold rounded-full transition-colors"
+                                className="w-full py-2.5 bg-transparent hover:bg-surface-inset text-k-text-tertiary text-sm font-semibold rounded-control transition-colors"
                             >
                                 Cancelar
                             </button>

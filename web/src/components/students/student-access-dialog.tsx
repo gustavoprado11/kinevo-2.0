@@ -53,31 +53,31 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
                 <div className="hidden dark:block absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-3xl rounded-full" />
 
                 <div className="relative">
-                    <div className="w-16 h-16 bg-[#34C759]/10 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                        <svg className="w-8 h-8 text-[#34C759] dark:text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+                        <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
 
-                    <h3 className="text-xl font-semibold text-[#1D1D1F] dark:text-foreground text-center mb-2">Aluno Criado!</h3>
-                    <p className="text-[#86868B] dark:text-muted-foreground text-sm text-center mb-8">
+                    <h3 className="text-xl font-semibold text-k-text-primary text-center mb-2">Aluno Criado!</h3>
+                    <p className="text-k-text-tertiary text-sm text-center mb-8">
                         Envie as informações de acesso para o seu aluno agora mesmo.
                     </p>
 
                     {/* Credentials Card */}
-                    <div className="bg-[#F5F5F7] dark:bg-card border border-[#E8E8ED] dark:border-border rounded-xl p-5 space-y-4 mb-8">
+                    <div className="bg-surface-primary border border-k-border-subtle rounded-xl p-5 space-y-4 mb-8">
                         <div>
-                            <span className="text-[10px] font-bold text-[#86868B] dark:text-muted-foreground block mb-1 uppercase tracking-wide">E-mail / Login</span>
-                            <p className="text-[#1D1D1F] dark:text-foreground font-medium select-all">{studentData.email}</p>
+                            <span className="text-[10px] font-bold text-k-text-tertiary block mb-1 uppercase tracking-wide">E-mail / Login</span>
+                            <p className="text-k-text-primary font-medium select-all">{studentData.email}</p>
                         </div>
-                        <div className="pt-4 border-t border-[#D2D2D7] dark:border-border">
-                            <span className="text-[10px] font-bold text-[#86868B] dark:text-muted-foreground block mb-1 uppercase tracking-wide">Senha Provisória</span>
-                            <p className="text-2xl font-mono font-bold text-[#34C759] dark:text-emerald-400 tracking-widest">{studentData.password}</p>
+                        <div className="pt-4 border-t border-k-border-primary">
+                            <span className="text-[10px] font-bold text-k-text-tertiary block mb-1 uppercase tracking-wide">Senha Provisória</span>
+                            <p className="text-2xl font-mono font-bold text-emerald-600 dark:text-emerald-400 tracking-widest">{studentData.password}</p>
                         </div>
                         {studentData.formName && (
-                            <div className="pt-4 border-t border-[#D2D2D7] dark:border-border">
-                                <span className="text-[10px] font-bold text-[#86868B] dark:text-muted-foreground block mb-1 uppercase tracking-wide">Formulário enviado</span>
-                                <p className="text-sm text-[#1D1D1F] dark:text-foreground font-medium">{studentData.formName}</p>
+                            <div className="pt-4 border-t border-k-border-primary">
+                                <span className="text-[10px] font-bold text-k-text-tertiary block mb-1 uppercase tracking-wide">Formulário enviado</span>
+                                <p className="text-sm text-k-text-primary font-medium">{studentData.formName}</p>
                             </div>
                         )}
                     </div>
@@ -96,18 +96,18 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
 
                         <button
                             onClick={handleCopy}
-                            className={`w-full h-12 bg-[#F5F5F7] dark:bg-secondary hover:bg-[#ECECF0] dark:hover:bg-secondary/80 text-[#1D1D1F] dark:text-secondary-foreground font-medium rounded-full transition-all flex items-center justify-center gap-2 border border-[#D2D2D7] dark:border-border ${copied ? 'ring-2 ring-[#34C759]/50 dark:ring-emerald-500/50' : ''}`}
+                            className={`w-full h-12 bg-surface-inset hover:bg-surface-inset/70 text-k-text-primary font-medium rounded-full transition-all flex items-center justify-center gap-2 border border-k-border-primary ${copied ? 'ring-2 ring-emerald-500/50' : ''}`}
                         >
                             {copied ? (
                                 <>
-                                    <svg className="w-5 h-5 text-[#34C759] dark:text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                     Copiado!
                                 </>
                             ) : (
                                 <>
-                                    <svg className="w-5 h-5 text-[#86868B] dark:text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 text-k-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                                     </svg>
                                     Copiar Texto
@@ -117,7 +117,7 @@ export function StudentAccessDialog({ isOpen, onClose, studentData }: StudentAcc
 
                         <button
                             onClick={onClose}
-                            className="w-full pt-4 text-[#7C3AED] dark:text-muted-foreground hover:text-[#6D28D9] dark:hover:text-foreground/80 text-sm font-medium transition-colors"
+                            className="w-full pt-4 text-k-text-tertiary hover:text-k-text-primary text-sm font-medium transition-colors"
                         >
                             Fechar e voltar para a lista
                         </button>

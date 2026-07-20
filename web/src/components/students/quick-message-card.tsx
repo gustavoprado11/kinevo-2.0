@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, Loader2, Check, MessageCircle } from 'lucide-react'
+import { Send, Loader2, Check } from 'lucide-react'
 import { sendMessage } from '@/app/messages/actions'
 import { AssistantMark } from '@/components/assistant/assistant-mark'
 
+// Sem emoji: sugestões são texto puro (regra da UI — ícones são Lucide,
+// emoji nunca).
 interface QuickSuggestion {
-    emoji: string
     label: string
     message: string
 }
@@ -72,16 +73,15 @@ export function QuickMessageCard({ studentId, studentName, suggestions = [], onO
     const firstName = studentName.split(' ')[0]
 
     return (
-        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6">
+        <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
             <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-blue-500" />
-                    Mensagem Rápida
-                </h3>
+                <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                    Mensagem rápida
+                </span>
                 {onOpenThread && (
                     <button
                         onClick={onOpenThread}
-                        className="text-[10px] font-bold text-[#7C3AED] dark:text-violet-400 hover:underline"
+                        className="text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity"
                     >
                         Ver conversa
                     </button>
@@ -90,29 +90,28 @@ export function QuickMessageCard({ studentId, studentName, suggestions = [], onO
 
             {/* Success feedback */}
             {showSuccess && (
-                <div className="flex items-center gap-2 px-3 py-2 mb-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
-                    <Check className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Mensagem enviada!</span>
+                <div className="flex items-center gap-1.5 mb-3">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Mensagem enviada</span>
                 </div>
             )}
 
             {/* Error feedback */}
             {error && (
-                <p className="text-red-500 text-[10px] mb-2">{error}</p>
+                <p className="text-red-500 text-[11px] mb-2">{error}</p>
             )}
 
-            {/* Quick suggestions — Onda 2 destaca a primeira como frase pronta
-                contextual (chip violeta com ícone Sparkles + texto entre aspas).
-                As demais (até mais 2) seguem como chips compactos. */}
+            {/* Quick suggestions — a primeira é a frase pronta contextual do
+                assistente (citação); as demais são chips de texto quietos. */}
             {suggestions.length > 0 && !text && (
                 <div className="flex flex-col gap-2 mb-3">
                     <button
                         type="button"
                         onClick={() => setText(suggestions[0].message)}
-                        className="w-full text-left px-3 py-2 rounded-lg bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-violet-700 dark:text-violet-300 text-[12.5px] font-bold transition-colors hover:bg-violet-100 dark:hover:bg-violet-500/15 flex items-start gap-2"
+                        className="w-full text-left px-3 py-2 rounded-control border border-k-border-subtle bg-surface-primary text-[12.5px] text-k-text-secondary hover:bg-surface-inset transition-colors flex items-start gap-2"
                         data-testid="featured-suggestion"
                     >
-                        <AssistantMark className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-70" aria-hidden="true" />
+                        <AssistantMark className="w-3.5 h-3.5 mt-0.5 shrink-0 text-k-text-tertiary" aria-hidden="true" />
                         <span className="italic">&ldquo;{suggestions[0].message}&rdquo;</span>
                     </button>
                     {suggestions.length > 1 && (
@@ -121,10 +120,9 @@ export function QuickMessageCard({ studentId, studentName, suggestions = [], onO
                                 <button
                                     key={i}
                                     onClick={() => setText(s.message)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#F5F5F7] dark:bg-white/5 hover:bg-[#E8E8ED] dark:hover:bg-white/10 text-[11px] font-medium text-[#6E6E73] dark:text-k-text-tertiary transition-colors"
+                                    className="px-2.5 py-1.5 rounded-control border border-k-border-primary text-[11px] font-medium text-k-text-secondary hover:bg-surface-inset hover:text-k-text-primary transition-colors"
                                 >
-                                    <span>{s.emoji}</span>
-                                    <span>{s.label}</span>
+                                    {s.label}
                                 </button>
                             ))}
                         </div>
@@ -141,22 +139,23 @@ export function QuickMessageCard({ studentId, studentName, suggestions = [], onO
                     onKeyDown={handleKeyDown}
                     placeholder={`Enviar mensagem para ${firstName}...`}
                     rows={1}
-                    className="flex-1 resize-none bg-[#F5F5F7] dark:bg-surface-inset rounded-xl px-3.5 py-2 text-sm text-[#1D1D1F] dark:text-k-text-primary placeholder-[#AEAEB2] dark:placeholder-k-text-quaternary outline-none focus:ring-1 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 max-h-[80px]"
+                    className="flex-1 resize-none bg-surface-inset rounded-control px-3.5 py-2 text-sm text-k-text-primary placeholder-k-text-quaternary outline-none focus:ring-1 focus:ring-ring/25 max-h-[80px]"
                 />
                 <button
                     type="button"
                     onClick={handleSubmit}
                     disabled={!text.trim() || isSending}
-                    className="p-2 rounded-full bg-[#7C3AED] dark:bg-violet-600 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#6D28D9] dark:hover:bg-violet-500 transition-colors flex-shrink-0"
+                    aria-label="Enviar mensagem"
+                    className="p-2 rounded-control border border-k-border-primary text-k-text-secondary hover:bg-surface-inset hover:text-k-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                 >
                     {isSending ? (
-                        <Loader2 size={16} className="animate-spin" />
+                        <Loader2 size={15} className="animate-spin" />
                     ) : (
-                        <Send size={16} strokeWidth={1.5} />
+                        <Send size={15} strokeWidth={1.5} />
                     )}
                 </button>
             </div>
-            <p className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary mt-1.5">
+            <p className="text-[10px] text-k-text-quaternary mt-1.5">
                 Enter para enviar, Shift+Enter para nova linha
             </p>
         </div>

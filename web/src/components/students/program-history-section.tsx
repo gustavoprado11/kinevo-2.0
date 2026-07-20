@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, Clock, FileText } from 'lucide-react'
+import { Calendar, Clock, FileText, ChevronRight } from 'lucide-react'
 import { SessionDetailSheet } from './session-detail-sheet'
 
 interface CompletedProgram {
@@ -40,6 +40,13 @@ function computeAdherence(p: CompletedProgram): number | null {
     const expected = p.workouts_count * p.duration_weeks
     if (expected <= 0) return null
     return Math.round((p.sessions_count / expected) * 100)
+}
+
+// PSE como texto — cor só quando alerta (padrão do redesign).
+function rpeTextClass(rpe: number): string {
+    if (rpe >= 9) return 'text-red-600 dark:text-red-400'
+    if (rpe >= 8) return 'text-amber-600 dark:text-amber-400'
+    return 'text-k-text-tertiary'
 }
 
 export function ProgramHistorySection({ programs, onViewReport }: ProgramHistorySectionProps) {
@@ -102,32 +109,27 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
             : null
 
     return (
-        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                    Histórico
-                    <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
-                        Concluídos
-                    </span>
-                </h3>
+        <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
+            <div className="mb-3">
+                <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                    Histórico de programas
+                </span>
             </div>
 
             {programs.length === 0 ? (
-                <div className="text-center py-10 border border-dashed border-k-border-primary rounded-2xl">
-                    <p className="text-k-text-quaternary text-xs font-medium italic">
-                        Nenhum programa concluído ainda.
-                    </p>
-                </div>
+                <p className="text-[11.5px] text-k-text-quaternary py-2">
+                    Nenhum programa concluído ainda.
+                </p>
             ) : visiblePrograms.length === 0 ? (
-                <div className="text-center py-10 border border-dashed border-k-border-primary rounded-2xl">
-                    <p className="text-k-text-quaternary text-xs font-medium italic mb-3">
+                <div className="py-2">
+                    <p className="text-[11.5px] text-k-text-quaternary mb-2">
                         Nenhum programa concluído ainda.
                     </p>
                     {replacedCount > 0 && (
                         <button
                             type="button"
                             onClick={() => setShowReplaced(true)}
-                            className="text-[11px] font-semibold text-violet-500 hover:text-violet-400 transition-colors"
+                            className="text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity"
                         >
                             Mostrar {replacedCount} substituído{replacedCount === 1 ? '' : 's'}
                         </button>
@@ -155,23 +157,18 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                                     type="button"
                                     onClick={() => handleSelect(program.id)}
                                     aria-pressed={isSelected}
-                                    className={`flex-shrink-0 w-[220px] text-left rounded-2xl p-4 border transition-all relative overflow-hidden ${
+                                    className={`flex-shrink-0 w-[210px] text-left rounded-panel p-3.5 border transition-colors ${
                                         isSelected
-                                            ? 'bg-violet-50 dark:bg-violet-500/10 border-violet-300 dark:border-violet-500/40 shadow-sm'
-                                            : 'bg-glass-bg border-k-border-subtle hover:border-violet-500/30'
+                                            ? 'bg-surface-inset border-k-border-primary'
+                                            : 'bg-surface-primary border-k-border-subtle hover:border-k-border-primary'
                                     }`}
                                 >
-                                    {/* Status badge no topo */}
-                                    <div className="flex items-center justify-between mb-2">
-                                        {isReplaced ? (
-                                            <span className="text-[10px] font-bold text-k-text-quaternary bg-glass-bg px-2 py-0.5 rounded border border-k-border-subtle">
-                                                Substituído
-                                            </span>
-                                        ) : (
-                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                                                Concluído
-                                            </span>
-                                        )}
+                                    {/* Status — ponto + texto */}
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-k-text-tertiary">
+                                            <span className={`w-1.5 h-1.5 rounded-full ${isReplaced ? 'bg-k-text-quaternary' : 'bg-emerald-500'}`} aria-hidden="true" />
+                                            {isReplaced ? 'Substituído' : 'Concluído'}
+                                        </span>
                                         {program.sessions_count > 0 && onViewReport && (
                                             <span
                                                 role="button"
@@ -186,7 +183,7 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                                                         onViewReport(program.id)
                                                     }
                                                 }}
-                                                className="p-1 -m-1 text-k-text-quaternary hover:text-violet-400 transition-colors cursor-pointer"
+                                                className="p-1 -m-1 text-k-text-quaternary hover:text-k-text-primary transition-colors cursor-pointer"
                                                 title="Ver relatório"
                                                 aria-label="Ver relatório"
                                             >
@@ -196,12 +193,12 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                                     </div>
 
                                     {/* Título — uma linha truncada pra preservar largura */}
-                                    <h4 className="font-bold text-[#1C1C1E] dark:text-white text-sm tracking-tight truncate mb-2">
+                                    <h4 className="font-semibold text-k-text-primary text-[13px] tracking-tight truncate mb-1.5">
                                         {program.name}
                                     </h4>
 
                                     {/* Datas resumidas */}
-                                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-k-text-quaternary mb-2">
+                                    <div className="flex items-center gap-1.5 font-mono text-[10px] text-k-text-quaternary mb-1.5 tabular-nums">
                                         <Calendar className="w-3 h-3 opacity-60" aria-hidden="true" />
                                         <span>
                                             {formatShortBr(program.started_at)} – {formatShortBr(program.completed_at)}
@@ -210,15 +207,15 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
 
                                     {/* Adesão calculada — só aparece quando temos workouts e duration */}
                                     {adherence != null && !isReplaced && (
-                                        <div className="flex items-center justify-between text-[10px] font-bold text-k-text-quaternary">
+                                        <div className="flex items-center justify-between font-mono text-[10px] text-k-text-quaternary tabular-nums">
                                             <span>Adesão</span>
                                             <span
                                                 className={
                                                     adherence >= 80
-                                                        ? 'text-emerald-500'
+                                                        ? 'text-emerald-600 dark:text-emerald-400'
                                                         : adherence >= 50
-                                                            ? 'text-amber-500'
-                                                            : 'text-red-500'
+                                                            ? 'text-amber-600 dark:text-amber-400'
+                                                            : 'text-red-600 dark:text-red-400'
                                                 }
                                             >
                                                 {adherence}%
@@ -228,7 +225,7 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
 
                                     {/* Sessions count fallback */}
                                     {adherence == null && (
-                                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-k-text-quaternary">
+                                        <div className="flex items-center gap-1.5 font-mono text-[10px] text-k-text-quaternary tabular-nums">
                                             <Clock className="w-3 h-3 opacity-60" aria-hidden="true" />
                                             <span>{program.sessions_count} sessões</span>
                                         </div>
@@ -240,11 +237,11 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
 
                     {/* Toggle de substituídos */}
                     {replacedCount > 0 && (
-                        <div className="pt-3">
+                        <div className="pt-2">
                             <button
                                 type="button"
                                 onClick={() => setShowReplaced((v) => !v)}
-                                className="text-[11px] font-semibold text-violet-500 hover:text-violet-400 transition-colors"
+                                className="text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity"
                             >
                                 {showReplaced
                                     ? 'Ocultar substituídos'
@@ -257,113 +254,84 @@ export function ProgramHistorySection({ programs, onViewReport }: ProgramHistory
                         selecionado abaixo da timeline horizontal. */}
                     {selectedProgram && (
                         <div
-                            className="mt-6 pt-6 border-t border-k-border-subtle space-y-6"
+                            className="mt-5 pt-4 border-t border-k-border-subtle space-y-4"
                             data-testid="history-drilldown"
                         >
                             {/* Stats do programa */}
                             <div>
-                                <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-[11px] font-black text-k-text-tertiary uppercase tracking-wider">
+                                <div className="flex items-center justify-between mb-2.5">
+                                    <h4 className="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary truncate">
                                         {selectedProgram.name}
                                     </h4>
                                     <button
                                         type="button"
                                         onClick={() => setSelectedProgramId(null)}
-                                        className="text-[10px] font-semibold text-k-text-quaternary hover:text-k-text-tertiary transition-colors"
+                                        className="text-[10px] font-medium text-k-text-quaternary hover:text-k-text-secondary transition-colors"
                                     >
                                         Fechar
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
-                                        <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
+                                {/* Mini-régua: painel único com divisores hairline */}
+                                <div className="grid grid-cols-3 gap-px rounded-control border border-k-border-subtle bg-k-border-subtle overflow-hidden">
+                                    <div className="bg-surface-card px-3 py-2.5">
+                                        <p className="text-lg font-bold text-k-text-primary tabular-nums leading-tight">
                                             {selectedProgram.workouts_count}
                                         </p>
-                                        <p className="text-[10px] font-bold text-k-text-quaternary">Treinos</p>
+                                        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">Treinos</p>
                                     </div>
-                                    <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
-                                        <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
+                                    <div className="bg-surface-card px-3 py-2.5">
+                                        <p className="text-lg font-bold text-k-text-primary tabular-nums leading-tight">
                                             {selectedProgram.sessions_count}
                                         </p>
-                                        <p className="text-[10px] font-bold text-k-text-quaternary">Sessões</p>
+                                        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">Sessões</p>
                                     </div>
-                                    <div className="bg-glass-bg rounded-xl p-4 text-center border border-k-border-subtle">
-                                        <p className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
+                                    <div className="bg-surface-card px-3 py-2.5">
+                                        <p className="text-lg font-bold text-k-text-primary tabular-nums leading-tight">
                                             {selectedProgram.duration_weeks || '-'}
                                         </p>
-                                        <p className="text-[10px] font-bold text-k-text-quaternary">Semanas</p>
+                                        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">Semanas</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Sessions List */}
                             <div>
-                                <h4 className="text-[10px] font-black text-k-text-tertiary mb-4">
-                                    Sessões Realizadas
+                                <h4 className="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary mb-1">
+                                    Sessões realizadas
                                 </h4>
                                 {loadingSessions[selectedProgram.id] ? (
                                     <div className="text-center py-6 text-k-text-quaternary text-xs font-medium animate-pulse">
                                         Carregando sessões...
                                     </div>
                                 ) : (programSessions[selectedProgram.id]?.length ?? 0) > 0 ? (
-                                    <div className="space-y-2">
+                                    <div>
                                         {programSessions[selectedProgram.id]!.map((session: any) => (
                                             <button
                                                 key={session.id}
                                                 onClick={() => handleSessionClick(session.id)}
-                                                className="w-full bg-glass-bg hover:bg-glass-bg-active rounded-xl p-4 flex items-center justify-between border border-k-border-subtle transition-all text-left group/session"
+                                                className="w-full py-2 flex items-center justify-between gap-3 border-b border-k-border-subtle last:border-b-0 text-left group/session"
                                             >
-                                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="text-sm font-bold text-k-text-secondary group-hover/session:text-k-text-primary transition-colors truncate">
-                                                                {session.assigned_workouts?.name || 'Treino'}
-                                                            </p>
-                                                            {session.rpe != null && (
-                                                                <span
-                                                                    className={`px-1.5 py-0.5 text-[10px] font-bold rounded shrink-0 ${
-                                                                        session.rpe >= 10
-                                                                            ? 'bg-red-500/10 text-red-400'
-                                                                            : session.rpe >= 8
-                                                                                ? 'bg-amber-500/10 text-amber-400'
-                                                                                : session.rpe >= 6
-                                                                                    ? 'bg-emerald-500/10 text-emerald-400'
-                                                                                    : 'bg-white/5 text-k-text-tertiary'
-                                                                    }`}
-                                                                >
-                                                                    PSE {session.rpe}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-[10px] font-medium text-k-text-quaternary mt-0.5">
-                                                            {new Date(session.completed_at).toLocaleDateString('pt-BR', {
-                                                                day: '2-digit',
-                                                                month: 'short',
-                                                                hour: '2-digit',
-                                                                minute: '2-digit',
-                                                                timeZone: TIMEZONE,
-                                                            })}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <svg
-                                                    className="w-4 h-4 text-k-border-subtle group-hover/session:text-k-text-tertiary transition-all"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M9 5l7 7-7 7"
-                                                    />
-                                                </svg>
+                                                <span className="text-[12.5px] font-medium text-k-text-secondary group-hover/session:text-k-text-primary transition-colors truncate">
+                                                    {session.assigned_workouts?.name || 'Treino'}
+                                                </span>
+                                                <span className="flex items-center gap-2.5 font-mono text-[10px] text-k-text-quaternary shrink-0 tabular-nums">
+                                                    <span>
+                                                        {new Date(session.completed_at).toLocaleDateString('pt-BR', {
+                                                            day: '2-digit',
+                                                            month: 'short',
+                                                            timeZone: TIMEZONE,
+                                                        }).replace(/\./g, '')}
+                                                    </span>
+                                                    {session.rpe != null && (
+                                                        <span className={rpeTextClass(session.rpe)}>PSE {session.rpe}</span>
+                                                    )}
+                                                    <ChevronRight className="w-3.5 h-3.5 text-k-text-quaternary group-hover/session:text-k-text-tertiary transition-colors" />
+                                                </span>
                                             </button>
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-xs text-k-text-quaternary italic font-medium">
+                                    <p className="text-xs text-k-text-quaternary py-2">
                                         Nenhuma sessão registrada.
                                     </p>
                                 )}

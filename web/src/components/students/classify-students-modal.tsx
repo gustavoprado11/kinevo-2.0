@@ -52,20 +52,20 @@ export function ClassifyStudentsModal({ isOpen, onClose, students, hasPaidSolo, 
     return (
         <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={loading ? undefined : onClose} />
-            <div className="relative w-full max-w-lg rounded-2xl border border-k-border-subtle bg-white dark:bg-surface-card shadow-2xl">
+            <div className="relative w-full max-w-lg rounded-2xl border border-k-border-subtle bg-surface-card shadow-2xl">
                 <div className="flex items-start justify-between gap-3 border-b border-k-border-subtle p-5">
                     <div className="flex gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-surface-inset text-k-text-secondary">
                             <Building2 size={20} />
                         </div>
                         <div>
-                            <h2 className="text-base font-bold text-[#1D1D1F] dark:text-k-text-primary">Classifique seus alunos</h2>
-                            <p className="mt-0.5 text-sm text-[#6E6E73] dark:text-k-text-tertiary">
+                            <h2 className="text-base font-bold text-k-text-primary">Classifique seus alunos</h2>
+                            <p className="mt-0.5 text-sm text-k-text-tertiary">
                                 Você entrou num estúdio — diga o que fazer com os alunos que já eram seus.
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} disabled={loading} className="text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73]">
+                    <button onClick={onClose} disabled={loading} className="text-k-text-quaternary hover:text-k-text-secondary">
                         <X size={18} />
                     </button>
                 </div>
@@ -75,16 +75,16 @@ export function ClassifyStudentsModal({ isOpen, onClose, students, hasPaidSolo, 
                         const dest = destOf(s.id)
                         return (
                             <div key={s.id} className="flex items-center justify-between gap-3 rounded-xl border border-k-border-subtle px-3.5 py-2.5">
-                                <span className="truncate text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary">{s.name}</span>
-                                <div className="flex shrink-0 gap-1 rounded-lg bg-[#F5F5F7] dark:bg-surface-inset p-0.5">
+                                <span className="truncate text-sm font-medium text-k-text-primary">{s.name}</span>
+                                <div className="flex shrink-0 gap-1 rounded-lg bg-surface-inset p-0.5">
                                     {(['studio', 'private'] as const).map(opt => (
                                         <button
                                             key={opt}
                                             onClick={() => setChoices(c => ({ ...c, [s.id]: opt }))}
                                             className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all ${
                                                 dest === opt
-                                                    ? 'bg-white dark:bg-glass-bg-active text-[#1D1D1F] dark:text-k-text-primary shadow-sm'
-                                                    : 'text-[#86868B] dark:text-k-text-tertiary'
+                                                    ? 'bg-white dark:bg-glass-bg-active text-k-text-primary shadow-sm'
+                                                    : 'text-k-text-tertiary'
                                             }`}
                                         >
                                             {opt === 'studio' ? 'Estúdio' : 'Particular'}
@@ -97,12 +97,12 @@ export function ClassifyStudentsModal({ isOpen, onClose, students, hasPaidSolo, 
                 </div>
 
                 <div className="border-t border-k-border-subtle p-5">
-                    <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">
+                    <p className="text-xs text-k-text-quaternary">
                         <span className="font-semibold">Estúdio</span>: compartilhado com a equipe e conta na faixa.{' '}
                         <span className="font-semibold">Particular</span>: só você vê, no seu plano pessoal.
                     </p>
                     {privateBlocked && (
-                        <p className="mt-2 flex items-start gap-1.5 text-xs text-[#FF9500] dark:text-yellow-400">
+                        <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                             <Lock size={12} className="mt-0.5 shrink-0" />
                             <span>
                                 Manter alunos particulares exige um plano pessoal pago —{' '}
@@ -114,7 +114,7 @@ export function ClassifyStudentsModal({ isOpen, onClose, students, hasPaidSolo, 
                     <button
                         onClick={submit}
                         disabled={loading || privateBlocked}
-                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-bold text-white hover:bg-violet-600 disabled:opacity-50"
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-control bg-primary py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
                     >
                         {loading ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar'}
                     </button>

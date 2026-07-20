@@ -18,49 +18,26 @@ interface SmartBannerProps {
 }
 
 interface VariantStyle {
-    container: string
-    iconBox: string
+    /** Borda-esquerda de severidade sobre painel hairline neutro. */
+    accent: string
     icon: React.ReactNode
-    primaryButton: string
-    secondaryButton: string
-    title: string
-    detail: string
 }
 
+// Redesign "ferramenta profissional": o banner virou painel hairline com
+// borda-esquerda de severidade — sem caixa de ícone preenchida, sem fundo
+// tintado. Título/corpo em tinta; a cor fica no acento e no ícone.
 const VARIANT_STYLES: Record<BannerLevel, VariantStyle> = {
     critical: {
-        container: 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30',
-        iconBox: 'bg-red-500',
-        icon: <AlertTriangle className="w-5 h-5 text-white" aria-hidden="true" />,
-        primaryButton:
-            'bg-red-600 hover:bg-red-500 text-white border-transparent shadow-sm',
-        secondaryButton:
-            'bg-transparent text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/40 hover:bg-red-100 dark:hover:bg-red-500/15',
-        title: 'text-red-700 dark:text-red-300',
-        detail: 'text-red-700/80 dark:text-red-200/80',
+        accent: 'border-l-red-500',
+        icon: <AlertTriangle className="w-4 h-4 text-red-500" aria-hidden="true" />,
     },
     high: {
-        container:
-            'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30',
-        iconBox: 'bg-amber-500',
-        icon: <AssistantMark className="w-5 h-5 text-white" aria-hidden="true" />,
-        primaryButton:
-            'bg-amber-500 hover:bg-amber-400 text-white border-transparent shadow-sm',
-        secondaryButton:
-            'bg-transparent text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/40 hover:bg-amber-100 dark:hover:bg-amber-500/15',
-        title: 'text-amber-700 dark:text-amber-300',
-        detail: 'text-amber-700/80 dark:text-amber-200/80',
+        accent: 'border-l-amber-500',
+        icon: <AssistantMark className="w-4 h-4 text-amber-500" aria-hidden="true" />,
     },
     info: {
-        container: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30',
-        iconBox: 'bg-blue-500',
-        icon: <Info className="w-5 h-5 text-white" aria-hidden="true" />,
-        primaryButton:
-            'bg-blue-600 hover:bg-blue-500 text-white border-transparent shadow-sm',
-        secondaryButton:
-            'bg-transparent text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/40 hover:bg-blue-100 dark:hover:bg-blue-500/15',
-        title: 'text-blue-700 dark:text-blue-300',
-        detail: 'text-blue-700/80 dark:text-blue-200/80',
+        accent: 'border-l-blue-500',
+        icon: <Info className="w-4 h-4 text-blue-500" aria-hidden="true" />,
     },
 }
 
@@ -114,18 +91,15 @@ export function SmartBanner({ studentId, context, onAction }: SmartBannerProps) 
             data-testid="smart-banner"
             data-banner-key={banner.key}
             data-banner-level={banner.level}
-            className={`flex items-start gap-3 rounded-2xl border px-4 py-3 ${variant.container}`}
+            className={`flex items-center gap-3 rounded-panel border border-k-border-subtle border-l-[3px] bg-surface-card px-4 py-3 ${variant.accent}`}
         >
-            <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${variant.iconBox}`}
-                aria-hidden="true"
-            >
+            <div className="shrink-0" aria-hidden="true">
                 {variant.icon}
             </div>
 
             <div className="min-w-0 flex-1">
-                <p className={`text-sm font-bold ${variant.title}`}>{banner.title}</p>
-                <p className={`mt-0.5 text-xs ${variant.detail}`}>{banner.detail}</p>
+                <p className="text-[13px] font-semibold text-k-text-primary">{banner.title}</p>
+                <p className="mt-0.5 text-xs text-k-text-tertiary">{banner.detail}</p>
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
@@ -133,7 +107,7 @@ export function SmartBanner({ studentId, context, onAction }: SmartBannerProps) 
                     <button
                         type="button"
                         onClick={() => handle('secondary', banner.secondary!)}
-                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${variant.secondaryButton}`}
+                        className="px-3 py-1.5 rounded-control text-[11px] font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset transition-colors"
                     >
                         {banner.secondary.label}
                     </button>
@@ -141,7 +115,7 @@ export function SmartBanner({ studentId, context, onAction }: SmartBannerProps) 
                 <button
                     type="button"
                     onClick={() => handle('primary', banner.primary)}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${variant.primaryButton}`}
+                    className="px-3 py-1.5 rounded-control text-[11px] font-semibold text-k-text-primary border border-k-border-primary bg-surface-card hover:bg-surface-inset transition-colors"
                 >
                     {banner.primary.label}
                 </button>

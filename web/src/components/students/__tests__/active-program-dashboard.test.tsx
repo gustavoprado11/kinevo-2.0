@@ -28,16 +28,8 @@ const baseProgram = {
     ],
 }
 
-const baseSummary = {
-    totalSessions: 8,
-    lastSessionDate: '2026-05-07T00:00:00Z',
-    completedThisWeek: 2,
-    streak: 1,
-}
-
 const baseProps = {
     program: baseProgram,
-    summary: baseSummary,
     recentSessions: [],
     calendarInitialSessions: [],
     weeklyAdherence: [],
@@ -47,11 +39,11 @@ const baseProps = {
 }
 
 describe('ActiveProgramDashboard — toolbar hierarchy', () => {
-    it('Editar é o botão primário (estilo violet sólido)', () => {
+    it('Editar é o botão primário (bg-primary sólido)', () => {
         render(<ActiveProgramDashboard {...baseProps} onEditProgram={vi.fn()} />)
         const edit = screen.getByTestId('toolbar-edit')
         expect(edit).toHaveTextContent(/Editar/i)
-        expect(edit.className).toMatch(/bg-violet-600/)
+        expect(edit.className).toMatch(/bg-primary/)
     })
 
     it('Botão "Próximo" não existe mais como elemento direto da toolbar', () => {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import { AlertTriangle, TrendingUp, Lightbulb, BarChart3, X, ChevronRight, Pin, Plus, Send, MessageCircle, Dumbbell, ClipboardList, Eye, PlusCircle } from 'lucide-react'
+import { X, ChevronRight, Pin, Plus, Send, MessageCircle, Dumbbell, ClipboardList, Eye, PlusCircle } from 'lucide-react'
 import { dismissInsight, markInsightRead, createPinnedNote, deletePinnedNote } from '@/actions/insights'
 import type { InsightItem } from '@/actions/insights'
 
@@ -29,42 +29,14 @@ const ACTION_CTA: Record<string, { label: string; icon: typeof MessageCircle; sc
     review_checkin: { label: 'Ver check-in', icon: ClipboardList, scrollTarget: 'assessments' },
 }
 
-const CATEGORY_CONFIG: Record<string, {
-    icon: typeof AlertTriangle
-    color: string
-    bg: string
-    border: string
-}> = {
-    alert: {
-        icon: AlertTriangle,
-        color: 'text-amber-500',
-        bg: 'bg-amber-50 dark:bg-amber-500/10',
-        border: 'border-amber-200 dark:border-amber-500/20',
-    },
-    progression: {
-        icon: TrendingUp,
-        color: 'text-emerald-500',
-        bg: 'bg-emerald-50 dark:bg-emerald-500/10',
-        border: 'border-emerald-200 dark:border-emerald-500/20',
-    },
-    suggestion: {
-        icon: Lightbulb,
-        color: 'text-blue-500',
-        bg: 'bg-blue-50 dark:bg-blue-500/10',
-        border: 'border-blue-200 dark:border-blue-500/20',
-    },
-    summary: {
-        icon: BarChart3,
-        color: 'text-violet-500',
-        bg: 'bg-violet-50 dark:bg-violet-500/10',
-        border: 'border-violet-200 dark:border-violet-500/20',
-    },
-    pinned_note: {
-        icon: Pin,
-        color: 'text-[#6E6E73] dark:text-k-text-tertiary',
-        bg: 'bg-[#F5F5F7] dark:bg-white/5',
-        border: 'border-[#E5E5EA] dark:border-k-border-subtle',
-    },
+// Redesign "ferramenta profissional": a cor da categoria virou um PONTO
+// semântico na linha — os fundos/bordas tintados por categoria saíram.
+const CATEGORY_DOT: Record<string, string> = {
+    alert: 'bg-amber-500',
+    progression: 'bg-emerald-500',
+    suggestion: 'bg-blue-500',
+    summary: 'bg-k-text-quaternary',
+    pinned_note: 'bg-k-text-quaternary',
 }
 
 export function StudentInsightsCard({ studentId, insights: initialInsights, onInsightAction }: StudentInsightsCardProps) {
@@ -170,69 +142,48 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
         setSaving(false)
     }, [noteText, saving, studentId])
 
+    const noteButton = (
+        <button
+            onClick={() => { setIsAddingNote(true); setTimeout(() => inputRef.current?.focus(), 100) }}
+            className="flex items-center gap-1 text-[11px] font-medium text-k-text-tertiary hover:text-k-text-primary transition-colors"
+        >
+            <Plus className="w-3 h-3" />
+            Nota
+        </button>
+    )
+
     // Show card even if only pinned notes exist (no AI insights needed)
     if (studentInsights.length === 0 && !isAddingNote) {
         // Still show the add-note button as a compact bar
         return (
-            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">
+            <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                        <AssistantMark className="w-4 h-4 text-violet-500" />
-                        Insights & Notas
-                    </h3>
-                    <button
-                        onClick={() => { setIsAddingNote(true); setTimeout(() => inputRef.current?.focus(), 100) }}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 rounded-lg transition-colors"
-                    >
-                        <Plus className="w-3 h-3" />
-                        Nota
-                    </button>
+                    <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                        Insights &amp; notas
+                    </span>
+                    {noteButton}
                 </div>
-                {isAddingNote && (
-                    <div className="mt-3">
-                        <NoteInput
-                            ref={inputRef}
-                            value={noteText}
-                            onChange={(v) => { setNoteText(v); if (noteError) setNoteError(null) }}
-                            onSubmit={handleAddNote}
-                            onCancel={() => { setIsAddingNote(false); setNoteText(''); setNoteError(null) }}
-                            saving={saving}
-                            error={noteError}
-                        />
-                    </div>
-                )}
-                {!isAddingNote && (
-                    <p className="text-[11px] text-[#AEAEB2] dark:text-k-text-quaternary mt-2">Nenhum insight ou nota no momento</p>
-                )}
+                <p className="text-[11.5px] text-k-text-quaternary mt-2">Nenhum insight ou nota no momento.</p>
             </div>
         )
     }
 
     return (
-        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">
+        <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
             {/* Header */}
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                    <AssistantMark className="w-4 h-4 text-violet-500" />
-                    Insights & Notas
+            <div className="flex items-center justify-between mb-1">
+                <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                    Insights &amp; notas
                     {newCount > 0 && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-500/20 text-[10px] font-bold text-violet-600 dark:text-violet-400">
-                            {newCount} novo{newCount > 1 ? 's' : ''}
-                        </span>
+                        <span className="text-primary"> · {newCount} nov{newCount > 1 ? 'os' : 'o'}</span>
                     )}
-                </h3>
-                <button
-                    onClick={() => { setIsAddingNote(true); setTimeout(() => inputRef.current?.focus(), 100) }}
-                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 rounded-lg transition-colors"
-                >
-                    <Plus className="w-3 h-3" />
-                    Nota
-                </button>
+                </span>
+                {noteButton}
             </div>
 
             {/* Add note input */}
             {isAddingNote && (
-                <div className="mb-3">
+                <div className="my-3">
                     <NoteInput
                         ref={inputRef}
                         value={noteText}
@@ -245,20 +196,20 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
                 </div>
             )}
 
-            <div className="space-y-2">
+            <div>
                 {/* Pinned notes first */}
                 {pinnedNotes.map(note => (
                     <div
                         key={note.id}
-                        className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-[#F5F5F7] dark:bg-white/5 border border-[#E5E5EA] dark:border-k-border-subtle"
+                        className="flex items-start gap-2.5 py-2.5 border-b border-k-border-subtle last:border-b-0"
                     >
-                        <Pin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#8E8E93] dark:text-k-text-quaternary rotate-45" />
-                        <p className="flex-1 text-xs text-[#3C3C43] dark:text-k-text-secondary leading-relaxed">
+                        <Pin className="w-3 h-3 mt-0.5 shrink-0 text-k-text-quaternary" />
+                        <p className="flex-1 text-xs text-k-text-secondary leading-relaxed">
                             {note.body}
                         </p>
                         <button
                             onClick={(e) => handleDeletePin(note.id, e)}
-                            className="p-1 text-[#C7C7CC] dark:text-k-text-quaternary hover:text-red-400 rounded-md transition-colors shrink-0"
+                            className="p-1 text-k-text-quaternary hover:text-red-500 rounded-control transition-colors shrink-0"
                             title="Remover nota"
                         >
                             <X className="w-3 h-3" />
@@ -266,33 +217,32 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
                     </div>
                 ))}
 
-                {/* AI insights */}
+                {/* AI insights — linha com ponto semântico; expande inline */}
                 {aiInsights.slice(0, 5).map(insight => {
-                    const config = CATEGORY_CONFIG[insight.category] || CATEGORY_CONFIG.summary
-                    const Icon = config.icon
+                    const dot = CATEGORY_DOT[insight.category] || CATEGORY_DOT.summary
                     const isExpanded = expandedId === insight.id
                     const isNew = insight.status === 'new'
 
                     return (
                         <div
                             key={insight.id}
-                            className={`rounded-xl border transition-all cursor-pointer ${config.border} ${isExpanded ? config.bg : ''} hover:${config.bg}`}
+                            className="py-2.5 border-b border-k-border-subtle last:border-b-0 cursor-pointer group"
                             onClick={() => handleExpand(insight.id)}
                         >
-                            <div className="flex items-start gap-2.5 px-3 py-2.5">
-                                <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${config.color}`} />
+                            <div className="flex items-start gap-2.5">
+                                <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${dot}`} aria-hidden="true" />
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1.5">
-                                        <p className={`text-xs font-semibold text-[#1C1C1E] dark:text-k-text-primary truncate ${isNew ? '' : 'opacity-80'}`}>
+                                        <p className={`text-xs font-semibold truncate ${isNew ? 'text-k-text-primary' : 'text-k-text-secondary'}`}>
                                             {insight.title}
                                         </p>
                                         {isNew && (
-                                            <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" title="Novo" />
                                         )}
                                     </div>
                                     {isExpanded && (
                                         <>
-                                            <p className="text-[11px] text-[#6E6E73] dark:text-k-text-tertiary mt-1 leading-relaxed">
+                                            <p className="text-[11px] text-k-text-tertiary mt-1 leading-relaxed">
                                                 {insight.body}
                                             </p>
                                             {insight.action_type && ACTION_CTA[insight.action_type] && (() => {
@@ -301,7 +251,7 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
                                                 return (
                                                     <button
                                                         onClick={(e) => handleAction(insight, e)}
-                                                        className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors ${config.color} bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border ${config.border}`}
+                                                        className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-control border border-k-border-primary text-k-text-secondary hover:bg-surface-inset hover:text-k-text-primary transition-colors"
                                                     >
                                                         <CtaIcon className="w-3 h-3" />
                                                         {cta.label}
@@ -313,11 +263,11 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
                                     {!isExpanded && (
-                                        <ChevronRight className="w-3.5 h-3.5 text-[#C7C7CC] dark:text-k-text-quaternary" />
+                                        <ChevronRight className="w-3.5 h-3.5 text-k-text-quaternary" />
                                     )}
                                     <button
                                         onClick={(e) => handleDismiss(insight.id, e)}
-                                        className="p-1 text-[#C7C7CC] dark:text-k-text-quaternary hover:text-[#8E8E93] dark:hover:text-k-text-tertiary rounded-md transition-colors"
+                                        className="p-1 text-k-text-quaternary hover:text-k-text-secondary rounded-control transition-colors"
                                         title="Dispensar"
                                     >
                                         <X className="w-3 h-3" />
@@ -330,8 +280,8 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
             </div>
 
             {aiInsights.length > 5 && (
-                <p className="text-[10px] font-medium text-[#86868B] dark:text-k-text-quaternary mt-3 text-center">
-                    +{aiInsights.length - 5} mais insight{aiInsights.length - 5 > 1 ? 's' : ''}
+                <p className="font-mono text-[10px] text-k-text-quaternary mt-3 text-center tabular-nums">
+                    +{aiInsights.length - 5} insight{aiInsights.length - 5 > 1 ? 's' : ''}
                 </p>
             )}
         </div>
@@ -341,7 +291,6 @@ export function StudentInsightsCard({ studentId, insights: initialInsights, onIn
 // ── Note Input Component ──
 
 import { forwardRef } from 'react'
-import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 const NoteInput = forwardRef<HTMLTextAreaElement, {
     value: string
@@ -363,19 +312,21 @@ const NoteInput = forwardRef<HTMLTextAreaElement, {
                     if (e.key === 'Escape') onCancel()
                 }}
                 placeholder="Escreva uma nota sobre o aluno..."
-                className="flex-1 min-h-[60px] px-3 py-2 text-xs text-[#1C1C1E] dark:text-k-text-secondary bg-[#F5F5F7] dark:bg-white/5 border border-[#E5E5EA] dark:border-k-border-subtle rounded-xl resize-none outline-none focus:border-violet-400 dark:focus:border-violet-500/50 placeholder-[#AEAEB2] dark:placeholder-k-text-quaternary transition-colors"
+                className="flex-1 min-h-[60px] px-3 py-2 text-xs text-k-text-primary bg-surface-inset border border-k-border-subtle rounded-control resize-none outline-none focus:border-ring focus:ring-1 focus:ring-ring/25 placeholder-k-text-quaternary transition-colors"
             />
             <div className="flex flex-col gap-1">
                 <button
                     onClick={onSubmit}
                     disabled={!value.trim() || saving}
-                    className="p-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:hover:bg-violet-600 text-white rounded-xl transition-colors"
+                    aria-label="Salvar nota"
+                    className="p-2 rounded-control border border-k-border-primary text-k-text-secondary hover:bg-surface-inset hover:text-k-text-primary disabled:opacity-40 transition-colors"
                 >
                     <Send className="w-3.5 h-3.5" />
                 </button>
                 <button
                     onClick={onCancel}
-                    className="p-2 text-[#8E8E93] dark:text-k-text-quaternary hover:text-[#3C3C43] dark:hover:text-k-text-secondary rounded-xl transition-colors"
+                    aria-label="Cancelar nota"
+                    className="p-2 text-k-text-quaternary hover:text-k-text-secondary rounded-control transition-colors"
                 >
                     <X className="w-3.5 h-3.5" />
                 </button>

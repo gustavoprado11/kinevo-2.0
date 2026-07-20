@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
 import { SessionDetailSheet } from './session-detail-sheet'
 import { ProgramCalendar } from './program-calendar'
 import { AdherenceTrendStrip } from './adherence-trend-strip'
 import { getProgramWeek, getProgramEndDate } from '@kinevo/shared/utils/schedule-projection'
-import { Flame, Activity, ArrowUpRight, FileText, CalendarPlus, Plus, MoreHorizontal, CheckCircle, ArrowLeftRight } from 'lucide-react'
+import { Flame, Activity, ArrowUpRight, FileText, CalendarPlus, Plus, MoreHorizontal, CheckCircle, ArrowLeftRight, ChevronDown, MessageSquare } from 'lucide-react'
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS } from '@kinevo/shared/types/workout-items'
 import type { SessionItem } from '@/app/students/[id]/actions/get-session-details'
 import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
@@ -15,28 +14,6 @@ import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-
 
 const TIMEZONE = 'America/Sao_Paulo'
 
-function timeAgo(dateStr: string): string {
-    const now = new Date()
-    const date = new Date(dateStr)
-    // Compare calendar dates in Brasília timezone
-    const todayKey = now.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
-    const dateKey = date.toLocaleDateString('en-CA', { timeZone: TIMEZONE })
-    const diffDays = Math.floor((new Date(todayKey).getTime() - new Date(dateKey).getTime()) / (1000 * 60 * 60 * 24))
-
-    if (diffDays === 0) return 'Hoje'
-    if (diffDays === 1) return 'Ontem'
-    if (diffDays < 7) return `há ${diffDays} dias`
-    const diffWeeks = Math.floor(diffDays / 7)
-    if (diffWeeks < 5) return `há ${diffWeeks} semana${diffWeeks > 1 ? 's' : ''}`
-    const diffMonths = Math.floor(diffDays / 30)
-    return `há ${diffMonths} ${diffMonths > 1 ? 'meses' : 'mês'}`
-}
-
-function getExpectedPerWeek(workouts?: Array<{ scheduled_days: number[] }>): number {
-    if (!workouts || workouts.length === 0) return 0
-    return workouts.reduce((sum, w) => sum + (w.scheduled_days?.length || 0), 0)
-}
-
 // Onda 2 — converter "semana N do programa" (1-indexed) em Date.
 // Local pra não tocar shared/utils nesta onda; eventualmente vai pra
 // schedule-projection (ver follow-ups).
@@ -44,6 +21,18 @@ function addWeeks(start: Date, n: number): Date {
     const d = new Date(start)
     d.setDate(d.getDate() + n * 7)
     return d
+}
+
+function formatDuration(seconds: number): string {
+    if (seconds >= 3600) return `${Math.floor(seconds / 3600)}h${Math.floor((seconds % 3600) / 60)}m`
+    return `${Math.floor(seconds / 60)}min`
+}
+
+// PSE como texto: cor só quando é alerta (≥9 vermelho, ≥8 âmbar).
+function rpeClass(rpe: number): string {
+    if (rpe >= 9) return 'text-red-600 dark:text-red-400'
+    if (rpe >= 8) return 'text-amber-600 dark:text-amber-400'
+    return 'text-k-text-tertiary'
 }
 
 // ── Compact item renderer for expanded session accordion ──
@@ -55,9 +44,9 @@ function ExpandedSessionItem({ item }: { item: SessionItem }) {
         const duration = cfg?.duration_minutes ? `${cfg.duration_minutes} min` : null
         return (
             <div className="flex items-center gap-2 text-sm py-1">
-                <Flame size={13} className="text-orange-400 shrink-0" />
+                <Flame size={13} className="text-k-text-quaternary shrink-0" />
                 <span className="text-k-text-secondary font-medium truncate flex-1">{label}</span>
-                {duration && <span className="text-k-text-quaternary text-xs shrink-0">{duration}</span>}
+                {duration && <span className="font-mono text-[11px] text-k-text-quaternary shrink-0 tabular-nums">{duration}</span>}
             </div>
         )
     }
@@ -69,11 +58,11 @@ function ExpandedSessionItem({ item }: { item: SessionItem }) {
         const mode = cfg?.mode === 'interval' ? 'Intervalado' : null
         return (
             <div className="flex items-center gap-2 text-sm py-1">
-                <Activity size={13} className="text-blue-400 shrink-0" />
+                <Activity size={13} className="text-k-text-quaternary shrink-0" />
                 <span className="text-k-text-secondary font-medium truncate flex-1">
                     {equipment}{mode ? ` — ${mode}` : ''}
                 </span>
-                {duration && <span className="text-k-text-quaternary text-xs shrink-0">{duration}</span>}
+                {duration && <span className="font-mono text-[11px] text-k-text-quaternary shrink-0 tabular-nums">{duration}</span>}
             </div>
         )
     }
@@ -81,7 +70,6 @@ function ExpandedSessionItem({ item }: { item: SessionItem }) {
     if (item.itemType === 'note') {
         return (
             <div className="flex items-center gap-2 text-sm py-1">
-                <span className="text-k-text-quaternary text-xs">●</span>
                 <span className="text-k-text-quaternary italic text-xs truncate flex-1">{item.notes || 'Nota'}</span>
             </div>
         )
@@ -90,9 +78,8 @@ function ExpandedSessionItem({ item }: { item: SessionItem }) {
     if (item.itemType === 'superset') {
         return (
             <div className="py-1">
-                <div className="flex items-center gap-2 text-sm mb-1">
-                    <span className="text-violet-400 text-xs">●</span>
-                    <span className="text-violet-400 text-xs font-bold">Superset</span>
+                <div className="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary mb-1">
+                    Superset
                 </div>
                 {item.children?.map(child => (
                     <ExpandedSessionItem key={child.id} item={child} />
@@ -105,16 +92,16 @@ function ExpandedSessionItem({ item }: { item: SessionItem }) {
     return (
         <div className="flex items-center justify-between text-sm py-1">
             <span className="text-k-text-secondary font-medium truncate flex-1 mr-4">{item.exerciseName || 'Exercício'}</span>
-            <div className="flex items-center gap-3 text-k-text-quaternary text-xs shrink-0">
+            <div className="flex items-center gap-3 font-mono text-[11px] text-k-text-tertiary shrink-0 tabular-nums">
                 {item.setLogs.length > 0 ? (
                     <>
-                        <span className="font-bold">{item.setLogs.length}×{item.setLogs[0]?.reps ?? '-'}</span>
+                        <span>{item.setLogs.length}×{item.setLogs[0]?.reps ?? '-'}</span>
                         {item.setLogs[0]?.weight > 0 && (
-                            <span className="text-k-text-tertiary">@ {item.setLogs[0].weight}kg</span>
+                            <span className="text-k-text-quaternary">@ {item.setLogs[0].weight}kg</span>
                         )}
                     </>
                 ) : item.setsPrescribed ? (
-                    <span className="font-bold">{item.setsPrescribed}×{item.repsPrescribed || '-'}</span>
+                    <span>{item.setsPrescribed}×{item.repsPrescribed || '-'}</span>
                 ) : null}
             </div>
         </div>
@@ -138,16 +125,8 @@ interface AssignedProgram {
     }>
 }
 
-interface HistorySummary {
-    totalSessions: number
-    lastSessionDate: string | null
-    completedThisWeek: number
-    streak?: number
-}
-
 interface ActiveProgramDashboardProps {
     program: AssignedProgram | null
-    summary: HistorySummary
     recentSessions?: any[]
     calendarInitialSessions?: RangeSession[]
     /**
@@ -179,9 +158,20 @@ interface ActiveProgramDashboardProps {
     studentId?: string
 }
 
+// Redesign "ferramenta profissional": painel hairline sem sombra, status como
+// ponto + texto, "Editar programa" é a ÚNICA ação violeta da tela, progresso
+// em tinta (sem gradiente/glow) e sessões como linhas flat com dados em mono.
+
+const STATUS_DOT: Record<AssignedProgram['status'], { label: string; dot: string }> = {
+    active: { label: 'Em andamento', dot: 'bg-emerald-500' },
+    completed: { label: 'Concluído', dot: 'bg-k-text-quaternary' },
+    paused: { label: 'Pausado', dot: 'bg-amber-500' },
+    expired: { label: 'Expirado', dot: 'bg-red-500' },
+    scheduled: { label: 'Agendado', dot: 'bg-k-text-quaternary' },
+}
+
 export function ActiveProgramDashboard({
     program,
-    summary,
     recentSessions = [],
     calendarInitialSessions = [],
     weeklyAdherence = [],
@@ -265,76 +255,27 @@ export function ActiveProgramDashboard({
         }
     }
 
-    const getStatusConfig = (status: AssignedProgram['status']) => {
-        const config = {
-            active: {
-                label: 'Em andamento',
-                classes: 'bg-emerald-500/5 text-emerald-400/70 border-emerald-500/15',
-                icon: (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                ),
-            },
-            completed: {
-                label: 'Concluído',
-                classes: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-                icon: (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                ),
-            },
-            paused: {
-                label: 'Pausado',
-                classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-                icon: (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                ),
-            },
-            expired: {
-                label: 'Expirado',
-                classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-                icon: (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                ),
-            },
-            // Fallback for unexpected 'scheduled' here, though typically not active
-            scheduled: {
-                label: 'Agendado',
-                classes: 'bg-muted/60 text-muted-foreground border-border/70',
-                icon: null
-            }
-        }
-        return config[status] || config.active
-    }
+    const menuItem = 'w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-k-text-primary hover:bg-surface-inset transition-colors'
 
     if (!program) {
         return (
-            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-[#E5E5EA] dark:border-k-border-primary p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                        Programa Atual
-                    </h3>
-                </div>
+            <div className="bg-surface-card rounded-panel border border-k-border-subtle p-6">
+                <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                    Programa atual
+                </span>
 
-                <div className="text-center py-4">
-                    <p className="text-sm text-k-text-quaternary mb-3">Nenhum programa ativo no momento.</p>
+                <div className="text-center py-5">
+                    <p className="text-sm text-k-text-tertiary mb-4">Nenhum programa ativo no momento.</p>
                     <div className="flex items-center justify-center gap-2">
                         <button
                             onClick={onCreateProgram}
-                            className="px-3 py-1.5 text-xs font-bold bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-all"
+                            className="px-3.5 py-2 text-xs font-semibold bg-primary hover:opacity-90 text-primary-foreground rounded-control transition-opacity"
                         >
                             + Criar Novo
                         </button>
                         <button
                             onClick={onAssignProgram}
-                            className="px-3 py-1.5 text-xs font-bold text-k-text-tertiary hover:text-k-text-primary border border-k-border-subtle rounded-lg transition-all"
+                            className="px-3.5 py-2 text-xs font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset border border-k-border-primary rounded-control transition-colors"
                         >
                             Atribuir
                         </button>
@@ -344,7 +285,7 @@ export function ActiveProgramDashboard({
         )
     }
 
-    const statusConfig = getStatusConfig(program.status)
+    const statusCfg = STATUS_DOT[program.status] || STATUS_DOT.active
 
     // Calculate current week dynamically from started_at instead of static DB value
     const isExpired = program.status === 'expired'
@@ -361,442 +302,346 @@ export function ActiveProgramDashboard({
             ? Math.min((currentWeek / program.duration_weeks) * 100, 100)
             : 0)
 
+    const workoutsPerWeek = (program.assigned_workouts ?? [])
+        .reduce((sum, w) => sum + (w.scheduled_days?.length || 0), 0)
+
     return (
         <div className="space-y-6">
             {/* Main Program Card */}
-            <div className="bg-surface-card rounded-2xl border border-k-border-primary p-8 shadow-sm">
+            <div className="bg-surface-card rounded-panel border border-k-border-subtle">
                 {/* Header */}
-                <div className="mb-6">
-                    <div className="flex items-center gap-3 mb-1">
-                        <h2 className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tight">{program.name}</h2>
-                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${statusConfig.classes}`}>
-                            {statusConfig.label}
-                        </span>
-                    </div>
-                    {program.description && (
-                        <p className="text-sm text-k-text-tertiary leading-relaxed max-w-md mb-3">{program.description}</p>
-                    )}
-                    {/* Action toolbar — hierarquia: primário (Editar) à esquerda,
-                        Prorrogar destacado quando expired, Relatório neutro,
-                        overflow menu na direita com ações de fim de ciclo. */}
-                    <div className="flex items-center gap-2 mt-3">
-                        <button
-                            onClick={onEditProgram}
-                            data-testid="toolbar-edit"
-                            className="px-3 py-1.5 text-[10px] font-bold text-white bg-violet-600 hover:bg-violet-500 rounded-lg transition-all border border-transparent shadow-sm"
-                        >
-                            Editar
-                        </button>
-                        {program.status === 'expired' && onExtendProgram && (
-                            <button
-                                onClick={onExtendProgram}
-                                className="px-3 py-1.5 text-[10px] font-bold text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition-all border border-amber-500/20"
-                            >
-                                Prorrogar
-                            </button>
-                        )}
-                        {onViewReport && (
-                            <button
-                                onClick={onViewReport}
-                                className="px-3 py-1.5 text-[10px] font-bold text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle flex items-center gap-1"
-                            >
-                                <FileText className="w-3 h-3" />
-                                Relatório
-                            </button>
-                        )}
-                        <div className="relative" ref={overflowMenuRef}>
-                            <button
-                                onClick={() => setShowOverflowMenu((v) => !v)}
-                                className="h-7 w-7 flex items-center justify-center text-k-text-tertiary hover:text-k-text-primary hover:bg-glass-bg-active rounded-lg transition-all border border-k-border-subtle"
-                                title="Mais ações"
-                                aria-haspopup="menu"
-                                aria-expanded={showOverflowMenu}
-                                aria-label="Mais ações"
-                            >
-                                <MoreHorizontal className="w-3.5 h-3.5" />
-                            </button>
-
-                            {showOverflowMenu && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    transition={{ duration: 0.15 }}
-                                    role="menu"
-                                    className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-lg z-20 overflow-hidden"
-                                >
-                                    {(program.status === 'active' || program.status === 'expired') && onCompleteProgram && (
-                                        <button
-                                            role="menuitem"
-                                            onClick={() => {
-                                                setShowOverflowMenu(false)
-                                                onCompleteProgram()
-                                            }}
-                                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
-                                        >
-                                            <CheckCircle className="w-3.5 h-3.5 text-violet-500" />
-                                            Concluir programa
-                                        </button>
-                                    )}
-                                    {onAssignProgram && (
-                                        <button
-                                            role="menuitem"
-                                            onClick={() => {
-                                                setShowOverflowMenu(false)
-                                                onAssignProgram()
-                                            }}
-                                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
-                                        >
-                                            <ArrowLeftRight className="w-3.5 h-3.5 text-violet-500" />
-                                            Trocar programa
-                                        </button>
-                                    )}
-                                    {(onCreateScheduled || onAssignScheduled) && (
-                                        <div className="h-px bg-[#E8E8ED] dark:bg-k-border-subtle mx-2" />
-                                    )}
-                                    {onCreateScheduled && (
-                                        <button
-                                            role="menuitem"
-                                            onClick={() => {
-                                                setShowOverflowMenu(false)
-                                                onCreateScheduled()
-                                            }}
-                                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
-                                        >
-                                            <Plus className="w-3.5 h-3.5 text-violet-500" />
-                                            Criar próximo programa
-                                        </button>
-                                    )}
-                                    {onAssignScheduled && (
-                                        <button
-                                            role="menuitem"
-                                            onClick={() => {
-                                                setShowOverflowMenu(false)
-                                                onAssignScheduled()
-                                            }}
-                                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[#1D1D1F] dark:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-white/5 transition-colors"
-                                        >
-                                            <CalendarPlus className="w-3.5 h-3.5 text-violet-500" />
-                                            Atribuir próximo programa
-                                        </button>
-                                    )}
-                                </motion.div>
+                <div className="px-6 pt-5 pb-4 border-b border-k-border-subtle">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-bold text-k-text-primary tracking-tight truncate">{program.name}</h2>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-k-text-tertiary">
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
+                                    {statusCfg.label}
+                                </span>
+                                {(workoutsPerWeek > 0 || program.duration_weeks) && (
+                                    <span className="font-mono text-[10.5px] tabular-nums">
+                                        {workoutsPerWeek > 0 && `${workoutsPerWeek} treinos/sem`}
+                                        {workoutsPerWeek > 0 && program.duration_weeks && ' · '}
+                                        {program.duration_weeks && `${program.duration_weeks} semanas`}
+                                    </span>
+                                )}
+                            </div>
+                            {program.description && (
+                                <p className="text-[12.5px] text-k-text-tertiary leading-relaxed max-w-md mt-1.5">{program.description}</p>
                             )}
+                        </div>
+
+                        {/* Action toolbar — Editar programa é a ação primária (violeta)
+                            da tela; o resto é quieto. Overflow com ações de fim de ciclo. */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            {program.status === 'expired' && onExtendProgram && (
+                                <button
+                                    onClick={onExtendProgram}
+                                    className="px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 rounded-control transition-colors border border-amber-500/30"
+                                >
+                                    Prorrogar
+                                </button>
+                            )}
+                            {onViewReport && (
+                                <button
+                                    onClick={onViewReport}
+                                    className="px-3 py-1.5 text-xs font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset rounded-control transition-colors border border-k-border-primary flex items-center gap-1.5"
+                                >
+                                    <FileText className="w-3 h-3" />
+                                    Relatório
+                                </button>
+                            )}
+                            <button
+                                onClick={onEditProgram}
+                                data-testid="toolbar-edit"
+                                className="px-3.5 py-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:opacity-90 rounded-control transition-opacity"
+                            >
+                                Editar programa
+                            </button>
+                            <div className="relative" ref={overflowMenuRef}>
+                                <button
+                                    onClick={() => setShowOverflowMenu((v) => !v)}
+                                    className="h-7 w-7 flex items-center justify-center text-k-text-tertiary hover:text-k-text-primary hover:bg-surface-inset rounded-control transition-colors border border-k-border-primary"
+                                    title="Mais ações"
+                                    aria-haspopup="menu"
+                                    aria-expanded={showOverflowMenu}
+                                    aria-label="Mais ações"
+                                >
+                                    <MoreHorizontal className="w-3.5 h-3.5" />
+                                </button>
+
+                                {showOverflowMenu && (
+                                    <div
+                                        role="menu"
+                                        className="absolute right-0 top-full mt-1 w-56 rounded-panel border border-k-border-primary bg-surface-card shadow-lg z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                                    >
+                                        {(program.status === 'active' || program.status === 'expired') && onCompleteProgram && (
+                                            <button
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setShowOverflowMenu(false)
+                                                    onCompleteProgram()
+                                                }}
+                                                className={menuItem}
+                                            >
+                                                <CheckCircle className="w-3.5 h-3.5 text-k-text-tertiary" />
+                                                Concluir programa
+                                            </button>
+                                        )}
+                                        {onAssignProgram && (
+                                            <button
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setShowOverflowMenu(false)
+                                                    onAssignProgram()
+                                                }}
+                                                className={menuItem}
+                                            >
+                                                <ArrowLeftRight className="w-3.5 h-3.5 text-k-text-tertiary" />
+                                                Trocar programa
+                                            </button>
+                                        )}
+                                        {(onCreateScheduled || onAssignScheduled) && (
+                                            <div className="h-px bg-k-border-subtle mx-2" />
+                                        )}
+                                        {onCreateScheduled && (
+                                            <button
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setShowOverflowMenu(false)
+                                                    onCreateScheduled()
+                                                }}
+                                                className={menuItem}
+                                            >
+                                                <Plus className="w-3.5 h-3.5 text-k-text-tertiary" />
+                                                Criar próximo programa
+                                            </button>
+                                        )}
+                                        {onAssignScheduled && (
+                                            <button
+                                                role="menuitem"
+                                                onClick={() => {
+                                                    setShowOverflowMenu(false)
+                                                    onAssignScheduled()
+                                                }}
+                                                className={menuItem}
+                                            >
+                                                <CalendarPlus className="w-3.5 h-3.5 text-k-text-tertiary" />
+                                                Atribuir próximo programa
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Progress Bar — Condensed */}
-                {program.duration_weeks && (
-                    <div className="mb-10">
-                        <p className="text-sm font-semibold text-k-text-secondary mb-2">
-                            {isExpired ? (
-                                <>
-                                    Programa encerrado
-                                    {program.expires_at && (
-                                        <span className="text-amber-400 ml-1">
-                                            — expirou em {new Date(program.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: TIMEZONE })}
-                                        </span>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    Semana {currentWeek} de {program.duration_weeks}
-                                    {program.started_at && (() => {
-                                        const remainingWeeks = Math.max(0, program.duration_weeks! - currentWeek)
-                                        return remainingWeeks === 0
-                                            ? <span className="text-emerald-400 ml-1">— última semana!</span>
-                                            : <span className="text-k-text-quaternary ml-1">— faltam {remainingWeeks} semana{remainingWeeks > 1 ? 's' : ''}</span>
-                                    })()}
-                                </>
-                            )}
-                        </p>
-                        <div className="h-2 bg-glass-bg rounded-full overflow-hidden relative">
-                            <div
-                                className="h-full bg-gradient-to-r from-violet-600 to-indigo-400 rounded-full transition-all duration-1000 ease-out relative"
-                                style={{ width: `${progressPercent}%` }}
-                            >
-                                <div className="absolute right-0 top-0 bottom-0 w-4 bg-white/20 blur-sm rounded-full" />
-                            </div>
-                        </div>
-                        {program.started_at && (
-                            <div className="mt-2 flex items-center gap-1 text-[10px] font-medium text-k-text-quaternary">
-                                <span>{new Date(program.started_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: TIMEZONE })}</span>
-                                <span className="flex-1 h-px bg-k-border-subtle mx-1" />
-                                <span>{getProgramEndDate(program.started_at, program.duration_weeks!).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: TIMEZONE })}</span>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Stats Grid - Hero Style */}
-                <div data-onboarding="student-history-summary" className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-                    {/* Total Sessions */}
-                    <div className="relative group">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary">
-                            <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                            Treinos totais
-                        </div>
-                        <p className="text-4xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">{summary.totalSessions}</p>
-                        {summary.completedThisWeek > 0 && (
-                            <p className="text-[11px] font-semibold text-k-text-quaternary mt-1">
-                                +{summary.completedThisWeek} esta semana
-                            </p>
-                        )}
-                    </div>
-
-                    {/* This Week */}
-                    {(() => {
-                        const expected = getExpectedPerWeek(program.assigned_workouts)
-                        const completed = summary.completedThisWeek
-                        const remaining = Math.max(0, expected - completed)
-                        return (
-                            <div className="relative group">
-                                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary">
-                                    <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    Esta semana
-                                </div>
-                                <p className="text-4xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
-                                    {expected > 0 ? `${completed}/${expected}` : completed}
-                                </p>
-                                {expected > 0 && (
-                                    <p className={`text-[11px] font-semibold mt-1 ${
-                                        completed >= expected
-                                            ? 'text-emerald-400'
-                                            : completed > 0
-                                                ? 'text-amber-400'
-                                                : 'text-red-400'
-                                    }`}>
-                                        {completed >= expected
-                                            ? 'Meta atingida!'
-                                            : completed > 0
-                                                ? `Falta${remaining > 1 ? 'm' : ''} ${remaining} treino${remaining > 1 ? 's' : ''}`
-                                                : 'Nenhum treino esta semana'}
-                                    </p>
+                <div className="px-6 pt-4 pb-5">
+                    {/* Progress — barra fina em tinta, datas mono nas pontas */}
+                    {program.duration_weeks && (
+                        <div className="mb-6">
+                            <p className="text-[12.5px] font-medium text-k-text-secondary mb-2 tabular-nums">
+                                {isExpired ? (
+                                    <>
+                                        Programa encerrado
+                                        {program.expires_at && (
+                                            <span className="text-amber-600 dark:text-amber-400 ml-1">
+                                                — expirou em {new Date(program.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: TIMEZONE })}
+                                            </span>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        Semana {currentWeek} de {program.duration_weeks}
+                                        {program.started_at && (() => {
+                                            const remainingWeeks = Math.max(0, program.duration_weeks! - currentWeek)
+                                            return remainingWeeks === 0
+                                                ? <span className="text-emerald-600 dark:text-emerald-400 ml-1">— última semana</span>
+                                                : <span className="text-k-text-quaternary ml-1">— faltam {remainingWeeks} semana{remainingWeeks > 1 ? 's' : ''}</span>
+                                        })()}
+                                    </>
                                 )}
+                            </p>
+                            <div className="h-1 bg-surface-inset rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-k-text-secondary rounded-full transition-all duration-700 ease-out"
+                                    style={{ width: `${progressPercent}%` }}
+                                />
+                            </div>
+                            {program.started_at && (
+                                <div className="mt-1.5 flex items-center justify-between font-mono text-[10px] text-k-text-quaternary tabular-nums">
+                                    <span>{new Date(program.started_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: TIMEZONE })}</span>
+                                    <span>{getProgramEndDate(program.started_at, program.duration_weeks!).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: TIMEZONE })}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Os hero-stats (treinos totais / esta semana / último treino)
+                        saíram daqui — viviam duplicados com o header e agora moram
+                        na StudentKpiRuler, no topo da página. */}
+
+                    {/* Onda 2 — Faixa de tendência de adesão (12 semanas). */}
+                    {program.started_at && weeklyAdherence.length >= 2 && (
+                        <AdherenceTrendStrip
+                            weeklyAdherence={weeklyAdherence}
+                            onWeekClick={(w) => setCalendarStartWeek(w)}
+                        />
+                    )}
+
+                    {/* Navigable Calendar */}
+                    {program.assigned_workouts && program.started_at && (() => {
+                        // Conversão da semana clicada no sparkline pra Date que o
+                        // calendário usa de anchor. weeklyAdherence vem com `week`
+                        // 1-indexed, então subtraímos 1 ao calcular o offset.
+                        const startedAt = program.started_at
+                        const weekNum =
+                            typeof calendarStartWeek === 'number'
+                                ? calendarStartWeek
+                                : typeof calendarStartWeek === 'string'
+                                    ? Number.parseInt(calendarStartWeek, 10)
+                                    : NaN
+                        const initialWeekStart = Number.isFinite(weekNum) && weekNum > 0
+                            ? addWeeks(new Date(startedAt), weekNum - 1)
+                            : undefined
+                        return (
+                            <div data-onboarding="student-calendar">
+                                <ProgramCalendar
+                                    programId={program.id}
+                                    programStartedAt={startedAt}
+                                    programDurationWeeks={program.duration_weeks}
+                                    scheduledWorkouts={program.assigned_workouts}
+                                    initialSessions={calendarInitialSessions}
+                                    studentId={studentId}
+                                    initialWeekStart={initialWeekStart}
+                                    onDayClick={(day) => {
+                                        if (day.status === 'done' && day.completedSessions.length > 0) {
+                                            handleSessionClick(day.completedSessions[0].id)
+                                        }
+                                    }}
+                                />
                             </div>
                         )
                     })()}
 
-                    {/* Last Session */}
-                    <div className="relative group">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-[#8E8E93] dark:text-k-text-quaternary">
-                            <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Último treino
-                        </div>
-                        <p className="text-4xl font-black text-[#1C1C1E] dark:text-white tracking-tighter leading-none">
-                            {summary.lastSessionDate ? timeAgo(summary.lastSessionDate) : '-'}
-                        </p>
-                        {summary.lastSessionDate && (
-                            <p className="text-[10px] font-medium text-k-text-quaternary mt-1">
-                                {new Date(summary.lastSessionDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: TIMEZONE }).replace('.', '')}
-                            </p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Onda 2 — Faixa de tendência de adesão (12 semanas). */}
-                {program.started_at && weeklyAdherence.length >= 2 && (
-                    <AdherenceTrendStrip
-                        weeklyAdherence={weeklyAdherence}
-                        onWeekClick={(w) => setCalendarStartWeek(w)}
-                    />
-                )}
-
-                {/* Navigable Calendar */}
-                {program.assigned_workouts && program.started_at && (() => {
-                    // Conversão da semana clicada no sparkline pra Date que o
-                    // calendário usa de anchor. weeklyAdherence vem com `week`
-                    // 1-indexed, então subtraímos 1 ao calcular o offset.
-                    const startedAt = program.started_at
-                    const weekNum =
-                        typeof calendarStartWeek === 'number'
-                            ? calendarStartWeek
-                            : typeof calendarStartWeek === 'string'
-                                ? Number.parseInt(calendarStartWeek, 10)
-                                : NaN
-                    const initialWeekStart = Number.isFinite(weekNum) && weekNum > 0
-                        ? addWeeks(new Date(startedAt), weekNum - 1)
-                        : undefined
-                    return (
-                        <div data-onboarding="student-calendar">
-                            <ProgramCalendar
-                                programId={program.id}
-                                programStartedAt={startedAt}
-                                programDurationWeeks={program.duration_weeks}
-                                scheduledWorkouts={program.assigned_workouts}
-                                initialSessions={calendarInitialSessions}
-                                studentId={studentId}
-                                initialWeekStart={initialWeekStart}
-                                onDayClick={(day) => {
-                                    if (day.status === 'done' && day.completedSessions.length > 0) {
-                                        handleSessionClick(day.completedSessions[0].id)
-                                    }
-                                }}
-                            />
-                        </div>
-                    )
-                })()}
-
-                {/* Recent Sessions List - Compact Feed */}
-                <div>
-                    <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white mb-6 flex items-center gap-2">
-                        Últimas Sessões
-                        <span className="px-2 py-0.5 rounded bg-glass-bg text-[10px] text-k-text-tertiary font-bold border border-k-border-subtle">
-                            Recentes
+                    {/* Recent Sessions — linhas flat com divisores hairline */}
+                    <div className="mt-6">
+                        <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                            Últimas sessões
                         </span>
-                    </h3>
 
-                    {recentSessions.length === 0 ? (
-                        <div className="text-center py-10 text-k-text-quaternary text-xs italic font-medium">
-                            Nenhuma sessão registrada neste programa ainda.
-                        </div>
-                    ) : (
-                        <div className="flex flex-col space-y-1">
-                            {recentSessions.map((session) => {
-                                const isExpanded = expandedSessionId === session.id
-                                const details = sessionDetails[session.id]
-                                const isLoading = loadingSession[session.id]
-                                return (
-                                    <div key={session.id} className="rounded-xl overflow-hidden">
-                                        <button
-                                            onClick={() => handleSessionExpand(session.id)}
-                                            className={`w-full bg-transparent hover:bg-glass-bg rounded-xl px-4 py-3 flex items-center justify-between transition-all group text-left border ${isExpanded ? 'border-k-border-subtle bg-glass-bg' : 'border-transparent hover:border-k-border-subtle'}`}
-                                        >
-                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {recentSessions.length === 0 ? (
+                            <p className="text-center py-8 text-k-text-quaternary text-xs">
+                                Nenhuma sessão registrada neste programa ainda.
+                            </p>
+                        ) : (
+                            <div className="mt-2">
+                                {recentSessions.map((session) => {
+                                    const isExpanded = expandedSessionId === session.id
+                                    const details = sessionDetails[session.id]
+                                    const isLoading = loadingSession[session.id]
+                                    const change = tonnageMap[session.id]?.percentChange
+                                    return (
+                                        <div key={session.id} className="border-b border-k-border-subtle last:border-b-0">
+                                            <button
+                                                onClick={() => handleSessionExpand(session.id)}
+                                                className="w-full py-2.5 flex items-center justify-between gap-4 text-left group"
+                                            >
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-sm font-bold text-k-text-secondary group-hover:text-k-text-primary transition-colors truncate">
-                                                            {session.assigned_workouts?.name}
-                                                        </p>
-                                                        {session.rpe != null && (
-                                                            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded shrink-0 ${
-                                                                session.rpe >= 10 ? 'bg-red-500/10 text-red-400' :
-                                                                session.rpe >= 8 ? 'bg-yellow-500/10 text-yellow-400' :
-                                                                session.rpe >= 6 ? 'bg-emerald-500/10 text-emerald-400' :
-                                                                'bg-white/5 text-k-text-tertiary'
-                                                            }`}>
-                                                                PSE {session.rpe}
-                                                            </span>
-                                                        )}
-                                                        {tonnageMap[session.id]?.percentChange != null && (
-                                                            <span className={`text-[10px] font-bold shrink-0 ${
-                                                                tonnageMap[session.id].percentChange! > 0 ? 'text-emerald-400' :
-                                                                tonnageMap[session.id].percentChange! < 0 ? 'text-red-400' : 'text-k-text-quaternary'
-                                                            }`}>
-                                                                {tonnageMap[session.id].percentChange! > 0 ? '↑' : tonnageMap[session.id].percentChange! < 0 ? '↓' : '='}
-                                                                {tonnageMap[session.id].percentChange! > 0 ? '+' : ''}{tonnageMap[session.id].percentChange!.toFixed(1)}%
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        <p className="text-[10px] font-medium text-k-text-quaternary">
-                                                            {new Date(session.completed_at).toLocaleDateString('pt-BR', {
-                                                                weekday: 'short',
-                                                                day: 'numeric',
-                                                                month: 'short',
-                                                                hour: '2-digit',
-                                                                minute: '2-digit',
-                                                                timeZone: TIMEZONE
-                                                            })}
-                                                        </p>
-                                                        {session.duration_seconds > 0 && (
-                                                            <span className="text-[10px] text-k-text-quaternary">
-                                                                · {session.duration_seconds >= 3600
-                                                                    ? `${Math.floor(session.duration_seconds / 3600)}h${Math.floor((session.duration_seconds % 3600) / 60)}m`
-                                                                    : `${Math.floor(session.duration_seconds / 60)}min`}
-                                                            </span>
-                                                        )}
-                                                        {!isExpanded && sessionDetails[session.id]?.items?.length > 0 && (
-                                                            <span className="text-[10px] text-k-text-quaternary">
-                                                                · {sessionDetails[session.id].items.filter((i: any) => i.itemType === 'exercise').length} exercícios
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    <p className="text-[13px] font-semibold text-k-text-secondary group-hover:text-k-text-primary transition-colors truncate">
+                                                        {session.assigned_workouts?.name}
+                                                    </p>
                                                     {!isExpanded && session.feedback && (
-                                                        <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-500/10 max-w-full">
-                                                            <svg className="w-3 h-3 shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                                            </svg>
-                                                            <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium truncate">&ldquo;{session.feedback}&rdquo;</span>
-                                                        </div>
+                                                        <p className="text-[11.5px] text-k-text-tertiary italic truncate mt-0.5">
+                                                            &ldquo;{session.feedback}&rdquo;
+                                                        </p>
                                                     )}
                                                 </div>
-                                            </div>
-                                            <svg className={`w-4 h-4 text-k-border-subtle group-hover:text-k-text-tertiary transition-all ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                        </button>
+                                                <div className="flex items-center gap-3 flex-shrink-0 font-mono text-[10.5px] text-k-text-tertiary tabular-nums">
+                                                    <span>
+                                                        {new Date(session.completed_at).toLocaleDateString('pt-BR', {
+                                                            weekday: 'short',
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            timeZone: TIMEZONE,
+                                                        }).replace(/\./g, '')}
+                                                    </span>
+                                                    {session.duration_seconds > 0 && (
+                                                        <span>{formatDuration(session.duration_seconds)}</span>
+                                                    )}
+                                                    {session.rpe != null && (
+                                                        <span className={rpeClass(session.rpe)}>PSE {session.rpe}</span>
+                                                    )}
+                                                    {change != null && (
+                                                        <span className={
+                                                            change > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                                                            change < 0 ? 'text-red-600 dark:text-red-400' : 'text-k-text-quaternary'
+                                                        }>
+                                                            {change > 0 ? '+' : ''}{change.toFixed(1)}%
+                                                        </span>
+                                                    )}
+                                                    <ChevronDown className={`w-3.5 h-3.5 text-k-text-quaternary group-hover:text-k-text-tertiary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                                </div>
+                                            </button>
 
-                                        {/* Expanded Exercise Details */}
-                                        {isExpanded && (
-                                            <div className="px-4 pb-4 pt-1 bg-glass-bg rounded-b-xl border-x border-b border-k-border-subtle space-y-3">
-                                                {isLoading ? (
-                                                    <div className="text-center py-4 text-k-text-quaternary text-xs font-medium animate-pulse">
-                                                        Carregando detalhes...
-                                                    </div>
-                                                ) : details?.items?.length > 0 ? (
-                                                    <>
-                                                        {/* Summary stats */}
-                                                        <div className="flex items-center gap-4 text-[10px] font-bold text-k-text-quaternary pb-2 border-b border-k-border-subtle">
-                                                            {details.stats?.durationSeconds > 0 && (
-                                                                <span>
-                                                                    {Math.floor(details.stats.durationSeconds / 3600) > 0
-                                                                        ? `${Math.floor(details.stats.durationSeconds / 3600)}h ${Math.floor((details.stats.durationSeconds % 3600) / 60)}m`
-                                                                        : `${Math.floor(details.stats.durationSeconds / 60)}m`
-                                                                    }
-                                                                </span>
-                                                            )}
-                                                            {details.stats?.completedSets > 0 && (
-                                                                <span>{details.stats.completedSets} séries</span>
-                                                            )}
-                                                            {details.stats?.totalTonnage > 0 && (
-                                                                <span>{details.stats.totalTonnage.toLocaleString('pt-BR')}kg volume</span>
-                                                            )}
-                                                            <span>{details.items.length} itens</span>
+                                            {/* Expanded Exercise Details */}
+                                            {isExpanded && (
+                                                <div className="mb-3 rounded-control border border-k-border-subtle bg-surface-primary px-4 py-3 space-y-2">
+                                                    {isLoading ? (
+                                                        <div className="text-center py-4 text-k-text-quaternary text-xs font-medium animate-pulse">
+                                                            Carregando detalhes...
                                                         </div>
-
-                                                        {/* Item list — all types */}
-                                                        {details.items.map((item: SessionItem) => (
-                                                            <ExpandedSessionItem key={item.id} item={item} />
-                                                        ))}
-
-                                                        {/* Feedback */}
-                                                        {session.feedback && (
-                                                            <div className="flex items-start gap-2 pt-2 mt-1 border-t border-k-border-subtle">
-                                                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex-1">
-                                                                    <svg className="w-3.5 h-3.5 shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                                                    </svg>
-                                                                    <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">&ldquo;{session.feedback}&rdquo;</span>
-                                                                </div>
+                                                    ) : details?.items?.length > 0 ? (
+                                                        <>
+                                                            {/* Summary stats */}
+                                                            <div className="flex items-center gap-4 font-mono text-[10px] text-k-text-quaternary pb-2 border-b border-k-border-subtle tabular-nums">
+                                                                {details.stats?.durationSeconds > 0 && (
+                                                                    <span>{formatDuration(details.stats.durationSeconds)}</span>
+                                                                )}
+                                                                {details.stats?.completedSets > 0 && (
+                                                                    <span>{details.stats.completedSets} séries</span>
+                                                                )}
+                                                                {details.stats?.totalTonnage > 0 && (
+                                                                    <span>{details.stats.totalTonnage.toLocaleString('pt-BR')}kg volume</span>
+                                                                )}
+                                                                <span>{details.items.length} itens</span>
                                                             </div>
-                                                        )}
 
-                                                        {/* Open full detail modal */}
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleSessionClick(session.id) }}
-                                                            className="w-full mt-1 pt-2 border-t border-k-border-subtle flex items-center justify-center gap-1.5 text-[11px] font-bold text-k-text-tertiary hover:text-violet-400 transition-colors"
-                                                        >
-                                                            Ver detalhes
-                                                            <ArrowUpRight size={12} />
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <p className="text-xs text-k-text-quaternary italic py-2">Nenhum item registrado.</p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
+                                                            {/* Item list — all types */}
+                                                            {details.items.map((item: SessionItem) => (
+                                                                <ExpandedSessionItem key={item.id} item={item} />
+                                                            ))}
+
+                                                            {/* Feedback */}
+                                                            {session.feedback && (
+                                                                <div className="flex items-start gap-2 pt-2 border-t border-k-border-subtle">
+                                                                    <MessageSquare className="w-3.5 h-3.5 shrink-0 text-k-text-quaternary mt-0.5" />
+                                                                    <span className="text-xs text-k-text-secondary italic">&ldquo;{session.feedback}&rdquo;</span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Open full detail modal */}
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleSessionClick(session.id) }}
+                                                                className="w-full pt-2 border-t border-k-border-subtle flex items-center justify-center gap-1.5 text-[11px] font-semibold text-k-text-tertiary hover:text-k-text-primary transition-colors"
+                                                            >
+                                                                Ver detalhes
+                                                                <ArrowUpRight size={12} />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-xs text-k-text-quaternary py-2">Nenhum item registrado.</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

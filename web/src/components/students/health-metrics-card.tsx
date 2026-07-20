@@ -7,13 +7,11 @@ import {
     AlertTriangle,
     ChevronDown,
     ChevronRight,
-    ClipboardList,
     FileCheck,
     Loader2,
     Plus,
     Ruler,
     Send,
-    Activity,
 } from 'lucide-react'
 import { assignFormToStudents } from '@/actions/forms/assign-form'
 import { getSubmissionResponses, type SubmissionResponses } from '@/actions/forms/get-submission-responses'
@@ -96,14 +94,10 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 /**
  * Card unificado de Saúde & métricas (Onda 2 do redesign).
  *
- * Substitui o par `AssessmentSidebarCard` + `BodyMetricsTrend` por um único
- * cartão na sidebar direita do dashboard do aluno. Reúne: avaliação presencial
- * mais recente, peso/% de gordura com sparkline, formulários pendentes, agenda
- * de reavaliações e dropdown pra enviar um novo formulário.
- *
- * O componente legado (`AssessmentSidebarCard`) segue vivo e marcado como
- * `@deprecated` até a Onda 3 — só não é mais consumido pelo
- * `student-detail-client`.
+ * Reúne: avaliação presencial mais recente, peso/% de gordura com sparkline,
+ * formulários pendentes, agenda de reavaliações e dropdown pra enviar um novo
+ * formulário. Redesign "ferramenta profissional": painel hairline, eyebrow
+ * mono, números tabulares e cor apenas como estado (pendências/vencidas).
  */
 export function HealthMetricsCard({
     studentId,
@@ -192,40 +186,25 @@ export function HealthMetricsCard({
     if (!hasData) {
         return (
             <div
-                className={`bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6 ${
+                className={`bg-surface-card rounded-panel border border-k-border-subtle p-5 ${
                     dropdownOpen ? 'relative z-sidebar' : ''
                 }`}
                 data-testid="health-metrics-card"
             >
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-violet-500" />
-                        Saúde &amp; métricas
-                    </h3>
-                </div>
-                <div className="text-center py-4">
-                    <div className="rounded-xl border-2 border-dashed border-[#D2D2D7] dark:border-k-border-subtle p-4 mb-3">
-                        <div className="w-10 h-10 bg-blue-50 dark:bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <ClipboardList className="w-5 h-5 text-blue-500" />
-                        </div>
-                        <p className="text-sm font-medium text-[#1C1C1E] dark:text-k-text-secondary">
-                            Sem avaliações
-                        </p>
-                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-0.5">
-                            Envie um formulário pra conhecer melhor o aluno.
-                        </p>
-                    </div>
-                    <div className="flex items-center justify-center">
-                        <SendButton
-                            label="Enviar avaliação"
-                            formTemplates={formTemplates}
-                            dropdownOpen={dropdownOpen}
-                            setDropdownOpen={setDropdownOpen}
-                            sending={sending}
-                            onSend={handleSendForm}
-                        />
-                    </div>
-                </div>
+                <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                    Saúde &amp; métricas
+                </span>
+                <p className="text-[11.5px] text-k-text-quaternary mt-2 mb-3">
+                    Sem avaliações. Envie um formulário pra conhecer melhor o aluno.
+                </p>
+                <SendButton
+                    label="Enviar avaliação"
+                    formTemplates={formTemplates}
+                    dropdownOpen={dropdownOpen}
+                    setDropdownOpen={setDropdownOpen}
+                    sending={sending}
+                    onSend={handleSendForm}
+                />
             </div>
         )
     }
@@ -237,26 +216,23 @@ export function HealthMetricsCard({
 
     return (
         <div
-            className={`bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-6 ${
+            className={`bg-surface-card rounded-panel border border-k-border-subtle p-5 ${
                 dropdownOpen ? 'relative z-sidebar' : ''
             }`}
             data-testid="health-metrics-card"
         >
             {/* Header */}
-            <div className="flex items-start justify-between mb-4 gap-2">
+            <div className="flex items-start justify-between mb-3 gap-2">
                 <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-violet-500" />
+                    <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
                         Saúde &amp; métricas
                         {pendingCount > 0 && (
-                            <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold rounded-full bg-red-500 text-white">
-                                {pendingCount}
-                            </span>
+                            <span className="text-red-600 dark:text-red-400 tabular-nums"> · {pendingCount}</span>
                         )}
-                    </h3>
+                    </span>
                     {lastUpdated && (
-                        <p className="text-[10px] text-[#86868B] dark:text-k-text-quaternary mt-0.5">
-                            Última atualização em{' '}
+                        <p className="font-mono text-[10px] text-k-text-quaternary mt-0.5 tabular-nums">
+                            atualizado em{' '}
                             {new Date(lastUpdated).toLocaleDateString('pt-BR', { timeZone: TIMEZONE })}
                         </p>
                     )}
@@ -279,39 +255,25 @@ export function HealthMetricsCard({
                     onPush={(href) => router.push(href)}
                 />
 
-                {/* Reassessment banner — Onda 2 */}
+                {/* Reassessment banner — borda-esquerda de severidade, sem fundo tintado */}
                 {showReassessmentBanner && (
                     <div
                         role="status"
                         data-testid="reassessment-banner"
-                        className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 ${
-                            hasOverdue
-                                ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20'
-                                : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20'
+                        className={`flex items-start gap-2.5 rounded-control border border-k-border-subtle border-l-2 px-3 py-2.5 ${
+                            hasOverdue ? 'border-l-red-500' : 'border-l-amber-500'
                         }`}
                     >
                         <AlertTriangle
-                            className={`w-4 h-4 mt-0.5 shrink-0 ${
+                            className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
                                 hasOverdue ? 'text-red-500' : 'text-amber-500'
                             }`}
                         />
                         <div className="flex-1 min-w-0">
-                            <p
-                                className={`text-xs font-bold ${
-                                    hasOverdue
-                                        ? 'text-red-700 dark:text-red-300'
-                                        : 'text-amber-700 dark:text-amber-300'
-                                }`}
-                            >
+                            <p className="text-xs font-semibold text-k-text-primary">
                                 Reavaliação periódica · {hasOverdue ? 'vencida' : 'pendente'}
                             </p>
-                            <p
-                                className={`text-[11px] mt-0.5 ${
-                                    hasOverdue
-                                        ? 'text-red-600/80 dark:text-red-400/80'
-                                        : 'text-amber-600/80 dark:text-amber-400/80'
-                                }`}
-                            >
+                            <p className="text-[11px] mt-0.5 text-k-text-tertiary tabular-nums">
                                 {pendingCount > 0
                                     ? `${pendingCount} formulário${pendingCount > 1 ? 's' : ''} pendente${pendingCount > 1 ? 's' : ''}.`
                                     : `${dueSchedules.length} reavaliação${dueSchedules.length > 1 ? 'ões' : ''} vencendo nos próximos 7 dias.`}
@@ -320,25 +282,25 @@ export function HealthMetricsCard({
                     </div>
                 )}
 
-                {/* Pending forms list */}
+                {/* Pending forms list — linha com ponto âmbar, sem caixa tintada */}
                 {pendingCount > 0 && (
-                    <div className="space-y-2">
+                    <div>
                         {pendingForms.slice(0, 3).map((form) => (
                             <div
                                 key={form.id}
-                                className="flex items-center gap-2 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-3 py-2"
+                                className="flex items-center gap-2.5 py-2 border-b border-k-border-subtle last:border-b-0"
                             >
-                                <FileCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                                <span className="text-xs font-medium text-amber-700 dark:text-amber-300 flex-1 truncate">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+                                <span className="text-xs font-medium text-k-text-secondary flex-1 truncate">
                                     {form.title}
                                 </span>
-                                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 shrink-0">
+                                <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.06em] text-amber-600 dark:text-amber-400 shrink-0">
                                     Pendente
                                 </span>
                             </div>
                         ))}
                         {pendingCount > 3 && (
-                            <p className="text-xs text-[#86868B] dark:text-k-text-quaternary pl-3">
+                            <p className="text-xs text-k-text-quaternary pt-1.5 tabular-nums">
                                 e mais {pendingCount - 3}…
                             </p>
                         )}
@@ -354,23 +316,23 @@ export function HealthMetricsCard({
                             currentBodyFat={bodyMetrics?.bodyFat ?? null}
                         />
                     ) : (
-                        <div className="rounded-lg bg-[#F5F5F7] dark:bg-white/5 p-3">
+                        <div className="rounded-control border border-k-border-subtle bg-surface-primary p-3">
                             <div className="grid grid-cols-2 gap-3">
                                 {bodyMetrics?.weight && (
                                     <div>
-                                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">Peso</p>
-                                        <p className="text-base font-semibold text-[#1C1C1E] dark:text-white mt-0.5">
-                                            {bodyMetrics.weight} kg
+                                        <p className="text-xs text-k-text-tertiary">Peso</p>
+                                        <p className="font-mono text-[15px] font-semibold text-k-text-primary mt-0.5 tabular-nums">
+                                            {bodyMetrics.weight} <span className="text-[10.5px] font-normal text-k-text-tertiary">kg</span>
                                         </p>
                                     </div>
                                 )}
                                 {bodyMetrics?.bodyFat && (
                                     <div>
-                                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">
+                                        <p className="text-xs text-k-text-tertiary">
                                             Gordura corporal
                                         </p>
-                                        <p className="text-base font-semibold text-[#1C1C1E] dark:text-white mt-0.5">
-                                            {bodyMetrics.bodyFat}%
+                                        <p className="font-mono text-[15px] font-semibold text-k-text-primary mt-0.5 tabular-nums">
+                                            {bodyMetrics.bodyFat} <span className="text-[10.5px] font-normal text-k-text-tertiary">%</span>
                                         </p>
                                     </div>
                                 )}
@@ -385,36 +347,36 @@ export function HealthMetricsCard({
                         type="button"
                         onClick={handleViewSubmission}
                         disabled={loadingViewer}
-                        className="group flex w-full items-start gap-2 rounded-lg -mx-2 px-2 py-1.5 text-left transition-colors hover:bg-[#F5F5F7] dark:hover:bg-white/5 disabled:opacity-60"
+                        className="group flex w-full items-start gap-2 rounded-control -mx-2 px-2 py-1.5 text-left transition-colors hover:bg-surface-inset disabled:opacity-60"
                         aria-label="Ver respostas da avaliação"
                     >
                         <FileCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm text-[#1C1C1E] dark:text-k-text-secondary">
+                            <p className="text-sm text-k-text-secondary">
                                 {categoryLabels[lastSubmission.templateCategory] || lastSubmission.templateCategory}
-                                <span className="text-[#86868B] dark:text-k-text-quaternary ml-1">
+                                <span className="font-mono text-xs text-k-text-quaternary ml-1 tabular-nums">
                                     — {new Date(lastSubmission.submittedAt).toLocaleDateString('pt-BR', { timeZone: TIMEZONE })}
                                 </span>
                             </p>
-                            <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-0.5 truncate">
+                            <p className="text-xs text-k-text-quaternary mt-0.5 truncate">
                                 {lastSubmission.templateTitle}
                             </p>
                         </div>
                         {loadingViewer ? (
-                            <Loader2 className="w-4 h-4 shrink-0 mt-0.5 text-[#86868B] dark:text-k-text-quaternary animate-spin" />
+                            <Loader2 className="w-4 h-4 shrink-0 mt-0.5 text-k-text-quaternary animate-spin" />
                         ) : (
-                            <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-[#C7C7CC] dark:text-k-text-quaternary transition-colors group-hover:text-violet-500 dark:group-hover:text-violet-400" />
+                            <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-k-text-quaternary transition-colors group-hover:text-k-text-primary" />
                         )}
                     </button>
                 )}
 
                 {/* Recurring schedules — accordion fechado por padrão */}
                 {formSchedules.length > 0 && (
-                    <div className="rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle">
+                    <div className="rounded-control border border-k-border-subtle">
                         <button
                             type="button"
                             onClick={() => setSchedulesExpanded((v) => !v)}
-                            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[11px] font-bold text-[#6E6E73] dark:text-k-text-tertiary"
+                            className="w-full flex items-center justify-between gap-2 px-3 py-2 font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-k-text-tertiary tabular-nums"
                             aria-expanded={schedulesExpanded}
                         >
                             <span>Reavaliações agendadas ({formSchedules.length})</span>
@@ -432,9 +394,8 @@ export function HealthMetricsCard({
             </div>
 
             {/* Respostas da avaliação — modal inline, read-only.
-             *  Renderizado via portal no body: o card raiz usa backdrop-blur
-             *  (backdrop-filter), que criaria um containing block e prenderia
-             *  o `position: fixed` do modal à área do card em vez da viewport. */}
+             *  Renderizado via portal no body para garantir `position: fixed`
+             *  relativo à viewport, independente do stacking context do card. */}
             {viewer && createPortal(
                 <CheckinResponsesViewer
                     title={viewer.title}
@@ -459,8 +420,7 @@ export function HealthMetricsCard({
 }
 
 // -----------------------------------------------------------------------------
-// Internal: Send button (dropdown) — local pra não acoplar ao componente
-// legado AssessmentSidebarCard, que será removido na Onda 3.
+// Internal: Send button (dropdown)
 // -----------------------------------------------------------------------------
 
 function SendButton({
@@ -485,7 +445,7 @@ function SendButton({
             <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 disabled={sending}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-k-text-tertiary hover:text-k-text-primary border border-k-border-subtle rounded-lg transition-all disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset border border-k-border-primary rounded-control transition-colors disabled:opacity-50"
             >
                 {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3 h-3" />}
                 {sending ? 'Enviando…' : label}
@@ -495,15 +455,15 @@ function SendButton({
             {dropdownOpen && (
                 <>
                     <div className="fixed inset-0 z-sidebar" onClick={() => setDropdownOpen(false)} />
-                    <div className="absolute right-0 mt-1 z-dropdown min-w-[220px] bg-white dark:bg-surface-card border border-[#E5E5EA] dark:border-k-border-primary rounded-xl shadow-lg overflow-hidden">
+                    <div className="absolute right-0 mt-1 z-dropdown min-w-[220px] bg-surface-card border border-k-border-primary rounded-panel shadow-lg overflow-hidden">
                         {formTemplates.map((template) => (
                             <button
                                 key={template.id}
                                 onClick={() => onSend(template.id)}
-                                className="w-full text-left px-4 py-2.5 text-sm text-[#1C1C1E] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-hover transition-colors flex items-center justify-between gap-2"
+                                className="w-full text-left px-4 py-2.5 text-sm text-k-text-secondary hover:bg-surface-inset transition-colors flex items-center justify-between gap-2"
                             >
                                 <span className="truncate">{template.title}</span>
-                                <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary shrink-0">
+                                <span className="text-[10px] text-k-text-quaternary shrink-0">
                                     {categoryLabels[template.category] || template.category}
                                 </span>
                             </button>
@@ -516,10 +476,7 @@ function SendButton({
 }
 
 // -----------------------------------------------------------------------------
-// In-person assessment block
-//
-// Duplicated from assessment-sidebar-card.tsx (wave 2). Will be the canonical
-// location once AssessmentSidebarCard is removed in wave 3.
+// In-person assessment block — neutro (o violeta decorativo saiu no redesign)
 // -----------------------------------------------------------------------------
 
 function formatShortDate(value: string | null): string {
@@ -554,21 +511,19 @@ function PresencialBlock({
             <button
                 type="button"
                 onClick={() => onPush(`/avaliacoes?createAssessment=1&studentId=${studentId}`)}
-                className="group flex w-full items-center gap-2 rounded-lg border border-dashed border-[#D2D2D7] dark:border-k-border-subtle bg-transparent px-3 py-2.5 text-left transition-colors hover:border-violet-500/40 hover:bg-violet-500/5"
+                className="group flex w-full items-center gap-2.5 rounded-control border border-k-border-subtle bg-transparent px-3 py-2.5 text-left transition-colors hover:bg-surface-inset"
                 aria-label="Criar avaliação presencial"
             >
-                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-violet-500/10">
-                    <Ruler className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
-                </div>
+                <Ruler className="h-3.5 w-3.5 shrink-0 text-k-text-quaternary" />
                 <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
+                    <div className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary">
                         Avaliação presencial
                     </div>
-                    <div className="text-xs text-[#1C1C1E] dark:text-k-text-secondary">
+                    <div className="text-xs text-k-text-secondary">
                         Sem avaliações ainda
                     </div>
                 </div>
-                <Plus className="h-3.5 w-3.5 text-[#86868B] transition-colors group-hover:text-violet-500 dark:text-k-text-quaternary dark:group-hover:text-violet-400" />
+                <Plus className="h-3.5 w-3.5 text-k-text-quaternary transition-colors group-hover:text-k-text-primary" />
             </button>
         )
     }
@@ -582,39 +537,37 @@ function PresencialBlock({
         <button
             type="button"
             onClick={() => onPush(`/students/${studentId}/avaliacoes/${session.id}/result`)}
-            className="group flex w-full items-center gap-2.5 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5 text-left transition-colors hover:border-violet-500/40 hover:bg-violet-500/10"
+            className="group flex w-full items-center gap-2.5 rounded-control border border-k-border-subtle bg-surface-primary px-3 py-2.5 text-left transition-colors hover:bg-surface-inset"
             aria-label="Ver última avaliação presencial"
         >
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-violet-500/15">
-                <Ruler className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
-            </div>
+            <Ruler className="h-3.5 w-3.5 shrink-0 text-k-text-quaternary" />
             <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-500 dark:text-violet-400">
+                <div className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary">
                     Avaliação presencial
-                    <span className="font-normal normal-case tracking-normal text-[#86868B] dark:text-k-text-quaternary">
-                        · {dateStr}
+                    <span className="normal-case tracking-normal text-k-text-quaternary tabular-nums">
+                        {' '}· {dateStr}
                     </span>
                 </div>
-                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[13px]">
+                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
                     {bmi != null && (
-                        <span className="font-semibold text-[#1C1C1E] dark:text-k-text-primary">
+                        <span className="font-mono text-[13px] font-semibold text-k-text-primary tabular-nums">
                             IMC {bmi.toFixed(1).replace('.', ',')}
                         </span>
                     )}
                     {bf != null && (
-                        <span className="font-semibold text-[#1C1C1E] dark:text-k-text-primary">
+                        <span className="font-mono text-[13px] font-semibold text-k-text-primary tabular-nums">
                             {bf.toFixed(1).replace('.', ',')}% BG
                         </span>
                     )}
                     {bmi == null && bf == null && (
-                        <span className="text-[#86868B] dark:text-k-text-quaternary">sem métricas</span>
+                        <span className="text-[13px] text-k-text-quaternary">sem métricas</span>
                     )}
                 </div>
                 {bmiLabel && (
-                    <div className="text-[11px] text-[#86868B] dark:text-k-text-tertiary">{bmiLabel}</div>
+                    <div className="text-[11px] text-k-text-tertiary">{bmiLabel}</div>
                 )}
             </div>
-            <ChevronRight className="h-4 w-4 flex-shrink-0 text-[#86868B] transition-colors group-hover:text-violet-500 dark:text-k-text-quaternary dark:group-hover:text-violet-400" />
+            <ChevronRight className="h-4 w-4 flex-shrink-0 text-k-text-quaternary transition-colors group-hover:text-k-text-primary" />
         </button>
     )
 }

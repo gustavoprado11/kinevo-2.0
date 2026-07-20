@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { GitCompareArrows, ArrowRight, ChevronDown, ChevronUp, X, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { ArrowRight, ChevronDown, ChevronUp, X } from 'lucide-react'
 import type { ProgramMuscleVolume } from '@/app/students/[id]/actions/get-program-muscle-volume'
 
 interface ProgramComparisonCardProps {
@@ -32,40 +32,10 @@ function shortName(name: string): string {
     return map[name] || name
 }
 
-/** Color for each muscle group bar based on the group name */
-function barColor(name: string): string {
-    const colors: Record<string, string> = {
-        'Peito': 'bg-blue-500',
-        'Costas': 'bg-emerald-500',
-        'Quadríceps': 'bg-violet-500',
-        'Posterior de Coxa': 'bg-purple-500',
-        'Ombros': 'bg-amber-500',
-        'Bíceps': 'bg-rose-500',
-        'Tríceps': 'bg-orange-500',
-        'Glúteo': 'bg-pink-500',
-        'Panturrilha': 'bg-teal-500',
-        'Abdominais': 'bg-indigo-500',
-        'Adutores': 'bg-cyan-500',
-    }
-    return colors[name] || 'bg-gray-400'
-}
-
-function barColorPrev(name: string): string {
-    const colors: Record<string, string> = {
-        'Peito': 'bg-blue-300 dark:bg-blue-500/30',
-        'Costas': 'bg-emerald-300 dark:bg-emerald-500/30',
-        'Quadríceps': 'bg-violet-300 dark:bg-violet-500/30',
-        'Posterior de Coxa': 'bg-purple-300 dark:bg-purple-500/30',
-        'Ombros': 'bg-amber-300 dark:bg-amber-500/30',
-        'Bíceps': 'bg-rose-300 dark:bg-rose-500/30',
-        'Tríceps': 'bg-orange-300 dark:bg-orange-500/30',
-        'Glúteo': 'bg-pink-300 dark:bg-pink-500/30',
-        'Panturrilha': 'bg-teal-300 dark:bg-teal-500/30',
-        'Abdominais': 'bg-indigo-300 dark:bg-indigo-500/30',
-        'Adutores': 'bg-cyan-300 dark:bg-cyan-500/30',
-    }
-    return colors[name] || 'bg-gray-300 dark:bg-gray-500/30'
-}
+// Redesign "ferramenta profissional": a paleta arco-íris por grupo muscular
+// saiu — o grupo já está escrito na linha, a cor não carregava informação.
+// Barra atual em tinta + marcador fino na posição do programa anterior;
+// o delta numérico faz o resto.
 
 export function ProgramComparisonCard({
     currentProgramId,
@@ -138,47 +108,41 @@ export function ProgramComparisonCard({
 
         return (
             <>
-                <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                        <GitCompareArrows className="w-4 h-4 text-violet-500" />
-                        <h4 className="text-sm font-semibold text-[#1C1C1E] dark:text-white">Comparativo de volume</h4>
-                    </div>
+                <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
+                    <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                        Comparativo de volume
+                    </span>
 
                     {loading ? (
-                        <div className="h-16 bg-[#F5F5F7] dark:bg-white/5 rounded-xl animate-pulse" />
+                        <div className="h-16 bg-surface-inset rounded-control animate-pulse mt-3" />
                     ) : rows.length === 0 ? (
-                        <p className="text-xs text-k-text-quaternary italic">Sem dados de volume comparáveis.</p>
+                        <p className="text-xs text-k-text-quaternary mt-3">Sem dados de volume comparáveis.</p>
                     ) : (
                         <>
-                            <div className="rounded-xl bg-[#F5F5F7] dark:bg-white/5 p-3">
-                                <p className="text-[10px] font-bold text-[#86868B] dark:text-k-text-quaternary uppercase tracking-wider">
-                                    Volume total · séries
-                                </p>
-                                <div className="flex items-baseline gap-2 mt-1">
-                                    <span className="text-2xl font-black text-[#1C1C1E] dark:text-white tracking-tighter">
+                            <div className="mt-2">
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-[26px] leading-tight font-bold tracking-tight text-k-text-primary tabular-nums">
                                         {currTotal}
                                     </span>
-                                    <span className="text-[11px] text-[#86868B] dark:text-k-text-quaternary">
-                                        vs {prevTotal} anterior
+                                    <span className="text-[11.5px] text-k-text-tertiary tabular-nums">
+                                        séries · vs {prevTotal} no anterior
                                     </span>
                                 </div>
                                 {pctChange != null && totalDiff !== 0 && (
                                     <span
-                                        className={`mt-1 inline-flex items-center gap-0.5 text-[11px] font-bold ${
+                                        className={`font-mono text-[11px] font-medium tabular-nums ${
                                             totalDiff > 0
                                                 ? 'text-emerald-600 dark:text-emerald-400'
                                                 : 'text-amber-600 dark:text-amber-400'
                                         }`}
                                     >
-                                        {totalDiff > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                         {pctChange > 0 ? '+' : ''}
                                         {pctChange}% ({totalDiff > 0 ? '+' : ''}
                                         {totalDiff} séries)
                                     </span>
                                 )}
                                 {pctChange == null && totalDiff === 0 && (
-                                    <span className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-bold text-k-text-quaternary">
-                                        <Minus className="w-3 h-3" />
+                                    <span className="font-mono text-[11px] text-k-text-quaternary">
                                         sem variação
                                     </span>
                                 )}
@@ -187,9 +151,9 @@ export function ProgramComparisonCard({
                             <button
                                 type="button"
                                 onClick={() => setDetailsOpen(true)}
-                                className="mt-3 text-[11px] font-bold text-violet-500 hover:text-violet-400 transition-colors"
+                                className="mt-3 text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity"
                             >
-                                Ver comparação detalhada por grupo muscular →
+                                Ver comparação detalhada por grupo muscular
                             </button>
                         </>
                     )}
@@ -207,12 +171,12 @@ export function ProgramComparisonCard({
                             onClick={() => setDetailsOpen(false)}
                             aria-hidden="true"
                         />
-                        <div className="relative bg-white dark:bg-surface-card border border-[#D2D2D7] dark:border-k-border-primary rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
+                        <div className="relative bg-surface-card border border-k-border-primary rounded-panel shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
                             <button
                                 type="button"
                                 onClick={() => setDetailsOpen(false)}
                                 aria-label="Fechar"
-                                className="absolute top-3 right-3 z-sticky p-1.5 text-k-text-quaternary hover:text-k-text-primary hover:bg-glass-bg rounded-lg transition-colors"
+                                className="absolute top-3 right-3 z-sticky p-1.5 text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset rounded-control transition-colors"
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -235,14 +199,13 @@ export function ProgramComparisonCard({
     // ── Versão completa (default) ─────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">
-                <div className="flex items-center gap-2 mb-3">
-                    <GitCompareArrows className="w-4 h-4 text-violet-500" />
-                    <h4 className="text-sm font-semibold text-[#1C1C1E] dark:text-white">Comparativo</h4>
-                </div>
-                <div className="space-y-2">
+            <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
+                <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                    Comparativo
+                </span>
+                <div className="space-y-2 mt-3">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="h-6 bg-[#F5F5F7] dark:bg-white/5 rounded animate-pulse" />
+                        <div key={i} className="h-6 bg-surface-inset rounded-control animate-pulse" />
                     ))}
                 </div>
             </div>
@@ -257,64 +220,63 @@ export function ProgramComparisonCard({
     const totalDiff = (currentVolume?.totalSets || 0) - (previousVolume?.totalSets || 0)
 
     return (
-        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">
+        <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
             {/* Header */}
-            <div className="flex items-center gap-2 mb-3">
-                <GitCompareArrows className="w-4 h-4 text-violet-500" />
-                <h4 className="text-sm font-semibold text-[#1C1C1E] dark:text-white">
-                    Volume por Grupo Muscular
-                </h4>
-            </div>
+            <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                Volume por grupo muscular
+            </span>
 
             {/* Program names */}
-            <div className="flex items-center gap-2 mb-4 text-[11px]">
-                <span className="px-2 py-1 rounded-lg bg-[#F5F5F7] dark:bg-white/5 text-[#6E6E73] dark:text-k-text-tertiary font-medium truncate max-w-[42%]">
+            <div className="flex items-center gap-2 mt-2 mb-4 text-[11px]">
+                <span className="text-k-text-tertiary truncate max-w-[42%]">
                     {previousProgramName}
                 </span>
-                <ArrowRight className="w-3 h-3 text-[#D2D2D7] dark:text-k-text-quaternary shrink-0" />
-                <span className="px-2 py-1 rounded-lg bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 font-semibold truncate max-w-[42%]">
+                <ArrowRight className="w-3 h-3 text-k-text-quaternary shrink-0" />
+                <span className="font-semibold text-k-text-primary truncate max-w-[42%]">
                     {currentProgramName}
                 </span>
             </div>
 
-            {/* Muscle group rows */}
+            {/* Muscle group rows — barra em tinta + marcador do programa anterior */}
             <div className="space-y-2.5">
                 {visibleRows.map(row => (
                     <div key={row.group}>
                         {/* Label + values */}
                         <div className="flex items-center justify-between mb-1">
-                            <span className="text-[11px] font-medium text-[#6E6E73] dark:text-k-text-tertiary">
+                            <span className="text-[11px] font-medium text-k-text-secondary">
                                 {shortName(row.group)}
                             </span>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary">
+                            <div className="flex items-center gap-1.5 font-mono text-[10px] tabular-nums">
+                                <span className="text-k-text-quaternary">
                                     {row.prev}
                                 </span>
-                                <ArrowRight className="w-2 h-2 text-[#D2D2D7] dark:text-k-text-quaternary" />
-                                <span className="text-[10px] font-bold text-[#1C1C1E] dark:text-white">
+                                <ArrowRight className="w-2 h-2 text-k-text-quaternary" />
+                                <span className="font-semibold text-k-text-primary">
                                     {row.curr}
                                 </span>
                                 {row.diff !== 0 && (
-                                    <span className={`text-[9px] font-bold ${
-                                        row.diff > 0 ? 'text-emerald-500' : 'text-amber-500'
+                                    <span className={`font-medium ${
+                                        row.diff > 0
+                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                            : 'text-amber-600 dark:text-amber-400'
                                     }`}>
                                         {row.diff > 0 ? '+' : ''}{row.diff}
                                     </span>
                                 )}
                             </div>
                         </div>
-                        {/* Stacked bar */}
-                        <div className="relative h-2 bg-[#F5F5F7] dark:bg-white/5 rounded-full overflow-hidden">
-                            {/* Previous (faded, behind) */}
+                        {/* Barra atual em tinta; marcador fino = programa anterior */}
+                        <div className="relative h-1.5 bg-surface-inset rounded-full">
                             <div
-                                className={`absolute inset-y-0 left-0 rounded-full ${barColorPrev(row.group)} transition-all duration-500`}
-                                style={{ width: `${(row.prev / maxSets) * 100}%` }}
+                                className="absolute inset-y-0 left-0 rounded-full bg-k-text-secondary transition-all duration-500"
+                                style={{ width: `${(row.curr / maxSets) * 100}%` }}
                             />
-                            {/* Current (solid, on top) */}
-                            <div
-                                className={`absolute inset-y-0 left-0 rounded-full ${barColor(row.group)} transition-all duration-500`}
-                                style={{ width: `${(row.curr / maxSets) * 100}%`, opacity: 0.85 }}
-                            />
+                            {row.prev > 0 && (
+                                <div
+                                    className="absolute -top-0.5 -bottom-0.5 w-px bg-k-text-quaternary transition-all duration-500"
+                                    style={{ left: `${(row.prev / maxSets) * 100}%` }}
+                                />
+                            )}
                         </div>
                     </div>
                 ))}
@@ -324,7 +286,7 @@ export function ProgramComparisonCard({
             {hasMore && (
                 <button
                     onClick={() => setExpanded(!expanded)}
-                    className="flex items-center gap-1 mt-3 text-[10px] font-bold text-violet-500 hover:text-violet-400 transition-colors"
+                    className="flex items-center gap-1 mt-3 text-[10.5px] font-semibold text-primary hover:opacity-80 transition-opacity"
                 >
                     {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     {expanded ? 'Menos' : `+${rows.length - 6} grupos`}
@@ -332,21 +294,23 @@ export function ProgramComparisonCard({
             )}
 
             {/* Total summary */}
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#F0F0F0] dark:border-k-border-subtle">
-                <span className="text-[10px] font-bold text-[#86868B] dark:text-k-text-quaternary uppercase tracking-wide">
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-k-border-subtle">
+                <span className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">
                     Total séries
                 </span>
-                <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-[#AEAEB2] dark:text-k-text-quaternary">
+                <div className="flex items-center gap-2 font-mono text-[11px] tabular-nums">
+                    <span className="text-k-text-quaternary">
                         {previousVolume?.totalSets || 0}
                     </span>
-                    <ArrowRight className="w-2.5 h-2.5 text-[#D2D2D7] dark:text-k-text-quaternary" />
-                    <span className="text-[11px] font-bold text-[#1C1C1E] dark:text-white">
+                    <ArrowRight className="w-2.5 h-2.5 text-k-text-quaternary" />
+                    <span className="font-semibold text-k-text-primary">
                         {currentVolume?.totalSets || 0}
                     </span>
                     {totalDiff !== 0 && (
-                        <span className={`text-[10px] font-bold ${
-                            totalDiff > 0 ? 'text-emerald-500' : 'text-amber-500'
+                        <span className={`font-medium ${
+                            totalDiff > 0
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-amber-600 dark:text-amber-400'
                         }`}>
                             {totalDiff > 0 ? '+' : ''}{totalDiff}
                         </span>

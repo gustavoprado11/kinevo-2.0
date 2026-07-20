@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Minus, Loader2, Dumbbell, ChevronRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Loader2 } from 'lucide-react'
 import type { WorkoutTonnageHistory } from '@/app/students/[id]/actions/get-workout-tonnage-history'
 
 interface LoadProgressionChartProps {
@@ -13,15 +13,20 @@ function formatTonnage(t: number): string {
     return `${Math.round(t)}kg`
 }
 
-function TrendBadge({ change }: { change: number | null }) {
+// Delta como texto (sem pílula, sem seta unicode): emerald quando sobe,
+// âmbar quando cai — cor no número, não em volta dele.
+function TrendText({ change }: { change: number | null }) {
     if (change == null) return null
     const isUp = change > 1
     const isDown = change < -1
     return (
-        <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${
-            isUp ? 'text-emerald-500' : isDown ? 'text-red-500' : 'text-[#86868B] dark:text-k-text-quaternary'
+        <span className={`font-mono text-[11px] font-medium tabular-nums ${
+            isUp
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : isDown
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-k-text-quaternary'
         }`}>
-            {isUp ? <TrendingUp className="w-3 h-3" /> : isDown ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
             {isUp ? '+' : ''}{change.toFixed(1)}%
         </span>
     )
@@ -34,7 +39,7 @@ function WorkoutChart({ workout }: { workout: WorkoutTonnageHistory }) {
 
     if (points.length < 2) {
         return (
-            <div className="text-center py-4 text-xs text-[#86868B] dark:text-k-text-quaternary">
+            <div className="text-center py-4 text-xs text-k-text-quaternary">
                 Apenas 1 sessão registrada — necessário no mínimo 2 para gráfico.
             </div>
         )
@@ -57,34 +62,25 @@ function WorkoutChart({ workout }: { workout: WorkoutTonnageHistory }) {
         ...p,
     }))
 
-    const isPositive = (workout.overallChange ?? 0) > 1
-    const isNegative = (workout.overallChange ?? 0) < -1
-    const lineColor = isNegative ? '#ef4444' : '#8b5cf6'
-    const gradId = `grad-${workout.workoutId.slice(0, 8)}`
-
     const pathD = svgPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
     const areaD = `${pathD} L ${svgPoints[svgPoints.length - 1].x.toFixed(1)} ${h - pad.bottom} L ${svgPoints[0].x.toFixed(1)} ${h - pad.bottom} Z`
 
     const hovered = hoveredIndex != null ? points[hoveredIndex] : null
+    const lastIndex = svgPoints.length - 1
 
     return (
         <div>
-            {/* Chart */}
-            <div className="relative">
+            {/* Chart — linha em tinta, área com preenchimento sutil,
+                ponto final enfatizado (sem gradiente, sem cor por tendência) */}
+            <div className="relative text-k-text-secondary">
                 <svg
                     viewBox={`0 0 ${w} ${h}`}
                     className="w-full h-20"
                     preserveAspectRatio="none"
                     onMouseLeave={() => setHoveredIndex(null)}
                 >
-                    <defs>
-                        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={lineColor} stopOpacity="0.2" />
-                            <stop offset="100%" stopColor={lineColor} stopOpacity="0.02" />
-                        </linearGradient>
-                    </defs>
-                    <path d={areaD} fill={`url(#${gradId})`} />
-                    <path d={pathD} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={areaD} className="fill-current opacity-[0.07]" />
+                    <path d={pathD} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     {svgPoints.map((p, i) => (
                         <g key={p.sessionId}>
                             {/* Invisible hit area */}
@@ -96,19 +92,19 @@ function WorkoutChart({ workout }: { workout: WorkoutTonnageHistory }) {
                                 fill="transparent"
                                 onMouseEnter={() => setHoveredIndex(i)}
                             />
-                            {/* Dot */}
-                            <circle
-                                cx={p.x}
-                                cy={p.y}
-                                r={hoveredIndex === i ? 4 : 2.5}
-                                fill={lineColor}
-                                stroke="white"
-                                strokeWidth="1"
-                                style={{ transition: 'r 150ms ease' }}
-                            />
+                            {/* Dot — só o último ponto e o hover ganham destaque */}
+                            {(i === lastIndex || hoveredIndex === i) && (
+                                <circle
+                                    cx={p.x}
+                                    cy={p.y}
+                                    r={hoveredIndex === i ? 4 : 3}
+                                    className="fill-current"
+                                    style={{ transition: 'r 150ms ease' }}
+                                />
+                            )}
                             {/* Vertical hover line */}
                             {hoveredIndex === i && (
-                                <line x1={p.x} y1={pad.top} x2={p.x} y2={h - pad.bottom} stroke={lineColor} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.4" />
+                                <line x1={p.x} y1={pad.top} x2={p.x} y2={h - pad.bottom} stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.4" />
                             )}
                         </g>
                     ))}
@@ -121,7 +117,7 @@ function WorkoutChart({ workout }: { workout: WorkoutTonnageHistory }) {
                     const show = i === 0 || i === points.length - 1 || points.length <= 5
                     return show ? (
                         <div key={p.sessionId} className="text-center" style={{ flex: 1 }}>
-                            <p className={`text-[9px] font-bold ${hoveredIndex === i ? 'text-[#1C1C1E] dark:text-white' : 'text-[#AEAEB2] dark:text-k-text-quaternary'}`}>
+                            <p className={`font-mono text-[9px] tabular-nums ${hoveredIndex === i ? 'text-k-text-primary' : 'text-k-text-quaternary'}`}>
                                 {new Date(p.completedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })}
                             </p>
                         </div>
@@ -133,12 +129,12 @@ function WorkoutChart({ workout }: { workout: WorkoutTonnageHistory }) {
 
             {/* Hover tooltip — exercise breakdown */}
             {hovered && (
-                <div className="mt-3 rounded-lg bg-[#F5F5F7] dark:bg-white/5 p-3 animate-in fade-in duration-150">
+                <div className="mt-3 rounded-control border border-k-border-subtle bg-surface-primary p-3 animate-in fade-in duration-150">
                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-[11px] font-bold text-[#1C1C1E] dark:text-k-text-primary">
-                            {new Date(hovered.completedAt).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Sao_Paulo' })}
+                        <p className="font-mono text-[11px] font-medium text-k-text-primary tabular-nums">
+                            {new Date(hovered.completedAt).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Sao_Paulo' }).replace(/\./g, '')}
                         </p>
-                        <p className="text-[11px] font-bold text-[#1C1C1E] dark:text-k-text-primary">
+                        <p className="font-mono text-[11px] font-medium text-k-text-primary tabular-nums">
                             {formatTonnage(hovered.tonnage)} total
                         </p>
                     </div>
@@ -150,13 +146,13 @@ function WorkoutChart({ workout }: { workout: WorkoutTonnageHistory }) {
                                     <div key={i} className="flex items-center gap-2">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-[10px] text-[#6E6E73] dark:text-k-text-tertiary truncate">{ex.name}</span>
-                                                <span className="text-[10px] font-semibold text-[#1C1C1E] dark:text-k-text-secondary ml-2 shrink-0">{formatTonnage(ex.tonnage)}</span>
+                                                <span className="text-[10px] text-k-text-tertiary truncate">{ex.name}</span>
+                                                <span className="font-mono text-[10px] text-k-text-secondary ml-2 shrink-0 tabular-nums">{formatTonnage(ex.tonnage)}</span>
                                             </div>
-                                            <div className="h-1 bg-[#E5E5EA] dark:bg-white/10 rounded-full mt-0.5 overflow-hidden">
+                                            <div className="h-1 bg-surface-inset rounded-full mt-0.5 overflow-hidden">
                                                 <div
-                                                    className="h-full rounded-full"
-                                                    style={{ width: `${pct}%`, backgroundColor: lineColor }}
+                                                    className="h-full rounded-full bg-k-text-tertiary"
+                                                    style={{ width: `${pct}%` }}
                                                 />
                                             </div>
                                         </div>
@@ -164,7 +160,7 @@ function WorkoutChart({ workout }: { workout: WorkoutTonnageHistory }) {
                                 )
                             })}
                             {hovered.exerciseBreakdown.length > 5 && (
-                                <p className="text-[9px] text-[#AEAEB2] dark:text-k-text-quaternary">+{hovered.exerciseBreakdown.length - 5} exercícios</p>
+                                <p className="text-[9px] text-k-text-quaternary">+{hovered.exerciseBreakdown.length - 5} exercícios</p>
                             )}
                         </div>
                     )}
@@ -198,8 +194,8 @@ export function LoadProgressionChart({ programId }: LoadProgressionChartProps) {
 
     if (loading) {
         return (
-            <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">
-                <div className="flex items-center gap-2 text-[#86868B] dark:text-k-text-quaternary">
+            <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
+                <div className="flex items-center gap-2 text-k-text-quaternary">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span className="text-xs font-medium">Carregando progressão...</span>
                 </div>
@@ -212,40 +208,43 @@ export function LoadProgressionChart({ programId }: LoadProgressionChartProps) {
     const active = data[activeTab] || data[0]
 
     return (
-        <div className="bg-white dark:bg-glass-bg backdrop-blur-md rounded-2xl border border-transparent dark:border-k-border-primary shadow-sm dark:shadow-none p-5">
+        <div className="bg-surface-card rounded-panel border border-k-border-subtle p-5">
             {/* Header */}
             <div className="flex items-center justify-between mb-1">
-                <h4 className="text-sm font-semibold text-[#1C1C1E] dark:text-white flex items-center gap-1.5">
-                    <Dumbbell className="w-4 h-4 text-violet-500" />
-                    Progressão de Carga
-                </h4>
-                <TrendBadge change={active.overallChange} />
+                <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                    Progressão de carga
+                </span>
+                <TrendText change={active.overallChange} />
             </div>
 
             {/* Subtitle */}
-            <p className="text-[10px] text-[#86868B] dark:text-k-text-quaternary mb-3">
+            <p className="text-[10.5px] text-k-text-quaternary mb-3">
                 Volume total por sessão do mesmo treino · {active.points.length} sessões
             </p>
 
-            {/* Workout Tabs */}
+            {/* Workout selector — segmentos (padrão dos filtros), não abas violeta */}
             {data.length > 1 && (
-                <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1">
+                <div className="inline-flex rounded-control border border-k-border-primary bg-surface-card overflow-hidden mb-4 max-w-full overflow-x-auto">
                     {data.map((w, i) => (
                         <button
                             key={w.workoutId}
                             onClick={() => setActiveTab(i)}
-                            className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${
+                            className={`px-3 py-1.5 text-[11px] font-medium whitespace-nowrap transition-colors ${i > 0 ? 'border-l border-k-border-subtle' : ''} ${
                                 i === activeTab
-                                    ? 'bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300'
-                                    : 'bg-[#F5F5F7] dark:bg-white/5 text-[#6E6E73] dark:text-k-text-tertiary hover:bg-[#E8E8ED] dark:hover:bg-white/10'
+                                    ? 'bg-surface-inset text-k-text-primary'
+                                    : 'text-k-text-tertiary hover:text-k-text-primary'
                             }`}
                         >
                             <span>{w.workoutName}</span>
                             {w.lastChange != null && (
-                                <span className={`ml-1.5 ${
-                                    w.lastChange > 1 ? 'text-emerald-500' : w.lastChange < -1 ? 'text-red-500' : 'text-[#AEAEB2] dark:text-k-text-quaternary'
+                                <span className={`ml-1.5 font-mono tabular-nums ${
+                                    w.lastChange > 1
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : w.lastChange < -1
+                                            ? 'text-amber-600 dark:text-amber-400'
+                                            : 'text-k-text-quaternary'
                                 }`}>
-                                    {w.lastChange > 0 ? '↑' : w.lastChange < -1 ? '↓' : '='}{Math.abs(w.lastChange).toFixed(0)}%
+                                    {w.lastChange > 0 ? '+' : ''}{w.lastChange.toFixed(0)}%
                                 </span>
                             )}
                         </button>
@@ -257,20 +256,19 @@ export function LoadProgressionChart({ programId }: LoadProgressionChartProps) {
             <WorkoutChart workout={active} />
 
             {/* Summary row */}
-            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[#F0F0F0] dark:border-k-border-subtle">
+            <div className="flex items-center gap-6 mt-3 pt-3 border-t border-k-border-subtle">
                 <div>
-                    <p className="text-[9px] font-bold text-[#AEAEB2] dark:text-k-text-quaternary">Primeira sessão</p>
-                    <p className="text-sm font-bold text-[#1C1C1E] dark:text-white">{formatTonnage(active.points[0].tonnage)}</p>
+                    <p className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">Primeira sessão</p>
+                    <p className="font-mono text-sm font-semibold text-k-text-primary tabular-nums">{formatTonnage(active.points[0].tonnage)}</p>
                 </div>
-                <ChevronRight className="w-3 h-3 text-[#D2D2D7] dark:text-k-text-quaternary" />
                 <div>
-                    <p className="text-[9px] font-bold text-[#AEAEB2] dark:text-k-text-quaternary">Última sessão</p>
-                    <p className="text-sm font-bold text-[#1C1C1E] dark:text-white">{formatTonnage(active.points[active.points.length - 1].tonnage)}</p>
+                    <p className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">Última sessão</p>
+                    <p className="font-mono text-sm font-semibold text-k-text-primary tabular-nums">{formatTonnage(active.points[active.points.length - 1].tonnage)}</p>
                 </div>
                 {active.overallChange != null && (
                     <div className="ml-auto text-right">
-                        <p className="text-[9px] font-bold text-[#AEAEB2] dark:text-k-text-quaternary">Evolução</p>
-                        <TrendBadge change={active.overallChange} />
+                        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">Evolução</p>
+                        <TrendText change={active.overallChange} />
                     </div>
                 )}
             </div>

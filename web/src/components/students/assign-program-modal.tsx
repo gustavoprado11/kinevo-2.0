@@ -167,7 +167,7 @@ export function AssignProgramModal({
                 {/* Header */}
                 <div className="flex items-start justify-between p-8 pb-4">
                     <div>
-                        <h2 className="text-xl font-bold text-[#1C1C1E] dark:text-white tracking-tight">
+                        <h2 className="text-xl font-bold text-k-text-primary tracking-tight">
                             {step === 'select' ? 'Atribuir Programa' : 'Confirmar Atribuição'}
                         </h2>
                         <p className="text-sm text-k-text-tertiary mt-1">
@@ -196,7 +196,7 @@ export function AssignProgramModal({
                         <div className="space-y-3 pb-4">
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center py-20 gap-4">
-                                    <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
+                                    <Loader2 className="w-8 h-8 text-k-text-tertiary animate-spin" />
                                     <p className="text-xs font-bold text-k-text-quaternary ">Carregando Programas</p>
                                 </div>
                             ) : templates.length === 0 ? (
@@ -217,7 +217,7 @@ export function AssignProgramModal({
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex-1 min-w-0 pr-4">
-                                                    <h3 className="text-base font-bold text-[#1C1C1E] dark:text-white mb-1 group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors">
+                                                    <h3 className="text-base font-bold text-k-text-primary mb-1 transition-colors">
                                                         {template.name}
                                                     </h3>
                                                     {template.description ? (
@@ -241,7 +241,7 @@ export function AssignProgramModal({
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <ChevronRight size={20} className="text-k-border-subtle group-hover:text-violet-400 transition-colors shrink-0" strokeWidth={1.5} />
+                                                <ChevronRight size={20} className="text-k-border-subtle group-hover:text-k-text-primary transition-colors shrink-0" strokeWidth={1.5} />
                                             </div>
                                         </button>
                                     ))}
@@ -254,8 +254,8 @@ export function AssignProgramModal({
                         <div className="space-y-6 pb-6">
                             {/* Selected Info Card */}
                             <div className="bg-glass-bg rounded-2xl border border-k-border-subtle p-6 relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-violet-500/50" />
-                                <h3 className="font-bold text-[#1C1C1E] dark:text-white text-lg mb-1">{selectedTemplate.name}</h3>
+                                <div className="absolute top-0 left-0 w-1 h-full bg-primary/50" />
+                                <h3 className="font-bold text-k-text-primary text-lg mb-1">{selectedTemplate.name}</h3>
                                 <div className="flex items-center gap-4 mt-2">
                                     {selectedTemplate.duration_weeks && (
                                         <div className="text-[10px] font-bold text-k-text-tertiary flex items-center gap-1.5">
@@ -310,39 +310,39 @@ export function AssignProgramModal({
                                 <div className="grid grid-cols-1 gap-3">
                                     <button
                                         onClick={() => setAssignmentType('immediate')}
-                                        className={`flex items-start gap-4 p-5 rounded-2xl border transition-all text-left group ${assignmentType === 'immediate' ? 'bg-violet-600/10 border-violet-500/50 ring-1 ring-violet-500/20' : 'bg-glass-bg border-k-border-subtle hover:bg-glass-bg-active'}`}
+                                        className={`flex items-start gap-4 p-5 rounded-2xl border transition-all text-left group ${assignmentType === 'immediate' ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/20' : 'bg-glass-bg border-k-border-subtle hover:bg-glass-bg-active'}`}
                                     >
-                                        <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${assignmentType === 'immediate' ? 'border-violet-400' : 'border-k-border-primary'}`}>
-                                            {assignmentType === 'immediate' && <div className="w-2 h-2 rounded-full bg-violet-400" />}
+                                        <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${assignmentType === 'immediate' ? 'border-primary' : 'border-k-border-primary'}`}>
+                                            {assignmentType === 'immediate' && <div className="w-2 h-2 rounded-full bg-primary" />}
                                         </div>
                                         <div>
-                                            <span className={`block font-bold mb-1 transition-colors ${assignmentType === 'immediate' ? 'text-violet-300' : 'text-k-text-secondary'}`}>Iniciar Imediatamente</span>
+                                            <span className={`block font-bold mb-1 transition-colors ${assignmentType === 'immediate' ? 'text-k-text-primary' : 'text-k-text-secondary'}`}>Iniciar Imediatamente</span>
                                             <span className="text-xs text-k-text-quaternary font-medium leading-relaxed block">O novo programa substituirá o ativo agora mesmo.</span>
                                         </div>
                                     </button>
 
                                     <button
                                         onClick={() => setAssignmentType('scheduled')}
-                                        className={`flex flex-col gap-4 p-5 rounded-2xl border transition-all text-left ${assignmentType === 'scheduled' ? 'bg-violet-600/10 border-violet-500/50 ring-1 ring-violet-500/20' : 'bg-glass-bg border-k-border-subtle hover:bg-glass-bg-active'}`}
+                                        className={`flex flex-col gap-4 p-5 rounded-2xl border transition-all text-left ${assignmentType === 'scheduled' ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/20' : 'bg-glass-bg border-k-border-subtle hover:bg-glass-bg-active'}`}
                                     >
                                         <div className="flex items-start gap-4">
-                                            <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${assignmentType === 'scheduled' ? 'border-violet-400' : 'border-k-border-primary'}`}>
-                                                {assignmentType === 'scheduled' && <div className="w-2 h-2 rounded-full bg-violet-400" />}
+                                            <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${assignmentType === 'scheduled' ? 'border-primary' : 'border-k-border-primary'}`}>
+                                                {assignmentType === 'scheduled' && <div className="w-2 h-2 rounded-full bg-primary" />}
                                             </div>
                                             <div>
-                                                <span className={`block font-bold mb-1 transition-colors ${assignmentType === 'scheduled' ? 'text-violet-300' : 'text-k-text-secondary'}`}>Agendar Futuro</span>
+                                                <span className={`block font-bold mb-1 transition-colors ${assignmentType === 'scheduled' ? 'text-k-text-primary' : 'text-k-text-secondary'}`}>Agendar Futuro</span>
                                                 <span className="text-xs text-k-text-quaternary font-medium leading-relaxed block">Entrará na fila de próximos e será ativado automaticamente na data escolhida.</span>
                                             </div>
                                         </div>
 
                                         {assignmentType === 'scheduled' && (
                                             <div className="pl-8 pt-2 animate-in slide-in-from-top-2 duration-300">
-                                                <label className="block text-[10px] font-black text-violet-600 dark:text-violet-400 mb-2">Data de Início Prevista</label>
+                                                <label className="block font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-k-text-tertiary mb-2">Data de Início Prevista</label>
                                                 <input
                                                     type="date"
                                                     value={startDate}
                                                     onChange={(e) => setStartDate(e.target.value)}
-                                                    className="w-full bg-glass-bg border border-k-border-primary rounded-xl px-4 py-2.5 text-sm text-k-text-primary font-medium focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 transition-all [color-scheme:dark]"
+                                                    className="w-full bg-glass-bg border border-k-border-primary rounded-xl px-4 py-2.5 text-sm text-k-text-primary font-medium focus:outline-none focus:ring-1 focus:ring-ring/25 focus:border-ring transition-all [color-scheme:dark]"
                                                 />
                                             </div>
                                         )}
@@ -374,7 +374,7 @@ export function AssignProgramModal({
                             <button
                                 onClick={handleConfirm}
                                 disabled={assigning}
-                                className="flex-[1.5] py-4 bg-primary hover:opacity-90 text-primary-foreground text-[11px] font-black rounded-2xl transition-all shadow-lg shadow-violet-500/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-glass-bg-active disabled:shadow-none"
+                                className="flex-[1.5] py-4 bg-primary hover:opacity-90 text-primary-foreground text-[11px] font-black rounded-control transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-glass-bg-active disabled:shadow-none"
                             >
                                 {assigning ? (
                                     <>

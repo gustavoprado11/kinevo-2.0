@@ -31,32 +31,34 @@ export function ActiveSchedulesList({ schedules }: ActiveSchedulesListProps) {
         setDeletingId(null)
     }
 
+    // Redesign: o bloco 100% violeta virou lista neutra — violeta é ação,
+    // não fundo de card.
     return (
-        <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#86868B] dark:text-k-text-quaternary">
+        <div>
+            <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary mb-1">
                 Recorrentes
             </p>
             {schedules.map(schedule => (
                 <div
                     key={schedule.id}
-                    className="flex items-center gap-2 bg-violet-50 dark:bg-violet-500/10 rounded-lg px-3 py-2"
+                    className="flex items-center gap-2 py-2 border-b border-k-border-subtle last:border-b-0"
                 >
-                    <RefreshCw className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                    <RefreshCw className="w-3.5 h-3.5 text-k-text-quaternary shrink-0" />
                     <div className="flex-1 min-w-0">
-                        <span className="text-xs font-medium text-violet-700 dark:text-violet-300 truncate block">
+                        <span className="text-xs font-medium text-k-text-primary truncate block">
                             {schedule.form_template_title}
                         </span>
-                        <span className="text-[10px] text-violet-500 dark:text-violet-400/70">
+                        <span className="font-mono text-[10px] text-k-text-tertiary tabular-nums">
                             {frequencyLabels[schedule.frequency]}
                             {schedule.next_due_at && (
-                                <> &middot; Próximo: {new Date(schedule.next_due_at).toLocaleDateString('pt-BR')}</>
+                                <> &middot; próximo {new Date(schedule.next_due_at).toLocaleDateString('pt-BR')}</>
                             )}
                         </span>
                     </div>
                     <button
                         onClick={() => handleDelete(schedule.id)}
                         disabled={deletingId === schedule.id}
-                        className="p-1 rounded-md text-violet-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                        className="p-1 rounded-control text-k-text-quaternary hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                         title="Remover recorrência"
                     >
                         {deletingId === schedule.id ? (

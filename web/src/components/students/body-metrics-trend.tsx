@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { TrendingUp, TrendingDown, Minus, Scale } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 interface BodyMetricsTrendProps {
     history: { weight: number | null; bodyFat: number | null; date: string }[]
@@ -9,7 +9,9 @@ interface BodyMetricsTrendProps {
     currentBodyFat: string | null
 }
 
-function MiniSparkline({ values, color }: { values: number[]; color: string }) {
+// Sparkline em tinta (currentColor) — a cor por métrica saiu no redesign;
+// o rótulo já diz qual métrica é.
+function MiniSparkline({ values }: { values: number[] }) {
     if (values.length < 2) return null
 
     const min = Math.min(...values)
@@ -27,9 +29,9 @@ function MiniSparkline({ values, color }: { values: number[]; color: string }) {
     const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
 
     return (
-        <svg viewBox={`0 0 ${w} ${h}`} className="w-[60px] h-[20px]" preserveAspectRatio="none">
-            <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="2" fill={color} />
+        <svg viewBox={`0 0 ${w} ${h}`} className="w-[60px] h-[20px] text-k-text-tertiary" preserveAspectRatio="none">
+            <path d={d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r="2" className="fill-current text-k-text-secondary" />
         </svg>
     )
 }
@@ -56,26 +58,23 @@ export function BodyMetricsTrend({ history, currentWeight, currentBodyFat }: Bod
     if (!trend || history.length < 2) return null
 
     return (
-        <div className="rounded-lg bg-[#F5F5F7] dark:bg-white/5 p-3">
-            <div className="flex items-center gap-1.5 mb-2.5">
-                <Scale className="w-3.5 h-3.5 text-[#86868B] dark:text-k-text-quaternary" />
-                <p className="text-[10px] font-bold text-[#86868B] dark:text-k-text-quaternary">
-                    Evolução corporal ({history.length} avaliações)
-                </p>
-            </div>
+        <div className="rounded-control border border-k-border-subtle bg-surface-primary p-3">
+            <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary mb-2.5 tabular-nums">
+                Evolução corporal · {history.length} avaliações
+            </p>
 
             <div className="grid grid-cols-2 gap-3">
                 {/* Weight */}
                 {currentWeight && (
                     <div>
-                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">Peso</p>
+                        <p className="text-xs text-k-text-tertiary">Peso</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-base font-semibold text-[#1C1C1E] dark:text-white">{currentWeight} kg</p>
+                            <p className="font-mono text-[15px] font-semibold text-k-text-primary tabular-nums">{currentWeight} <span className="text-[10.5px] font-normal text-k-text-tertiary">kg</span></p>
                             {trend.weightChange != null && (
-                                <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold ${
-                                    trend.weightChange > 0.5 ? 'text-amber-500' :
-                                    trend.weightChange < -0.5 ? 'text-emerald-500' :
-                                    'text-[#86868B] dark:text-k-text-quaternary'
+                                <span className={`inline-flex items-center gap-0.5 font-mono text-[10px] font-medium tabular-nums ${
+                                    trend.weightChange > 0.5 ? 'text-amber-600 dark:text-amber-400' :
+                                    trend.weightChange < -0.5 ? 'text-emerald-600 dark:text-emerald-400' :
+                                    'text-k-text-quaternary'
                                 }`}>
                                     {trend.weightChange > 0.5 ? <TrendingUp className="w-3 h-3" /> :
                                      trend.weightChange < -0.5 ? <TrendingDown className="w-3 h-3" /> :
@@ -86,7 +85,7 @@ export function BodyMetricsTrend({ history, currentWeight, currentBodyFat }: Bod
                         </div>
                         {trend.weights.length >= 2 && (
                             <div className="mt-1">
-                                <MiniSparkline values={trend.weights} color="#8b5cf6" />
+                                <MiniSparkline values={trend.weights} />
                             </div>
                         )}
                     </div>
@@ -95,14 +94,14 @@ export function BodyMetricsTrend({ history, currentWeight, currentBodyFat }: Bod
                 {/* Body Fat */}
                 {currentBodyFat && (
                     <div>
-                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">Gordura corporal</p>
+                        <p className="text-xs text-k-text-tertiary">Gordura corporal</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-base font-semibold text-[#1C1C1E] dark:text-white">{currentBodyFat}%</p>
+                            <p className="font-mono text-[15px] font-semibold text-k-text-primary tabular-nums">{currentBodyFat} <span className="text-[10.5px] font-normal text-k-text-tertiary">%</span></p>
                             {trend.fatChange != null && (
-                                <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold ${
-                                    trend.fatChange > 0.5 ? 'text-amber-500' :
-                                    trend.fatChange < -0.5 ? 'text-emerald-500' :
-                                    'text-[#86868B] dark:text-k-text-quaternary'
+                                <span className={`inline-flex items-center gap-0.5 font-mono text-[10px] font-medium tabular-nums ${
+                                    trend.fatChange > 0.5 ? 'text-amber-600 dark:text-amber-400' :
+                                    trend.fatChange < -0.5 ? 'text-emerald-600 dark:text-emerald-400' :
+                                    'text-k-text-quaternary'
                                 }`}>
                                     {trend.fatChange > 0.5 ? <TrendingUp className="w-3 h-3" /> :
                                      trend.fatChange < -0.5 ? <TrendingDown className="w-3 h-3" /> :
@@ -113,7 +112,7 @@ export function BodyMetricsTrend({ history, currentWeight, currentBodyFat }: Bod
                         </div>
                         {trend.fats.length >= 2 && (
                             <div className="mt-1">
-                                <MiniSparkline values={trend.fats} color="#f59e0b" />
+                                <MiniSparkline values={trend.fats} />
                             </div>
                         )}
                     </div>

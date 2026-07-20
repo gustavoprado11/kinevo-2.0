@@ -119,23 +119,23 @@ export function KeyboardShortcuts({
             {/* Floating shortcut hint */}
             <button
                 onClick={() => setShowHelp(true)}
-                className="fixed bottom-6 right-6 z-10 p-2.5 rounded-xl bg-white dark:bg-surface-card border border-[#E5E5EA] dark:border-k-border-primary shadow-lg hover:shadow-xl transition-all group"
+                className="fixed bottom-6 right-6 z-10 p-2.5 rounded-xl bg-surface-card border border-k-border-primary shadow-lg hover:shadow-xl transition-all group"
                 title="Atalhos de teclado (?)"
             >
-                <Keyboard className="w-4 h-4 text-[#86868B] dark:text-k-text-quaternary group-hover:text-[#1C1C1E] dark:group-hover:text-white transition-colors" />
+                <Keyboard className="w-4 h-4 text-k-text-quaternary group-hover:text-k-text-primary transition-colors" />
             </button>
 
             {/* Shortcuts modal */}
             {showHelp && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowHelp(false)} />
-                    <div className="relative bg-white dark:bg-surface-card border border-[#E5E5EA] dark:border-k-border-primary rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-in zoom-in-95 fade-in duration-200">
+                    <div className="relative bg-surface-card border border-k-border-primary rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-in zoom-in-95 fade-in duration-200">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-base font-bold text-[#1C1C1E] dark:text-white flex items-center gap-2">
-                                <Keyboard className="w-5 h-5 text-violet-500" />
+                            <h3 className="text-base font-bold text-k-text-primary flex items-center gap-2">
+                                <Keyboard className="w-5 h-5 text-k-text-tertiary" />
                                 Atalhos de Teclado
                             </h3>
-                            <button onClick={() => setShowHelp(false)} className="p-1.5 text-[#86868B] dark:text-k-text-quaternary hover:text-[#1C1C1E] dark:hover:text-white rounded-lg transition-colors">
+                            <button onClick={() => setShowHelp(false)} className="p-1.5 text-k-text-quaternary hover:text-k-text-primary rounded-lg transition-colors">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
@@ -143,19 +143,19 @@ export function KeyboardShortcuts({
                             {SHORTCUTS.map(s => {
                                 const disabled = s.requiresProgram && !hasActiveProgram
                                 return (
-                                    <div key={s.key} className={`flex items-center justify-between py-2 px-3 rounded-lg ${disabled ? 'opacity-40' : 'hover:bg-[#F5F5F7] dark:hover:bg-white/5'}`}>
-                                        <span className={`text-sm ${disabled ? 'text-[#86868B] dark:text-k-text-quaternary' : 'text-[#1C1C1E] dark:text-k-text-secondary'}`}>
+                                    <div key={s.key} className={`flex items-center justify-between py-2 px-3 rounded-lg ${disabled ? 'opacity-40' : 'hover:bg-surface-inset'}`}>
+                                        <span className={`text-sm ${disabled ? 'text-k-text-quaternary' : 'text-k-text-secondary'}`}>
                                             {s.label}
                                         </span>
-                                        <kbd className="px-2 py-0.5 rounded bg-[#F5F5F7] dark:bg-white/10 text-xs font-mono font-bold text-[#6E6E73] dark:text-k-text-tertiary border border-[#E5E5EA] dark:border-k-border-subtle">
+                                        <kbd className="px-2 py-0.5 rounded bg-surface-inset text-xs font-mono font-bold text-k-text-tertiary border border-k-border-subtle">
                                             {s.key}
                                         </kbd>
                                     </div>
                                 )
                             })}
                         </div>
-                        <p className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary mt-4 text-center">
-                            Pressione <kbd className="px-1 rounded bg-[#F5F5F7] dark:bg-white/10 text-[10px] font-mono border border-[#E5E5EA] dark:border-k-border-subtle">Esc</kbd> para fechar
+                        <p className="text-[10px] text-k-text-quaternary mt-4 text-center">
+                            Pressione <kbd className="px-1 rounded bg-surface-inset text-[10px] font-mono border border-k-border-subtle">Esc</kbd> para fechar
                         </p>
                     </div>
                 </div>

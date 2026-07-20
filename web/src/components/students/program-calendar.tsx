@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useTransition, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, LayoutGrid } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, LayoutGrid, Check, X } from 'lucide-react'
 import {
     generateCalendarDays,
     getWeekRange,
@@ -40,26 +40,29 @@ interface ProgramCalendarProps {
 // Status visual config
 // ---------------------------------------------------------------------------
 
+// Redesign "ferramenta profissional": dias concluídos preenchidos em TINTA
+// (foreground) — o violeta saiu das células, onde em massa virava decoração.
+// Perdido = contorno vermelho quieto; agendado = tracejado; descanso = inset.
 const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; text: string; icon?: 'check' | 'x' }> = {
     done: {
-        bg: 'bg-violet-600 shadow-lg shadow-violet-600/20',
-        text: 'text-white',
+        bg: 'bg-foreground',
+        text: 'text-background',
     },
     done_historic: {
-        bg: 'bg-violet-400/60 shadow-sm shadow-violet-400/10',
-        text: 'text-white',
+        bg: 'bg-foreground/50',
+        text: 'text-background',
     },
     missed: {
-        bg: 'bg-red-500/15 border border-red-500/30',
-        text: 'text-red-400',
+        bg: 'border border-red-500/40',
+        text: 'text-red-500 dark:text-red-400',
         icon: 'x',
     },
     scheduled: {
-        bg: 'border-2 border-dashed border-k-text-quaternary',
-        text: 'text-k-text-quaternary',
+        bg: 'border border-dashed border-k-text-quaternary/60',
+        text: 'text-k-text-tertiary',
     },
     rest: {
-        bg: 'bg-glass-bg',
+        bg: 'bg-surface-inset',
         text: 'text-k-text-quaternary',
     },
     out_of_program: {
@@ -67,8 +70,8 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
         text: 'text-k-text-quaternary/30',
     },
     compensated: {
-        bg: 'bg-slate-500/15 border border-slate-500/30',
-        text: 'text-slate-400',
+        bg: 'bg-surface-inset border border-k-border-primary',
+        text: 'text-k-text-secondary',
         icon: 'check',
     },
 }
@@ -79,26 +82,18 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
 
 function DayLabel({ text }: { text: string }) {
     return (
-        <span className="text-[10px] font-bold text-k-text-quaternary">
+        <span className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">
             {text}
         </span>
     )
 }
 
-function CheckIcon({ className = 'w-4 h-4 text-white' }: { className?: string }) {
-    return (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-        </svg>
-    )
+function CheckIcon({ className = 'w-4 h-4 text-background' }: { className?: string }) {
+    return <Check className={className} strokeWidth={3} />
 }
 
 function XIcon() {
-    return (
-        <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-    )
+    return <X className="w-3.5 h-3.5 text-red-500 dark:text-red-400" strokeWidth={3} />
 }
 
 // ---------------------------------------------------------------------------
@@ -129,30 +124,31 @@ function WeekView({
                                 <button
                                     onClick={() => onDayClick?.(day)}
                                     className={`
-                                        w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
-                                        bg-violet-100 dark:bg-violet-500/15 ring-1 ring-violet-200 dark:ring-violet-500/20
-                                        ${day.isToday ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-surface-card' : ''}
+                                        w-9 h-9 rounded-lg flex items-center justify-center transition-colors
+                                        bg-foreground/50
+                                        ${day.isToday ? 'ring-2 ring-foreground/30 ring-offset-2 ring-offset-surface-card' : ''}
                                         cursor-pointer hover:opacity-80
                                     `}
                                 >
-                                    <CheckIcon className="w-3.5 h-3.5 text-violet-400" />
+                                    <CheckIcon className="w-3.5 h-3.5 text-background" />
                                 </button>
                             ) : day.status === 'done' && day.completedSessions[0]?.rpe != null ? (
+                                // PSE dentro da célula em tinta; sinal de alerta só quando
+                                // a PSE é realmente alta (anel âmbar ≥8, vermelho ≥9).
                                 <button
                                     onClick={() => isClickable && onDayClick?.(day)}
                                     className={`
-                                        w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
-                                        ${day.completedSessions[0].rpe! >= 10
-                                            ? 'bg-red-100 dark:bg-red-500/20 ring-1 ring-red-300 dark:ring-red-500/30 text-red-600 dark:text-red-400'
+                                        w-9 h-9 rounded-lg flex items-center justify-center transition-colors
+                                        bg-foreground text-background
+                                        ${day.completedSessions[0].rpe! >= 9
+                                            ? 'ring-2 ring-red-500/60'
                                             : day.completedSessions[0].rpe! >= 8
-                                                ? 'bg-violet-100 dark:bg-yellow-500/20 ring-1 ring-violet-300 dark:ring-yellow-500/30 text-violet-600 dark:text-yellow-400'
-                                                : day.completedSessions[0].rpe! >= 6
-                                                    ? 'bg-emerald-100 dark:bg-emerald-500/20 ring-1 ring-emerald-300 dark:ring-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                                                    : 'bg-zinc-100 dark:bg-white/5 ring-1 ring-zinc-300 dark:ring-white/10 text-zinc-500 dark:text-k-text-tertiary'
+                                                ? 'ring-2 ring-amber-500/60'
+                                                : ''
                                         }
-                                        ${day.isToday ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-surface-card' : ''}
+                                        ${day.isToday ? 'ring-offset-2 ring-offset-surface-card' : ''}
                                         cursor-pointer hover:opacity-80
-                                        text-sm font-bold
+                                        font-mono text-sm font-semibold tabular-nums
                                     `}
                                 >
                                     {day.completedSessions[0].rpe}
@@ -162,20 +158,20 @@ function WeekView({
                                     onClick={() => isClickable && onDayClick?.(day)}
                                     disabled={!isClickable}
                                     className={`
-                                        w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
-                                        ${day.status === 'done' ? cfg.bg : cfg.bg}
-                                        ${day.isToday ? 'ring-2 ring-white/20 ring-offset-2 ring-offset-surface-card' : ''}
+                                        w-9 h-9 rounded-lg flex items-center justify-center transition-colors
+                                        ${cfg.bg}
+                                        ${day.isToday ? 'ring-2 ring-foreground/30 ring-offset-2 ring-offset-surface-card' : ''}
                                         ${isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}
                                     `}
                                 >
                                     {day.status === 'done' ? (
                                         <CheckIcon />
                                     ) : day.status === 'compensated' ? (
-                                        <CheckIcon className="w-4 h-4 text-slate-400" />
+                                        <CheckIcon className="w-4 h-4 text-k-text-secondary" />
                                     ) : cfg.icon === 'x' ? (
                                         <XIcon />
                                     ) : (
-                                        <span className={`text-[10px] font-bold ${cfg.text}`}>
+                                        <span className={`font-mono text-[10px] font-medium tabular-nums ${cfg.text}`}>
                                             {day.date.getDate()}
                                         </span>
                                     )}
@@ -186,15 +182,15 @@ function WeekView({
                             {isClickable && (
                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-surface-card border border-k-border-primary rounded-lg text-xs font-medium text-k-text-primary opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none z-header whitespace-nowrap shadow-xl">
                                     {day.status === 'done_historic' ? (
-                                        <span className="text-violet-400">Treino (programa anterior)</span>
+                                        <span className="text-k-text-secondary">Treino (programa anterior)</span>
                                     ) : day.status === 'done' ? (
                                         <span>Realizado{day.completedSessions[0]?.rpe != null ? ` · PSE ${day.completedSessions[0].rpe}` : ''}</span>
                                     ) : day.status === 'compensated' ? (
-                                        <span className="text-slate-400">
+                                        <span className="text-k-text-secondary">
                                             Compensado em outro dia
                                         </span>
                                     ) : day.status === 'missed' ? (
-                                        <span className="text-red-400">
+                                        <span className="text-red-500 dark:text-red-400">
                                             Faltou: {day.scheduledWorkouts.map(w => w.name).join(' · ') || 'Treino'}
                                         </span>
                                     ) : day.status === 'scheduled' ? (
@@ -249,14 +245,7 @@ function MonthView({
                     const isScheduled = day.status === 'scheduled'
                     const isClickable = (isDone || isHistoric || isMissed || isScheduled || day.status === 'compensated') && isCurrentMonth
 
-                    // RPE-based circle color
                     const rpe = day.completedSessions[0]?.rpe
-                    let circleBg = 'bg-emerald-500'
-                    if (isDone && rpe != null) {
-                        if (rpe >= 10) circleBg = 'bg-red-500'
-                        else if (rpe >= 8) circleBg = 'bg-amber-500'
-                        else circleBg = 'bg-emerald-500'
-                    }
 
                     return (
                         <button
@@ -269,31 +258,30 @@ function MonthView({
                                 ${isClickable ? 'cursor-pointer' : 'cursor-default'}
                             `}
                         >
-                            {/* Circle + number container */}
+                            {/* Circle + number container — concluído preenche em tinta */}
                             <div className="relative flex items-center justify-center w-8 h-8">
-                                {/* Completed: solid colored circle */}
                                 {isCurrentMonth && isDone && (
-                                    <div className={`absolute inset-0.5 rounded-full ${circleBg}`} />
+                                    <div className="absolute inset-0.5 rounded-lg bg-foreground" />
                                 )}
-                                {/* Historic: soft violet circle */}
+                                {/* Historic: tinta suavizada */}
                                 {isCurrentMonth && isHistoric && (
-                                    <div className="absolute inset-0.5 rounded-full bg-violet-100 dark:bg-violet-500/20" />
+                                    <div className="absolute inset-0.5 rounded-lg bg-foreground/15" />
                                 )}
-                                {/* Today: violet ring */}
+                                {/* Today: anel em tinta */}
                                 {day.isToday && isCurrentMonth && (
-                                    <div className="absolute inset-0 rounded-full ring-2 ring-violet-500 dark:ring-violet-400" />
+                                    <div className="absolute inset-0 rounded-lg ring-2 ring-foreground/40" />
                                 )}
                                 {/* The number */}
-                                <span className={`relative text-xs font-semibold leading-none ${
+                                <span className={`relative font-mono text-xs leading-none tabular-nums ${
                                     isDone && isCurrentMonth
-                                        ? 'text-white font-bold'
+                                        ? 'text-background font-semibold'
                                         : isHistoric && isCurrentMonth
-                                            ? 'text-violet-600 dark:text-violet-300 font-bold'
+                                            ? 'text-k-text-primary font-semibold'
                                             : isMissed && isCurrentMonth
-                                                ? 'text-red-400'
+                                                ? 'text-red-500 dark:text-red-400'
                                                 : isCurrentMonth
-                                                    ? 'text-[#3C3C43] dark:text-k-text-secondary'
-                                                    : 'text-[#D2D2D7] dark:text-k-text-quaternary/30'
+                                                    ? 'text-k-text-secondary'
+                                                    : 'text-k-text-quaternary/30'
                                 }`}>
                                     {day.date.getDate()}
                                 </span>
@@ -302,16 +290,16 @@ function MonthView({
                             {/* Tiny dot below for scheduled/missed (no circle) */}
                             <div className="h-1 flex items-center justify-center">
                                 {isCurrentMonth && isScheduled && (
-                                    <div className="w-1 h-1 rounded-full bg-violet-300 dark:bg-violet-500/40" />
+                                    <div className="w-1 h-1 rounded-full bg-k-text-quaternary" />
                                 )}
                                 {isCurrentMonth && isMissed && (
-                                    <div className="w-1 h-1 rounded-full bg-red-300 dark:bg-red-500/40" />
+                                    <div className="w-1 h-1 rounded-full bg-red-400 dark:bg-red-500/60" />
                                 )}
                             </div>
 
-                            {/* Tooltip */}
+                            {/* Tooltip — tinta invertida (padrão F2) */}
                             {isCurrentMonth && (isDone || isHistoric || isMissed) && (
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#1C1C1E] dark:bg-surface-card border border-transparent dark:border-k-border-primary rounded-md text-[9px] font-bold text-white opacity-0 group-hover/cell:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap shadow-lg">
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-foreground rounded-md font-mono text-[9px] font-medium text-background opacity-0 group-hover/cell:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
                                     {isDone ? (rpe != null ? `PSE ${rpe}` : 'Concluído') : isHistoric ? 'Programa anterior' : 'Faltou'}
                                 </div>
                             )}
@@ -327,9 +315,9 @@ function MonthView({
                 const leftPct = (firstIdx / days.length) * 100
                 const rightPct = 100 - ((lastIdx + 1) / days.length) * 100
                 return (
-                    <div className="mt-1.5 relative h-1 rounded-full bg-[#F0F0F0] dark:bg-white/5 overflow-hidden">
+                    <div className="mt-1.5 relative h-1 rounded-full bg-surface-inset overflow-hidden">
                         <div
-                            className="absolute inset-y-0 rounded-full bg-violet-400/50 dark:bg-violet-500/30"
+                            className="absolute inset-y-0 rounded-full bg-foreground/20"
                             style={{ left: `${leftPct}%`, right: `${rightPct}%` }}
                         />
                     </div>
@@ -386,13 +374,13 @@ function MetricsBar({ days }: { days: CalendarDay[] }) {
     if (!showHistoric && !showStreak) return null
 
     return (
-        <div className="mt-4 pt-3 border-t border-[#F0F0F0] dark:border-k-border-subtle">
+        <div className="mt-4 pt-3 border-t border-k-border-subtle">
             <div className="flex items-center gap-4 flex-wrap">
                 {/* Historic sessions */}
                 {showHistoric && (
                     <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full bg-violet-300 dark:bg-violet-500/40" />
-                        <span className="text-[10px] font-bold text-[#6E6E73] dark:text-k-text-tertiary">
+                        <div className="w-2 h-2 rounded-full bg-foreground/30" />
+                        <span className="text-[10px] font-medium text-k-text-tertiary">
                             {metrics.historicCount} de outro programa
                         </span>
                     </div>
@@ -401,8 +389,8 @@ function MetricsBar({ days }: { days: CalendarDay[] }) {
                 {/* Streak (only when in-program and > 0) */}
                 {showStreak && (
                     <div className="flex items-center gap-1.5 ml-auto">
-                        <span className="text-[10px] font-bold text-[#AEAEB2] dark:text-k-text-quaternary">Sequência</span>
-                        <span className="text-[11px] font-black text-violet-500">{metrics.streak}</span>
+                        <span className="font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">Sequência</span>
+                        <span className="font-mono text-[11px] font-semibold text-k-text-primary tabular-nums">{metrics.streak}</span>
                     </div>
                 )}
             </div>
@@ -417,7 +405,7 @@ function MetricsBar({ days }: { days: CalendarDay[] }) {
 function NavLabel({ anchorDate, viewMode }: { anchorDate: Date; viewMode: 'week' | 'month' }) {
     if (viewMode === 'month') {
         return (
-            <span className="text-xs font-bold text-k-text-secondary min-w-[120px] text-center">
+            <span className="font-mono text-[11px] font-medium text-k-text-secondary min-w-[120px] text-center tabular-nums">
                 {anchorDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })}
             </span>
         )
@@ -427,7 +415,7 @@ function NavLabel({ anchorDate, viewMode }: { anchorDate: Date; viewMode: 'week'
     const { start, end } = getWeekRange(anchorDate)
     const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '')
     return (
-        <span className="text-xs font-bold text-k-text-secondary min-w-[160px] text-center">
+        <span className="font-mono text-[11px] font-medium text-k-text-secondary min-w-[160px] text-center tabular-nums">
             {fmt(start)} — {fmt(end)}
         </span>
     )
@@ -551,20 +539,20 @@ export function ProgramCalendar({
     const viewIncludesToday = calendarDays.some((d) => d.dateKey === todayKey)
 
     return (
-        <div className="bg-glass-bg backdrop-blur-md rounded-2xl border border-k-border-primary p-6 mb-8">
+        <div className="rounded-panel border border-k-border-subtle p-5 mt-4">
             {/* Top bar: navigation + view toggle */}
             <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => navigate(-1)}
-                        className="p-1.5 rounded-lg hover:bg-glass-bg text-k-text-quaternary hover:text-k-text-secondary transition-colors"
+                        className="p-1.5 rounded-control hover:bg-surface-inset text-k-text-quaternary hover:text-k-text-secondary transition-colors"
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
                     <NavLabel anchorDate={anchorDate} viewMode={viewMode} />
                     <button
                         onClick={() => navigate(1)}
-                        className="p-1.5 rounded-lg hover:bg-glass-bg text-k-text-quaternary hover:text-k-text-secondary transition-colors"
+                        className="p-1.5 rounded-control hover:bg-surface-inset text-k-text-quaternary hover:text-k-text-secondary transition-colors"
                     >
                         <ChevronRight className="w-4 h-4" />
                     </button>
@@ -572,20 +560,20 @@ export function ProgramCalendar({
                     {!viewIncludesToday && (
                         <button
                             onClick={goToToday}
-                            className="ml-2 px-2 py-0.5 text-[9px] font-bold text-violet-600 dark:text-violet-400 border border-violet-500/30 rounded-md hover:bg-violet-500/10 transition-colors"
+                            className="ml-2 px-2 py-0.5 text-[10px] font-medium text-k-text-secondary border border-k-border-primary rounded-control hover:bg-surface-inset transition-colors"
                         >
                             Hoje
                         </button>
                     )}
 
                     {isPending && (
-                        <div className="ml-2 w-3 h-3 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+                        <div className="ml-2 w-3 h-3 rounded-full border-2 border-k-text-tertiary border-t-transparent animate-spin" />
                     )}
                 </div>
 
                 <button
                     onClick={toggleView}
-                    className="p-1.5 rounded-lg hover:bg-glass-bg text-k-text-quaternary hover:text-k-text-secondary transition-colors"
+                    className="p-1.5 rounded-control hover:bg-surface-inset text-k-text-quaternary hover:text-k-text-secondary transition-colors"
                     title={viewMode === 'week' ? 'Visão mensal' : 'Visão semanal'}
                 >
                     {viewMode === 'week' ? (
