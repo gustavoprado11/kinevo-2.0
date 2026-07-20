@@ -15,6 +15,7 @@ import { ExerciseCard } from '../../components/workout/ExerciseCard';
 import { SupersetGroup } from '../../components/workout/SupersetGroup';
 import { ExerciseHistorySheet } from '../../components/workout/ExerciseHistorySheet';
 import { WorkoutNoteCard } from '../../components/workout/WorkoutNoteCard';
+import { FirstWorkoutHintCard } from '../../components/workout/FirstWorkoutHintCard';
 import { WarmupCard } from '../../components/workout/WarmupCard';
 import { CardioCard } from '../../components/workout/CardioCard';
 import { useWorkoutSession } from '../../hooks/useWorkoutSession';
@@ -389,6 +390,39 @@ export default function WorkoutPlayerScreen() {
         });
         return { doneExercises: done, totalExercises: total };
     }, [exercises]);
+
+    // Hint de primeiro treino (onboarding do aluno, migration 267). Banner
+    // inline mostrado uma única vez; some pra sempre no X ou quando a primeira
+    // série é concluída (o aluno já entendeu a mecânica).
+    const [showFirstWorkoutHint, setShowFirstWorkoutHint] = React.useState(false);
+    useEffect(() => {
+        try {
+            const { hasSeenStudentOnboardingLocally } = require('../../lib/studentOnboarding');
+            if (!hasSeenStudentOnboardingLocally('first_workout_hint_seen')) {
+                setShowFirstWorkoutHint(true);
+            }
+        } catch {
+            // Expo Go sem MMKV — sem hint
+        }
+    }, []);
+    const dismissFirstWorkoutHint = useCallback(() => {
+        setShowFirstWorkoutHint(false);
+        try {
+            const { markStudentOnboarding } = require('../../lib/studentOnboarding');
+            markStudentOnboarding('first_workout_hint_seen');
+        } catch {
+            // ignore
+        }
+    }, []);
+    const anySetCompleted = useMemo(
+        () => exercises.some(ex => ex.setsData.some(s => s.completed)),
+        [exercises],
+    );
+    useEffect(() => {
+        if (showFirstWorkoutHint && anySetCompleted) {
+            dismissFirstWorkoutHint();
+        }
+    }, [showFirstWorkoutHint, anySetCompleted, dismissFirstWorkoutHint]);
 
     // Perf: the workout list re-renders on every keystroke because setExercises
     // (useWorkoutSession) replaces the array. The memoized cards only skip
@@ -1129,6 +1163,8 @@ export default function WorkoutPlayerScreen() {
                     </Text>
                 </View>
             </View>
+
+            {showFirstWorkoutHint && <FirstWorkoutHintCard onDismiss={dismissFirstWorkoutHint} />}
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : undefined}

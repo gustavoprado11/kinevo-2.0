@@ -14,7 +14,7 @@ import {
     MonaSans_700Bold,
     MonaSans_800ExtraBold,
 } from "@expo-google-fonts/mona-sans";
-import { AuthProvider } from "../contexts/AuthContext";
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { RoleModeProvider, useRoleMode } from "../contexts/RoleModeContext";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import { toastConfig } from "../components/shared/ToastConfig";
@@ -584,6 +584,7 @@ function GlobalOverlays() {
         <>
             <ConnectionBanner isConnected={isConnected} wasDisconnected={wasDisconnected} />
             <Toast config={toastConfig} topOffset={insets.top + 8} />
+            <StudentWelcomeTrigger />
             <HealthOnboardingTrigger />
         </>
     );
@@ -592,24 +593,108 @@ function GlobalOverlays() {
 // Fase 14a — Mostra HealthOnboardingSheet uma única vez por usuário.
 // Flag persiste em MMKV (hasSeenHealthOnboarding).
 function HealthOnboardingTrigger() {
+    const { role, isLoadingRole } = useRoleMode();
     const [visible, setVisible] = React.useState(false);
     const HealthOnboardingSheet = require('../components/onboarding/HealthOnboardingSheet').HealthOnboardingSheet;
 
     React.useEffect(() => {
+        if (isLoadingRole) return;
         try {
             const { hasSeenHealthOnboarding } = require('../lib/healthOnboardingFlag');
             // Pequeno delay pra deixar app renderizar antes do modal
             const t = setTimeout(() => {
-                if (!hasSeenHealthOnboarding()) setVisible(true);
+                // Coordenação com o welcome do aluno: se o welcome ainda vai
+                // aparecer neste boot, o health sheet espera o próximo boot —
+                // dois modais empilhados no primeiro login seria hostil.
+                let welcomePending = false;
+                if (role === 'student') {
+                    const { hasSeenStudentOnboardingLocally } = require('../lib/studentOnboarding');
+                    welcomePending = !hasSeenStudentOnboardingLocally('welcome_seen');
+                }
+                if (!hasSeenHealthOnboarding() && !welcomePending) setVisible(true);
             }, 1500);
             return () => clearTimeout(t);
         } catch {
             // ignore (Expo Go sem MMKV)
         }
-    }, []);
+    }, [role, isLoadingRole]);
 
     if (!visible) return null;
     return <HealthOnboardingSheet visible={visible} onClose={() => setVisible(false)} />;
+}
+
+// Boas-vindas do aluno recém-convidado — uma única vez por pessoa.
+// Fonte de verdade: students.onboarding_state.welcome_seen (migration 267),
+// com cache MMKV (lib/studentOnboarding) pra sobreviver offline e reinstalação
+// ser reidratada do banco. Gate por role==='student' (o health sheet acima não
+// tem esse gate; este tem, porque o conteúdo é específico do aluno).
+function StudentWelcomeTrigger() {
+    const { user, isEmailVerified } = useAuth();
+    const { role, isLoadingRole } = useRoleMode();
+    const [data, setData] = React.useState<{ studentName: string; coachName: string | null } | null>(null);
+    const [visible, setVisible] = React.useState(false);
+
+    React.useEffect(() => {
+        if (!user || !isEmailVerified || isLoadingRole || role !== 'student') return;
+        let cancelled = false;
+        let showTimer: ReturnType<typeof setTimeout> | null = null;
+        (async () => {
+            try {
+                const { hasSeenStudentOnboardingLocally, seedStudentOnboardingFromServer } =
+                    require('../lib/studentOnboarding');
+                if (hasSeenStudentOnboardingLocally('welcome_seen')) return;
+
+                const { supabase } = require('../lib/supabase');
+                const { data: student }: { data: any } = await supabase
+                    .from('students')
+                    .select('name, onboarding_state, trainers:coach_id (name, brand_name, branding_enabled)')
+                    .eq('auth_user_id', user.id)
+                    .maybeSingle();
+                if (cancelled || !student) return;
+
+                // Reinstalou o app? O banco lembra — reidrata o MMKV e não mostra.
+                seedStudentOnboardingFromServer(student.onboarding_state);
+                if (hasSeenStudentOnboardingLocally('welcome_seen')) return;
+
+                const coach = student.trainers ?? null;
+                const coachName = coach
+                    ? (coach.branding_enabled && coach.brand_name ? coach.brand_name : coach.name) ?? null
+                    : null;
+                setData({ studentName: student.name ?? '', coachName });
+                // Delay curto pra home assentar antes do sheet subir.
+                showTimer = setTimeout(() => {
+                    if (!cancelled) setVisible(true);
+                }, 900);
+            } catch {
+                // onboarding jamais quebra o boot
+            }
+        })();
+        return () => {
+            cancelled = true;
+            if (showTimer) clearTimeout(showTimer);
+        };
+    }, [user, isEmailVerified, role, isLoadingRole]);
+
+    const handleClose = React.useCallback(() => {
+        setVisible(false);
+        try {
+            const { markStudentOnboarding } = require('../lib/studentOnboarding');
+            markStudentOnboarding('welcome_seen');
+        } catch {
+            // ignore (Expo Go sem MMKV)
+        }
+    }, []);
+
+    if (!visible || !data) return null;
+    const StudentWelcomeSheet = require('../components/onboarding/StudentWelcomeSheet').StudentWelcomeSheet;
+    return (
+        <StudentWelcomeSheet
+            visible={visible}
+            onClose={handleClose}
+            studentName={data.studentName}
+            coachName={data.coachName}
+        />
+    );
 }
 
 export default function RootLayout() {

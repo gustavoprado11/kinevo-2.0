@@ -3872,6 +3872,7 @@ export type Database = {
           name: string
           notification_preferences: Json | null
           objective: string | null
+          onboarding_state: Json
           organization_id: string | null
           phone: string | null
           status: string
@@ -3896,6 +3897,7 @@ export type Database = {
           name: string
           notification_preferences?: Json | null
           objective?: string | null
+          onboarding_state?: Json
           organization_id?: string | null
           phone?: string | null
           status?: string
@@ -3920,6 +3922,7 @@ export type Database = {
           name?: string
           notification_preferences?: Json | null
           objective?: string | null
+          onboarding_state?: Json
           organization_id?: string | null
           phone?: string | null
           status?: string
@@ -5153,6 +5156,10 @@ export type Database = {
       activate_draft_program: { Args: { p_program_id: string }; Returns: Json }
       log_product_event: {
         Args: { p_event: string; p_props?: Json; p_source?: string }
+        Returns: undefined
+      }
+      mark_student_onboarding: {
+        Args: { p_key: string }
         Returns: undefined
       }
       assign_form_to_students:
