@@ -1504,6 +1504,74 @@ export type Database = {
           },
         ]
       }
+      exercise_function_links: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          function_id: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          function_id: string
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          function_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_function_links_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_function_links_function_id_fkey"
+            columns: ["function_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_functions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_functions: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string | null
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id?: string | null
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string | null
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_functions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_muscle_groups: {
         Row: {
           created_at: string
