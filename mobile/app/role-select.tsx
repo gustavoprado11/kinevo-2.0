@@ -53,7 +53,7 @@ export default function RoleSelectScreen() {
                             padding: 24,
                             marginBottom: 16,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.04)",
+                            borderColor: colors.border.subtle,
                             shadowColor: "#000",
                             shadowOffset: { width: 0, height: 2 },
                             shadowOpacity: 0.06,
@@ -76,10 +76,10 @@ export default function RoleSelectScreen() {
                                 <Dumbbell size={24} color="#16a34a" />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 17, fontWeight: "700", color: "#1C1917" }}>
+                                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
                                     Modo Aluno
                                 </Text>
-                                <Text style={{ fontSize: 13, color: "#57534E", marginTop: 4 }}>
+                                <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 4 }}>
                                     Acessar meus treinos e acompanhar meu progresso
                                 </Text>
                             </View>
@@ -97,7 +97,7 @@ export default function RoleSelectScreen() {
                             borderRadius: 20,
                             padding: 24,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.04)",
+                            borderColor: colors.border.subtle,
                             shadowColor: "#000",
                             shadowOffset: { width: 0, height: 2 },
                             shadowOpacity: 0.06,
@@ -120,10 +120,10 @@ export default function RoleSelectScreen() {
                                 <Users size={24} color={colors.purple[600]} />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 17, fontWeight: "700", color: "#1C1917" }}>
+                                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text.primary }}>
                                     Modo Treinador
                                 </Text>
-                                <Text style={{ fontSize: 13, color: "#57534E", marginTop: 4 }}>
+                                <Text style={{ fontSize: 13, color: colors.text.tertiary, marginTop: 4 }}>
                                     Gerenciar alunos e acompanhar treinos
                                 </Text>
                             </View>
