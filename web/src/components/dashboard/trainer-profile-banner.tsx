@@ -10,6 +10,9 @@ interface TrainerProfileBannerProps {
     selfStudentId?: string | null
 }
 
+// Redesign "ferramenta profissional": painel hairline tokenizado (sem sombra
+// apple, sem gradiente violeta no dark, sem círculo decorativo) — o CTA
+// primário é o único elemento em violeta.
 export function TrainerProfileBanner({ selfStudentId }: TrainerProfileBannerProps) {
     const router = useRouter()
     const [isDismissed, setIsDismissed] = useState(true)
@@ -37,44 +40,39 @@ export function TrainerProfileBanner({ selfStudentId }: TrainerProfileBannerProp
     if (isDismissed) return null
 
     return (
-        <div className="relative rounded-xl border border-[#D2D2D7] dark:border-violet-500/20 bg-white dark:bg-surface-card dark:bg-gradient-to-r dark:from-violet-600/10 dark:via-violet-500/5 dark:to-transparent p-5 mb-8 overflow-hidden shadow-apple-card dark:shadow-none">
-            {/* Background accent */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#F5F5F7] dark:bg-violet-500/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-
+        <div className="relative rounded-panel border border-k-border-subtle bg-surface-card p-5 mb-8">
             {/* Dismiss button */}
             <button
                 onClick={handleDismiss}
-                className="absolute top-2 right-2 p-2 text-[#AEAEB2] dark:text-muted-foreground/40 hover:text-[#1D1D1F] dark:hover:text-foreground hover:bg-[#F5F5F7] dark:hover:bg-white/5 rounded-lg transition-colors z-sticky"
+                className="absolute top-2 right-2 p-2 text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset rounded-control transition-colors z-sticky"
+                title="Dispensar"
             >
                 <X size={16} />
             </button>
 
-            <div className="relative z-sticky space-y-3">
-                {/* Top row: icon + text */}
-                <div className="flex items-start gap-3 pr-6">
-                    <div className="w-10 h-10 bg-[#F5F5F7] dark:bg-violet-500/15 rounded-xl flex items-center justify-center flex-shrink-0 border border-[#E8E8ED] dark:border-violet-500/20">
-                        <Dumbbell size={20} className="text-[#7C3AED] dark:text-violet-400" />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3 pr-8">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="w-9 h-9 bg-surface-inset rounded-control flex items-center justify-center flex-shrink-0 border border-k-border-subtle">
+                        <Dumbbell size={17} strokeWidth={1.7} className="text-k-text-secondary" />
                     </div>
-                    <div>
-                        <h4 className="text-sm font-bold text-[#1D1D1F] dark:text-foreground">
+                    <div className="min-w-0">
+                        <h4 className="text-sm font-semibold text-k-text-primary">
                             Seu perfil de treino est{'á'} pronto!
                         </h4>
-                        <p className="text-xs text-[#6E6E73] dark:text-muted-foreground mt-0.5">
+                        <p className="text-xs text-k-text-tertiary mt-0.5">
                             Prescreva programas para si mesmo e treine pelo App Mobile.
                         </p>
                     </div>
                 </div>
 
-                {/* CTA */}
-                <div className="pl-[52px]">
-                    <button
-                        onClick={handleNavigate}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold rounded-control transition-all"
-                    >
-                        Ver Meu Perfil
-                        <ArrowRight size={14} />
-                    </button>
-                </div>
+                {/* CTA — a única cor do painel */}
+                <button
+                    onClick={handleNavigate}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold rounded-control transition-opacity flex-shrink-0"
+                >
+                    Ver meu perfil
+                    <ArrowRight size={14} />
+                </button>
             </div>
         </div>
     )
