@@ -206,6 +206,7 @@ export function ExerciseLibraryPanel({
 }: ExerciseLibraryPanelProps) {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
+    const [selectedFunction, setSelectedFunction] = useState<string | null>(null)
     const [showOnlyMine, setShowOnlyMine] = useState(false)
     const [previewExercise, setPreviewExercise] = useState<Exercise | null>(null)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -221,6 +222,14 @@ export function ExerciseLibraryPanel({
             }
         })
         return Array.from(groups).sort()
+    }, [exercises])
+
+    // Funções de treino presentes na biblioteca ("pra quê": mobilidade,
+    // ativação, potência…) — a linha de chips só aparece se houver alguma.
+    const functionNames = useMemo(() => {
+        const fns = new Set<string>()
+        exercises.forEach(e => e.functions?.forEach(f => fns.add(f.name)))
+        return Array.from(fns).sort()
     }, [exercises])
 
     // Identify overrides (trainer customizations of system exercises)
@@ -253,9 +262,12 @@ export function ExerciseLibraryPanel({
             const matchesMuscle = !selectedGroup ||
                 exerciseMuscles.includes(selectedGroup)
 
-            return matchesOwner && matchesName && matchesMuscle
+            const matchesFunction = !selectedFunction ||
+                (exercise.functions ?? []).some(f => f.name === selectedFunction)
+
+            return matchesOwner && matchesName && matchesMuscle && matchesFunction
         })
-    }, [exercises, showOnlyMine, trainerId, searchQuery, selectedGroup, overrideSystemIds])
+    }, [exercises, showOnlyMine, trainerId, searchQuery, selectedGroup, selectedFunction, overrideSystemIds])
 
     // Group exercises by primary muscle group (for "Todos" mode without search)
     const groupedExercises = useMemo(() => {
@@ -346,6 +358,25 @@ export function ExerciseLibraryPanel({
                                 }`}
                             >
                                 {group}
+                            </button>
+                        ))}
+                    </ScrollableChips>
+                )}
+
+                {/* Funções de treino (terceiro eixo) — chips mono, single-select */}
+                {functionNames.length > 0 && (
+                    <ScrollableChips>
+                        {functionNames.map(fn => (
+                            <button
+                                key={fn}
+                                onClick={() => setSelectedFunction(prev => prev === fn ? null : fn)}
+                                className={`px-3 py-1 rounded-full font-mono text-[9px] font-medium uppercase tracking-[0.06em] whitespace-nowrap transition-colors shrink-0 ${
+                                    selectedFunction === fn
+                                        ? 'bg-[#7C3AED] dark:bg-violet-600 text-white'
+                                        : 'bg-[#F5F5F7] dark:bg-glass-bg text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-secondary'
+                                }`}
+                            >
+                                {fn}
                             </button>
                         ))}
                     </ScrollableChips>

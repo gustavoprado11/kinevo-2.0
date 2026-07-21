@@ -14,6 +14,10 @@ export interface Exercise {
     // M:N Relation
     muscle_groups: MuscleGroup[]
 
+    /** Funções de treino ("pra quê": mobilidade, ativação, potência…) — terceiro
+     *  eixo da biblioteca; opcional porque nem todo fetch traz o join. */
+    functions?: { id: string; name: string }[]
+
     // Standard fields
     equipment: string | null
     video_url: string | null

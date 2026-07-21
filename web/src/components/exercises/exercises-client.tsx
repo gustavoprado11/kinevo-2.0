@@ -144,6 +144,7 @@ export function ExercisesClient({
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([])
     const [selectedPatterns, setSelectedPatterns] = useState<string[]>([])
+    const [selectedFunctions, setSelectedFunctions] = useState<string[]>([])
     const [groupByPattern, setGroupByPattern] = useState(false)
     const [showOnlyMine, setShowOnlyMine] = useState(false)
 
@@ -265,9 +266,22 @@ export function ExercisesClient({
             const matchesPattern = selectedPatterns.length === 0
                 || selectedPatterns.includes(patternLabel(exercise.movement_pattern))
 
-            return matchesOwner && matchesName && matchesMuscle && matchesPattern
+            const matchesFunction = selectedFunctions.length === 0
+                || (exercise.functions ?? []).some(f => selectedFunctions.includes(f.name))
+
+            return matchesOwner && matchesName && matchesMuscle && matchesPattern && matchesFunction
         })
-    }, [deduplicatedExercises, showOnlyMine, currentTrainerId, searchQuery, expandedSelection, selectedPatterns])
+    }, [deduplicatedExercises, showOnlyMine, currentTrainerId, searchQuery, expandedSelection, selectedPatterns, selectedFunctions])
+
+    // Funções de treino presentes na base + contagem (só aparece o filtro se
+    // houver ao menos um exercício taggeado).
+    const { availableFunctions, functionCounts } = useMemo(() => {
+        const counts: Record<string, number> = {}
+        for (const e of deduplicatedExercises) {
+            for (const f of e.functions ?? []) counts[f.name] = (counts[f.name] ?? 0) + 1
+        }
+        return { availableFunctions: Object.keys(counts).sort((a, b) => a.localeCompare(b)), functionCounts: counts }
+    }, [deduplicatedExercises])
 
     // Quantos exercícios são de autoria do próprio treinador (para o badge do toggle).
     const myExercisesCount = useMemo(
@@ -352,7 +366,7 @@ export function ExercisesClient({
         router.refresh()
     }
 
-    const hasActiveFilters = searchQuery !== '' || selectedMuscleGroups.length > 0 || selectedPatterns.length > 0
+    const hasActiveFilters = searchQuery !== '' || selectedMuscleGroups.length > 0 || selectedPatterns.length > 0 || selectedFunctions.length > 0
 
     // Renderiza uma lista de exercícios em grade ou lista (reusado no modo agrupado).
     const renderItems = (list: ExerciseWithDetails[]) => (
@@ -457,6 +471,17 @@ export function ExercisesClient({
                             />
                         )}
 
+                        {availableFunctions.length > 0 && (
+                            <FilterDropdown
+                                label="Função"
+                                options={availableFunctions}
+                                selected={selectedFunctions}
+                                onToggle={(f) => setSelectedFunctions(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f])}
+                                onClear={() => setSelectedFunctions([])}
+                                counts={functionCounts}
+                            />
+                        )}
+
                         <button
                             onClick={() => setShowOnlyMine(v => !v)}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
@@ -550,7 +575,7 @@ export function ExercisesClient({
                         <p className="text-xs text-[#86868B] dark:text-k-text-quaternary mt-1">Tente outro termo ou limpe os filtros</p>
                         {hasActiveFilters && (
                             <button
-                                onClick={() => { setSearchQuery(''); setSelectedMuscleGroups([]); setSelectedPatterns([]) }}
+                                onClick={() => { setSearchQuery(''); setSelectedMuscleGroups([]); setSelectedPatterns([]); setSelectedFunctions([]) }}
                                 className="mt-4 text-xs font-medium text-[#7C3AED] hover:text-[#6D28D9] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
                             >
                                 Limpar busca

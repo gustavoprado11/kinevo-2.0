@@ -44,6 +44,13 @@ export default async function NewProgramPage() {
                     owner_id,
                     created_at
                 )
+            ),
+            exercise_function_links (
+                exercise_functions (
+                    id,
+                    name,
+                    sort_order
+                )
             )
         `)
         .eq('is_archived', false)
@@ -55,6 +62,11 @@ export default async function NewProgramPage() {
         name: e.name,
         // Loop over junction to flatten
         muscle_groups: e.exercise_muscle_groups?.map((emg: any) => emg.muscle_groups) || [],
+        functions: (e.exercise_function_links ?? [])
+            .map((l: any) => l.exercise_functions)
+            .filter(Boolean)
+            .sort((a: any, b: any) => a.sort_order - b.sort_order)
+            .map((f: any) => ({ id: f.id, name: f.name })),
         equipment: e.equipment,
         owner_id: e.owner_id,
         original_system_id: e.original_system_id,

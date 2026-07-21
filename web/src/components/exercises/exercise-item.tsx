@@ -7,6 +7,9 @@ export interface ExerciseWithDetails extends Exercise {
     image_url: string | null
     original_system_id?: string | null
     video_url: string | null
+    /** Funções de treino ("pra quê": mobilidade, ativação, potência…) — terceiro
+     *  eixo da biblioteca, ao lado de grupo muscular e padrão de movimento. */
+    functions?: { id: string; name: string }[]
 }
 
 import { useState } from 'react'
@@ -48,6 +51,16 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                             {exercise.name}
                         </span>
                     </div>
+
+                    {(exercise.functions?.length ?? 0) > 0 && (
+                        <div className="hidden lg:flex items-center gap-1.5 shrink-0">
+                            {exercise.functions!.slice(0, 2).map(f => (
+                                <span key={f.id} className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">
+                                    {f.name}
+                                </span>
+                            ))}
+                        </div>
+                    )}
 
                     {muscleGroups.length > 0 && (
                         <div className="hidden md:flex items-center gap-1.5 shrink-0">
@@ -150,6 +163,12 @@ export function ExerciseItem({ exercise, currentTrainerId, onEdit, onDelete, vie
                         <div className={`flex items-center gap-1.5 text-xs font-medium text-[#86868B] dark:text-muted-foreground/60 ${effectiveVideoUrl ? 'border-l border-[#E8E8ED] dark:border-k-border-subtle pl-3' : ''} truncate`}>
                             <span className="truncate">{muscleGroups.map(g => g.name).join(', ')}</span>
                         </div>
+                    )}
+
+                    {(exercise.functions?.length ?? 0) > 0 && (
+                        <span className="block truncate font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary mt-1">
+                            {exercise.functions!.map(f => f.name).join(' · ')}
+                        </span>
                     )}
                 </div>
             </div>

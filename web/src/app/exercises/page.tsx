@@ -29,6 +29,13 @@ export default async function ExercisesPage() {
                     owner_id,
                     created_at
                 )
+            ),
+            exercise_function_links (
+                exercise_functions (
+                    id,
+                    name,
+                    sort_order
+                )
             )
         `)
         .eq('is_archived', false)
@@ -60,6 +67,12 @@ export default async function ExercisesPage() {
         name: e.name,
         // Flatten junction; drop nulls from rows where RLS filtered out the linked muscle_group
         muscle_groups: e.exercise_muscle_groups?.map((emg: any) => emg.muscle_groups).filter((mg: any) => mg != null) || [],
+        // Funções de treino (terceiro eixo), ordenadas pela sequência canônica
+        functions: (e.exercise_function_links ?? [])
+            .map((l: any) => l.exercise_functions)
+            .filter((f: any) => f != null)
+            .sort((a: any, b: any) => a.sort_order - b.sort_order)
+            .map((f: any) => ({ id: f.id, name: f.name })),
         equipment: e.equipment,
         owner_id: e.owner_id,
         image_url: e.image_url || null,
