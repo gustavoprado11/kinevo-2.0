@@ -39,6 +39,15 @@ import { useStudentPendingCharge } from "../../hooks/useStudentPendingCharge";
 // ─── Entering animation shorthand ───
 const ENTER = ANIM.enter;
 
+/** Metadados de UM treino agendado no dia selecionado — dias com 2+ treinos
+ *  (força + aeróbio) alimentam o "1 de N" e a linha "Também hoje" do herói. */
+interface DayWorkoutMeta {
+    id: string;
+    name: string;
+    workoutType: 'strength' | 'cardio';
+    isCompleted: boolean;
+}
+
 // Iniciais da marca pro placeholder do header (espelha web getInitials:
 // primeiras letras de cada palavra, máx. 2). "Gustavo Prado Personal
 // Trainer" → "GP".
@@ -231,6 +240,7 @@ export default function HomeScreen() {
                     title: `Treino Realizado — ${dayName}, ${dateStr}`,
                     timeContext,
                     todaySession: session as any,
+                    dayWorkoutsMeta: [] as DayWorkoutMeta[],
                 };
             }
             // Outside program, no session → normal rest day
@@ -242,6 +252,7 @@ export default function HomeScreen() {
                 title: `${dayName}, ${dateStr}`,
                 timeContext,
                 todaySession: null,
+                dayWorkoutsMeta: [] as DayWorkoutMeta[],
             };
         }
 
@@ -258,6 +269,15 @@ export default function HomeScreen() {
         const workout =
             dayWorkouts.find(w => !daySessions.some(s => s.status === 'completed' && s.assigned_workout_id === w.id))
             ?? dayWorkouts[dayWorkouts.length - 1];
+
+        // Dia com 2+ treinos (ex.: força + aeróbio): o herói mostra UM, mas o
+        // card precisa comunicar o dia inteiro ("1 de 2" + linha "Também hoje").
+        const dayWorkoutsMeta: DayWorkoutMeta[] = dayWorkouts.map(w => ({
+            id: w.id,
+            name: w.name,
+            workoutType: (w as any).workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
+            isCompleted: daySessions.some(s => s.status === 'completed' && s.assigned_workout_id === w.id),
+        }));
 
         const isCompleted = workout
             ? daySessions.some(s => s.status === 'completed' && s.assigned_workout_id === workout.id)
@@ -294,7 +314,7 @@ export default function HomeScreen() {
             title = `Treino de ${dayName} (${dateStr})`;
         }
 
-        return { workout, isCompleted, isCompensated, isMissed, title, timeContext, todaySession };
+        return { workout, isCompleted, isCompensated, isMissed, title, timeContext, todaySession, dayWorkoutsMeta };
     }, [workouts, sessionsMap, allSessionsMap, selectedDate, programStartedAt, programDurationWeeks, weeklyProgressFull]);
 
 
@@ -610,6 +630,7 @@ export default function HomeScreen() {
                             <ActionCard
                                 todayWorkout={selectedWorkoutData.timeContext === 'today' ? selectedWorkoutData.workout : undefined}
                                 todaySession={selectedWorkoutData.timeContext === 'today' ? selectedWorkoutData.todaySession : undefined}
+                                dayWorkouts={selectedWorkoutData.timeContext === 'today' ? selectedWorkoutData.dayWorkoutsMeta : undefined}
                                 weeklyProgress={weeklyProgressFull}
                                 programName={programName}
                                 validationStamp={programValidationStamp}

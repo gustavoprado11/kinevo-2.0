@@ -110,6 +110,70 @@ interface ActionCardProps {
     title?: string;
     timeContext?: TimeContext;
     onPress?: () => void;
+    /** TODOS os treinos agendados pro dia (força + aeróbio no mesmo dia).
+     *  Com 2+, o herói mostra "N de M hoje" e a linha "Também hoje". */
+    dayWorkouts?: {
+        id: string;
+        name: string;
+        workoutType: 'strength' | 'cardio';
+        isCompleted: boolean;
+    }[];
+}
+
+/** Linha compacta "Também hoje" — os OUTROS treinos do dia além do herói. */
+function AlsoTodayRows({
+    items,
+    onOpen,
+    colors,
+}: {
+    items: NonNullable<ActionCardProps['dayWorkouts']>;
+    onOpen?: (workoutId: string) => void;
+    colors: V2Palette;
+}) {
+    if (items.length === 0) return null;
+    return (
+        <View style={{ marginTop: 10, gap: 8 }}>
+            {items.map((item) => (
+                <PressableScale
+                    key={item.id}
+                    onPress={() => onOpen?.(item.id)}
+                    pressScale={0.97}
+                    accessibilityLabel={`Também hoje: ${item.name}`}
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                        backgroundColor: colors.surface.card,
+                        borderWidth: 1,
+                        borderColor: colors.border.default,
+                        borderRadius: 16,
+                        paddingVertical: 13,
+                        paddingHorizontal: 16,
+                    }}
+                >
+                    {item.workoutType === 'cardio' ? (
+                        <Activity size={16} color="#06b6d4" strokeWidth={2.2} />
+                    ) : (
+                        <Dumbbell size={16} color={colors.purple[600]} strokeWidth={2.2} />
+                    )}
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text.tertiary }}>
+                        Também hoje:
+                    </Text>
+                    <Text
+                        style={{ flex: 1, fontSize: 13, fontWeight: '700', color: colors.text.primary }}
+                        numberOfLines={1}
+                    >
+                        {item.name}
+                    </Text>
+                    {item.isCompleted ? (
+                        <Check size={16} color="#16a34a" strokeWidth={2.5} />
+                    ) : (
+                        <ChevronRight size={16} color={colors.text.quaternary} strokeWidth={2} />
+                    )}
+                </PressableScale>
+            ))}
+        </View>
+    );
 }
 
 export function ActionCard({
@@ -130,11 +194,24 @@ export function ActionCard({
     title,
     timeContext = 'today',
     onPress,
+    dayWorkouts,
 }: ActionCardProps) {
     const colors = useV2Colors();
     const brand = useBrand();
     const styles = makeStyles(colors);
     const [expanded, setExpanded] = useState(false);
+
+    // Dia com 2+ treinos (força + aeróbio): o herói mostra UM; estes helpers
+    // comunicam o dia inteiro. `alsoToday` = os outros além do treino exibido.
+    const multiDay = timeContext === 'today' && (dayWorkouts?.length ?? 0) > 1;
+    const heroWorkoutId = todayWorkout?.id ?? null;
+    const alsoToday = multiDay
+        ? dayWorkouts!.filter((w) => w.id !== heroWorkoutId)
+        : [];
+    const dayDoneCount = multiDay ? dayWorkouts!.filter((w) => w.isCompleted).length : 0;
+    const dayBadgeLabel = multiDay
+        ? `${Math.min(dayDoneCount + 1, dayWorkouts!.length)} de ${dayWorkouts!.length} hoje`
+        : null;
     // ─── Non-today view: keep legacy behavior for past/future dates ───
     if (timeContext !== 'today') {
         const workout = selectedWorkout;
@@ -329,7 +406,7 @@ export function ActionCard({
                                 )}
                             </View>
                             <View style={styles.heroBadge}>
-                                <Text style={styles.heroBadgeText}>Agendado</Text>
+                                <Text style={styles.heroBadgeText}>{dayBadgeLabel ?? 'Agendado'}</Text>
                             </View>
                         </View>
                         <Text style={styles.heroEyebrow}>Treino de hoje</Text>
@@ -424,6 +501,8 @@ export function ActionCard({
                         </View>
                     </LinearGradient>
                 </PressableScale>
+
+                <AlsoTodayRows items={alsoToday} onOpen={onStartWorkout} colors={colors} />
             </View>
         );
     }
@@ -459,6 +538,8 @@ export function ActionCard({
                         {onShare && <ShareButton onPress={onShare} />}
                     </View>
                 </PressableScale>
+
+                <AlsoTodayRows items={alsoToday} onOpen={onStartWorkout} colors={colors} />
 
                 {/* Pending workout suggestion */}
                 {nextPending && (
@@ -530,6 +611,8 @@ export function ActionCard({
                         {onShare && <ShareButton onPress={onShare} />}
                     </View>
                 </PressableScale>
+
+                <AlsoTodayRows items={alsoToday} onOpen={onStartWorkout} colors={colors} />
             </View>
         );
     }
