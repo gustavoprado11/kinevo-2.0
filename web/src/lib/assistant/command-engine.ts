@@ -64,44 +64,84 @@ import {
 } from '@/lib/assistant/build-validator'
 import type { StyleSlotId } from '@/lib/assistant/style-slots'
 import type { StyleState } from '@/lib/assistant/style-state'
-import type { LLMModel } from '@/lib/prescription/llm-client'
-
-export const ASSISTANT_MODEL: LLMModel = 'gpt-4.1-mini'
 
 /**
- * Modelo dos turnos de CRIAÇÃO de programa (qualidade-crítico). Configurável por
- * env ASSISTANT_BUILD_MODEL (default = ASSISTANT_MODEL). Permite usar um modelo
- * mais forte SÓ no build — onde a qualidade da prescrição importa — sem encarecer
- * os turnos normais (consulta/edição). Whitelist p/ não aceitar lixo de env.
+ * Fallback de provedor DIFERENTE — SEMPRE OpenAI. É o último elo seguro quando o
+ * modelo escolhido (Gemini/Claude) não tem key configurada ou o provedor está
+ * instável. NÃO troque por um modelo Gemini/Claude: o valor deste fallback é
+ * justamente ser de OUTRO provedor que o padrão do experimento, preservando a
+ * resiliência ENTRE PROVEDORES na cadeia de retry do build (ver modelChain).
+ */
+const FALLBACK_MODEL = 'gpt-4.1-mini'
+
+/**
+ * Whitelist de modelos aceitos por env (tanto ASSISTANT_MODEL quanto
+ * ASSISTANT_BUILD_MODEL) — p/ não aceitar lixo de env. Valor fora daqui cai no
+ * default do respectivo resolvedor.
  */
 const BUILD_MODELS: ReadonlySet<string> = new Set([
     'gpt-4.1', 'gpt-4.1-mini', 'gpt-4o-mini', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001',
     'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash',
 ])
+
 /**
- * Default do build = Claude Sonnet. Medição (5x glúteo+costas) mostrou diferença
- * gritante: o mini põe volume ZERO no grupo enfatizado, repete exercícios e não
- * casa exercício↔sessão; o Sonnet entrega um split profissional (compostos
- * certos, volume distribuído, ênfase honrada). Custo ~10x (COGS, não crédito do
- * treinador), justificado pela qualidade — que é o produto.
+ * EXPERIMENTO GLOBAL (21/jul/2026): modelo padrão de TODOS os turnos do assistente
+ * — não só o build, mas também consulta, resumo, análise, edição, mensagem e
+ * cobrança. Configurável por env ASSISTANT_MODEL, mesma mecânica do
+ * resolveBuildModel: whitelist (BUILD_MODELS) + fallback de provedor. Se a env
+ * faltar/for inválida, usa o default do experimento (gemini-3.6-flash); se o
+ * modelo escolhido for de um provedor sem key (Gemini sem GOOGLE_GENERATIVE_AI_API_KEY,
+ * Claude sem ANTHROPIC_API_KEY), cai pro FALLBACK_MODEL (OpenAI).
+ *
+ * REVERSÍVEL SEM DEPLOY: setar ASSISTANT_MODEL=gpt-4.1-mini no Vercel volta ao
+ * comportamento anterior ao experimento (turnos normais no mini OpenAI).
  */
-// Padrão dos build turns do treinador = Gemini 3.6 Flash (upgrade 21/jul/2026: mesma
-// família do 3.5, output mais barato e ~17% menos tokens de saída, melhor em agêntico).
-// Configurável por ASSISTANT_BUILD_MODEL. Rollback sem deploy: ASSISTANT_BUILD_MODEL=gemini-3.5-flash.
-// Sem a key do provedor → cai pro mini.
+const DEFAULT_ASSISTANT_MODEL = 'gemini-3.6-flash'
+function resolveAssistantModel(): string {
+    const env = process.env.ASSISTANT_MODEL
+    const wanted = env && BUILD_MODELS.has(env) ? env : DEFAULT_ASSISTANT_MODEL
+    if (wanted.startsWith('claude') && !process.env.ANTHROPIC_API_KEY) return FALLBACK_MODEL
+    if (wanted.startsWith('gemini') && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) return FALLBACK_MODEL
+    return wanted
+}
+// Resolvido em tempo de CARGA do módulo (mesmo nome exportado de antes, p/ não
+// quebrar imports). O tipo agora é `string`: o default do experimento
+// (gemini-3.6-flash) não está no union LLMModel, e o metering já aceita string.
+export const ASSISTANT_MODEL: string = resolveAssistantModel()
+
+/**
+ * Modelo dos turnos de CRIAÇÃO de programa (qualidade-crítico). Configurável por
+ * env ASSISTANT_BUILD_MODEL. Permite usar um modelo mais forte/diferente SÓ no
+ * build — onde a qualidade da prescrição importa — sem mexer nos turnos normais.
+ * Whitelist (BUILD_MODELS) p/ não aceitar lixo de env.
+ *
+ * Padrão dos build turns = Gemini 3.6 Flash (upgrade 21/jul/2026: mesma família
+ * do 3.5, output mais barato e ~17% menos tokens de saída, melhor em agêntico).
+ * Rollback sem deploy: ASSISTANT_BUILD_MODEL=gemini-3.5-flash. Sem a key do
+ * provedor escolhido → cai pro FALLBACK_MODEL (OpenAI, provedor DIFERENTE — não
+ * pro ASSISTANT_MODEL, que no experimento também pode ser Gemini).
+ */
 const DEFAULT_BUILD_MODEL = 'gemini-3.6-flash'
 function resolveBuildModel(): string {
     const env = process.env.ASSISTANT_BUILD_MODEL
     const wanted = env && BUILD_MODELS.has(env) ? env : DEFAULT_BUILD_MODEL
-    if (wanted.startsWith('claude') && !process.env.ANTHROPIC_API_KEY) return ASSISTANT_MODEL
-    if (wanted.startsWith('gemini') && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) return ASSISTANT_MODEL
+    if (wanted.startsWith('claude') && !process.env.ANTHROPIC_API_KEY) return FALLBACK_MODEL
+    if (wanted.startsWith('gemini') && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) return FALLBACK_MODEL
     return wanted
+}
+
+/** Chave do provedor pelo prefixo — usada p/ decidir se dois modelos são de
+ *  provedores DIFERENTES (resiliência da modelChain), sem instanciar o provider. */
+function providerKey(model: string): 'google' | 'anthropic' | 'openai' {
+    if (model.startsWith('gemini')) return 'google'
+    return model.startsWith('claude') ? 'anthropic' : 'openai'
 }
 
 /** Provider pelo prefixo: gemini → Google; claude → Anthropic; resto → OpenAI. */
 function providerFor(model: string) {
-    if (model.startsWith('gemini')) return google(model)
-    return model.startsWith('claude') ? anthropic(model) : openai(model)
+    const key = providerKey(model)
+    if (key === 'google') return google(model)
+    return key === 'anthropic' ? anthropic(model) : openai(model)
 }
 
 // Detecção de turno de build (modelo/orçamentos/retry) vive em build-signals.ts
@@ -848,9 +888,12 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
         }
 
         // 3. Entende a intenção e age. CONFIRM_TOOLS chegam sem execute → para.
-        //    Cadeia de tentativas do BUILD (o turno normal segue com 1 tentativa):
-        //      1ª: modelo de build; 2ª: MESMO modelo (flakiness — ver leak abaixo);
-        //      3ª: modelo padrão (gpt-4.1-mini). Erros vão ao trace — console.error
+        //    Cadeia de tentativas: o BUILD re-roda o MESMO modelo 2x (flakiness — ver
+        //    leak abaixo) e então cai no FALLBACK_MODEL; o turno NORMAL tenta 1x e cai no
+        //    FALLBACK_MODEL (gpt-4.1-mini, OUTRO provedor) se a 1ª tentativa LANÇAR —
+        //    resiliência cross-provider quando o modelo do turno (ex.: Gemini) tem
+        //    instabilidade/outage. O fallback só entra quando é de provedor DIFERENTE do
+        //    modelo do turno. Erros vão ao trace — console.error
         //    dentro do ReadableStream NÃO aparece nos logs do Vercel. Abort (Stop
         //    do treinador) propaga: quem trata é a rota (nada a persistir/cobrar).
         //
@@ -886,10 +929,21 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             )
         }
 
-        const modelChain =
-            buildTurn && turnModel !== ASSISTANT_MODEL
-                ? [turnModel, turnModel, ASSISTANT_MODEL]
-                : [turnModel]
+        // Cadeia de retry. O BUILD re-roda o MESMO modelo 2x antes do fallback (Gemini
+        // é flaky no build ~1 em 4: vaza a tool-call como texto, ou termina vazio); o
+        // turno NORMAL tenta 1x. Ambos terminam no FALLBACK_MODEL, de OUTRO provedor
+        // (OpenAI), QUANDO o modelo do turno é de provedor diferente — agora que o
+        // ASSISTANT_MODEL pode ser Gemini em TODOS os turnos (não só o build), sem esse
+        // elo uma instabilidade/outage do Gemini derrubaria o turno inteiro em vez de
+        // cair no OpenAI. O turno NORMAL só chega nesse elo se a 1ª tentativa LANÇAR
+        // (erro real de provedor): uma conclusão normal quebra o loop já no attempt 0,
+        // sem custo extra no caminho feliz. Só anexa quando o provedor difere do modelo
+        // do turno (não repete o mesmo modelo quando o turno já roda no provedor do
+        // fallback).
+        const modelChain = buildTurn ? [turnModel, turnModel] : [turnModel]
+        if (providerKey(turnModel) !== providerKey(FALLBACK_MODEL)) {
+            modelChain.push(FALLBACK_MODEL)
+        }
         let result: Awaited<ReturnType<typeof runGen>> | null = null
         let sanitizeLeakedText = false
         let lastErr: unknown = null
