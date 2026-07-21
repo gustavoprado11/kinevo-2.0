@@ -2,12 +2,15 @@
  * EditCardioSheet — modal pra editar um bloco de cardio.
  *
  * Grava o schema CANÔNICO de shared/types/workout-items.ts (o mesmo do web e
- * do player do aluno): equipment (enum), objective time/distance →
- * duration_minutes/distance_km, intensity e notes. Lê também o legado mobile
- * (modality/target) e o migra no save (helpers em cardio-config.ts).
+ * do player do aluno). Paridade de prescrição com o web builder: modo
+ * Contínuo|Intervalado (protocolos nomeados preenchem work/rest/rounds +
+ * alvo sugerido) e intensidade estruturada Livre|Zona|FC|RPE|Pace — a string
+ * `intensity` é derivada do alvo no save (FCmáx do aluno quando conhecida).
+ * Lê também o legado mobile (modality/target) e o migra no save (helpers em
+ * cardio-config.ts).
  *
- * Protocolo INTERVALADO (criado no web) não é editável aqui: o sheet mostra o
- * resumo e preserva mode/intervals no merge — edita só equipment/intensity/notes.
+ * Treino POR FASES (autorado no web) não é editável aqui: o sheet mostra o
+ * aviso e preserva mode/segments/derivados — edita só equipment/notes.
  */
 import React, { useEffect, useState } from "react";
 import {
@@ -30,60 +33,162 @@ import {
     CARDIO_EQUIPMENT_LABELS,
     CARDIO_EQUIPMENT_OPTIONS,
     type CardioEquipment,
+    type CardioIntensityTarget,
+    type CardioIntervalConfig,
     type CardioObjective,
 } from "@kinevo/shared/types/workout-items";
-import { buildCardioConfig, parseCardioConfig } from "./cardio-config";
+import { HR_ZONES, resolveZoneBpm, zonePctLabel } from "@kinevo/shared/lib/cardio/zones";
+import { CARDIO_PROTOCOLS, protocolMatchesIntervals } from "@kinevo/shared/lib/cardio/interval-protocols";
+import { buildCardioConfig, parseCardioConfig, type CardioSheetMode } from "./cardio-config";
 
 const ACCENT = "#22C55E";
+
+type IntensityType = "" | "zone" | "hr" | "rpe" | "pace";
 
 export interface EditCardioSheetProps {
     visible: boolean;
     /** item_config cru do item (canônico ou legado mobile). */
     initialConfig: Record<string, unknown>;
+    /** FCmáx do aluno (programa atribuído) — resolve zonas em bpm na string derivada. */
+    maxHrBpm?: number | null;
     /** Recebe o item_config completo já mesclado/migrado, pronto pro updateItem. */
     onSave: (cfg: Record<string, unknown>) => void;
     onClose: () => void;
 }
 
+function targetToState(target: CardioIntensityTarget | null) {
+    if (!target) return { type: "" as IntensityType, zone: null as number | null, hrMin: "", hrMax: "", rpe: "", pace: "" };
+    return {
+        type: target.type as IntensityType,
+        zone: target.type === "zone" ? (target.zone ?? null) : null,
+        hrMin: target.type === "hr" && target.hr_min_bpm != null ? String(target.hr_min_bpm) : "",
+        hrMax: target.type === "hr" && target.hr_max_bpm != null ? String(target.hr_max_bpm) : "",
+        rpe: target.type === "rpe" && target.rpe != null ? String(target.rpe) : "",
+        pace: target.type === "pace" ? (target.pace_min_per_km ?? "") : "",
+    };
+}
+
 export function EditCardioSheet({
     visible,
     initialConfig,
+    maxHrBpm = null,
     onSave,
     onClose,
 }: EditCardioSheetProps) {
     const colors = useV2Colors();
     const parsed = parseCardioConfig(initialConfig);
+    const [mode, setMode] = useState<CardioSheetMode>(parsed.mode);
     const [equipment, setEquipment] = useState<CardioEquipment | null>(parsed.equipment);
     const [objective, setObjective] = useState<CardioObjective>(parsed.objective);
     const [targetText, setTargetText] = useState(parsed.target !== null ? String(parsed.target) : "");
+    const [workText, setWorkText] = useState(parsed.intervals ? String(parsed.intervals.work_seconds) : "30");
+    const [restText, setRestText] = useState(parsed.intervals ? String(parsed.intervals.rest_seconds) : "30");
+    const [roundsText, setRoundsText] = useState(parsed.intervals ? String(parsed.intervals.rounds) : "8");
+    const initialTarget = targetToState(parsed.intensityTarget);
+    const [intensityType, setIntensityType] = useState<IntensityType>(initialTarget.type);
+    const [zone, setZone] = useState<number | null>(initialTarget.zone);
+    const [hrMinText, setHrMinText] = useState(initialTarget.hrMin);
+    const [hrMaxText, setHrMaxText] = useState(initialTarget.hrMax);
+    const [rpeText, setRpeText] = useState(initialTarget.rpe);
+    const [paceText, setPaceText] = useState(initialTarget.pace);
     const [intensity, setIntensity] = useState(parsed.intensity);
     const [notes, setNotes] = useState(parsed.notes);
-    const isInterval = parsed.isInterval;
     const isPhased = parsed.isPhased;
 
     useEffect(() => {
         if (visible) {
             const p = parseCardioConfig(initialConfig);
+            setMode(p.mode);
             setEquipment(p.equipment);
             setObjective(p.objective);
             setTargetText(p.target !== null ? String(p.target) : "");
+            setWorkText(p.intervals ? String(p.intervals.work_seconds) : "30");
+            setRestText(p.intervals ? String(p.intervals.rest_seconds) : "30");
+            setRoundsText(p.intervals ? String(p.intervals.rounds) : "8");
+            const t = targetToState(p.intensityTarget);
+            setIntensityType(t.type);
+            setZone(t.zone);
+            setHrMinText(t.hrMin);
+            setHrMaxText(t.hrMax);
+            setRpeText(t.rpe);
+            setPaceText(t.pace);
             setIntensity(p.intensity);
             setNotes(p.notes);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible]);
 
+    const parseIntPositive = (raw: string): number | null => {
+        const n = parseInt(raw, 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
+    const currentIntervals = (): CardioIntervalConfig => ({
+        work_seconds: parseIntPositive(workText) ?? 30,
+        rest_seconds: Math.max(0, parseInt(restText, 10) || 0),
+        rounds: parseIntPositive(roundsText) ?? 8,
+    });
+
+    // Selo visual: o chip acende quando os números atuais batem com o protocolo.
+    const matchedProtocolKey = mode === "interval"
+        ? (CARDIO_PROTOCOLS.find((p) => protocolMatchesIntervals(p.key, currentIntervals()))?.key ?? null)
+        : null;
+
+    const applyProtocol = (key: string) => {
+        const p = CARDIO_PROTOCOLS.find((x) => x.key === key);
+        if (!p) return;
+        Haptics.selectionAsync().catch(() => { });
+        setWorkText(String(p.intervals.work_seconds));
+        setRestText(String(p.intervals.rest_seconds));
+        setRoundsText(String(p.intervals.rounds));
+        // Alvo sugerido acompanha o protocolo (editável depois).
+        const t = targetToState(p.suggested_target);
+        setIntensityType(t.type);
+        setZone(t.zone);
+        setHrMinText(t.hrMin);
+        setHrMaxText(t.hrMax);
+        setRpeText(t.rpe);
+        setPaceText(t.pace);
+    };
+
+    const buildIntensityTarget = (): CardioIntensityTarget | null => {
+        if (intensityType === "zone" && zone != null) {
+            return { type: "zone", zone: zone as 1 | 2 | 3 | 4 | 5 };
+        }
+        if (intensityType === "hr") {
+            const min = parseIntPositive(hrMinText);
+            const max = parseIntPositive(hrMaxText);
+            if (min != null && max != null && min <= max) return { type: "hr", hr_min_bpm: min, hr_max_bpm: max };
+            return null;
+        }
+        if (intensityType === "rpe") {
+            const r = parseIntPositive(rpeText);
+            if (r != null && r >= 1 && r <= 10) return { type: "rpe", rpe: r };
+            return null;
+        }
+        if (intensityType === "pace" && paceText.trim()) {
+            return { type: "pace", pace_min_per_km: paceText.trim() };
+        }
+        return null;
+    };
+
     const handleSave = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
         const parsedTarget = parseFloat(targetText.replace(",", "."));
         const targetNum = Number.isFinite(parsedTarget) && parsedTarget > 0 ? parsedTarget : null;
+        const structured = buildIntensityTarget();
         onSave(buildCardioConfig(initialConfig, {
+            mode,
             equipment,
             objective,
             target: targetNum,
-            intensity,
+            intervals: mode === "interval" ? currentIntervals() : null,
+            protocolKey: matchedProtocolKey,
+            intensityTarget: structured,
+            // Texto livre só vale quando não há alvo estruturado.
+            intensity: intensityType === "" ? intensity : "",
             notes,
-        }));
+        }, maxHrBpm));
     };
 
     const targetLabel = objective === "distance" ? "Distância (km)" : "Duração (min)";
@@ -109,80 +214,86 @@ export function EditCardioSheet({
         color: colors.text.primary,
     };
 
-    const renderObjectiveChip = (label: string, value: CardioObjective) => {
-        const active = objective === value;
-        return (
-            <TouchableOpacity
-                key={value}
-                onPress={() => {
-                    Haptics.selectionAsync().catch(() => { });
-                    setObjective(value);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`Objetivo: ${label}`}
-                accessibilityState={{ selected: active }}
-                activeOpacity={0.85}
-                style={{
-                    flex: 1,
-                    height: 40,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: active ? ACCENT : colors.border.default,
-                    backgroundColor: active ? "rgba(34,197,94,0.10)" : colors.surface.card,
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}
-            >
-                <Text
-                    style={{
-                        fontSize: 13,
-                        fontWeight: active ? "700" : "500",
-                        color: active ? ACCENT : colors.text.secondary,
-                    }}
-                >
-                    {label}
-                </Text>
-            </TouchableOpacity>
-        );
+    const smallInputStyle = {
+        ...inputStyle,
+        flex: 1,
+        textAlign: "center" as const,
+        paddingHorizontal: 8,
     };
 
-    const renderEquipmentChip = (value: CardioEquipment) => {
-        const active = equipment === value;
-        return (
-            <TouchableOpacity
-                key={value}
-                onPress={() => {
-                    Haptics.selectionAsync().catch(() => { });
-                    setEquipment(active ? null : value);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`Equipamento: ${CARDIO_EQUIPMENT_LABELS[value]}`}
-                accessibilityState={{ selected: active }}
-                activeOpacity={0.85}
+    const chip = (label: string, active: boolean, onPress: () => void, key?: string, accessibility?: string) => (
+        <TouchableOpacity
+            key={key ?? label}
+            onPress={() => {
+                Haptics.selectionAsync().catch(() => { });
+                onPress();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={accessibility ?? label}
+            accessibilityState={{ selected: active }}
+            activeOpacity={0.85}
+            style={{
+                height: 36,
+                paddingHorizontal: 12,
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: active ? ACCENT : colors.border.default,
+                backgroundColor: active ? "rgba(34,197,94,0.10)" : colors.surface.card,
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 8,
+            }}
+        >
+            <Text
                 style={{
-                    height: 36,
-                    paddingHorizontal: 12,
-                    borderRadius: 18,
-                    borderWidth: 1,
-                    borderColor: active ? ACCENT : colors.border.default,
-                    backgroundColor: active ? "rgba(34,197,94,0.10)" : colors.surface.card,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: 8,
+                    fontSize: 13,
+                    fontWeight: active ? "700" : "500",
+                    color: active ? ACCENT : colors.text.secondary,
                 }}
             >
-                <Text
-                    style={{
-                        fontSize: 13,
-                        fontWeight: active ? "700" : "500",
-                        color: active ? ACCENT : colors.text.secondary,
-                    }}
-                >
-                    {CARDIO_EQUIPMENT_LABELS[value]}
-                </Text>
-            </TouchableOpacity>
-        );
-    };
+                {label}
+            </Text>
+        </TouchableOpacity>
+    );
+
+    const segmentChip = (label: string, active: boolean, onPress: () => void, key?: string) => (
+        <TouchableOpacity
+            key={key ?? label}
+            onPress={() => {
+                Haptics.selectionAsync().catch(() => { });
+                onPress();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            accessibilityState={{ selected: active }}
+            activeOpacity={0.85}
+            style={{
+                flex: 1,
+                height: 40,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: active ? ACCENT : colors.border.default,
+                backgroundColor: active ? "rgba(34,197,94,0.10)" : colors.surface.card,
+                alignItems: "center",
+                justifyContent: "center",
+            }}
+        >
+            <Text
+                style={{
+                    fontSize: 13,
+                    fontWeight: active ? "700" : "500",
+                    color: active ? ACCENT : colors.text.secondary,
+                }}
+            >
+                {label}
+            </Text>
+        </TouchableOpacity>
+    );
+
+    const zoneBpm = zone != null ? resolveZoneBpm(zone as 1 | 2 | 3 | 4 | 5, maxHrBpm) : null;
+    const zoneHint = zone != null
+        ? (zoneBpm ? `${zoneBpm.min}–${zoneBpm.max} bpm` : zonePctLabel(zone as 1 | 2 | 3 | 4 | 5))
+        : null;
 
     return (
         <Modal
@@ -283,13 +394,21 @@ export function EditCardioSheet({
                                         keyboardShouldPersistTaps="handled"
                                     >
                                         <View style={{ flexDirection: "row" }}>
-                                            {CARDIO_EQUIPMENT_OPTIONS.map(renderEquipmentChip)}
+                                            {CARDIO_EQUIPMENT_OPTIONS.map((value) =>
+                                                chip(
+                                                    CARDIO_EQUIPMENT_LABELS[value],
+                                                    equipment === value,
+                                                    () => setEquipment(equipment === value ? null : value),
+                                                    value,
+                                                    `Equipamento: ${CARDIO_EQUIPMENT_LABELS[value]}`,
+                                                ),
+                                            )}
                                         </View>
                                     </ScrollView>
                                 </View>
 
-                                {isInterval || isPhased ? (
-                                    /* Estrutura definida no web: preservada, não editável aqui */
+                                {isPhased ? (
+                                    /* Estrutura por fases (web): preservada, não editável aqui */
                                     <View
                                         style={{
                                             flexDirection: "row",
@@ -312,48 +431,224 @@ export function EditCardioSheet({
                                                 color: colors.text.secondary,
                                             }}
                                         >
-                                            {isPhased
-                                                ? "Treino por fases definido no painel web — as fases e intensidades são preservadas. Aqui você edita equipamento e observações."
-                                                : "Protocolo intervalado definido no painel web — os intervalos são preservados. Aqui você edita equipamento, intensidade e observações."}
+                                            Treino por fases definido no painel web — as fases e
+                                            intensidades são preservadas. Aqui você edita
+                                            equipamento e observações.
                                         </Text>
                                     </View>
                                 ) : (
                                     <>
-                                        {/* Objetivo */}
+                                        {/* Modo */}
                                         <View style={{ marginBottom: 14 }}>
-                                            <Text style={fieldLabelStyle}>Objetivo</Text>
+                                            <Text style={fieldLabelStyle}>Modo</Text>
                                             <View style={{ flexDirection: "row", gap: 8 }}>
-                                                {renderObjectiveChip("Tempo", "time")}
-                                                {renderObjectiveChip("Distância", "distance")}
+                                                {segmentChip("Contínuo", mode === "continuous", () => setMode("continuous"), "continuous")}
+                                                {segmentChip("Intervalado", mode === "interval", () => setMode("interval"), "interval")}
                                             </View>
                                         </View>
 
-                                        {/* Target */}
-                                        <View style={{ marginBottom: 14 }}>
-                                            <Text style={fieldLabelStyle}>{targetLabel}</Text>
-                                            <TextInput
-                                                value={targetText}
-                                                onChangeText={setTargetText}
-                                                placeholder={targetPlaceholder}
-                                                placeholderTextColor={colors.text.tertiary}
-                                                keyboardType="decimal-pad"
-                                                style={inputStyle}
-                                            />
-                                        </View>
+                                        {mode === "continuous" ? (
+                                            <>
+                                                {/* Objetivo */}
+                                                <View style={{ marginBottom: 14 }}>
+                                                    <Text style={fieldLabelStyle}>Objetivo</Text>
+                                                    <View style={{ flexDirection: "row", gap: 8 }}>
+                                                        {segmentChip("Tempo", objective === "time", () => setObjective("time"), "time")}
+                                                        {segmentChip("Distância", objective === "distance", () => setObjective("distance"), "distance")}
+                                                    </View>
+                                                </View>
+
+                                                {/* Target */}
+                                                <View style={{ marginBottom: 14 }}>
+                                                    <Text style={fieldLabelStyle}>{targetLabel}</Text>
+                                                    <TextInput
+                                                        value={targetText}
+                                                        onChangeText={setTargetText}
+                                                        placeholder={targetPlaceholder}
+                                                        placeholderTextColor={colors.text.tertiary}
+                                                        keyboardType="decimal-pad"
+                                                        style={inputStyle}
+                                                    />
+                                                </View>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {/* Protocolos nomeados */}
+                                                <View style={{ marginBottom: 14 }}>
+                                                    <Text style={fieldLabelStyle}>Protocolo</Text>
+                                                    <ScrollView
+                                                        horizontal
+                                                        showsHorizontalScrollIndicator={false}
+                                                        keyboardShouldPersistTaps="handled"
+                                                    >
+                                                        <View style={{ flexDirection: "row" }}>
+                                                            {CARDIO_PROTOCOLS.map((p) =>
+                                                                chip(
+                                                                    p.label,
+                                                                    matchedProtocolKey === p.key,
+                                                                    () => applyProtocol(p.key),
+                                                                    p.key,
+                                                                    `Protocolo: ${p.label} — ${p.description}`,
+                                                                ),
+                                                            )}
+                                                        </View>
+                                                    </ScrollView>
+                                                </View>
+
+                                                {/* Work / Rest / Rounds */}
+                                                <View style={{ marginBottom: 14 }}>
+                                                    <Text style={fieldLabelStyle}>Estrutura</Text>
+                                                    <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                                                        <View style={{ flex: 1 }}>
+                                                            <TextInput
+                                                                value={workText}
+                                                                onChangeText={setWorkText}
+                                                                placeholder="30"
+                                                                placeholderTextColor={colors.text.tertiary}
+                                                                keyboardType="number-pad"
+                                                                accessibilityLabel="Trabalho (segundos)"
+                                                                style={smallInputStyle}
+                                                            />
+                                                            <Text style={{ fontSize: 10, color: colors.text.tertiary, textAlign: "center", marginTop: 4 }}>
+                                                                trabalho (s)
+                                                            </Text>
+                                                        </View>
+                                                        <View style={{ flex: 1 }}>
+                                                            <TextInput
+                                                                value={restText}
+                                                                onChangeText={setRestText}
+                                                                placeholder="30"
+                                                                placeholderTextColor={colors.text.tertiary}
+                                                                keyboardType="number-pad"
+                                                                accessibilityLabel="Descanso (segundos)"
+                                                                style={smallInputStyle}
+                                                            />
+                                                            <Text style={{ fontSize: 10, color: colors.text.tertiary, textAlign: "center", marginTop: 4 }}>
+                                                                descanso (s)
+                                                            </Text>
+                                                        </View>
+                                                        <View style={{ flex: 1 }}>
+                                                            <TextInput
+                                                                value={roundsText}
+                                                                onChangeText={setRoundsText}
+                                                                placeholder="8"
+                                                                placeholderTextColor={colors.text.tertiary}
+                                                                keyboardType="number-pad"
+                                                                accessibilityLabel="Rounds"
+                                                                style={smallInputStyle}
+                                                            />
+                                                            <Text style={{ fontSize: 10, color: colors.text.tertiary, textAlign: "center", marginTop: 4 }}>
+                                                                rounds
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                </View>
+                                            </>
+                                        )}
                                     </>
                                 )}
 
                                 {/* Intensidade — no phased ela é derivada das fases (web) */}
                                 {!isPhased ? (
                                     <View style={{ marginBottom: 14 }}>
-                                        <Text style={fieldLabelStyle}>Intensidade (opcional)</Text>
-                                        <TextInput
-                                            value={intensity}
-                                            onChangeText={setIntensity}
-                                            placeholder="Ex: Zona 2, RPE 6, 130-150bpm"
-                                            placeholderTextColor={colors.text.tertiary}
-                                            style={inputStyle}
-                                        />
+                                        <Text style={fieldLabelStyle}>Intensidade</Text>
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            keyboardShouldPersistTaps="handled"
+                                            style={{ marginBottom: 8 }}
+                                        >
+                                            <View style={{ flexDirection: "row" }}>
+                                                {chip("Livre", intensityType === "", () => setIntensityType(""), "free", "Intensidade: texto livre")}
+                                                {chip("Zona", intensityType === "zone", () => setIntensityType("zone"), "zone", "Intensidade: zona de FC")}
+                                                {chip("FC", intensityType === "hr", () => setIntensityType("hr"), "hr", "Intensidade: faixa de FC")}
+                                                {chip("RPE", intensityType === "rpe", () => setIntensityType("rpe"), "rpe", "Intensidade: RPE")}
+                                                {chip("Pace", intensityType === "pace", () => setIntensityType("pace"), "pace", "Intensidade: pace")}
+                                            </View>
+                                        </ScrollView>
+
+                                        {intensityType === "" && (
+                                            <TextInput
+                                                value={intensity}
+                                                onChangeText={setIntensity}
+                                                placeholder="Ex: Zona 2, RPE 6, 130-150bpm"
+                                                placeholderTextColor={colors.text.tertiary}
+                                                style={inputStyle}
+                                            />
+                                        )}
+
+                                        {intensityType === "zone" && (
+                                            <View>
+                                                <View style={{ flexDirection: "row" }}>
+                                                    {HR_ZONES.map((z) =>
+                                                        chip(
+                                                            `Z${z.zone}`,
+                                                            zone === z.zone,
+                                                            () => setZone(z.zone),
+                                                            `z${z.zone}`,
+                                                            `Zona ${z.zone}: ${z.label}`,
+                                                        ),
+                                                    )}
+                                                </View>
+                                                {zoneHint ? (
+                                                    <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 8 }}>
+                                                        {HR_ZONES.find((z) => z.zone === zone)?.label} · {zoneHint}
+                                                        {!zoneBpm ? " — cadastre a FCmáx do aluno para ver em bpm" : ""}
+                                                    </Text>
+                                                ) : null}
+                                            </View>
+                                        )}
+
+                                        {intensityType === "hr" && (
+                                            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                                                <TextInput
+                                                    value={hrMinText}
+                                                    onChangeText={setHrMinText}
+                                                    placeholder="130"
+                                                    placeholderTextColor={colors.text.tertiary}
+                                                    keyboardType="number-pad"
+                                                    accessibilityLabel="FC mínima (bpm)"
+                                                    style={smallInputStyle}
+                                                />
+                                                <Text style={{ color: colors.text.tertiary }}>–</Text>
+                                                <TextInput
+                                                    value={hrMaxText}
+                                                    onChangeText={setHrMaxText}
+                                                    placeholder="150"
+                                                    placeholderTextColor={colors.text.tertiary}
+                                                    keyboardType="number-pad"
+                                                    accessibilityLabel="FC máxima (bpm)"
+                                                    style={smallInputStyle}
+                                                />
+                                                <Text style={{ fontSize: 12, color: colors.text.tertiary }}>bpm</Text>
+                                            </View>
+                                        )}
+
+                                        {intensityType === "rpe" && (
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                                <TextInput
+                                                    value={rpeText}
+                                                    onChangeText={setRpeText}
+                                                    placeholder="7"
+                                                    placeholderTextColor={colors.text.tertiary}
+                                                    keyboardType="number-pad"
+                                                    accessibilityLabel="RPE (1 a 10)"
+                                                    style={{ ...smallInputStyle, flex: 0, width: 72 }}
+                                                />
+                                                <Text style={{ fontSize: 12, color: colors.text.tertiary }}>de 1 a 10</Text>
+                                            </View>
+                                        )}
+
+                                        {intensityType === "pace" && (
+                                            <TextInput
+                                                value={paceText}
+                                                onChangeText={setPaceText}
+                                                placeholder="Ex: 5:30 ou 5:30-6:00"
+                                                placeholderTextColor={colors.text.tertiary}
+                                                accessibilityLabel="Pace (min/km)"
+                                                style={inputStyle}
+                                            />
+                                        )}
                                     </View>
                                 ) : null}
 

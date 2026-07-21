@@ -3,7 +3,21 @@ import {
     buildCardioConfig,
     formatCardioPreview,
     parseCardioConfig,
+    type CardioSheetEdits,
 } from '../cardio-config';
+
+/** Edits contínuos padrão — os testes sobrescrevem o que importa. */
+const baseEdits: CardioSheetEdits = {
+    mode: 'continuous',
+    equipment: 'treadmill',
+    objective: 'time',
+    target: 25,
+    intervals: null,
+    protocolKey: null,
+    intensityTarget: null,
+    intensity: 'Zona 2',
+    notes: '',
+};
 
 // ── parseCardioConfig ──
 
@@ -18,11 +32,15 @@ describe('parseCardioConfig', () => {
             notes: 'Inclinação 5%',
         });
         expect(p).toEqual({
+            mode: 'continuous',
             isInterval: false,
             isPhased: false,
             equipment: 'treadmill',
             objective: 'time',
             target: 20,
+            intervals: null,
+            protocolKey: null,
+            intensityTarget: null,
             intensity: 'Zona 2',
             notes: 'Inclinação 5%',
         });
@@ -53,14 +71,20 @@ describe('parseCardioConfig', () => {
         expect(p.target).toBe(15);
     });
 
-    it('detecta protocolo intervalado', () => {
+    it('detecta protocolo intervalado com números, selo e alvo', () => {
         const p = parseCardioConfig({
             mode: 'interval',
             equipment: 'bike',
-            intervals: { work_seconds: 30, rest_seconds: 30, rounds: 10 },
+            intervals: { work_seconds: 20, rest_seconds: 10, rounds: 8 },
+            protocol_key: 'tabata',
+            intensity_target: { type: 'rpe', rpe: 9 },
+            intensity: 'RPE 9',
         });
+        expect(p.mode).toBe('interval');
         expect(p.isInterval).toBe(true);
-        expect(p.equipment).toBe('bike');
+        expect(p.intervals).toEqual({ work_seconds: 20, rest_seconds: 10, rounds: 8 });
+        expect(p.protocolKey).toBe('tabata');
+        expect(p.intensityTarget).toEqual({ type: 'rpe', rpe: 9 });
     });
 
     it('detecta modo por fases (só com segments válidos)', () => {
@@ -78,18 +102,10 @@ describe('parseCardioConfig', () => {
 // ── buildCardioConfig ──
 
 describe('buildCardioConfig', () => {
-    const edits = {
-        equipment: 'treadmill' as const,
-        objective: 'time' as const,
-        target: 25,
-        intensity: 'Zona 2',
-        notes: '',
-    };
-
     it('grava o schema canônico e migra/strippa o legado mobile', () => {
         const out = buildCardioConfig(
             { mode: 'continuous', modality: 'Esteira', target: 20, objective: 'time' },
-            edits,
+            baseEdits,
         );
         expect(out).toEqual({
             mode: 'continuous',
@@ -102,28 +118,73 @@ describe('buildCardioConfig', () => {
         expect(out).not.toHaveProperty('target');
     });
 
-    it('PRESERVA protocolo intervalado do web (mode/intervals/duração intocados)', () => {
-        // Bug C3: o save antigo substituía o item_config inteiro e destruía
-        // intervals/equipment/duration de um cardio criado no web.
-        const webConfig = {
+    it('AUTORA intervalado: work/rest/rounds + selo de protocolo válido', () => {
+        const out = buildCardioConfig({}, {
+            ...baseEdits,
             mode: 'interval',
             equipment: 'bike',
-            intervals: { work_seconds: 30, rest_seconds: 30, rounds: 10 },
-            duration_minutes: 10,
-        };
-        const out = buildCardioConfig(webConfig, {
-            equipment: 'rower',
-            objective: 'time',
-            target: 99,          // ignorado em modo intervalado
-            intensity: 'RPE 8',
-            notes: 'nota nova',
+            intervals: { work_seconds: 20, rest_seconds: 10, rounds: 8 },
+            protocolKey: 'tabata',
+            intensityTarget: { type: 'rpe', rpe: 9 },
+            intensity: '',
         });
         expect(out.mode).toBe('interval');
-        expect(out.intervals).toEqual({ work_seconds: 30, rest_seconds: 30, rounds: 10 });
-        expect(out.duration_minutes).toBe(10);
-        expect(out.equipment).toBe('rower');
-        expect(out.intensity).toBe('RPE 8');
-        expect(out.notes).toBe('nota nova');
+        expect(out.intervals).toEqual({ work_seconds: 20, rest_seconds: 10, rounds: 8 });
+        expect(out.protocol_key).toBe('tabata');
+        expect(out.intensity_target).toEqual({ type: 'rpe', rpe: 9 });
+        expect(out.intensity).toBe('RPE 9'); // derivada do alvo
+        expect(out).not.toHaveProperty('objective');
+        expect(out).not.toHaveProperty('duration_minutes');
+    });
+
+    it('selo de protocolo CAI quando os números não batem mais', () => {
+        const out = buildCardioConfig({}, {
+            ...baseEdits,
+            mode: 'interval',
+            intervals: { work_seconds: 25, rest_seconds: 10, rounds: 8 },
+            protocolKey: 'tabata', // tabata é 20/10×8
+            intensity: '',
+        });
+        expect(out).not.toHaveProperty('protocol_key');
+        expect(out.intervals).toEqual({ work_seconds: 25, rest_seconds: 10, rounds: 8 });
+    });
+
+    it('zona deriva bpm com FCmáx; sem FCmáx cai no rótulo percentual', () => {
+        const withHr = buildCardioConfig({}, {
+            ...baseEdits,
+            intensityTarget: { type: 'zone', zone: 2 },
+            intensity: '',
+        }, 190);
+        expect(withHr.intensity_target).toEqual({ type: 'zone', zone: 2 });
+        expect(withHr.intensity).toContain('114'); // 60–70% de 190 = 114–133
+        expect(withHr.intensity).toContain('133');
+
+        const noHr = buildCardioConfig({}, {
+            ...baseEdits,
+            intensityTarget: { type: 'zone', zone: 2 },
+            intensity: '',
+        }, null);
+        expect(typeof noHr.intensity).toBe('string');
+        expect(noHr.intensity).toContain('%');
+    });
+
+    it('voltar de intervalado para contínuo limpa intervals/protocol_key', () => {
+        const out = buildCardioConfig(
+            {
+                mode: 'interval',
+                intervals: { work_seconds: 20, rest_seconds: 10, rounds: 8 },
+                protocol_key: 'tabata',
+                intensity_target: { type: 'rpe', rpe: 9 },
+                intensity: 'RPE 9',
+            },
+            { ...baseEdits, mode: 'continuous', target: 30, intensityTarget: null, intensity: '' },
+        );
+        expect(out.mode).toBe('continuous');
+        expect(out.duration_minutes).toBe(30);
+        expect(out).not.toHaveProperty('intervals');
+        expect(out).not.toHaveProperty('protocol_key');
+        expect(out).not.toHaveProperty('intensity_target');
+        expect(out).not.toHaveProperty('intensity');
     });
 
     it('PRESERVA treino por fases do web (mode/segments/derivados intocados)', () => {
@@ -138,10 +199,12 @@ describe('buildCardioConfig', () => {
             intensity: '10min Zona 1 → 8× 20/10 RPE 9', // derivado (resumo)
         };
         const out = buildCardioConfig(webConfig, {
+            ...baseEdits,
+            mode: 'interval', // ignorado: phased vence
             equipment: 'bike',
-            objective: 'time',
-            target: 99,          // ignorado em modo phased
-            intensity: 'tentou sobrescrever', // ignorado: derivada dos segments
+            target: 99,
+            intensityTarget: { type: 'rpe', rpe: 5 }, // ignorado: derivada dos segments
+            intensity: 'tentou sobrescrever',
             notes: 'nota nova',
         });
         expect(out.mode).toBe('phased');
@@ -155,7 +218,7 @@ describe('buildCardioConfig', () => {
     it('trocar objetivo tempo→distância limpa duration_minutes', () => {
         const out = buildCardioConfig(
             { mode: 'continuous', objective: 'time', duration_minutes: 20 },
-            { ...edits, objective: 'distance', target: 5 },
+            { ...baseEdits, objective: 'distance', target: 5 },
         );
         expect(out.distance_km).toBe(5);
         expect(out).not.toHaveProperty('duration_minutes');
@@ -163,8 +226,8 @@ describe('buildCardioConfig', () => {
 
     it('campos opcionais vazios são removidos, não gravados como ""', () => {
         const out = buildCardioConfig({}, {
+            ...baseEdits,
             equipment: null,
-            objective: 'time',
             target: null,
             intensity: '  ',
             notes: '',

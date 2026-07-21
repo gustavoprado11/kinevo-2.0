@@ -47,6 +47,7 @@ import { isCompoundMethod } from "@kinevo/shared/lib/prescription/set-scheme-pre
 import { useProgramBuilderStore } from "@/stores/program-builder-store";
 import type { AgentResult } from "@/hooks/useAIPrescriptionAgent";
 import { toast } from "@/lib/toast";
+import { supabase } from "@/lib/supabase";
 import {
     saveProgramDraft,
     removeProgramDraft,
@@ -144,6 +145,28 @@ export default function ProgramBuilderScreen() {
     // Combined flag for UI affordances shared by both edit flows (placeholder,
     // header copy, reset-on-exit).
     const isEditingExisting = isEditMode || isEditTemplateMode;
+
+    // FCmáx do aluno: resolve zonas de FC em bpm na string derivada do cardio.
+    // Draft de aluno usa params.studentId; edição de programa atribuído usa o
+    // studentId hidratado no draft. Template puro → null (rótulo em %FCmáx).
+    const cardioStudentId = draft.studentId ?? params.studentId ?? null;
+    const [studentMaxHr, setStudentMaxHr] = useState<number | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+        if (!cardioStudentId) {
+            setStudentMaxHr(null);
+            return;
+        }
+        supabase
+            .from("students")
+            .select("max_heart_rate_bpm")
+            .eq("id", cardioStudentId)
+            .maybeSingle()
+            .then(({ data }) => {
+                if (!cancelled) setStudentMaxHr(data?.max_heart_rate_bpm ?? null);
+            });
+        return () => { cancelled = true; };
+    }, [cardioStudentId]);
 
     useEffect(() => {
         // When coming from text prescription, AI hand-off, or edit-existing,
@@ -902,6 +925,7 @@ export default function ProgramBuilderScreen() {
                             <EditCardioSheet
                                 visible={!!editingItem}
                                 initialConfig={editingItem?.item_config ?? {}}
+                                maxHrBpm={studentMaxHr}
                                 onSave={(next) => {
                                     if (editingItem) {
                                         updateItem(currentWorkout.id, editingItem.id, {

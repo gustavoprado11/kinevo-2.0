@@ -4,23 +4,36 @@
  * O schema canônico é o de `shared/types/workout-items.ts` (CardioConfig) —
  * o mesmo que o builder web grava e que o player do aluno (CardioCard) lê:
  * `{ mode, equipment, objective, duration_minutes, distance_km, intensity,
- *    intervals, notes }`.
+ *    intensity_target, intervals, protocol_key, segments, notes }`.
  *
  * O builder mobile V1 gravava um schema próprio (`modality`/`target`) que o
  * resto do sistema não lê, e substituía o item_config inteiro no save —
  * destruindo protocolos intervalados criados no web (achado C3 da auditoria).
  * Estes helpers fazem: parse dos DOIS formatos (canônico + legado mobile),
  * merge preservando o que o sheet não edita, e migração do legado no save.
+ *
+ * Paridade de prescrição (jul/2026): o sheet mobile AUTORA contínuo e
+ * intervalado (com protocolos nomeados) e intensidade estruturada
+ * (zona/FC/RPE/pace) — a string `intensity` é DERIVADA do alvo no save, na
+ * FCmáx do aluno quando conhecida (mesma espinha de retrocompat do web).
+ * 'phased' segue autorado só no web: aqui é preservado intacto.
  */
 import {
     CARDIO_EQUIPMENT_LABELS,
     CARDIO_EQUIPMENT_OPTIONS,
     type CardioEquipment,
+    type CardioIntensityTarget,
+    type CardioIntervalConfig,
     type CardioObjective,
 } from "@kinevo/shared/types/workout-items";
+import { formatIntensityTarget } from "@kinevo/shared/lib/cardio/zones";
+import { protocolMatchesIntervals } from "@kinevo/shared/lib/cardio/interval-protocols";
+
+export type CardioSheetMode = "continuous" | "interval";
 
 export interface ParsedCardioConfig {
-    /** Protocolo intervalado (definido no web) — o sheet mobile não o edita. */
+    mode: CardioSheetMode;
+    /** true quando o config atual é intervalado. */
     isInterval: boolean;
     /** Modo por fases (definido no web) — estrutura E intensidade são derivadas
      *  dos segments; o sheet mobile edita só equipamento/observações. */
@@ -29,14 +42,24 @@ export interface ParsedCardioConfig {
     objective: CardioObjective;
     /** duration_minutes (time) ou distance_km (distance), conforme objective. */
     target: number | null;
+    intervals: CardioIntervalConfig | null;
+    protocolKey: string | null;
+    intensityTarget: CardioIntensityTarget | null;
     intensity: string;
     notes: string;
 }
 
 export interface CardioSheetEdits {
+    mode: CardioSheetMode;
     equipment: CardioEquipment | null;
     objective: CardioObjective;
     target: number | null;
+    /** mode='interval': work/rest/rounds autorados no sheet. */
+    intervals: CardioIntervalConfig | null;
+    /** Selo do protocolo escolhido — só persiste se os números ainda batem. */
+    protocolKey: string | null;
+    /** Alvo estruturado (zona/FC/RPE/pace); null = texto livre em `intensity`. */
+    intensityTarget: CardioIntensityTarget | null;
     intensity: string;
     notes: string;
 }
@@ -64,10 +87,33 @@ function hasSegments(cfg: Record<string, unknown>): boolean {
     return Array.isArray(cfg.segments) && cfg.segments.length > 0;
 }
 
+function parseIntervals(raw: unknown): CardioIntervalConfig | null {
+    if (!raw || typeof raw !== "object") return null;
+    const iv = raw as Record<string, unknown>;
+    const work = asFiniteNumber(iv.work_seconds);
+    const rounds = asFiniteNumber(iv.rounds);
+    if (work === null || rounds === null) return null;
+    const rest = typeof iv.rest_seconds === "number" && Number.isFinite(iv.rest_seconds) && iv.rest_seconds >= 0
+        ? iv.rest_seconds
+        : 0;
+    return { work_seconds: work, rest_seconds: rest, rounds };
+}
+
+function parseIntensityTarget(raw: unknown): CardioIntensityTarget | null {
+    if (!raw || typeof raw !== "object") return null;
+    const t = raw as CardioIntensityTarget;
+    if (t.type === "zone" && t.zone) return t;
+    if (t.type === "hr" && t.hr_min_bpm != null && t.hr_max_bpm != null) return t;
+    if (t.type === "rpe" && t.rpe != null) return t;
+    if (t.type === "pace" && t.pace_min_per_km) return t;
+    return null;
+}
+
 /** Lê um item_config cru (canônico OU legado mobile) para o estado do sheet. */
 export function parseCardioConfig(raw: Record<string, unknown> | null | undefined): ParsedCardioConfig {
     const cfg = raw ?? {};
-    const isInterval = cfg.mode === "interval";
+    const intervals = parseIntervals(cfg.intervals);
+    const isInterval = cfg.mode === "interval" && intervals !== null;
     const isPhased = cfg.mode === "phased" && hasSegments(cfg);
     const objective: CardioObjective = cfg.objective === "distance" ? "distance" : "time";
 
@@ -82,11 +128,15 @@ export function parseCardioConfig(raw: Record<string, unknown> | null | undefine
     const target = canonicalTarget ?? asFiniteNumber(cfg.target);
 
     return {
+        mode: isInterval ? "interval" : "continuous",
         isInterval,
         isPhased,
         equipment,
         objective,
         target,
+        intervals,
+        protocolKey: typeof cfg.protocol_key === "string" ? cfg.protocol_key : null,
+        intensityTarget: parseIntensityTarget(cfg.intensity_target),
         intensity: typeof cfg.intensity === "string" ? cfg.intensity : "",
         notes: typeof cfg.notes === "string" ? cfg.notes : "",
     };
@@ -94,33 +144,50 @@ export function parseCardioConfig(raw: Record<string, unknown> | null | undefine
 
 /**
  * Monta o item_config final: canônico, com merge sobre o config cru.
- * - Preserva campos que o sheet não edita (ex.: `intervals` + `mode` de um
- *   protocolo intervalado criado no web).
+ * - Autora contínuo E intervalado (protocolo nomeado + work/rest/rounds).
+ * - Intensidade: alvo estruturado → grava intensity_target E deriva a string
+ *   `intensity` (FCmáx quando conhecida); sem alvo → texto livre.
+ * - 'phased' (web) é preservado: só equipment/notes mudam aqui.
  * - Migra/strippa as chaves do legado mobile (`modality`, `target`).
  */
 export function buildCardioConfig(
     raw: Record<string, unknown> | null | undefined,
     edits: CardioSheetEdits,
+    maxHrBpm: number | null = null,
 ): Record<string, unknown> {
     const cfg = { ...(raw ?? {}) };
-    const isInterval = cfg.mode === "interval";
     const isPhased = cfg.mode === "phased" && hasSegments(cfg);
 
     delete cfg.modality;
     delete cfg.target;
 
-    cfg.mode = isInterval ? "interval" : isPhased ? "phased" : "continuous";
     if (edits.equipment) cfg.equipment = edits.equipment;
     else delete cfg.equipment;
-    // Phased: intensity é DERIVADA dos segments (resumo) — o sheet não a edita.
-    if (!isPhased) {
-        if (edits.intensity.trim()) cfg.intensity = edits.intensity.trim();
-        else delete cfg.intensity;
-    }
     if (edits.notes.trim()) cfg.notes = edits.notes.trim();
     else delete cfg.notes;
 
-    if (!isInterval && !isPhased) {
+    // Phased: estrutura, derivados e intensidade (resumo) ficam intactos.
+    if (isPhased) {
+        cfg.mode = "phased";
+        return cfg;
+    }
+
+    cfg.mode = edits.mode;
+
+    if (edits.mode === "interval" && edits.intervals) {
+        cfg.intervals = { ...edits.intervals };
+        // Selo do protocolo só permanece se os números finais ainda batem
+        // (mesma regra do web: editar work/rest/rounds limpa o selo).
+        if (edits.protocolKey && protocolMatchesIntervals(edits.protocolKey, edits.intervals)) {
+            cfg.protocol_key = edits.protocolKey;
+        } else {
+            delete cfg.protocol_key;
+        }
+        delete cfg.objective;
+        delete cfg.duration_minutes;
+        delete cfg.distance_km;
+    } else {
+        cfg.mode = "continuous";
         cfg.objective = edits.objective;
         if (edits.objective === "distance") {
             if (edits.target !== null) cfg.distance_km = edits.target;
@@ -131,9 +198,21 @@ export function buildCardioConfig(
             else delete cfg.duration_minutes;
             delete cfg.distance_km;
         }
+        delete cfg.intervals;
+        delete cfg.protocol_key;
     }
-    // Intervalado: objective/duration/distance/intervals ficam como o web gravou.
-    // Phased: segments + duration_minutes/intensity derivados ficam intactos.
+
+    // Intensidade: alvo estruturado vence e DERIVA a string de exibição.
+    if (edits.intensityTarget) {
+        cfg.intensity_target = { ...edits.intensityTarget };
+        const derived = formatIntensityTarget(edits.intensityTarget, maxHrBpm);
+        if (derived) cfg.intensity = derived;
+        else delete cfg.intensity;
+    } else {
+        delete cfg.intensity_target;
+        if (edits.intensity.trim()) cfg.intensity = edits.intensity.trim();
+        else delete cfg.intensity;
+    }
 
     return cfg;
 }
