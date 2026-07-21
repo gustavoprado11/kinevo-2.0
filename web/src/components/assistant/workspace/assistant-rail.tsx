@@ -25,7 +25,8 @@ const DOT: Record<SidebarStudent['dot'], string> = {
     green: 'bg-[#16A34A]', amber: 'bg-[#F59E0B]', red: 'bg-[#EF4444]',
 }
 
-/** Avatar 32px: foto real (avatar_url) quando houver, senão iniciais coloridas.
+/** Avatar 32px: foto real (avatar_url) quando houver, senão iniciais NEUTRAS
+ *  (tinta sobre inset — idioma "ferramenta profissional"; matiz por nome saiu).
  *  Wrapper de tamanho fixo (como o perfil do Clássico) + imagem h-full/w-full —
  *  garante que a foto preencha o box exatamente. */
 function Avatar({ name, url }: { name: string | null; url: string | null }) {
@@ -38,8 +39,9 @@ function Avatar({ name, url }: { name: string | null; url: string | null }) {
         )
     }
     return (
-        <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[10px] text-[11px] font-bold"
-            style={{ background: av.bg, color: av.fg }}>{av.initials}</span>
+        <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[10px] border border-k-border-subtle bg-surface-inset text-[11px] font-semibold text-k-text-secondary">
+            {av.initials}
+        </span>
     )
 }
 
@@ -79,14 +81,14 @@ export function AssistantRail({
         <div className="flex min-h-0 flex-1 flex-col">
             {/* Segmento Alunos / Conversas */}
             <div className="px-4 pb-2 pt-1.5">
-                <div className="flex rounded-[10px] bg-surface-inset dark:bg-glass-bg p-[3px]">
+                <div className="flex rounded-control bg-surface-inset p-[3px]">
                     <button onClick={() => onSegment('alunos')}
-                        className={`flex-1 rounded-[8px] py-1.5 text-[12px] font-semibold transition ${segment === 'alunos' ? 'bg-white dark:bg-glass-bg-active text-primary dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]' : 'text-k-text-tertiary dark:text-muted-foreground'}`}>
-                        Alunos <span className="font-medium text-k-text-quaternary dark:text-muted-foreground/60">{students.length}</span>
+                        className={`flex-1 rounded-[6px] py-1.5 text-[12px] font-semibold transition ${segment === 'alunos' ? 'border border-k-border-subtle bg-surface-card text-k-text-primary' : 'border border-transparent text-k-text-tertiary hover:text-k-text-primary'}`}>
+                        Alunos <span className="font-medium tabular-nums text-k-text-quaternary">{students.length}</span>
                     </button>
                     <button onClick={() => onSegment('conversas')}
-                        className={`flex-1 rounded-[8px] py-1.5 text-[12px] font-semibold transition ${segment === 'conversas' ? 'bg-white dark:bg-glass-bg-active text-primary dark:text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]' : 'text-k-text-tertiary dark:text-muted-foreground'}`}>
-                        Conversas <span className="font-medium text-k-text-quaternary dark:text-muted-foreground/60">{conversations.length}</span>
+                        className={`flex-1 rounded-[6px] py-1.5 text-[12px] font-semibold transition ${segment === 'conversas' ? 'border border-k-border-subtle bg-surface-card text-k-text-primary' : 'border border-transparent text-k-text-tertiary hover:text-k-text-primary'}`}>
+                        Conversas <span className="font-medium tabular-nums text-k-text-quaternary">{conversations.length}</span>
                     </button>
                 </div>
             </div>
@@ -107,7 +109,7 @@ export function AssistantRail({
                             const on = s.id === focusedStudentId
                             return (
                                 <button key={s.id} onClick={() => onSelectStudent(s.id)}
-                                    className={`flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)] dark:bg-glass-bg-active' : 'hover:bg-surface-inset dark:hover:bg-glass-bg'}`}>
+                                    className={`flex w-full items-center gap-2.5 rounded-control px-2 py-2 text-left transition ${on ? 'bg-surface-inset' : 'hover:bg-glass-bg-hover'}`}>
                                     <Avatar name={s.name} url={s.avatarUrl} />
                                     <span className="min-w-0 flex-1">
                                         <b className="block truncate text-[13px] font-semibold text-k-text-primary dark:text-foreground">{s.name}</b>
@@ -123,14 +125,14 @@ export function AssistantRail({
                     <>
                         {groupedConvs.map((g) => (
                             <div key={g.label}>
-                                <div className="px-2 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.09em] text-k-text-quaternary dark:text-muted-foreground/60">{g.label}</div>
+                                <div className="px-2 pb-1 pt-3 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-k-text-quaternary">{g.label}</div>
                                 {g.items.map((c) => {
                                     const isGeneral = !c.student_id
                                     const on = c.id === activeConversationId
                                     return (
                                         <div key={c.id} className="group relative">
                                             <button onClick={() => onSelectConversation(c.id)}
-                                                className={`mb-0.5 flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left transition ${on ? 'bg-[rgba(124,58,237,0.10)] dark:bg-glass-bg-active' : 'hover:bg-surface-inset dark:hover:bg-glass-bg'}`}>
+                                                className={`mb-0.5 flex w-full items-center gap-2.5 rounded-control px-2 py-2 text-left transition ${on ? 'bg-surface-inset' : 'hover:bg-glass-bg-hover'}`}>
                                                 {isGeneral ? (
                                                     <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[10px]" style={{ background: 'var(--primary)' }}>
                                                         <AssistantMark variant="filled" className="h-3.5 w-3.5 text-white" />
@@ -149,7 +151,7 @@ export function AssistantRail({
                                             {onDeleteConversation && (
                                                 <button onClick={(e) => { e.stopPropagation(); onDeleteConversation(c.id) }}
                                                     title="Excluir conversa" aria-label="Excluir conversa"
-                                                    className="absolute right-2 top-1/2 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-k-text-quaternary transition hover:bg-[#FEE2E2] hover:text-[#DC2626] group-hover:flex dark:text-muted-foreground/60 dark:hover:bg-rose-500/15 dark:hover:text-rose-300">
+                                                    className="absolute right-2 top-1/2 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-k-text-quaternary transition hover:bg-rose-50 hover:text-rose-600 group-hover:flex dark:hover:bg-rose-500/15 dark:hover:text-rose-300">
                                                     <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
                                                 </button>
                                             )}

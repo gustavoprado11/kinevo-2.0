@@ -6,8 +6,10 @@
  * navegação recolhida ("Ir para…") + rail de Conversas/Alunos + perfil.
  *
  * Espelha a casca da Sidebar Clássica (components/layout/sidebar.tsx): mesma
- * largura (w-64), setinha de recolher na borda (useSidebarStore) com rail de
- * ícones quando colapsada, e o mesmo componente de perfil (foto + popover Sair).
+ * largura (w-64), MESMA transição de recolher (aside único, width animada
+ * 300ms — não duas árvores trocadas a seco), hairline no lugar de sombra,
+ * ativos em tinta sobre inset (violeta só na ação "Nova conversa") e o mesmo
+ * componente de perfil (foto + popover Sair).
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -110,43 +112,50 @@ export function AssistantSidebar({
         router.push('/login')
     }
 
-    const navLinkClass = 'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight font-medium text-k-text-secondary dark:text-muted-foreground transition hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'
-    const navIconClass = 'h-[18px] w-[18px] shrink-0 text-k-text-quaternary dark:text-muted-foreground/60 transition group-hover:text-k-text-secondary dark:group-hover:text-foreground'
+    // Idioma do Clássico: ativo = tinta sobre inset; hover quieto; ícones 16/1.7 em terciária.
+    const itemActiveCls = 'bg-surface-inset text-k-text-primary font-semibold'
+    const itemIdleCls = 'font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-glass-bg-hover'
+    const navLinkClass = `group flex items-center gap-3 rounded-control px-3 py-2 text-sm tracking-tight transition-all duration-200 ease-out ${itemIdleCls}`
+    const navIconClass = 'h-4 w-4 shrink-0 text-k-text-tertiary transition-colors duration-200 group-hover:text-k-text-secondary'
+    const navItemCls = (active: boolean) =>
+        `group relative flex items-center gap-3 rounded-control px-3 py-2 text-sm tracking-tight transition-all duration-200 ease-out ${active ? itemActiveCls : itemIdleCls}`
+    const navItemIconCls = (active: boolean) =>
+        `h-4 w-4 shrink-0 transition-colors duration-200 ${active ? 'text-k-text-primary' : 'text-k-text-quaternary group-hover:text-k-text-secondary'}`
 
     // Botão de recolher na borda (idêntico ao Clássico).
     const edgeToggle = (
         <button onClick={toggle} title={isCollapsed ? 'Expandir menu' : 'Recolher menu'} aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
-            className="absolute top-9 -right-3 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-sidebar text-k-text-quaternary dark:text-muted-foreground/60 shadow-sm transition-colors hover:bg-surface-inset hover:text-k-text-secondary dark:hover:bg-glass-bg dark:hover:text-foreground">
+            className="absolute top-9 -right-3 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-k-border-subtle bg-surface-card text-k-text-tertiary transition-colors hover:bg-surface-inset hover:text-k-text-secondary">
             {isCollapsed ? <ChevronRight size={14} strokeWidth={2} /> : <ChevronLeft size={14} strokeWidth={2} />}
         </button>
     )
 
-    // Perfil (idêntico ao Clássico): foto real + nome/email + popover Sair.
+    // Perfil (idêntico ao Clássico): foto real + nome/email + popover Sair. Avatar neutro.
     const profile = (
         <div className="relative" ref={profileRef}>
             <button onClick={() => setProfileOpen((o) => !o)}
-                className={`flex w-full items-center gap-3 rounded-lg py-2 transition-colors hover:bg-surface-inset dark:hover:bg-glass-bg ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}>
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-blue-600 ring-2 ring-[#E8E8ED] dark:ring-border">
+                className={`flex w-full items-center gap-3 rounded-control py-2 transition-colors hover:bg-glass-bg-hover ${isCollapsed ? 'justify-center px-0' : 'px-3'}`}>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-inset ring-1 ring-k-border-subtle overflow-hidden">
                     {trainerAvatarUrl
                         ? <Image src={trainerAvatarUrl} alt="Avatar" width={32} height={32} unoptimized className="h-8 w-8 rounded-full object-cover" />
-                        : <span className="text-xs font-medium text-white">{initials}</span>}
+                        : <span className="text-xs font-semibold text-k-text-secondary">{initials}</span>}
                 </div>
                 {!isCollapsed && (
                     <div className="min-w-0 flex-1 text-left">
-                        <p className="truncate text-sm font-medium leading-tight text-k-text-primary dark:text-foreground">{trainerName ?? 'Treinador'}</p>
-                        {trainerEmail && <p className="truncate text-xs leading-tight text-k-text-tertiary dark:text-muted-foreground">{trainerEmail}</p>}
+                        <p className="truncate text-sm font-medium leading-tight text-k-text-primary">{trainerName ?? 'Treinador'}</p>
+                        {trainerEmail && <p className="truncate text-xs leading-tight text-k-text-tertiary">{trainerEmail}</p>}
                     </div>
                 )}
             </button>
             {profileOpen && (
-                <div className={`absolute bottom-full z-modal mb-2 w-56 overflow-hidden rounded-xl border border-k-border-subtle dark:border-k-border-primary bg-white dark:bg-surface-card shadow-xl ${isCollapsed ? 'left-full ml-2' : 'left-0'}`}>
-                    <div className="border-b border-k-border-subtle dark:border-k-border-subtle px-4 py-3">
-                        <p className="truncate text-sm font-medium text-k-text-primary dark:text-foreground">{trainerName ?? 'Treinador'}</p>
-                        {trainerEmail && <p className="truncate text-xs text-k-text-tertiary dark:text-muted-foreground">{trainerEmail}</p>}
+                <div className={`absolute bottom-full z-modal mb-2 w-56 overflow-hidden rounded-panel border border-k-border-subtle bg-surface-card shadow-xl ${isCollapsed ? 'left-full ml-2' : 'left-0'}`}>
+                    <div className="border-b border-k-border-subtle px-4 py-3">
+                        <p className="truncate text-sm font-medium text-k-text-primary">{trainerName ?? 'Treinador'}</p>
+                        {trainerEmail && <p className="truncate text-xs text-k-text-tertiary">{trainerEmail}</p>}
                     </div>
                     <div className="py-1">
                         <button onClick={handleLogout}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#FF3B30] transition-colors hover:bg-surface-inset dark:hover:bg-glass-bg">
+                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 transition-colors hover:bg-surface-inset">
                             <LogOut size={16} strokeWidth={1.5} /> Sair
                         </button>
                     </div>
@@ -155,51 +164,53 @@ export function AssistantSidebar({
         </div>
     )
 
-    // ── Colapsada: rail de ícones (espelha o Clássico colapsado) ──
-    if (isCollapsed) {
-        const iconRow = (active: boolean, content: ReactNode, label: string, onClick?: () => void, href?: string) => {
-            const cls = `group/nav relative flex h-10 w-10 items-center justify-center rounded-lg transition ${active ? 'bg-primary/10 text-primary dark:bg-glass-bg-active dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 hover:bg-surface-inset hover:text-k-text-secondary dark:hover:bg-glass-bg dark:hover:text-foreground'}`
-            const tip = (
-                <span className="pointer-events-none absolute left-full top-1/2 z-modal ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-[#1D1D1F] dark:bg-white px-2.5 py-1 text-xs font-medium text-white dark:text-k-text-primary opacity-0 shadow-lg transition-opacity group-hover/nav:opacity-100">{label}</span>
-            )
-            return href
-                ? <Link href={href} className={cls}>{content}{tip}</Link>
-                : <button onClick={onClick} className={cls}>{content}{tip}</button>
-        }
-        return (
-            <aside className={`${positionCls} flex w-[68px] min-w-[68px] flex-col items-center bg-white py-[18px] shadow-[1px_0_0_rgba(0,0,0,0.06)] dark:bg-surface-sidebar/60 dark:backdrop-blur-2xl dark:shadow-[1px_0_0_rgba(255,255,255,0.08)]`}>
-                {edgeToggle}
-                <Image src="/logo-icon.png" alt="Kinevo" width={34} height={34} className="mb-4 shrink-0 rounded-lg" />
-                <button onClick={onNewConversation} title="Nova conversa"
-                    className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-90">
-                    <Plus className="h-[18px] w-[18px]" strokeWidth={2.4} />
-                </button>
-                <nav className="flex flex-1 flex-col items-center gap-1">
-                    {mainNav.map((n) => {
-                        const Icon = n.icon
-                        const icon = <Icon size={18} strokeWidth={1.5} />
-                        return n.href === '/dashboard'
-                            ? <div key={n.href}>{iconRow(isHome, icon, n.name, onHome)}</div>
-                            : <div key={n.href}>{iconRow(isPathActive(n), icon, n.name, undefined, n.href)}</div>
-                    })}
-                    {iconRow(BIBLIOTECA_NAV.some(isPathActive), <BookOpen size={18} strokeWidth={1.5} />, 'Bibliotecas', undefined, BIBLIOTECA_NAV[0]?.href ?? '/programs')}
-                    {iconRow(matchPath('/settings'), <Settings size={18} strokeWidth={1.5} />, 'Configurações', undefined, '/settings')}
-                </nav>
-                <div className="mt-2">{profile}</div>
-                <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
-            </aside>
-        )
-    }
+    // Tooltip do modo colapsado (idêntico ao Clássico).
+    const tooltip = (label: string) => (
+        <span className="pointer-events-none absolute left-full top-1/2 z-modal ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-foreground px-2.5 py-1 text-xs font-medium text-background opacity-0 shadow-lg transition-opacity group-hover/nav:opacity-100">{label}</span>
+    )
 
-    // ── Expandida: conversa-first ──
-    return (
-        <aside className={`${positionCls} flex w-64 min-w-64 flex-col bg-white shadow-[1px_0_0_rgba(0,0,0,0.06)] dark:bg-surface-sidebar/60 dark:backdrop-blur-2xl dark:shadow-[1px_0_0_rgba(255,255,255,0.08)]`}>
-            {edgeToggle}
+    // ── Conteúdo colapsado: rail de ícones (espelha o Clássico colapsado) ──
+    const collapsedContent = (
+        <div className="flex h-full w-full flex-col items-center py-[18px]">
+            <Image src="/logo-icon.png" alt="Kinevo" width={34} height={34} className="mb-4 shrink-0 rounded-lg" />
+            <button onClick={onNewConversation} title="Nova conversa"
+                className="mb-3 flex h-10 w-10 items-center justify-center rounded-control bg-primary text-primary-foreground transition hover:opacity-90">
+                <Plus className="h-[18px] w-[18px]" strokeWidth={2.4} />
+            </button>
+            <nav className="flex flex-1 flex-col items-center gap-1">
+                {(() => {
+                    const iconRow = (active: boolean, content: ReactNode, label: string, onClick?: () => void, href?: string) => {
+                        const cls = `group/nav relative flex h-10 w-10 items-center justify-center rounded-control transition ${active ? 'bg-surface-inset text-k-text-primary' : 'text-k-text-tertiary hover:bg-glass-bg-hover hover:text-k-text-secondary'}`
+                        return href
+                            ? <Link href={href} className={cls}>{content}{tooltip(label)}</Link>
+                            : <button onClick={onClick} className={cls}>{content}{tooltip(label)}</button>
+                    }
+                    return (
+                        <>
+                            {mainNav.map((n) => {
+                                const Icon = n.icon
+                                const icon = <Icon size={16} strokeWidth={1.7} />
+                                return n.href === '/dashboard'
+                                    ? <div key={n.href}>{iconRow(isHome, icon, n.name, onHome)}</div>
+                                    : <div key={n.href}>{iconRow(isPathActive(n), icon, n.name, undefined, n.href)}</div>
+                            })}
+                            {iconRow(BIBLIOTECA_NAV.some(isPathActive), <BookOpen size={16} strokeWidth={1.7} />, 'Bibliotecas', undefined, BIBLIOTECA_NAV[0]?.href ?? '/programs')}
+                            {iconRow(matchPath('/settings'), <Settings size={16} strokeWidth={1.7} />, 'Configurações', undefined, '/settings')}
+                        </>
+                    )
+                })()}
+            </nav>
+            <div className="mt-2">{profile}</div>
+        </div>
+    )
 
+    // ── Conteúdo expandido: conversa-first ──
+    const expandedContent = (
+        <div className="flex h-full w-full flex-col">
             {/* Marca */}
             <div className="flex items-center gap-3 px-[18px] pb-3 pt-[20px]">
                 <Image src="/logo-icon.png" alt="Kinevo" width={32} height={32} className="shrink-0 rounded-lg" />
-                <span className="text-lg font-semibold tracking-tight text-k-text-primary dark:text-foreground">Kinevo</span>
+                <span className="text-lg font-semibold tracking-tight text-k-text-primary">Kinevo</span>
             </div>
 
             {/* Toggle Clássico/Assistente — componente compartilhado com a Clássica. */}
@@ -210,32 +221,29 @@ export function AssistantSidebar({
                 onAssistant={() => { /* já estamos no Assistente */ }}
             />
 
-            {/* Ação primária: Nova conversa — linha estilo "Ir para…" com leve destaque violeta. */}
+            {/* Ação primária: Nova conversa — a única linha em violeta na sidebar. */}
             <button onClick={onNewConversation}
-                className="group mx-4 mb-1 flex items-center gap-3 rounded-lg bg-primary/[0.06] dark:bg-violet-500/10 px-3 py-2 text-sm font-semibold text-primary dark:text-violet-400 transition hover:bg-primary/[0.12] dark:hover:bg-violet-500/20">
-                <Plus className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
+                className="group mx-4 mb-1 flex items-center gap-3 rounded-control bg-primary/[0.06] px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/[0.12] dark:bg-violet-500/10 dark:text-violet-400 dark:hover:bg-violet-500/20">
+                <Plus className="h-4 w-4 shrink-0" strokeWidth={2} />
                 <span className="flex-1 text-left">Nova conversa</span>
             </button>
 
             {/* "Ir para…" — recolhida. Em outras abas, o gatilho mostra a aba ATIVA. */}
             <div className="px-4 pb-1">
                 <button onClick={() => setNavOpen((o) => !o)}
-                    className={`w-full ${activeNavItem && ActiveIcon
-                        ? 'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold tracking-tight text-primary dark:text-violet-400 transition hover:bg-primary/[0.06] dark:hover:bg-violet-500/10'
-                        : navLinkClass}`}>
+                    className={`w-full ${activeNavItem && ActiveIcon ? navItemCls(true) : navLinkClass}`}>
                     {activeNavItem && ActiveIcon ? (
                         <>
-                            <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />
-                            <ActiveIcon className="h-[18px] w-[18px] shrink-0 text-primary dark:text-violet-400" strokeWidth={1.5} />
+                            <ActiveIcon className={navItemIconCls(true)} strokeWidth={1.7} />
                             <span className="flex-1 text-left">{activeNavItem.name}</span>
                         </>
                     ) : (
                         <>
-                            <LayoutGrid className={navIconClass} strokeWidth={1.5} />
+                            <LayoutGrid className={navIconClass} strokeWidth={1.7} />
                             <span className="flex-1 text-left">Ir para…</span>
                         </>
                     )}
-                    <ChevronRight className={`h-3.5 w-3.5 transition-transform ${activeNavItem ? 'text-primary/70 dark:text-violet-400/70' : 'text-k-text-quaternary dark:text-muted-foreground/60'} ${navOpen ? 'rotate-90' : ''}`} strokeWidth={2} />
+                    <ChevronRight className={`h-3.5 w-3.5 text-k-text-quaternary transition-transform ${navOpen ? 'rotate-90' : ''}`} strokeWidth={2} />
                 </button>
                 {navOpen && (
                     <nav className="mt-0.5 space-y-0.5">
@@ -243,31 +251,23 @@ export function AssistantSidebar({
                             const Icon = n.icon
                             if (n.href === '/dashboard') {
                                 return (
-                                    <button key={n.href} onClick={onHome}
-                                        className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${isHome
-                                            ? 'bg-primary/10 font-semibold text-primary dark:bg-glass-bg-active dark:text-violet-400'
-                                            : 'font-medium text-k-text-secondary dark:text-muted-foreground hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
-                                        {isHome && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />}
-                                        <Icon className={`h-[18px] w-[18px] shrink-0 ${isHome ? 'text-primary dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 group-hover:text-k-text-secondary dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
+                                    <button key={n.href} onClick={onHome} className={`w-full ${navItemCls(isHome)}`}>
+                                        <Icon className={navItemIconCls(isHome)} strokeWidth={1.7} />
                                         <span className="flex-1 text-left">{n.name}</span>
                                     </button>
                                 )
                             }
                             const act = isPathActive(n)
                             return (
-                                <Link key={n.href} href={n.href}
-                                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
-                                        ? 'bg-primary/10 font-semibold text-primary dark:bg-glass-bg-active dark:text-violet-400'
-                                        : 'font-medium text-k-text-secondary dark:text-muted-foreground hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
-                                    {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />}
-                                    <Icon className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-primary dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 group-hover:text-k-text-secondary dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
+                                <Link key={n.href} href={n.href} className={navItemCls(act)}>
+                                    <Icon className={navItemIconCls(act)} strokeWidth={1.7} />
                                     <span className="flex-1">{n.name}</span>
                                 </Link>
                             )
                         })}
 
                         <button onClick={() => setBibliotecaOpen((b) => !b)} className={`w-full ${navLinkClass}`}>
-                            <BookOpen className={navIconClass} strokeWidth={1.5} />
+                            <BookOpen className={navIconClass} strokeWidth={1.7} />
                             <span className="flex-1 text-left">Bibliotecas</span>
                             <ChevronRight className={`h-3.5 w-3.5 transition-transform ${bibliotecaOpen ? 'rotate-90' : ''}`} strokeWidth={2} />
                         </button>
@@ -277,11 +277,8 @@ export function AssistantSidebar({
                                     const Icon = n.icon
                                     const act = isPathActive(n)
                                     return (
-                                        <Link key={n.href} href={n.href}
-                                            className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
-                                                ? 'bg-primary/10 font-semibold text-primary dark:bg-glass-bg-active dark:text-violet-400'
-                                                : 'font-medium text-k-text-secondary dark:text-muted-foreground hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
-                                            <Icon className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-primary dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 group-hover:text-k-text-secondary dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
+                                        <Link key={n.href} href={n.href} className={navItemCls(act)}>
+                                            <Icon className={navItemIconCls(act)} strokeWidth={1.7} />
                                             <span className="flex-1">{n.name}</span>
                                         </Link>
                                     )
@@ -292,35 +289,31 @@ export function AssistantSidebar({
                         {(() => {
                             const act = matchPath('/settings')
                             return (
-                                <Link href="/settings"
-                                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm tracking-tight transition ${act
-                                        ? 'bg-primary/10 font-semibold text-primary dark:bg-glass-bg-active dark:text-violet-400'
-                                        : 'font-medium text-k-text-secondary dark:text-muted-foreground hover:bg-surface-inset hover:text-k-text-primary dark:hover:bg-glass-bg dark:hover:text-foreground'}`}>
-                                    {act && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-foreground" />}
-                                    <Settings className={`h-[18px] w-[18px] shrink-0 ${act ? 'text-primary dark:text-violet-400' : 'text-k-text-quaternary dark:text-muted-foreground/60 group-hover:text-k-text-secondary dark:group-hover:text-foreground'}`} strokeWidth={1.5} />
+                                <Link href="/settings" className={navItemCls(act)}>
+                                    <Settings className={navItemIconCls(act)} strokeWidth={1.7} />
                                     <span className="flex-1">Configurações</span>
                                 </Link>
                             )
                         })()}
 
-                        <div className="my-1 h-px bg-surface-inset dark:bg-k-border-subtle" />
+                        <div className="my-1 h-px bg-k-border-subtle" />
 
                         <button onClick={() => setFeedbackOpen(true)} className={`w-full ${navLinkClass}`}>
-                            <MessageSquarePlus className={navIconClass} strokeWidth={1.5} />
+                            <MessageSquarePlus className={navIconClass} strokeWidth={1.7} />
                             <span className="flex-1 text-left">Feedback e Bugs</span>
                         </button>
                         <button
                             onClick={() => window.open(`https://wa.me/${SUPPORT_PHONE}?text=${encodeURIComponent('Olá! Preciso de ajuda com o Kinevo.')}`, '_blank')}
                             className={`w-full ${navLinkClass}`}>
-                            <Headphones className={navIconClass} strokeWidth={1.5} />
+                            <Headphones className={navIconClass} strokeWidth={1.7} />
                             <span className="flex-1 text-left">Suporte</span>
                         </button>
                     </nav>
                 )}
             </div>
 
-            {/* Rótulo da seção de conversas */}
-            <div className="px-5 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.09em] text-k-text-quaternary dark:text-muted-foreground/60">
+            {/* Rótulo da seção de conversas — mono micro-caps (idioma dos painéis) */}
+            <div className="px-5 pb-1 pt-3 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-k-text-quaternary">
                 Conversas & Alunos
             </div>
 
@@ -340,10 +333,18 @@ export function AssistantSidebar({
             />
 
             {/* Perfil (idêntico ao Clássico) */}
-            <div className="border-t border-k-border-subtle dark:border-k-border-subtle px-4 py-2">
+            <div className="border-t border-k-border-subtle px-4 py-2">
                 {profile}
             </div>
+        </div>
+    )
 
+    // Aside ÚNICO: a largura anima (300ms, igual ao Clássico); o conteúdo troca
+    // entre o rail de ícones e a versão conversa-first.
+    return (
+        <aside className={`${positionCls} flex flex-col overflow-visible border-r border-k-border-subtle bg-surface-sidebar transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[68px] min-w-[68px]' : 'w-64 min-w-64'}`}>
+            {edgeToggle}
+            {isCollapsed ? collapsedContent : expandedContent}
             <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
         </aside>
     )
