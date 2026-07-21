@@ -169,8 +169,13 @@ const HITL_BUILD = `
      ('tabata' 20/10×8, 'hiit_30_30', 'norwegian_4x4' 4min/3min×4 — kinevo_list_training_methods lista
      todos). POR FASES: quando o aeróbio tem estrutura em sequência (aquecimento + bloco principal +
      volta à calma, séries intervaladas diferentes, contínuo com intensidades variadas), use mode:'phased'
-     + segments — cada fase {kind:'steady', duration_minutes, intensity_target, label?} ou
-     {kind:'interval', intervals, intensity_target?}; a intensidade vai POR FASE e o app deriva o total.
+     + segments. TODA fase leva sua PRÓPRIA intensity_target — fase sem alvo é REJEITADA pelo controle
+     de qualidade. Exemplo literal (10min Z1 → Tabata → 5min Z1):
+     "cardio": {"mode":"phased","segments":[
+       {"kind":"steady","label":"Aquecimento","duration_minutes":10,"intensity_target":{"type":"zone","zone":1}},
+       {"kind":"interval","label":"Tiros","intervals":{"work_seconds":20,"rest_seconds":10,"rounds":8},"intensity_target":{"type":"rpe","rpe":9}},
+       {"kind":"steady","label":"Volta à calma","duration_minutes":5,"intensity_target":{"type":"zone","zone":1}}]}
+     — o app deriva o total e o resumo do bloco a partir das fases.
      Sessão aeróbia NÃO leva exercício de força. Cardio no FIM de uma sessão de força continua
      sendo um item 'cardio' dentro dela (não muda o session_type).
   5b) CONTROLE DE QUALIDADE (automático): o app valida as regras do passo 4 em código na hora da criação.

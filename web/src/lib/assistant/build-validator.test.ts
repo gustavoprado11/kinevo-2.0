@@ -148,6 +148,52 @@ describe('errors (bloqueiam)', () => {
     })
 })
 
+describe('cardio por fases — intensidade POR FASE obrigatória', () => {
+    const phasedSession = (segments: Array<Record<string, unknown>>) => ({
+        name: 'Aeróbio C',
+        session_type: 'cardio' as const,
+        scheduled_days: [3],
+        items: [{ cardio: { mode: 'phased', segments } }],
+    })
+
+    it('fase sem intensity_target/intensity → erro corretivo nomeando a fase', () => {
+        const v = validateBuildArgs({
+            sessions: [phasedSession([
+                { kind: 'steady', label: 'Aquecimento', duration_minutes: 10 },
+                { kind: 'interval', intervals: { work_seconds: 20, rest_seconds: 10, rounds: 8 }, intensity_target: { type: 'rpe', rpe: 9 } },
+                { kind: 'steady', duration_minutes: 5 },
+            ])],
+        }, CATALOG)
+        const err = v.errors.find((e) => e.includes('por fases'))
+        expect(err).toBeTruthy()
+        expect(err).toContain('Aquecimento')
+        expect(err).toContain('fase 3')
+        expect(err).not.toContain('fase 2')
+    })
+
+    it('todas as fases com alvo (ou string) → sem erro', () => {
+        const v = validateBuildArgs({
+            sessions: [phasedSession([
+                { kind: 'steady', duration_minutes: 10, intensity_target: { type: 'zone', zone: 1 } },
+                { kind: 'interval', intervals: { work_seconds: 20, rest_seconds: 10, rounds: 8 }, intensity: 'RPE 9' },
+            ])],
+        }, CATALOG)
+        expect(v.errors).toEqual([])
+    })
+
+    it('cardio contínuo/intervalado não é afetado pela regra', () => {
+        const v = validateBuildArgs({
+            sessions: [{
+                name: 'Aeróbio Z2',
+                session_type: 'cardio' as const,
+                scheduled_days: [2],
+                items: [{ cardio: { mode: 'continuous', duration_minutes: 30 } }],
+            }],
+        }, CATALOG)
+        expect(v.errors).toEqual([])
+    })
+})
+
 describe('warnings (não bloqueiam)', () => {
     it('W1: exercício em 3+ sessões vira aviso (2 sessões é legítimo)', () => {
         const p: BuildProgramArgs = {

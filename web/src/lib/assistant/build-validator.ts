@@ -150,6 +150,27 @@ export function validateBuildArgs(
         const exercises = flatExercises(s)
         const cardioBlocks = (s.items ?? []).filter((it) => it.cardio).length
 
+        // Cardio POR FASES sem intensidade em alguma fase: o ponto do modo é
+        // variar a intensidade — sem alvo a fase executa às cegas e nada
+        // deriva. Erro corretivo (o modelo reenvia com intensity_target).
+        for (const it of s.items ?? []) {
+            const cardio = it.cardio as {
+                mode?: string
+                segments?: Array<{ label?: string; intensity_target?: unknown; intensity?: string }>
+            } | null | undefined
+            if (!cardio || cardio.mode !== 'phased' || !Array.isArray(cardio.segments)) continue
+            const missing = cardio.segments
+                .map((seg, i) => (!seg.intensity_target && !seg.intensity ? (seg.label || `fase ${i + 1}`) : null))
+                .filter((x): x is string => x !== null)
+            if (missing.length > 0) {
+                errors.push(
+                    `Bloco aeróbio por fases na sessão "${s.name}": defina intensity_target em CADA fase ` +
+                        `(faltou em: ${missing.join(', ')}). Ex. de fase: {"kind":"steady","duration_minutes":10,` +
+                        `"intensity_target":{"type":"zone","zone":1},"label":"Aquecimento"}.`,
+                )
+            }
+        }
+
         // Sessão AERÓBIA (session_type='cardio' ou só blocos cardio): fora das
         // regras de força — exige ao menos 1 bloco cardio e agenda.
         if (s.session_type === 'cardio' || (exercises.length === 0 && cardioBlocks > 0)) {
