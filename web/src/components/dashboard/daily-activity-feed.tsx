@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { SessionDetailSheet } from '@/components/students/session-detail-sheet'
-import { Clock, Filter, MessageCircle, X } from 'lucide-react'
+import { Clock, Filter, MessageCircle } from 'lucide-react'
 
 
 interface DailyActivityItem {
@@ -28,6 +28,11 @@ interface DailyActivityFeedProps {
     activities: DailyActivityItem[]
     scheduledToday?: ScheduledTodayItem[]
 }
+
+// Redesign "ferramenta profissional": painel hairline, header mono micro-caps,
+// horários/duração/PSE em Geist Mono tabular (dados = assinatura tipográfica),
+// filtros como controle segmentado neutro (tinta sobre inset, sem fill violeta)
+// e cor apenas no estado que pede atenção (PSE ≥8).
 
 export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityFeedProps) {
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
@@ -82,20 +87,22 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
         setTimeout(() => setSelectedSessionId(null), 300)
     }
 
-    const getRpeColor = (rpe: number | null) => {
-        if (!rpe) return 'border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted text-[#6E6E73] dark:text-muted-foreground'
-        if (rpe <= 4) return 'bg-emerald-500/10 text-[#34C759] dark:text-emerald-400 border-emerald-500/20'
-        if (rpe <= 7) return 'bg-yellow-500/10 text-[#FF9500] dark:text-yellow-400 border-yellow-500/20'
-        return 'bg-red-500/10 text-[#FF3B30] dark:text-red-400 border-red-500/20'
-    }
+    const segChipClass = (active: boolean) =>
+        `text-[11px] font-medium px-2 py-[3px] rounded-[6px] transition-colors ${
+            active
+                ? 'bg-surface-card text-k-text-primary border border-k-border-subtle'
+                : 'text-k-text-tertiary hover:text-k-text-primary border border-transparent'
+        }`
 
     return (
-        <div className="flex h-full flex-col rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-xl">
-            <div className="flex items-center justify-between border-b border-[#E8E8ED] dark:border-k-border-subtle px-6 py-4">
-                <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Treinos de hoje</h2>
+        <div className="flex h-full flex-col rounded-panel border border-k-border-subtle bg-surface-card">
+            <div className="flex items-center justify-between border-b border-k-border-subtle px-5 py-3">
+                <div className="flex items-baseline gap-2">
+                    <h2 className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                        Treinos de hoje
+                    </h2>
                     {activities.length > 0 && (
-                        <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 rounded">
+                        <span className="font-mono text-[10.5px] tabular-nums text-k-text-quaternary">
                             {hasActiveFilters ? `${filteredActivities.length}/${activities.length}` : activities.length}
                         </span>
                     )}
@@ -105,21 +112,21 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                         {hasActiveFilters && (
                             <button
                                 onClick={clearFilters}
-                                className="text-[10px] text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-foreground transition-colors"
+                                className="text-[11px] text-k-text-quaternary hover:text-k-text-primary transition-colors"
                             >
                                 Limpar filtros
                             </button>
                         )}
                         <button
                             onClick={() => setShowFilters(v => !v)}
-                            className={`p-1.5 rounded-lg transition-colors ${
+                            className={`p-1.5 rounded-control transition-colors ${
                                 showFilters || hasActiveFilters
-                                    ? 'bg-[#7C3AED]/10 text-[#7C3AED] dark:bg-primary/10 dark:text-primary'
-                                    : 'text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#6E6E73] dark:hover:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted'
+                                    ? 'bg-surface-inset text-k-text-primary'
+                                    : 'text-k-text-quaternary hover:text-k-text-secondary hover:bg-surface-inset'
                             }`}
                             title="Filtrar treinos"
                         >
-                            <Filter className="w-3.5 h-3.5" />
+                            <Filter className="w-3.5 h-3.5" strokeWidth={1.7} />
                         </button>
                     </div>
                 )}
@@ -127,12 +134,12 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
 
             {/* Filter bar */}
             {showFilters && activities.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#FAFAFA] dark:bg-muted/30">
+                <div className="flex flex-wrap items-center gap-2.5 px-5 py-2.5 border-b border-k-border-subtle bg-surface-inset/50">
                     {/* Student filter */}
                     <select
                         value={studentFilter || ''}
                         onChange={(e) => setStudentFilter(e.target.value || null)}
-                        className="text-[11px] font-medium px-2.5 py-1.5 rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#1D1D1F] dark:text-foreground appearance-none cursor-pointer pr-6 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22none%22%20stroke%3D%22%23AEAEB2%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m2%204%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px] bg-[right_6px_center] bg-no-repeat"
+                        className="text-[11px] font-medium px-2.5 py-1.5 rounded-control border border-k-border-subtle bg-surface-card text-k-text-primary appearance-none cursor-pointer pr-6 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22none%22%20stroke%3D%22%238A8681%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m2%204%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px] bg-[right_6px_center] bg-no-repeat focus:outline-none"
                     >
                         <option value="">Todos alunos</option>
                         {studentNames.map(name => (
@@ -140,22 +147,18 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                         ))}
                     </select>
 
-                    {/* RPE filter chips */}
-                    <div className="flex items-center gap-1">
+                    {/* RPE filter — controle segmentado neutro */}
+                    <div className="inline-flex items-center gap-0.5 rounded-control bg-surface-inset p-0.5">
                         {([
                             { value: 'all' as RpeFilter, label: 'Todas PSE' },
-                            { value: 'low' as RpeFilter, label: 'PSE ≤4' },
-                            { value: 'medium' as RpeFilter, label: 'PSE 5-7' },
-                            { value: 'high' as RpeFilter, label: 'PSE ≥8' },
+                            { value: 'low' as RpeFilter, label: '≤4' },
+                            { value: 'medium' as RpeFilter, label: '5–7' },
+                            { value: 'high' as RpeFilter, label: '≥8' },
                         ]).map(opt => (
                             <button
                                 key={opt.value}
                                 onClick={() => setRpeFilter(opt.value)}
-                                className={`text-[10px] font-medium px-2 py-1 rounded-md transition-colors ${
-                                    rpeFilter === opt.value
-                                        ? 'bg-[#7C3AED] text-white dark:bg-primary dark:text-primary-foreground'
-                                        : 'bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted'
-                                }`}
+                                className={segChipClass(rpeFilter === opt.value)}
                             >
                                 {opt.label}
                             </button>
@@ -165,13 +168,9 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                     {/* Feedback toggle */}
                     <button
                         onClick={() => setFeedbackOnly(v => !v)}
-                        className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md transition-colors ${
-                            feedbackOnly
-                                ? 'bg-[#7C3AED] text-white dark:bg-primary dark:text-primary-foreground'
-                                : 'bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted'
-                        }`}
+                        className={`flex items-center gap-1 ${segChipClass(feedbackOnly)}`}
                     >
-                        <MessageCircle className="w-3 h-3" />
+                        <MessageCircle className="w-3 h-3" strokeWidth={1.7} />
                         Com feedback
                     </button>
                 </div>
@@ -179,25 +178,25 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
 
             {filteredActivities.length === 0 && hasActiveFilters ? (
                 <div className="py-6 text-center">
-                    <p className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Nenhum treino encontrado com esses filtros</p>
-                    <button onClick={clearFilters} className="text-xs text-[#7C3AED] dark:text-primary mt-1 hover:opacity-80 transition-colors">
+                    <p className="text-[13px] text-k-text-secondary">Nenhum treino encontrado com esses filtros</p>
+                    <button onClick={clearFilters} className="text-xs text-primary mt-1 hover:opacity-80 transition-opacity">
                         Limpar filtros
                     </button>
                 </div>
             ) : activities.length === 0 ? (
-                <div className="py-6 text-center">
-                    <div className="mb-3 flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-[#F5F5F7] dark:bg-glass-bg">
-                        <Clock className="h-4 w-4 text-[#AEAEB2] dark:text-k-text-quaternary" strokeWidth={1.5} />
+                <div className="py-8 text-center">
+                    <div className="mb-3 flex h-9 w-9 mx-auto items-center justify-center rounded-full bg-surface-inset">
+                        <Clock className="h-4 w-4 text-k-text-quaternary" strokeWidth={1.7} />
                     </div>
-                    <p className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Nenhum treino registrado ainda hoje</p>
-                    <p className="text-xs text-[#86868B] dark:text-k-text-tertiary mt-1">Os treinos dos seus alunos aparecerão aqui</p>
+                    <p className="text-[13px] text-k-text-secondary">Nenhum treino registrado ainda hoje</p>
+                    <p className="text-xs text-k-text-quaternary mt-1">Os treinos dos seus alunos aparecerão aqui</p>
                     {scheduledToday && scheduledToday.length > 0 && (
                         <div className="mt-3 space-y-1">
-                            <span className="text-xs text-[#86868B] dark:text-k-text-quaternary block">Agendados para hoje:</span>
+                            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-k-text-quaternary block">Agendados para hoje</span>
                             {scheduledToday.map((s, i) => (
-                                <div key={i} className="flex items-center justify-center gap-2 text-xs text-[#6E6E73] dark:text-k-text-secondary">
+                                <div key={i} className="flex items-center justify-center gap-2 text-xs text-k-text-secondary">
                                     <span>{s.studentName}</span>
-                                    <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
+                                    <span className="text-k-text-quaternary">·</span>
                                     <span>{s.workoutName}</span>
                                 </div>
                             ))}
@@ -205,54 +204,53 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                     )}
                 </div>
             ) : (
-                <div className="divide-y divide-[#E8E8ED] dark:divide-border">
+                <div className="divide-y divide-k-border-subtle">
                     {filteredActivities.map((activity) => (
                         <button
                             key={activity.id}
                             onClick={() => handleSessionClick(activity.sessionId)}
-                            className="group flex w-full items-center justify-between px-6 py-4 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50"
+                            className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-surface-inset/60"
                         >
-                            <div className="flex items-center gap-4">
-                                {/* Avatar */}
-                                <div className="h-9 w-9 shrink-0 rounded-full border border-[#E8E8ED] dark:border-border bg-[#F5F5F7] dark:bg-muted flex items-center justify-center">
-                                    <span className="text-xs font-bold text-[#7C3AED] dark:text-primary">
+                            <div className="flex items-center gap-3 min-w-0">
+                                {/* Avatar neutro */}
+                                <div className="h-8 w-8 shrink-0 rounded-full border border-k-border-subtle bg-surface-inset flex items-center justify-center">
+                                    <span className="text-[11px] font-semibold text-k-text-secondary">
                                         {activity.studentName.charAt(0).toUpperCase()}
                                     </span>
                                 </div>
 
-                                <div>
-                                    <div className="flex items-center gap-2 mb-0.5">
-                                        <span className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground">
+                                <div className="min-w-0">
+                                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                                        <span className="text-sm font-semibold text-k-text-primary">
                                             {activity.studentName}
                                         </span>
-                                        <span className="text-xs text-[#AEAEB2] dark:text-muted-foreground">•</span>
-                                        <span className="text-sm text-[#6E6E73] dark:text-muted-foreground font-medium">
-                                            Concluiu <span className="font-semibold text-[#1D1D1F] dark:text-foreground">{activity.workoutName}</span>
+                                        <span className="text-[13px] text-k-text-tertiary">
+                                            concluiu <span className="font-medium text-k-text-secondary">{activity.workoutName}</span>
                                         </span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
                                         {activity.rpe && (
-                                            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md border ${getRpeColor(activity.rpe)}`}>
+                                            <span className={`font-mono text-[11px] tabular-nums ${
+                                                activity.rpe >= 8
+                                                    ? 'text-red-600 dark:text-red-400 font-medium'
+                                                    : 'text-k-text-quaternary'
+                                            }`}>
                                                 PSE {activity.rpe}
                                             </span>
                                         )}
                                     </div>
                                     {activity.feedback && (
-                                        <p className="text-xs text-[#86868B] dark:text-muted-foreground/70 italic mt-1 truncate flex items-center gap-1.5 max-w-md">
-                                            <svg className="w-3 h-3 shrink-0 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                            </svg>
+                                        <p className="text-xs text-k-text-quaternary italic mt-0.5 truncate flex items-center gap-1.5 max-w-md">
+                                            <MessageCircle className="w-3 h-3 shrink-0 opacity-60" strokeWidth={1.7} />
                                             <span className="truncate">&ldquo;{activity.feedback}&rdquo;</span>
                                         </p>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="text-right">
-                                <p className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground" suppressHydrationWarning>
+                            <div className="text-right shrink-0">
+                                <p className="font-mono text-[13px] font-medium tabular-nums text-k-text-primary" suppressHydrationWarning>
                                     {new Date(activity.completedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                 </p>
-                                <p className="mt-0.5 text-xs text-[#86868B] dark:text-muted-foreground font-medium">
+                                <p className="mt-0.5 font-mono text-[11px] tabular-nums text-k-text-quaternary">
                                     {activity.duration}
                                 </p>
                             </div>

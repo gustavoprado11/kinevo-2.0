@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, AlertTriangle, TrendingUp, Lightbulb, BarChart3, Check, CreditCard, FileText, FolderArchive, ChevronRight, MessageCircle, Dumbbell, Send } from 'lucide-react'
+import { X, Check, FolderArchive, ChevronRight, MessageCircle, Dumbbell } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { markInsightRead, dismissInsight } from '@/actions/insights'
 import type { InsightItem } from '@/actions/insights'
@@ -17,14 +16,18 @@ import { WinbackComposer } from './winback-composer'
 import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 // ── Category config ──
+//
+// Redesign "ferramenta profissional": a categoria vira rótulo em mono
+// micro-caps — cor SÓ nos estados que pedem atenção (alerta vermelho,
+// financeiro âmbar); o resto fica em tinta terciária. Avatares neutros.
 
-const CAT: Record<string, { label: string; avatarBg: string; avatarText: string; badgeBg: string; badgeText: string }> = {
-    alert:       { label: 'Alerta',     avatarBg: 'bg-red-50 dark:bg-red-500/10',       avatarText: 'text-red-600 dark:text-red-400',       badgeBg: 'bg-red-50 dark:bg-red-500/10',       badgeText: 'text-red-700 dark:text-red-400' },
-    progression: { label: 'Progressão', avatarBg: 'bg-teal-50 dark:bg-teal-500/10',     avatarText: 'text-teal-600 dark:text-teal-400',     badgeBg: 'bg-teal-50 dark:bg-teal-500/10',     badgeText: 'text-teal-700 dark:text-teal-400' },
-    suggestion:  { label: 'Sugestão',   avatarBg: 'bg-violet-50 dark:bg-violet-500/10', avatarText: 'text-violet-600 dark:text-violet-400', badgeBg: 'bg-violet-50 dark:bg-violet-500/10', badgeText: 'text-violet-700 dark:text-violet-400' },
-    summary:     { label: 'Resumo',     avatarBg: 'bg-blue-50 dark:bg-blue-500/10',     avatarText: 'text-blue-600 dark:text-blue-400',     badgeBg: 'bg-blue-50 dark:bg-blue-500/10',     badgeText: 'text-blue-700 dark:text-blue-400' },
-    financial:   { label: 'Financeiro', avatarBg: 'bg-amber-50 dark:bg-amber-500/10',   avatarText: 'text-amber-600 dark:text-amber-400',   badgeBg: 'bg-amber-50 dark:bg-amber-500/10',   badgeText: 'text-amber-700 dark:text-amber-400' },
-    form:        { label: 'Avaliação',  avatarBg: 'bg-blue-50 dark:bg-blue-500/10',     avatarText: 'text-blue-600 dark:text-blue-400',     badgeBg: 'bg-blue-50 dark:bg-blue-500/10',     badgeText: 'text-blue-700 dark:text-blue-400' },
+const CAT: Record<string, { label: string; labelClass: string }> = {
+    alert:       { label: 'Alerta',     labelClass: 'text-red-600 dark:text-red-400' },
+    progression: { label: 'Progressão', labelClass: 'text-k-text-quaternary' },
+    suggestion:  { label: 'Sugestão',   labelClass: 'text-k-text-quaternary' },
+    summary:     { label: 'Resumo',     labelClass: 'text-k-text-quaternary' },
+    financial:   { label: 'Financeiro', labelClass: 'text-amber-600 dark:text-amber-400' },
+    form:        { label: 'Avaliação',  labelClass: 'text-k-text-quaternary' },
 }
 
 // ── Helpers ──
@@ -327,15 +330,20 @@ export function AssistantActionCards({
 
     // ── Render ──
 
+    // Botão secundário quieto (tinta sobre card, hairline, canto de controle).
+    const quietBtn = 'flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-control border border-k-border-subtle bg-surface-card text-k-text-secondary hover:bg-surface-inset hover:text-k-text-primary transition-colors'
+
     return (
-        <div className="flex flex-col rounded-xl border border-[#D2D2D7] dark:border-k-border-primary bg-white dark:bg-surface-card shadow-apple-card dark:shadow-xl">
-            {/* Header — matches DailyActivityFeed pattern */}
-            <div className="flex items-center justify-between border-b border-[#E8E8ED] dark:border-k-border-subtle px-6 py-4">
-                <div className="flex items-center gap-2">
-                    <AssistantMark className="w-4 h-4 text-violet-500" />
-                    <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Assistente Kinevo</h2>
+        <div className="flex flex-col rounded-panel border border-k-border-subtle bg-surface-card">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-k-border-subtle px-5 py-3">
+                <div className="flex items-baseline gap-2">
+                    <AssistantMark className="w-3.5 h-3.5 text-k-text-tertiary self-center" />
+                    <h2 className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                        Assistente Kinevo
+                    </h2>
                     {rows.length > 0 && (
-                        <span className="text-[10px] text-[#86868B] dark:text-k-text-quaternary bg-[#F5F5F7] dark:bg-glass-bg px-1.5 py-0.5 rounded">
+                        <span className="font-mono text-[10.5px] tabular-nums text-k-text-quaternary">
                             {rows.length}
                         </span>
                     )}
@@ -345,15 +353,15 @@ export function AssistantActionCards({
             {/* Rows */}
             {rows.length === 0 ? (
                 <div className="py-8 text-center">
-                    <div className="mb-3 flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-500/10">
-                        <Check className="h-4 w-4 text-emerald-500" strokeWidth={2} />
+                    <div className="mb-3 flex h-9 w-9 mx-auto items-center justify-center rounded-full bg-surface-inset">
+                        <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
                     </div>
-                    <p className="text-sm text-[#6E6E73] dark:text-k-text-secondary">Tudo em dia com seus alunos</p>
-                    <p className="text-xs text-[#86868B] dark:text-k-text-tertiary mt-1">Insights e ações aparecerão aqui</p>
+                    <p className="text-[13px] text-k-text-secondary">Tudo em dia com seus alunos</p>
+                    <p className="text-xs text-k-text-quaternary mt-1">Insights e ações aparecerão aqui</p>
                 </div>
             ) : (
-                <div className="divide-y divide-[#E8E8ED] dark:divide-border max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-                    {rows.map((row, index) => {
+                <div className="divide-y divide-k-border-subtle max-h-[320px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+                    {rows.map((row) => {
                         const cat = CAT[row.category] || CAT.summary
                         const isManualFin = !!row.financialItem && (row.financialItem.billingType === 'manual_recurring' || row.financialItem.billingType === 'manual_one_off')
                         const hasActions = row.type === 'insight'
@@ -362,51 +370,48 @@ export function AssistantActionCards({
                             || (row.type === 'financial' && isManualFin)
 
                         return (
-                            <motion.div
+                            <div
                                 key={row.id}
-                                initial={{ opacity: 0, x: -8 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.05, duration: 0.3 }}
                                 role="button"
                                 tabIndex={0}
                                 onClick={() => handleRowClick(row)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') handleRowClick(row) }}
-                                className="group flex w-full flex-col px-6 py-4 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-muted/50 cursor-pointer"
+                                className="group flex w-full flex-col px-5 py-3.5 text-left transition-colors hover:bg-surface-inset/60 cursor-pointer"
                             >
-                                <div className="flex items-start gap-4 min-w-0">
-                                    {/* Avatar */}
+                                <div className="flex items-start gap-3 min-w-0">
+                                    {/* Avatar neutro */}
                                     {row.avatarUrl ? (
-                                        <Image src={row.avatarUrl} alt={row.studentName} width={40} height={40} className="h-10 w-10 shrink-0 rounded-full object-cover" unoptimized />
+                                        <Image src={row.avatarUrl} alt={row.studentName} width={32} height={32} className="h-8 w-8 shrink-0 rounded-full object-cover" unoptimized />
                                     ) : (
-                                        <div className={`h-10 w-10 shrink-0 rounded-full ${cat.avatarBg} flex items-center justify-center`}>
-                                            <span className={`text-sm font-bold ${cat.avatarText}`}>
+                                        <div className="h-8 w-8 shrink-0 rounded-full border border-k-border-subtle bg-surface-inset flex items-center justify-center">
+                                            <span className="text-[11px] font-semibold text-k-text-secondary">
                                                 {row.studentName.charAt(0).toUpperCase()}
                                             </span>
                                         </div>
                                     )}
 
                                     <div className="min-w-0 flex-1">
-                                        {/* Line 1: Name + badge */}
-                                        <div className="flex items-center gap-2 mb-0.5">
-                                            <span className="text-sm font-semibold text-[#1D1D1F] dark:text-foreground truncate">
+                                        {/* Line 1: Name + categoria em mono micro-caps */}
+                                        <div className="flex items-baseline gap-2 mb-0.5">
+                                            <span className="text-sm font-semibold text-k-text-primary truncate">
                                                 {row.studentName}
                                             </span>
-                                            <span className={`text-[9px] font-semibold px-2 py-[1px] rounded-full shrink-0 ${cat.badgeBg} ${cat.badgeText}`}>
+                                            <span className={`font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] shrink-0 ${cat.labelClass}`}>
                                                 {cat.label}
                                             </span>
                                             {row.isNew && (
-                                                <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
+                                                <span className="w-1 h-1 rounded-full bg-primary shrink-0 self-center" title="Novo" />
                                             )}
                                         </div>
 
                                         {/* Line 2: Insight text */}
-                                        <p className="text-[13px] text-[#6E6E73] dark:text-muted-foreground line-clamp-2">
+                                        <p className="text-[13px] text-k-text-secondary line-clamp-2">
                                             {row.title}
                                         </p>
 
                                         {/* Line 3: Subtitle / body */}
                                         {row.subtitle && (
-                                            <p className="text-[11px] text-[#AEAEB2] dark:text-muted-foreground/60 line-clamp-2 mt-0.5" suppressHydrationWarning>
+                                            <p className="text-[11.5px] text-k-text-quaternary line-clamp-2 mt-0.5" suppressHydrationWarning>
                                                 {row.subtitle}
                                             </p>
                                         )}
@@ -415,7 +420,7 @@ export function AssistantActionCards({
 
                                 {/* Actions — own row below content so the text gets full width */}
                                 {hasActions && (
-                                <div className="flex items-center justify-end gap-2 mt-2.5 pl-14">
+                                <div className="flex items-center justify-end gap-2 mt-2 pl-11">
                                     {row.type === 'insight' && row.insight && (() => {
                                         const directActions = getDirectActions(row.insight!)
                                         const primaryAction = directActions[0]
@@ -431,7 +436,7 @@ export function AssistantActionCards({
                                                                 onClick={(e) => da.action === 'message' && row.studentId
                                                                     ? handleOpenDraft(e, row.insight!, row.studentId, row.studentName)
                                                                     : handleDirectAction(e, da.action, row.studentId, row.studentName)}
-                                                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-md border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted hover:text-[#1D1D1F] dark:hover:text-foreground transition-colors"
+                                                                className={quietBtn}
                                                                 title={da.label}
                                                             >
                                                                 {da.icon}
@@ -446,7 +451,7 @@ export function AssistantActionCards({
                                                         onClick={(e) => primaryAction.action === 'message' && row.studentId
                                                             ? handleOpenDraft(e, row.insight!, row.studentId, row.studentName)
                                                             : handleDirectAction(e, primaryAction.action, row.studentId, row.studentName)}
-                                                        className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted hover:text-[#1D1D1F] dark:hover:text-foreground transition-all hover:shadow-sm"
+                                                        className={quietBtn}
                                                         title={primaryAction.label}
                                                     >
                                                         {primaryAction.icon}
@@ -456,15 +461,15 @@ export function AssistantActionCards({
                                                 {/* Dismiss — hover only */}
                                                 <button
                                                     onClick={(e) => handleDismiss(e, row.insight!.id)}
-                                                    className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors opacity-0 group-hover:opacity-100"
+                                                    className="p-1 rounded-control hover:bg-surface-inset transition-colors opacity-0 group-hover:opacity-100"
                                                     title="Dispensar"
                                                 >
-                                                    <X className="w-3.5 h-3.5 text-[#AEAEB2] dark:text-muted-foreground/50" />
+                                                    <X className="w-3.5 h-3.5 text-k-text-quaternary" />
                                                 </button>
-                                                {/* Assistant — always visible */}
+                                                {/* Assistant — a ação da linha, única em violeta */}
                                                 <button
                                                     onClick={(e) => handleInsightAction(e, row.insight!)}
-                                                    className="text-[11px] font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500 flex items-center gap-1 transition-colors"
+                                                    className="text-[12px] font-medium text-primary hover:opacity-80 flex items-center gap-0.5 transition-opacity"
                                                 >
                                                     {getActionLabel(row.insight!)} <ChevronRight className="w-3 h-3" />
                                                 </button>
@@ -480,7 +485,7 @@ export function AssistantActionCards({
                                             <button
                                                 onClick={(e) => handleMarkAsPaid(e, fin.id)}
                                                 disabled={markingPaid === fin.id}
-                                                className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 flex items-center gap-1 transition-colors disabled:opacity-50"
+                                                className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400 hover:opacity-80 flex items-center gap-1 transition-opacity disabled:opacity-50"
                                             >
                                                 {markingPaid === fin.id ? '...' : <><Check className="w-3 h-3" /> Pago</>}
                                             </button>
@@ -488,7 +493,7 @@ export function AssistantActionCards({
                                     })()}
 
                                     {row.type === 'form' && (
-                                        <Link href="/forms" onClick={e => e.stopPropagation()} className="text-[11px] font-medium text-[#7C3AED] dark:text-primary hover:opacity-80 flex items-center gap-1 transition-colors">
+                                        <Link href="/forms" onClick={e => e.stopPropagation()} className="text-[12px] font-medium text-primary hover:opacity-80 flex items-center gap-0.5 transition-opacity">
                                             Revisar <ChevronRight className="w-3 h-3" />
                                         </Link>
                                     )}
@@ -498,7 +503,7 @@ export function AssistantActionCards({
                                             {row.studentId && (
                                                 <button
                                                     onClick={(e) => handleDirectAction(e, 'message', row.studentId, row.studentName)}
-                                                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-md border border-[#E8E8ED] dark:border-k-border-subtle bg-white dark:bg-surface-card text-[#6E6E73] dark:text-k-text-secondary hover:bg-[#F5F5F7] dark:hover:bg-muted hover:text-[#1D1D1F] dark:hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+                                                    className={`${quietBtn} opacity-0 group-hover:opacity-100`}
                                                     title="Enviar mensagem"
                                                 >
                                                     <MessageCircle className="w-3 h-3" />
@@ -507,18 +512,18 @@ export function AssistantActionCards({
                                             {row.expiredPlanItem.planId && row.studentId && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setWinbackFor({ studentId: row.studentId!, planId: row.expiredPlanItem!.planId!, studentName: row.studentName, planTitle: row.expiredPlanItem!.planTitle }) }}
-                                                    className="text-[11px] font-medium text-violet-600 dark:text-violet-400 hover:text-violet-500 transition-colors"
+                                                    className="text-[12px] font-medium text-primary hover:opacity-80 transition-opacity"
                                                 >
                                                     Reativar
                                                 </button>
                                             )}
                                             {onSellPlan && row.studentId && (
-                                                <button onClick={(e) => { e.stopPropagation(); onSellPlan(row.studentId!) }} className="text-[11px] font-medium text-[#7C3AED] dark:text-primary hover:opacity-80 transition-colors">
+                                                <button onClick={(e) => { e.stopPropagation(); onSellPlan(row.studentId!) }} className="text-[12px] font-medium text-primary hover:opacity-80 transition-opacity">
                                                     Vender plano
                                                 </button>
                                             )}
                                             {onArchiveStudent && row.studentId && (
-                                                <button onClick={(e) => { e.stopPropagation(); onArchiveStudent(row.studentId!, row.studentName) }} className="text-[11px] font-medium text-[#AEAEB2] dark:text-muted-foreground hover:text-red-500 transition-colors">
+                                                <button onClick={(e) => { e.stopPropagation(); onArchiveStudent(row.studentId!, row.studentName) }} className="text-k-text-quaternary hover:text-red-500 transition-colors" title="Arquivar aluno">
                                                     <FolderArchive className="w-3.5 h-3.5" />
                                                 </button>
                                             )}
@@ -526,7 +531,7 @@ export function AssistantActionCards({
                                     )}
                                 </div>
                                 )}
-                            </motion.div>
+                            </div>
                         )
                     })}
                 </div>
