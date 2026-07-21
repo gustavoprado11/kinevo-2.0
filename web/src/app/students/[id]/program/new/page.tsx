@@ -8,6 +8,7 @@ import type { PrescriptionOutputSnapshot, PrescriptionReasoningExtended } from '
 import { getFormTemplatesForTriggers } from '@/actions/programs/get-form-templates-for-triggers'
 import { fetchPrescriptionDataDirect, type PrescriptionData } from '@/actions/prescription/get-prescription-data'
 import { getTrainerExerciseLibrary } from '@/lib/exercises/get-trainer-library'
+import { mapAssignedProgramToWorkouts } from '@/components/programs/map-assigned-program'
 import {
     KINEVO_DEFAULT_PREFERENCES,
     type PrescriptionPreferences,
@@ -24,6 +25,10 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
     const { id: studentId } = await params
     const resolvedSearchParams = await searchParams
     const isScheduled = resolvedSearchParams.scheduled === 'true'
+    // "Começar do programa atual": 'current' resolve o ATIVO; um uuid copia um
+    // programa específico do aluno (ex.: "Criar próximo" de programa ENCERRADO,
+    // que já não é mais active). RLS + filtro por student_id protegem o acesso.
+    const fromParam = typeof resolvedSearchParams.from === 'string' ? resolvedSearchParams.from : null
     const generationId = typeof resolvedSearchParams.generationId === 'string'
         ? resolvedSearchParams.generationId
         : undefined
@@ -47,7 +52,7 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
             .single(),
         supabase
             .from('assigned_programs')
-            .select('name')
+            .select('id, name, duration_weeks, assigned_workouts(count)')
             .eq('student_id', studentId)
             .eq('status', 'active')
             .maybeSingle(),
@@ -56,6 +61,48 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
 
     if (!student) {
         redirect('/students')
+    }
+
+    // ── "Começar do programa atual": hidrata o builder com uma CÓPIA sem
+    // perdas do programa ativo (métodos/set schemes, supersets, cardio/fases,
+    // agenda, notas) — ids regenerados, vira um programa NOVO ao salvar.
+    let copiedWorkouts: ReturnType<typeof mapAssignedProgramToWorkouts> | null = null
+    let copiedMeta: { name: string; description: string | null; durationWeeks: number | null } | null = null
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const sourceProgramId = fromParam === 'current'
+        ? activeProgram?.id ?? null
+        : (fromParam && UUID_RE.test(fromParam) ? fromParam : null)
+    if (sourceProgramId) {
+        const { data: fullProgram } = await supabase
+            .from('assigned_programs')
+            .select(`
+                id, name, description, duration_weeks,
+                assigned_workouts (
+                    id, name, order_index, scheduled_days, workout_type,
+                    assigned_workout_items (
+                        id, item_type, order_index, parent_item_id, exercise_id,
+                        exercise_name, exercise_muscle_group, exercise_equipment,
+                        substitute_exercise_ids, sets, reps, rest_seconds, notes,
+                        item_config, method_key, rounds, exercise_function,
+                        assigned_workout_item_sets (
+                            set_number, set_type, reps, rest_seconds,
+                            weight_target_kg, weight_target_pct1rm, rir, tempo,
+                            notes, round_number
+                        )
+                    )
+                )
+            `)
+            .eq('id', sourceProgramId)
+            .eq('student_id', studentId)
+            .maybeSingle()
+        if (fullProgram) {
+            copiedWorkouts = mapAssignedProgramToWorkouts(fullProgram as never, mappedExercises, { regenerateIds: true })
+            copiedMeta = {
+                name: `${(fullProgram as { name: string }).name} — novo ciclo`,
+                description: (fullProgram as { description: string | null }).description,
+                durationWeeks: (fullProgram as { duration_weeks: number | null }).duration_weeks,
+            }
+        }
     }
 
     // ── AI Prescription: load generation data if generationId is present ──
@@ -116,10 +163,19 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
             // useState(initializer) — so a prop change alone doesn't repopulate
             // the canvas. Keying on generationId makes React discard the empty
             // instance and remount with the AI-generated workouts.
-            key={generationId ?? 'blank'}
+            key={generationId ?? (copiedWorkouts ? 'from-current' : 'blank')}
             trainer={trainer}
             program={programData}
             exercises={mappedExercises}
+            initialWorkouts={copiedWorkouts ?? undefined}
+            initialName={copiedMeta?.name}
+            initialDescription={copiedMeta?.description ?? undefined}
+            initialDurationWeeks={copiedMeta?.durationWeeks}
+            copyOffer={!generationId && !copiedWorkouts && activeProgram ? {
+                programName: activeProgram.name,
+                workoutCount: (activeProgram.assigned_workouts as { count: number }[] | null)?.[0]?.count ?? null,
+                durationWeeks: activeProgram.duration_weeks ?? null,
+            } : null}
             studentContext={{
                 id: student.id,
                 name: student.name,

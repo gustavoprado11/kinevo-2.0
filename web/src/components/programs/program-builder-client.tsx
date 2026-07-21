@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useId, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useId, useMemo, useRef, useEffect, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
@@ -11,7 +11,7 @@ import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibrarySkeleton } from './exercise-library-panel-skeleton'
 import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Settings, Zap } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Settings, Zap, Copy } from 'lucide-react'
 import { KINEVO_DEFAULT_PREFERENCES, type PrescriptionPreferences } from '@/types/prescription-preferences'
 import { usePrescriptionPreferencesStore } from '@/stores/prescription-preferences-store'
 import { PreferencesBanner } from './preferences/preferences-banner'
@@ -170,6 +170,20 @@ interface ProgramBuilderClientProps {
      * e o drawer não são renderizados (call sites legados ainda não hidratam).
      */
     prescriptionPreferences?: PrescriptionPreferences
+    /** Cópia do programa atual ("novo ciclo"): hidrata o canvas com o Workout[]
+     *  nativo já mapeado (precedência sobre `program` e sobre os seeds). */
+    initialWorkouts?: Workout[]
+    /** Nome/descrição/duração sugeridos junto de `initialWorkouts`. */
+    initialName?: string
+    initialDescription?: string
+    initialDurationWeeks?: number | null
+    /** Programa ATIVO do aluno — quando presente (e o canvas abre em branco),
+     *  o builder oferece o modal "Em branco × Copiar programa atual". */
+    copyOffer?: {
+        programName: string
+        workoutCount: number | null
+        durationWeeks: number | null
+    } | null
 }
 
 
@@ -219,7 +233,7 @@ async function insertSetSchemeRows(
     if (error) throw error
 }
 
-export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning, formTriggerTemplates = [], initialFormTriggers, prescriptionData, prescriptionPreferences }: ProgramBuilderClientProps) {
+export function ProgramBuilderClient({ trainer, program, exercises, studentContext, initialAssignmentType = 'immediate', prescriptionGenerationId, prescriptionReasoning, formTriggerTemplates = [], initialFormTriggers, prescriptionData, prescriptionPreferences, initialWorkouts, initialName, initialDescription, initialDurationWeeks, copyOffer }: ProgramBuilderClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const tabDndId = useId()
@@ -231,8 +245,18 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     const [localExercises, setLocalExercises] = useState<Exercise[]>(exercises)
 
     // Program state
-    const [name, setName] = useState(program?.name || '')
-    const [description, setDescription] = useState(program?.description || '')
+    const [name, setName] = useState(initialName ?? program?.name ?? '')
+    const [description, setDescription] = useState(initialDescription ?? program?.description ?? '')
+
+    // Modal "Em branco × Copiar programa atual" — só quando o canvas abre em
+    // branco e o aluno tem programa ativo (a página passa copyOffer).
+    const [copyChoiceOpen, setCopyChoiceOpen] = useState(
+        !!copyOffer && !initialWorkouts && !program && !prescriptionGenerationId
+    )
+    // A cópia navega pra ?from=current e o servidor re-renderiza a página com a
+    // árvore hidratada — leva alguns segundos. useTransition mantém o modal na
+    // tela com spinner até o novo canvas montar (sem tela congelada/piscada).
+    const [copyPending, startCopyTransition] = useTransition()
     const [assignmentType] = useState<'immediate' | 'scheduled'>(initialAssignmentType)
     const [isDescriptionOpen, setIsDescriptionOpen] = useState(false)
     const [builderViewMode, setBuilderViewMode] = useState<BuilderViewMode>(
@@ -285,7 +309,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         handleStartDateChange,
     } = useProgramSchedule({
         initialStartDate: new Date().toISOString().split('T')[0],
-        initialWeeks: program?.duration_weeks?.toString()
+        initialWeeks: initialDurationWeeks?.toString()
+            ?? program?.duration_weeks?.toString()
             ?? prescriptionPreferences?.program_structure.default_weeks?.toString()
             ?? '4',
     })
@@ -378,6 +403,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
     // Initialize workouts helper
     const initializeWorkouts = (): Workout[] => {
+        // Cópia do programa atual ("novo ciclo"): já chega no shape nativo.
+        if (initialWorkouts && initialWorkouts.length > 0) return initialWorkouts
+
         if (!program?.workout_templates || program.workout_templates.length === 0) {
             // Programa novo: seeda N workouts conforme prefs do treinador.
             // Programas existentes (program !== null) preservam tudo.
@@ -1144,7 +1172,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
             trainerAvatarUrl={trainer.avatar_url}
             trainerTheme={trainer.theme ?? undefined}
         >
-            <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas">
+            {/* kv-mode-in: quando o canvas monta hidratado da cópia do programa
+                atual (?from=current), entra com crossfade em vez de "piscar". */}
+            <div className={`flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-surface-canvas ${initialWorkouts ? 'kv-mode-in' : ''}`}>
                 {/* Compact Header — auto-hides on scroll down, reappears on scroll up */}
                 <div className={`flex-shrink-0 bg-white dark:bg-surface-primary backdrop-blur-md border-b border-[#E8E8ED] dark:border-k-border-primary flex flex-col gap-y-2 px-4 lg:px-6 z-sticky transition-all duration-250 ease-in-out overflow-hidden ${isHeaderHidden ? 'max-h-0 py-0 border-b-0 opacity-0' : isCanvasScrolled ? 'max-h-32 py-1.5 opacity-100' : 'max-h-32 py-3 opacity-100'}`}>
                     {/* ── Camada 1: identidade + ação de finalizar ── */}
@@ -2097,6 +2127,73 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     <PreferencesDrawer triggerRef={preferencesGearButtonRef} />
                     <PreferencesWizard />
                 </>
+            )}
+
+            {/* Escolha de partida: em branco × copiar o programa ativo do aluno.
+                Só aparece quando há o que copiar (copyOffer) e o canvas abriu
+                em branco — IA e deep-link ?from=current pulam. Durante a cópia
+                o modal PERMANECE aberto com spinner (useTransition) até o novo
+                canvas montar — a navegação leva segundos no primeiro hit. */}
+            {copyChoiceOpen && copyOffer && (
+                <div className="kv-modal-overlay-in fixed inset-0 z-modal flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="copy-choice-title">
+                    <div className="kv-modal-panel-in w-full max-w-md rounded-panel border border-k-border-subtle bg-surface-card p-6">
+                        <div className="flex items-start gap-3.5">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset">
+                                <Copy className="h-4 w-4 text-k-text-secondary" strokeWidth={1.75} />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 id="copy-choice-title" className="text-base font-semibold text-k-text-primary">
+                                    Como começar o novo programa?
+                                </h2>
+                                <p className="mt-1 text-sm leading-relaxed text-k-text-tertiary">
+                                    {studentContext?.name ?? 'Este aluno'} tem um programa ativo. Você pode
+                                    partir dele e ajustar o próximo ciclo em cima do que já está sendo executado.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-4 rounded-control border border-k-border-subtle bg-surface-inset px-3.5 py-2.5">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-k-text-tertiary">
+                                Programa ativo
+                            </p>
+                            <p className="mt-1 truncate text-sm font-medium text-k-text-primary">
+                                {copyOffer.programName}
+                            </p>
+                            {(copyOffer.workoutCount != null || copyOffer.durationWeeks != null) && (
+                                <p className="mt-0.5 text-xs tabular-nums text-k-text-tertiary">
+                                    {[
+                                        copyOffer.workoutCount != null
+                                            ? `${copyOffer.workoutCount} ${copyOffer.workoutCount === 1 ? 'treino' : 'treinos'}`
+                                            : null,
+                                        copyOffer.durationWeeks != null
+                                            ? `${copyOffer.durationWeeks} ${copyOffer.durationWeeks === 1 ? 'semana' : 'semanas'}`
+                                            : null,
+                                    ].filter(Boolean).join(' · ')}
+                                </p>
+                            )}
+                        </div>
+                        <div className="mt-5 flex items-center justify-end gap-2.5">
+                            <button
+                                onClick={() => setCopyChoiceOpen(false)}
+                                disabled={copyPending}
+                                className="rounded-control border border-k-border-subtle bg-surface-card px-4 py-2 text-sm font-medium text-k-text-secondary transition-colors hover:bg-surface-inset hover:text-k-text-primary disabled:pointer-events-none disabled:opacity-50"
+                            >
+                                Começar em branco
+                            </button>
+                            <button
+                                onClick={() => {
+                                    startCopyTransition(() => {
+                                        router.push(`${window.location.pathname}?from=current`)
+                                    })
+                                }}
+                                disabled={copyPending}
+                                className="inline-flex items-center gap-2 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-80"
+                            >
+                                {copyPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                {copyPending ? 'Copiando programa…' : 'Copiar programa atual'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </AppLayout>
         </CardioStudentHrContext.Provider>

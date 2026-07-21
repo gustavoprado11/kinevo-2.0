@@ -44,7 +44,7 @@ export const ExpiringPrograms = memo(function ExpiringPrograms({ programs }: Exp
                         return (
                             <Link
                                 key={p.programId}
-                                href={`/students/${p.studentId}`}
+                                href={`/students/${p.studentId}/program/new?from=${p.programId}`}
                                 className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-surface-inset/60"
                             >
                                 <div className="flex items-center gap-3 min-w-0">
