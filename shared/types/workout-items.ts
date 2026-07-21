@@ -62,8 +62,9 @@ export const CARDIO_EQUIPMENT_OPTIONS: readonly CardioEquipment[] = [
     'jump_rope', 'outdoor_run', 'outdoor_bike', 'swimming', 'other',
 ] as const
 
-/** Cardio mode */
-export type CardioMode = 'continuous' | 'interval'
+/** Cardio mode. 'phased' = sequência de segmentos (contínuos e/ou blocos
+ *  intervalados) — ver CardioSegment. */
+export type CardioMode = 'continuous' | 'interval' | 'phased'
 
 /** Cardio objective (continuous mode) */
 export type CardioObjective = 'time' | 'distance'
@@ -109,15 +110,38 @@ export interface CardioIntensityTarget {
     pace_min_per_km?: string
 }
 
+/**
+ * Um segmento do modo 'phased': fase contínua (steady) OU bloco intervalado.
+ * Sequências mistas cobrem os dois casos de uso reais — "séries diferentes"
+ * no intervalado (vários blocos com números distintos) e contínuo progressivo
+ * (várias fases com intensidades diferentes) — além do misto
+ * aquecimento + tiros + desaquecimento.
+ */
+export interface CardioSegment {
+    kind: 'steady' | 'interval'
+    /** Rótulo opcional exibido ao aluno ("Aquecimento", "Tiros", "Solto"). */
+    label?: string
+    /** kind 'steady': duração da fase em minutos. */
+    duration_minutes?: number
+    /** kind 'interval': estrutura work/rest × rounds do bloco. */
+    intervals?: CardioIntervalConfig
+    /** Alvo de intensidade DO SEGMENTO (mesma semântica do bloco simples). */
+    intensity_target?: CardioIntensityTarget
+    /** String derivada do alvo do segmento (exibição). */
+    intensity?: string
+}
+
 /** Cardio item configuration */
 export interface CardioConfig {
     mode: CardioMode
     equipment?: CardioEquipment
     // Continuous mode
     objective?: CardioObjective
+    /** Contínuo: alvo de duração. Em 'phased' vira DERIVADO (total estimado)
+     *  — mantém contador/superfícies/apps antigos funcionando. */
     duration_minutes?: number
     distance_km?: number
-    intensity?: string           // free-text OU derivada de intensity_target
+    intensity?: string           // free-text OU derivada de intensity_target/segments
     /** Alvo estruturado (zonas/FC/RPE/pace) — ver CardioIntensityTarget. */
     intensity_target?: CardioIntensityTarget
     // Interval mode
@@ -125,6 +149,8 @@ export interface CardioConfig {
     /** Protocolo nomeado (shared/lib/cardio/interval-protocols); editar os
      *  números manualmente limpa o selo. */
     protocol_key?: string
+    /** Modo 'phased': a sequência de segmentos. */
+    segments?: CardioSegment[]
     notes?: string
 }
 

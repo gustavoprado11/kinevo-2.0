@@ -2,7 +2,11 @@ import { z } from "zod";
 import {
   CARDIO_EQUIPMENT_OPTIONS,
   type CardioConfig,
+  type CardioIntensityTarget,
+  type CardioSegment,
 } from "@kinevo/shared/types/workout-items";
+import { cardioTotalSeconds, summarizeSegments } from "@kinevo/shared/lib/cardio/segments";
+import { formatIntensityTarget } from "@kinevo/shared/lib/cardio/zones";
 
 // ============================================================================
 // Zod do CardioConfig (shared/types/workout-items.ts) — validação de runtime
@@ -43,9 +47,28 @@ export const cardioIntensityTargetSchema = z
     }
   });
 
+/** Um segmento do modo 'phased': fase contínua OU bloco intervalado. */
+export const cardioSegmentSchema = z
+  .object({
+    kind: z.enum(["steady", "interval"]),
+    label: z.string().max(60).optional(),
+    duration_minutes: z.number().min(0.5).max(600).optional(),
+    intervals: cardioIntervalSchema.optional(),
+    intensity_target: cardioIntensityTargetSchema.optional(),
+    intensity: z.string().max(200).optional(),
+  })
+  .superRefine((seg, ctx) => {
+    if (seg.kind === "steady" && seg.duration_minutes == null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Fase contínua exige duration_minutes", path: ["duration_minutes"] });
+    }
+    if (seg.kind === "interval" && !seg.intervals) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Bloco intervalado exige intervals { work_seconds, rest_seconds, rounds }", path: ["intervals"] });
+    }
+  });
+
 export const cardioConfigSchema = z
   .object({
-    mode: z.enum(["continuous", "interval"]),
+    mode: z.enum(["continuous", "interval", "phased"]),
     equipment: z.enum(CARDIO_EQUIPMENT_OPTIONS as [string, ...string[]]).optional(),
     objective: z.enum(["time", "distance"]).optional(),
     duration_minutes: z.number().min(1).max(600).optional(),
@@ -54,6 +77,7 @@ export const cardioConfigSchema = z
     intensity_target: cardioIntensityTargetSchema.optional(),
     intervals: cardioIntervalSchema.optional(),
     protocol_key: z.string().max(40).optional(),
+    segments: z.array(cardioSegmentSchema).max(20).optional(),
     notes: z.string().max(2000).optional(),
   })
   .superRefine((cfg, ctx) => {
@@ -71,6 +95,13 @@ export const cardioConfigSchema = z
         path: ["distance_km"],
       });
     }
+    if (cfg.mode === "phased" && (!cfg.segments || cfg.segments.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Modo por fases exige ao menos 1 segmento em segments",
+        path: ["segments"],
+      });
+    }
   });
 
 export type CardioConfigInput = z.infer<typeof cardioConfigSchema>;
@@ -79,4 +110,39 @@ export type CardioConfigInput = z.infer<typeof cardioConfigSchema>;
 export function parseCardioConfig(value: unknown): CardioConfig | null {
   const parsed = cardioConfigSchema.safeParse(value);
   return parsed.success ? (parsed.data as CardioConfig) : null;
+}
+
+/**
+ * Deriva os campos LEGADOS de exibição a partir dos estruturados — a espinha
+ * da retrocompat (superfícies antigas e o Watch leem intensity/duration_minutes,
+ * não intensity_target/segments). Zonas resolvem na FCmáx quando conhecida.
+ * - continuous/interval: intensity_target sem intensity → deriva a string.
+ * - phased: deriva a intensity de cada segmento + duration_minutes (total) e
+ *   intensity (resumo) do bloco.
+ */
+export function deriveCardioDisplayFields<T extends Record<string, unknown>>(
+  cfg: T,
+  maxHrBpm: number | null,
+): T {
+  const out: Record<string, unknown> = { ...cfg };
+  if (out.mode === "phased" && Array.isArray(out.segments)) {
+    const segments = (out.segments as CardioSegment[]).map((seg) => {
+      if (seg.intensity_target && !seg.intensity) {
+        const derived = formatIntensityTarget(seg.intensity_target, maxHrBpm);
+        if (derived) return { ...seg, intensity: derived };
+      }
+      return seg;
+    });
+    out.segments = segments;
+    const totalSeconds = cardioTotalSeconds({ mode: "phased", segments } as CardioConfig);
+    if (totalSeconds > 0) out.duration_minutes = Math.max(1, Math.round(totalSeconds / 60));
+    const summary = summarizeSegments(segments);
+    if (summary) out.intensity = summary;
+    return out as T;
+  }
+  if (out.intensity_target && !out.intensity) {
+    const derived = formatIntensityTarget(out.intensity_target as CardioIntensityTarget, maxHrBpm);
+    if (derived) out.intensity = derived;
+  }
+  return out as T;
 }
