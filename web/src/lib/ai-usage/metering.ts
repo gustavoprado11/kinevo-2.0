@@ -45,6 +45,7 @@ export function usdToMicros(usd: number): number {
 // Pricing do Gemini (NÃO está no PRICING do llm-client, que cobre OpenAI/Anthropic).
 // USD por 1M tokens (jun/2026). Mantido aqui (lib não-protegida) p/ não tocar lib/prescription.
 const GEMINI_PRICE_PER_MTOK: Record<string, { in: number; cached: number; out: number }> = {
+    'gemini-3.6-flash': { in: 1.5, cached: 0.15, out: 7.5 },
     'gemini-3.5-flash': { in: 1.5, cached: 0.15, out: 9 },
     'gemini-3-flash-preview': { in: 0.5, cached: 0.05, out: 3 },
     'gemini-2.5-flash': { in: 0.3, cached: 0.075, out: 2.5 },

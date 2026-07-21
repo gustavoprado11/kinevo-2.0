@@ -32,9 +32,9 @@ const BUILD_MODELS: ReadonlySet<string> = new Set([
     'gpt-4.1', 'gpt-4.1-mini', 'gpt-4o-mini', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001',
     // Gemini via @ai-sdk/google@2 (AI SDK 5): os 3.x já funcionam (thought
     // signatures tratadas pelo provider). 2.5-flash mantido como alternativa.
-    'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash',
+    'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash',
 ])
-const DEFAULT_BUILD_MODEL = 'gemini-3.5-flash'
+const DEFAULT_BUILD_MODEL = 'gemini-3.6-flash'
 const FALLBACK_MODEL = 'gpt-4.1-mini'
 
 /**

@@ -76,7 +76,7 @@ export const ASSISTANT_MODEL: LLMModel = 'gpt-4.1-mini'
  */
 const BUILD_MODELS: ReadonlySet<string> = new Set([
     'gpt-4.1', 'gpt-4.1-mini', 'gpt-4o-mini', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001',
-    'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash',
+    'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash',
 ])
 /**
  * Default do build = Claude Sonnet. Medição (5x glúteo+costas) mostrou diferença
@@ -85,10 +85,11 @@ const BUILD_MODELS: ReadonlySet<string> = new Set([
  * certos, volume distribuído, ênfase honrada). Custo ~10x (COGS, não crédito do
  * treinador), justificado pela qualidade — que é o produto.
  */
-// Padrão dos build turns do treinador = Gemini 3.5 Flash (decisão jun/2026: IA do
-// treinador padroniza no Gemini; ~2× mais barato que o Sonnet com qualidade próxima).
-// Configurável por ASSISTANT_BUILD_MODEL. Sem a key do provedor → cai pro mini.
-const DEFAULT_BUILD_MODEL = 'gemini-3.5-flash'
+// Padrão dos build turns do treinador = Gemini 3.6 Flash (upgrade 21/jul/2026: mesma
+// família do 3.5, output mais barato e ~17% menos tokens de saída, melhor em agêntico).
+// Configurável por ASSISTANT_BUILD_MODEL. Rollback sem deploy: ASSISTANT_BUILD_MODEL=gemini-3.5-flash.
+// Sem a key do provedor → cai pro mini.
+const DEFAULT_BUILD_MODEL = 'gemini-3.6-flash'
 function resolveBuildModel(): string {
     const env = process.env.ASSISTANT_BUILD_MODEL
     const wanted = env && BUILD_MODELS.has(env) ? env : DEFAULT_BUILD_MODEL
