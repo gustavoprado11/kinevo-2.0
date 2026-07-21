@@ -115,6 +115,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: error as Error | null };
     };
 
+    // Sessão fantasma: o JWT local continua "válido" mesmo se a conta foi
+    // deletada no servidor — o app renderia uma home vazia para sempre (RLS
+    // zera tudo). Valida a sessão restaurada no servidor UMA vez por usuário;
+    // erro DEFINITIVO de auth (401/403, ex.: user_not_found) → signOut completo.
+    // Erro de rede NÃO desloga (uso offline na academia é cenário normal).
+    const signOutRef = useRef<() => Promise<void>>(async () => { });
+    const validatedUserIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        const userId = session?.user?.id ?? null;
+        if (!userId || validatedUserIdRef.current === userId) return;
+        let cancelled = false;
+        supabase.auth.getUser().then(({ error: userError }) => {
+            if (cancelled) return;
+            const status = (userError as { status?: number } | null)?.status;
+            if (userError && (status === 401 || status === 403)) {
+                if (__DEV__) console.log("[AuthProvider] Sessão inválida no servidor — deslogando:", userError.message);
+                signOutRef.current();
+                return;
+            }
+            // Validado (ou erro transiente de rede — não repetir a cada render).
+            validatedUserIdRef.current = userId;
+        }).catch(() => { /* rede — mantém a sessão */ });
+        return () => { cancelled = true; };
+    }, [session?.user?.id]);
+
     const signOut = async () => {
         // Limpa caches e stores persistidos para não vazar dados entre contas
         // no mesmo aparelho (dashboard, lista de alunos/PII, drafts, notificações).
@@ -132,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         await supabase.auth.signOut();
     };
+    signOutRef.current = signOut;
 
     // Mostrar loading visual enquanto carrega
     if (isLoading) {
