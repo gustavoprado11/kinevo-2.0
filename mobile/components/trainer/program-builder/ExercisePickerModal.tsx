@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useMemo, useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity } from "react-native";
-import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList } from "@gorhom/bottom-sheet";
+import BottomSheet, { BottomSheetBackdrop, BottomSheetFlatList, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Search, X, Dumbbell, Play, Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -31,10 +31,13 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
     const {
         exercises,
         muscleGroups,
+        exerciseFunctions,
         search,
         setSearch,
         muscleFilter,
         setMuscleFilter,
+        functionFilter,
+        setFunctionFilter,
         ownerFilter,
         setOwnerFilter,
         canFilterOwn,
@@ -252,6 +255,41 @@ export function ExercisePickerModal({ visible, onClose, onSelect }: ExercisePick
                         );
                     }}
                 />
+
+                {/* Funções de treino ("pra quê") — chips compactos, single-select */}
+                {exerciseFunctions.length > 0 && (
+                    <BottomSheetScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ flexGrow: 0 }}
+                        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 8 }}
+                    >
+                        {exerciseFunctions.map((fn) => {
+                            const active = functionFilter === fn.id;
+                            return (
+                                <TouchableOpacity
+                                    key={fn.id}
+                                    onPress={() => setFunctionFilter(active ? null : fn.id)}
+                                    accessibilityRole="tab"
+                                    accessibilityState={{ selected: active }}
+                                    accessibilityLabel={`Função: ${fn.name}`}
+                                    style={{
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 5,
+                                        borderRadius: 100,
+                                        backgroundColor: active ? colors.purple[600] : colors.surface.card,
+                                        borderWidth: 1,
+                                        borderColor: active ? colors.purple[600] : colors.border.default,
+                                    }}
+                                >
+                                    <Text style={{ fontSize: 11, fontWeight: "600", color: active ? '#FFFFFF' : colors.text.tertiary }}>
+                                        {fn.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </BottomSheetScrollView>
+                )}
 
                 {/* Exercise list */}
                 <BottomSheetFlatList

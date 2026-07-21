@@ -146,10 +146,13 @@ export default function ExercisesListScreen() {
     const {
         exercises,
         muscleGroups,
+        exerciseFunctions,
         search,
         setSearch,
         muscleFilter,
         setMuscleFilter,
+        functionFilter,
+        setFunctionFilter,
         ownerFilter,
         setOwnerFilter,
         canFilterOwn,
@@ -382,6 +385,43 @@ export default function ExercisesListScreen() {
                         ))}
                     </ScrollView>
                 </View>
+
+                {/* Funções de treino ("pra quê") — só aparece se houver exercício taggeado */}
+                {exerciseFunctions.length > 0 && (
+                    <View style={{ marginBottom: 4 }}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 8 }}
+                        >
+                            {exerciseFunctions.map((fn) => (
+                                <TouchableOpacity
+                                    key={fn.id}
+                                    onPress={() => {
+                                        Haptics.selectionAsync();
+                                        setFunctionFilter(functionFilter === fn.id ? null : fn.id);
+                                    }}
+                                    style={{
+                                        paddingHorizontal: 14,
+                                        height: 30,
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                        borderRadius: 15,
+                                        backgroundColor: functionFilter === fn.id ? colors.purple[600] : colors.surface.card,
+                                        borderWidth: 1,
+                                        borderColor: functionFilter === fn.id ? colors.purple[600] : colors.border.default,
+                                    }}
+                                    accessibilityLabel={`Função: ${fn.name}`}
+                                    accessibilityRole="button"
+                                >
+                                    <Text style={{ fontSize: 11, fontWeight: "600", color: functionFilter === fn.id ? "#ffffff" : colors.text.tertiary }}>
+                                        {fn.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
 
                 {/* List */}
                 {isLoading ? (

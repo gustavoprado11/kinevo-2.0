@@ -80,6 +80,11 @@ export default function ExerciseDetailScreen() {
                     muscle_groups: ((data as any).exercise_muscle_groups ?? [])
                         .map((emg: any) => emg.muscle_groups)
                         .filter(Boolean),
+                    functions: ((data as any).exercise_function_links ?? [])
+                        .map((l: any) => l.exercise_functions)
+                        .filter(Boolean)
+                        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+                        .map((f: any) => ({ id: f.id, name: f.name })),
                 });
             }
         } catch (err) {
