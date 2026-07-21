@@ -56,6 +56,7 @@ import {
     type WorkoutItem,
 } from './builder-model'
 import { useWorkoutModel } from './helpers/use-workout-model'
+import { mapAssignedProgramToWorkouts } from './map-assigned-program'
 import { useCompareMode } from './helpers/use-compare-mode'
 import { useProgramSchedule } from './helpers/use-program-schedule'
 import { useCanvasDnd } from './helpers/use-canvas-dnd'
@@ -215,113 +216,12 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         setLocalExercises(prev => [newExercise, ...prev])
     }, [])
 
-    // Initialize workouts from program data
+    // Initialize workouts from program data — mapeador COMPARTILHADO com o
+    // fluxo "começar do programa atual" (map-assigned-program.ts). Aqui os ids
+    // do banco são preservados (edição in-place); a cópia regenera ids.
     const initializeWorkouts = (): Workout[] => {
         if (!program?.assigned_workouts) return []
-
-        // Estúdios: programa prescrito por OUTRO coach pode referenciar
-        // exercícios custom dele (owner = colega), que NÃO estão na biblioteca
-        // do ator (getTrainerExerciseLibrary é owner-ou-sistema). Sem isto, o
-        // find() abaixo dava undefined → card "Exercício sem nome" e, pior, o
-        // save gravava exercise_name = null, DESTRUINDO o denormalizado de que
-        // o app do aluno depende. O fallback sintetiza o exercício a partir dos
-        // campos denormalizados da própria linha — exibe certo e round-tripa
-        // name/muscle_group/equipment no save.
-        const denormExercise = (row: { exercise_id: string | null }): Exercise | undefined => {
-            const r = row as { exercise_id: string | null; exercise_name?: string | null; exercise_muscle_group?: string | null; exercise_equipment?: string | null }
-            if (!r.exercise_id || !r.exercise_name) return undefined
-            return {
-                id: r.exercise_id,
-                name: r.exercise_name,
-                muscle_groups: r.exercise_muscle_group ? [{ id: r.exercise_id, name: r.exercise_muscle_group }] : [],
-                equipment: r.exercise_equipment ?? null,
-                owner_id: null,
-                original_system_id: null,
-                video_url: null,
-                thumbnail_url: null,
-                instructions: null,
-                is_archived: false,
-                created_at: '1970-01-01T00:00:00.000Z',
-                updated_at: '1970-01-01T00:00:00.000Z',
-            } as unknown as Exercise
-        }
-        const resolveExercise = (row: { exercise_id: string | null }) =>
-            localExercises.find(e => e.id === row.exercise_id) ?? denormExercise(row)
-
-        return program.assigned_workouts
-            .sort((a, b) => a.order_index - b.order_index)
-            .map(wt => {
-                const items = wt.assigned_workout_items || []
-                const parentItems = items
-                    .filter(i => !i.parent_item_id)
-                    .sort((a, b) => a.order_index - b.order_index)
-                    .map(item => {
-                        // Fase 4.5i: hidrata set_scheme/rounds a partir das
-                        // linhas materializadas em assigned_workout_item_sets.
-                        // Programas pré-Fase-4.5i sem essas linhas caem em
-                        // { scheme: null, rounds: 1 } e abrem em modo simples.
-                        const parentHydrated = hydrateSetScheme(
-                            (item as any).assigned_workout_item_sets,
-                            (item as any).rounds ?? 1,
-                        )
-                        return {
-                            id: item.id,
-                            item_type: item.item_type as WorkoutItem['item_type'],
-                            order_index: item.order_index,
-                            parent_item_id: null,
-                            exercise_id: item.exercise_id,
-                            substitute_exercise_ids: item.substitute_exercise_ids || [],
-                            exercise: resolveExercise(item),
-                            sets: item.sets,
-                            reps: item.reps,
-                            rest_seconds: item.rest_seconds,
-                            notes: item.notes,
-                            item_config: (item as any).item_config || {},
-                            exercise_function: ((item as any).exercise_function as WorkoutItem['exercise_function']) ?? null,
-                            set_scheme: parentHydrated.scheme,
-                            method_key: ((item as any).method_key as WorkoutItem['method_key']) ?? null,
-                            rounds: parentHydrated.rounds,
-                            children: items
-                                .filter(child => child.parent_item_id === item.id)
-                                .sort((a, b) => a.order_index - b.order_index)
-                                .map(child => {
-                                    const childHydrated = hydrateSetScheme(
-                                        (child as any).assigned_workout_item_sets,
-                                        (child as any).rounds ?? 1,
-                                    )
-                                    return {
-                                        id: child.id,
-                                        item_type: child.item_type as WorkoutItem['item_type'],
-                                        order_index: child.order_index,
-                                        parent_item_id: item.id,
-                                        exercise_id: child.exercise_id,
-                                        substitute_exercise_ids: child.substitute_exercise_ids || [],
-                                        exercise: resolveExercise(child),
-                                        sets: child.sets,
-                                        reps: child.reps,
-                                        rest_seconds: child.rest_seconds,
-                                        notes: child.notes,
-                                        exercise_function: ((child as any).exercise_function as WorkoutItem['exercise_function']) ?? null,
-                                        set_scheme: childHydrated.scheme,
-                                        method_key: ((child as any).method_key as WorkoutItem['method_key']) ?? null,
-                                        rounds: childHydrated.rounds,
-                                    }
-                                })
-                        }
-                    })
-
-                const dayMap: Record<number, string> = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' }
-                const frequency = (wt.scheduled_days || []).map(d => dayMap[d])
-
-                return {
-                    id: wt.id,
-                    name: wt.name,
-                    order_index: wt.order_index,
-                    frequency,
-                    workout_type: wt.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
-                    items: parentItems,
-                }
-            })
+        return mapAssignedProgramToWorkouts(program as never, localExercises)
     }
 
     const {

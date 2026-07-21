@@ -60,7 +60,11 @@ export interface Workout {
 }
 
 // Generate temp ID for new items
-export const tempId = () => `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+// tempId/hydrateSetScheme moram no núcleo PURO (builder-pure.ts) para serem
+// usáveis em Server Components — importados E re-exportados aqui pros
+// consumidores existentes (e pro uso interno deste módulo).
+import { tempId, hydrateSetScheme } from './builder-pure'
+export { tempId, hydrateSetScheme }
 
 // item_config chega como Json (banco) ou Record (mapper de IA); o builder
 // trabalha com objeto plano.
@@ -113,18 +117,7 @@ export function duplicateWorkoutName(sourceName: string, prefix: string): string
  *  - linear methods → returns the rows unchanged with rounds=1
  *  - compound methods → collapses N×M rows into M (one round) and rounds=N
  *  - empty / null → returns `{ scheme: null, rounds: 1 }` */
-export function hydrateSetScheme(
-    rows: WorkoutSet[] | null | undefined,
-    roundsHint: number | null | undefined,
-): { scheme: WorkoutSet[] | null; rounds: number } {
-    if (!rows || rows.length === 0) return { scheme: null, rounds: 1 }
-    const sorted = [...rows].sort((a, b) => a.set_number - b.set_number)
-    const collapsed = collapseExpandedScheme(sorted, roundsHint ?? 1)
-    return {
-        scheme: collapsed.scheme.length > 0 ? collapsed.scheme : null,
-        rounds: collapsed.rounds,
-    }
-}
+// hydrateSetScheme → builder-pure.ts (re-exportada acima).
 
 /** Effective rounds for an item. Compound methods honor `item.rounds`; linear
  *  methods are forced to 1 — defesa em profundidade matching the mobile save
