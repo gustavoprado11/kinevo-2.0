@@ -1532,7 +1532,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                                 `}
                                                             >
                                                                 {workout.workout_type === 'cardio' && (
-                                                                    <Zap className="w-3 h-3 text-cyan-500 shrink-0" aria-label="Treino aeróbio" />
+                                                                    <Zap className="w-3 h-3 shrink-0" style={{ color: 'var(--accent-cardio)' }} aria-label="Treino aeróbio" />
                                                                 )}
                                                                 {workout.name}
                                                                 {(!workout.frequency || workout.frequency.length === 0) && (
@@ -1680,7 +1680,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                             `}
                                                         >
                                                             {workout.workout_type === 'cardio' && (
-                                                                <Zap className="w-3 h-3 text-cyan-500 shrink-0" aria-label="Treino aeróbio" />
+                                                                <Zap className="w-3 h-3 shrink-0" style={{ color: 'var(--accent-cardio)' }} aria-label="Treino aeróbio" />
                                                             )}
                                                             {workout.name}
                                                             {(!workout.frequency || workout.frequency.length === 0) && (

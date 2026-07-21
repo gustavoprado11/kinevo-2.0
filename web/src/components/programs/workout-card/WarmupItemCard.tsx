@@ -1,18 +1,26 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { Clock, Flame, Trash2 } from 'lucide-react'
+import { ArrowLeftRight, Clock, Flame, Trash2 } from 'lucide-react'
 import { useState, type HTMLAttributes } from 'react'
 
 import {
     WARMUP_TYPE_LABELS,
     WARMUP_TYPE_OPTIONS,
     type WarmupConfig,
+    type WarmupType,
 } from '@kinevo/shared/types/workout-items'
 
 import type { WorkoutItem } from '../program-builder-client'
 import { TechnicalNote } from './ExerciseMetadataSection'
 import { WorkoutCardShell } from './WorkoutCardShell'
+import {
+    FieldCard,
+    UnitSuffix,
+    fieldInputClass,
+    fieldSelectChevronStyle,
+    fieldSelectClass,
+} from './field-primitives'
 
 interface WarmupItemCardProps {
     item: WorkoutItem
@@ -55,14 +63,17 @@ export function WarmupItemCard({
 
     if (readonly) {
         return (
-            <div className="bg-white dark:bg-surface-card rounded-xl border border-[var(--border-subtle)] p-4">
+            <div className="bg-[var(--surface-card)] rounded-xl border border-[var(--border-subtle)] p-4">
                 <div className="flex items-center gap-3">
-                    <Flame className="w-[18px] h-[18px] text-amber-500 shrink-0" />
+                    <Flame
+                        className="w-[18px] h-[18px] shrink-0"
+                        style={{ color: 'var(--accent-warmup)' }}
+                    />
                     <div className="min-w-0">
                         <span className="block text-[15px] font-bold text-[var(--text-primary)]">
                             Aquecimento
                         </span>
-                        <span className="text-xs text-[#8E8E93] dark:text-k-text-tertiary truncate">
+                        <span className="text-xs text-[var(--text-tertiary)] truncate">
                             {warmupSummary(config)}
                         </span>
                     </div>
@@ -96,47 +107,49 @@ export function WarmupItemCard({
             dragHandleProps={dragHandleProps}
             kebab={deleteButton}
         >
-            <div className="flex items-center gap-1.5 flex-wrap mb-3">
-                {WARMUP_TYPE_OPTIONS.map((wt) => {
-                    const isSelected = warmupType === wt
-                    return (
-                        <button
-                            key={wt}
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                updateConfig({ warmup_type: wt })
-                                if (wt === 'free') setShowDescription(true)
-                            }}
-                            className={`px-3 py-1 rounded-full text-xs transition-colors border cursor-pointer ${
-                                isSelected
-                                    ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-300 font-medium'
-                                    : 'bg-transparent border-[#E8E8ED] dark:border-slate-700/50 text-[#8E8E93] dark:text-k-text-quaternary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg'
-                            }`}
-                        >
-                            {WARMUP_TYPE_LABELS[wt]}
-                        </button>
-                    )
-                })}
-
-                <div className="flex items-center gap-1 ml-2">
-                    <Clock size={14} className="text-[#AEAEB2] dark:text-k-text-quaternary" />
-                    <input
-                        type="number"
-                        min={1}
-                        value={config.duration_minutes || ''}
-                        onChange={(e) =>
-                            updateConfig({
-                                duration_minutes: parseInt(e.target.value) || undefined,
-                            })
-                        }
-                        onFocus={(e) => e.target.select()}
+            {/* Trilho de campos — mesmo padrão do trilho de métricas do exercício */}
+            <div className="grid grid-cols-2 gap-1.5 mb-2">
+                <FieldCard label="Tipo" icon={<ArrowLeftRight className="size-4" />}>
+                    <select
+                        value={warmupType}
+                        onChange={(e) => {
+                            const wt = e.target.value as WarmupType
+                            updateConfig({ warmup_type: wt })
+                            if (wt === 'free') setShowDescription(true)
+                        }}
                         onClick={(e) => e.stopPropagation()}
-                        placeholder="10"
-                        className="w-14 h-7 bg-transparent text-[#1D1D1F] dark:text-k-text-primary text-sm font-medium text-center focus:outline-none border-0 border-b border-[#D2D2D7] dark:border-slate-600 focus:border-[#8E8E93] dark:focus:border-k-text-tertiary transition-colors placeholder:text-[#D2D2D7] dark:placeholder:text-k-text-quaternary"
-                    />
-                    <span className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary">min</span>
-                </div>
+                        aria-label="Tipo de aquecimento"
+                        className={fieldSelectClass}
+                        style={fieldSelectChevronStyle}
+                    >
+                        {WARMUP_TYPE_OPTIONS.map((wt) => (
+                            <option key={wt} value={wt}>
+                                {WARMUP_TYPE_LABELS[wt]}
+                            </option>
+                        ))}
+                    </select>
+                </FieldCard>
+
+                <FieldCard label="Duração" icon={<Clock className="size-4" />}>
+                    <div className="flex items-baseline gap-1">
+                        <input
+                            type="number"
+                            min={1}
+                            value={config.duration_minutes || ''}
+                            onChange={(e) =>
+                                updateConfig({
+                                    duration_minutes: parseInt(e.target.value) || undefined,
+                                })
+                            }
+                            onFocus={(e) => e.target.select()}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="10"
+                            aria-label="Duração (minutos)"
+                            className={`${fieldInputClass} max-w-[3rem]`}
+                        />
+                        <UnitSuffix>min</UnitSuffix>
+                    </div>
+                </FieldCard>
             </div>
 
             <AnimatePresence>
@@ -148,16 +161,21 @@ export function WarmupItemCard({
                         transition={{ duration: 0.2, ease: 'easeOut' }}
                         className="overflow-hidden mb-1.5"
                     >
-                        <textarea
-                            value={config.description || ''}
-                            onChange={(e) =>
-                                updateConfig({ description: e.target.value || undefined })
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                            placeholder="Ex: 5 min esteira leve, mobilidade articular, 2x15 rotação externa"
-                            rows={2}
-                            className="w-full px-2.5 py-1.5 bg-[#F9F9FB] dark:bg-glass-bg border border-[#E8E8ED] dark:border-slate-700/50 rounded-lg text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#D2D2D7] dark:focus:border-k-border-primary text-sm resize-none max-h-16"
-                        />
+                        <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-2.5 py-2">
+                            <div className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-[var(--text-tertiary)] leading-tight mb-1">
+                                Roteiro
+                            </div>
+                            <textarea
+                                value={config.description || ''}
+                                onChange={(e) =>
+                                    updateConfig({ description: e.target.value || undefined })
+                                }
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder="Ex: 5 min esteira leve, mobilidade articular, 2x15 rotação externa"
+                                rows={2}
+                                className="w-full bg-transparent text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-quaternary)] focus:outline-none resize-none max-h-16 p-0"
+                            />
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -169,9 +187,9 @@ export function WarmupItemCard({
                         e.stopPropagation()
                         setShowDescription(true)
                     }}
-                    className="text-xs text-[#AEAEB2] dark:text-k-text-quaternary hover:text-[#8E8E93] dark:hover:text-k-text-tertiary transition-colors mb-1.5"
+                    className="text-xs text-[var(--text-quaternary)] hover:text-[var(--text-secondary)] transition-colors mb-1.5"
                 >
-                    + Adicionar descrição...
+                    + Adicionar roteiro...
                 </button>
             )}
 

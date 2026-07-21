@@ -71,7 +71,7 @@ export function AddWorkoutButton({ onAdd }: AddWorkoutButtonProps) {
                         onClick={() => pick('cardio')}
                         className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg)] transition-colors"
                     >
-                        <Zap className="size-3.5 shrink-0 text-cyan-500" />
+                        <Zap className="size-3.5 shrink-0" style={{ color: 'var(--accent-cardio)' }} />
                         <span>Treino aeróbio</span>
                     </button>
                 </div>
