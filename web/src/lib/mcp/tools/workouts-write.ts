@@ -11,6 +11,10 @@ import {
   validateSetScheme,
 } from '@kinevo/shared/lib/prescription/set-scheme'
 import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
+import { cardioConfigSchema } from '@/lib/programs/cardio-config-schema'
+import { formatIntensityTarget } from '@kinevo/shared/lib/cardio/zones'
+import { CARDIO_PROTOCOLS, cardioProtocol } from '@kinevo/shared/lib/cardio/interval-protocols'
+import type { CardioIntensityTarget } from '@kinevo/shared/types/workout-items'
 
 type WorkoutType = 'template' | 'assigned'
 
@@ -173,6 +177,42 @@ async function verifyWorkoutOwnership(
   return !!data && program?.trainer_id === trainerId
 }
 
+/** FCmáx do aluno dono da sessão (programas ATRIBUÍDOS) — resolve "Zona N"
+ *  em bpm na string derivada. Templates não têm aluno → null (formato %). */
+async function maxHrForWorkout(
+  supabaseAdmin: SupabaseClient,
+  workoutId: string,
+  workoutType: WorkoutType,
+): Promise<number | null> {
+  if (workoutType !== 'assigned') return null
+  const { data } = await supabaseAdmin
+    .from('assigned_workouts')
+    .select('assigned_programs(students(max_heart_rate_bpm))')
+    .eq('id', workoutId)
+    .single()
+  const program = data?.assigned_programs as unknown as { students: { max_heart_rate_bpm: number | null } | null } | null
+  return program?.students?.max_heart_rate_bpm ?? null
+}
+
+/** Sessões aeróbias (workout_type='cardio', migration 268) não aceitam
+ *  exercício de força nem superset. Retorna mensagem de erro ou null. */
+async function rejectIfCardioSession(
+  supabaseAdmin: SupabaseClient,
+  workoutId: string,
+  workoutType: WorkoutType,
+): Promise<string | null> {
+  const table = workoutType === 'template' ? 'workout_templates' : 'assigned_workouts'
+  const { data } = await supabaseAdmin
+    .from(table)
+    .select('workout_type')
+    .eq('id', workoutId)
+    .single()
+  if ((data as { workout_type?: string } | null)?.workout_type === 'cardio') {
+    return "Esta sessão é AERÓBIA (session_type='cardio') e não aceita exercícios de força ou supersets. Use kinevo_add_cardio_to_session para adicionar blocos aeróbios, ou converta a sessão com kinevo_update_workout_session (session_type='strength')."
+  }
+  return null
+}
+
 /** Verify a workout item belongs to a workout in a program owned by this trainer. */
 async function verifyItemOwnership(
   supabaseAdmin: SupabaseClient,
@@ -202,16 +242,17 @@ async function verifyItemOwnership(
 export function registerWorkoutWriteTools(server: McpServer, trainerId: string) {
   server.tool(
     'kinevo_add_workout_session',
-    "Add a new workout session (e.g., 'Treino A - Peito e Triceps') to an existing program. Works for both templates and assigned programs. RECOMMENDED: also pass scheduled_days to place the session on specific weekdays — a well-prescribed program tells the student which days to train each session, which drives the student's weekly calendar and reminders.",
+    "Add a new workout session (e.g., 'Treino A - Peito e Triceps') to an existing program. Works for both templates and assigned programs. RECOMMENDED: also pass scheduled_days to place the session on specific weekdays — a well-prescribed program tells the student which days to train each session, which drives the student's weekly calendar and reminders. For a standalone aerobic session (e.g., 'Treino C - Aeróbio Zona 2'), pass session_type='cardio' and fill it with kinevo_add_cardio_to_session blocks (no strength exercises).",
     {
       program_id: z.string().uuid().describe('The program ID to add the session to'),
       program_type: z.enum(['template', 'assigned']).default('assigned').describe('Whether the program is a template or assigned'),
       name: z.string().describe("Session name (e.g., 'Treino A - Peito e Triceps')"),
       order_index: z.number().min(0).optional().describe('Position in the program. If omitted, appends at the end.'),
       scheduled_days: scheduledDaysZod.optional(),
+      session_type: z.enum(['strength', 'cardio']).optional().default('strength').describe("Session type. 'cardio' creates a standalone aerobic session — only cardio blocks (kinevo_add_cardio_to_session), warmups and notes are allowed inside it."),
     },
     { title: 'Adicionar sessão de treino', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    async ({ program_id, program_type, name, order_index, scheduled_days }) => {
+    async ({ program_id, program_type, name, order_index, scheduled_days, session_type }) => {
       const supabaseAdmin = createAdminClient()
 
       // Verify program belongs to trainer
@@ -256,6 +297,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
               program_template_id: program_id,
               name,
               order_index: finalOrderIndex,
+              workout_type: session_type ?? 'strength',
               ...(sortedDays !== undefined ? { frequency: sortedDays.map(d => DAY_INT_TO_STR[d]) } : {}),
             })
             .select('id, name, order_index')
@@ -266,6 +308,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
               assigned_program_id: program_id,
               name,
               order_index: finalOrderIndex,
+              workout_type: session_type ?? 'strength',
               ...(sortedDays !== undefined ? { scheduled_days: sortedDays } : {}),
             })
             .select('id, name, order_index')
@@ -278,9 +321,12 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       const scheduleMsg = scheduled_days?.length
         ? ` Agendada em: ${scheduled_days.slice().sort((a, b) => a - b).map(d => DAY_INT_TO_STR[d]).join(', ')}.`
         : ''
+      const typeMsg = session_type === 'cardio'
+        ? ' Sessão AERÓBIA — adicione blocos com kinevo_add_cardio_to_session.'
+        : ''
       return mcpSuccess({
-        workout: data,
-        message: `Sessão "${data.name}" adicionada ao programa na posição ${data.order_index}.${scheduleMsg}`,
+        workout: { ...data, session_type: session_type ?? 'strength' },
+        message: `Sessão "${data.name}" adicionada ao programa na posição ${data.order_index}.${scheduleMsg}${typeMsg}`,
       })
     }
   )
@@ -310,6 +356,9 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       if (!owns) {
         return mcpError('Sessão de treino não encontrada ou não pertence a este treinador.')
       }
+
+      const cardioSessionError = await rejectIfCardioSession(supabaseAdmin, workout_id, workout_type)
+      if (cardioSessionError) return mcpError(cardioSessionError)
 
       // Resolve prescription: advanced (set_scheme) or simple (sets/reps).
       let aggregates: { sets: number; reps: string; rest_seconds: number }
@@ -430,21 +479,174 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
   )
 
   server.tool(
+    'kinevo_add_cardio_to_session',
+    "Add an aerobic (cardio) block to a workout session — continuous (time or distance target: treadmill, bike, outdoor run…) or interval (work/rest × rounds). Use inside standalone aerobic sessions (session_type='cardio') or at the end of a strength session. Prefer STRUCTURED intensity over free text: zone (Z1–Z5, resolved to the student's bpm range via max heart rate), hr_min_bpm/hr_max_bpm, target_rpe, or pace_min_per_km. For intervals, prefer a named protocol (tabata, hiit_15_15, hiit_30_30, hiit_40_20, norwegian_4x4 — see kinevo_list_training_methods) which fills work/rest/rounds + suggested intensity in one shot. The student executes it with a guided timer in the app.",
+    {
+      workout_id: z.string().uuid().describe('The workout session ID to add the cardio block to'),
+      program_type: z.enum(['template', 'assigned']).default('assigned').describe('Whether the session belongs to a template or an assigned program'),
+      mode: z.enum(['continuous', 'interval']).default('continuous').describe("'continuous' = steady state (time/distance target); 'interval' = work/rest rounds (HIIT). Passing `protocol` implies 'interval'."),
+      equipment: z.enum(['treadmill', 'bike', 'elliptical', 'rower', 'stairmaster', 'jump_rope', 'outdoor_run', 'outdoor_bike', 'swimming', 'other']).optional().describe('Equipment/modality (Esteira, Bicicleta, Elíptico, Remo, Escada, Corda, Corrida Outdoor, Bike Outdoor, Natação, Outro)'),
+      objective: z.enum(['time', 'distance']).optional().describe("Continuous mode target type: 'time' (duration_minutes) or 'distance' (distance_km). Default 'time'."),
+      duration_minutes: z.number().min(1).max(600).optional().describe('Continuous mode: target duration in minutes'),
+      distance_km: z.number().min(0.1).max(500).optional().describe('Continuous mode with objective=distance: target distance in km'),
+      zone: z.number().int().min(1).max(5).optional().describe('STRUCTURED intensity: HR zone Z1–Z5 (1=Recuperação 50–60% FCmáx, 2=Base aeróbia 60–70%, 3=Aeróbio moderado 70–80%, 4=Limiar 80–90%, 5=VO2max 90–100%). Resolved to bpm using the student max heart rate when known.'),
+      hr_min_bpm: z.number().int().min(60).max(230).optional().describe('STRUCTURED intensity: absolute HR range lower bound (use with hr_max_bpm)'),
+      hr_max_bpm: z.number().int().min(60).max(230).optional().describe('STRUCTURED intensity: absolute HR range upper bound'),
+      target_rpe: z.number().int().min(1).max(10).optional().describe('STRUCTURED intensity: RPE 1–10'),
+      pace_min_per_km: z.string().max(20).optional().describe("STRUCTURED intensity: pace in min/km (e.g., '5:30' or '5:30-6:00')"),
+      intensity: z.string().max(200).optional().describe("FREE-TEXT intensity fallback (e.g., '130-140bpm'). Ignored when a structured intensity (zone/hr/rpe/pace) is given — the app derives the display text from it."),
+      protocol: z.enum(CARDIO_PROTOCOLS.map(p => p.key) as [string, ...string[]]).optional().describe('Named interval protocol — fills work/rest/rounds + suggested intensity. Explicit work_seconds/rounds params override the protocol numbers.'),
+      work_seconds: z.number().int().min(5).max(3600).optional().describe('Interval mode: work phase in seconds'),
+      interval_rest_seconds: z.number().int().min(0).max(3600).optional().describe('Interval mode: rest phase in seconds'),
+      rounds: z.number().int().min(1).max(100).optional().describe('Interval mode: number of work/rest rounds'),
+      notes: z.string().max(2000).optional().describe('Technical note shown to the student on the cardio card'),
+      order_index: z.number().min(0).optional().describe('Position in the session. If omitted, appends at the end.'),
+    },
+    { title: 'Adicionar bloco aeróbio', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    async ({ workout_id, program_type, mode, equipment, objective, duration_minutes, distance_km, zone, hr_min_bpm, hr_max_bpm, target_rpe, pace_min_per_km, intensity, protocol, work_seconds, interval_rest_seconds, rounds, notes, order_index }) => {
+      const supabaseAdmin = createAdminClient()
+
+      const owns = await verifyWorkoutOwnership(supabaseAdmin, workout_id, program_type, trainerId)
+      if (!owns) {
+        return mcpError('Sessão de treino não encontrada ou não pertence a este treinador.')
+      }
+
+      // Alvo de intensidade estruturado: no máximo UM tipo por chamada.
+      const structuredCount = [zone != null, hr_min_bpm != null || hr_max_bpm != null, target_rpe != null, pace_min_per_km != null]
+        .filter(Boolean).length
+      if (structuredCount > 1) {
+        return mcpError('Informe apenas UM tipo de intensidade estruturada: zone OU hr_min_bpm+hr_max_bpm OU target_rpe OU pace_min_per_km.')
+      }
+      let intensityTarget: CardioIntensityTarget | null = null
+      if (zone != null) intensityTarget = { type: 'zone', zone: zone as 1 | 2 | 3 | 4 | 5 }
+      else if (hr_min_bpm != null || hr_max_bpm != null) {
+        if (hr_min_bpm == null || hr_max_bpm == null || hr_min_bpm > hr_max_bpm) {
+          return mcpError('Faixa de FC exige hr_min_bpm e hr_max_bpm, com mínimo ≤ máximo.')
+        }
+        intensityTarget = { type: 'hr', hr_min_bpm, hr_max_bpm }
+      } else if (target_rpe != null) intensityTarget = { type: 'rpe', rpe: target_rpe }
+      else if (pace_min_per_km != null) intensityTarget = { type: 'pace', pace_min_per_km }
+
+      // Protocolo nomeado: implica interval e preenche números + alvo sugerido
+      // (params explícitos vencem os números; alvo explícito vence o sugerido).
+      const protocolDef = cardioProtocol(protocol)
+      const effectiveMode = protocolDef ? 'interval' : mode
+      if (protocolDef && !intensityTarget) {
+        intensityTarget = protocolDef.suggested_target
+      }
+
+      // Monta o item_config no shape canônico (CardioConfig) e valida.
+      const config: Record<string, unknown> = { mode: effectiveMode }
+      if (equipment !== undefined) config.equipment = equipment
+      if (effectiveMode === 'continuous') {
+        config.objective = objective ?? 'time'
+        if (duration_minutes !== undefined) config.duration_minutes = duration_minutes
+        if (distance_km !== undefined) config.distance_km = distance_km
+      } else {
+        const w = work_seconds ?? protocolDef?.intervals.work_seconds
+        const r = interval_rest_seconds ?? protocolDef?.intervals.rest_seconds
+        const n = rounds ?? protocolDef?.intervals.rounds
+        if (w === undefined || r === undefined || n === undefined) {
+          return mcpError('Cardio intervalado exige work_seconds, interval_rest_seconds e rounds — ou um protocol nomeado.')
+        }
+        config.intervals = { work_seconds: w, rest_seconds: r, rounds: n }
+        // Selo do protocolo só permanece se os números finais ainda batem.
+        if (protocolDef && w === protocolDef.intervals.work_seconds && r === protocolDef.intervals.rest_seconds && n === protocolDef.intervals.rounds) {
+          config.protocol_key = protocolDef.key
+        }
+      }
+
+      // String exibida: derivada do alvo (resolvendo zona na FCmáx do aluno em
+      // programas atribuídos) ou o texto livre do caller.
+      if (intensityTarget) {
+        config.intensity_target = intensityTarget
+        const maxHr = await maxHrForWorkout(supabaseAdmin, workout_id, program_type)
+        const derived = formatIntensityTarget(intensityTarget, maxHr)
+        if (derived) config.intensity = derived
+      } else if (intensity !== undefined) {
+        config.intensity = intensity
+      }
+      if (notes !== undefined) config.notes = notes
+
+      const parsedConfig = cardioConfigSchema.safeParse(config)
+      if (!parsedConfig.success) {
+        return mcpError(`Configuração de cardio inválida: ${parsedConfig.error.issues.map(i => i.message).join('; ')}`)
+      }
+
+      const itemTable = program_type === 'template' ? 'workout_item_templates' : 'assigned_workout_items'
+      const fkColumn = program_type === 'template' ? 'workout_template_id' : 'assigned_workout_id'
+
+      let finalOrderIndex = order_index
+      if (finalOrderIndex === undefined) {
+        const { data: last } = await supabaseAdmin
+          .from(itemTable)
+          .select('order_index')
+          .eq(fkColumn, workout_id)
+          .is('parent_item_id', null)
+          .order('order_index', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        finalOrderIndex = last ? last.order_index + 1 : 0
+      }
+
+      // Branch por tabela para manter o payload tipado contra o schema gerado
+      const { data, error } = program_type === 'template'
+        ? await supabaseAdmin
+            .from('workout_item_templates')
+            .insert({
+              workout_template_id: workout_id,
+              item_type: 'cardio',
+              order_index: finalOrderIndex,
+              item_config: parsedConfig.data,
+            })
+            .select('id, order_index')
+            .single()
+        : await supabaseAdmin
+            .from('assigned_workout_items')
+            .insert({
+              assigned_workout_id: workout_id,
+              item_type: 'cardio',
+              order_index: finalOrderIndex,
+              item_config: parsedConfig.data,
+            })
+            .select('id, order_index')
+            .single()
+
+      if (error || !data) {
+        return mcpError(`Erro ao adicionar bloco aeróbio: ${error?.message ?? 'desconhecido'}`)
+      }
+
+      const finalIntervals = config.intervals as { work_seconds: number; rest_seconds: number; rounds: number } | undefined
+      const summary = effectiveMode === 'interval' && finalIntervals
+        ? `${protocolDef && config.protocol_key ? `${protocolDef.label} — ` : ''}intervalado ${finalIntervals.work_seconds}s on / ${finalIntervals.rest_seconds}s off × ${finalIntervals.rounds}`
+        : (objective ?? 'time') === 'distance'
+          ? `contínuo ${distance_km ?? '?'} km`
+          : `contínuo ${duration_minutes ?? '?'} min`
+      const intensityStr = typeof config.intensity === 'string' ? config.intensity : null
+      return mcpSuccess({
+        workout_item: { id: data.id, item_type: 'cardio', order_index: data.order_index, config: parsedConfig.data },
+        message: `Bloco aeróbio adicionado (${summary}${intensityStr ? `, ${intensityStr}` : ''}).`,
+      })
+    }
+  )
+
+  server.tool(
     'kinevo_update_workout_session',
-    'Rename, reorder, or reschedule an existing workout session in a program. Use this to edit a session in-place without recreating the program — including setting which weekdays the session falls on (scheduled_days).',
+    "Rename, reorder, or reschedule an existing workout session in a program. Use this to edit a session in-place without recreating the program — including setting which weekdays the session falls on (scheduled_days) and converting its type (session_type 'strength' ↔ 'cardio'; converting to 'cardio' requires the session to have no strength exercises).",
     {
       workout_id: z.string().uuid().describe('The workout session ID to update'),
       workout_type: z.enum(['template', 'assigned']).default('assigned'),
       name: z.string().optional().describe("New session name (e.g., 'Treino A - Segunda')"),
       order_index: z.number().min(0).optional().describe('New position in the program'),
       scheduled_days: scheduledDaysZod.optional(),
+      session_type: z.enum(['strength', 'cardio']).optional().describe("Convert the session type. 'cardio' only allowed when the session has no strength exercises/supersets."),
     },
     { title: 'Atualizar sessão de treino', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    async ({ workout_id, workout_type, name, order_index, scheduled_days }) => {
+    async ({ workout_id, workout_type, name, order_index, scheduled_days, session_type }) => {
       const supabaseAdmin = createAdminClient()
 
-      if (name === undefined && order_index === undefined && scheduled_days === undefined) {
-        return mcpError('Informe ao menos um campo para atualizar (name, order_index ou scheduled_days).')
+      if (name === undefined && order_index === undefined && scheduled_days === undefined && session_type === undefined) {
+        return mcpError('Informe ao menos um campo para atualizar (name, order_index, scheduled_days ou session_type).')
       }
 
       const owns = await verifyWorkoutOwnership(supabaseAdmin, workout_id, workout_type, trainerId)
@@ -454,9 +656,25 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
 
       const workoutTable = workout_type === 'template' ? 'workout_templates' : 'assigned_workouts'
 
+      // Converter para aeróbio exige sessão sem conteúdo de força (mesma
+      // guarda do builder web/mobile).
+      if (session_type === 'cardio') {
+        const itemTable = workout_type === 'template' ? 'workout_item_templates' : 'assigned_workout_items'
+        const itemFk = workout_type === 'template' ? 'workout_template_id' : 'assigned_workout_id'
+        const { count } = await supabaseAdmin
+          .from(itemTable)
+          .select('id', { count: 'exact', head: true })
+          .eq(itemFk, workout_id)
+          .in('item_type', ['exercise', 'superset'])
+        if ((count ?? 0) > 0) {
+          return mcpError('A sessão tem exercícios de força — remova-os antes de converter para aeróbia (ou crie uma sessão nova com session_type=cardio).')
+        }
+      }
+
       const updateData: Record<string, unknown> = {}
       if (name !== undefined) updateData.name = name
       if (order_index !== undefined) updateData.order_index = order_index
+      if (session_type !== undefined) updateData.workout_type = session_type
       if (scheduled_days !== undefined) {
         Object.assign(updateData, scheduleColumn(workout_type, scheduled_days))
       }
@@ -522,7 +740,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
 
   server.tool(
     'kinevo_update_workout_item',
-    "Edit an exercise inside a workout session in-place: change sets, reps, rest, notes, function, training method, position, or swap the exercise itself. Also supports advanced per-set prescription via set_scheme (replaces the whole per-set scheme). Only the fields you pass are changed.",
+    "Edit an exercise inside a workout session in-place: change sets, reps, rest, notes, function, training method, position, or swap the exercise itself. Also supports advanced per-set prescription via set_scheme (replaces the whole per-set scheme). For cardio blocks, pass cardio_config to replace the block's aerobic prescription (mode/equipment/duration/intervals/intensity). Only the fields you pass are changed.",
     {
       item_id: z.string().uuid().describe('The workout item (exercise) ID to update'),
       workout_type: z.enum(['template', 'assigned']).default('assigned'),
@@ -536,9 +754,10 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       order_index: z.number().min(0).optional().describe('New position in the session'),
       set_scheme: z.array(setSchemaZod).optional().describe('Advanced per-set prescription. Replaces the entire existing scheme. Pass an empty array [] to remove the scheme and revert to simple mode (also clears method_key). When non-empty, sets/reps/rest_seconds are derived from it.'),
       rounds: z.number().min(1).max(20).optional().describe('Rounds the set_scheme repeats (compound methods). Defaults to 1.'),
+      cardio_config: cardioConfigSchema.optional().describe("Cardio blocks only (item_type='cardio'): replaces the ENTIRE aerobic config. Shape: { mode: 'continuous'|'interval', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intervals?: { work_seconds, rest_seconds, rounds }, notes? }."),
     },
     { title: 'Atualizar exercício', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    async ({ item_id, workout_type, exercise_id, sets, reps, rest_seconds, notes, exercise_function, method_key, order_index, set_scheme, rounds }) => {
+    async ({ item_id, workout_type, exercise_id, sets, reps, rest_seconds, notes, exercise_function, method_key, order_index, set_scheme, rounds, cardio_config }) => {
       const supabaseAdmin = createAdminClient()
 
       const owns = await verifyItemOwnership(supabaseAdmin, item_id, workout_type, trainerId)
@@ -547,18 +766,19 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       }
 
       const itemTable = workout_type === 'template' ? 'workout_item_templates' : 'assigned_workout_items'
+      const itemFkColumn = workout_type === 'template' ? 'workout_template_id' : 'assigned_workout_id'
 
       // Contexto do item para os guards de superset/tipo (R6), validação de
       // rounds (R5) e re-derivação do descanso do pai (R7).
       const { data: itemCtxRow } = await supabaseAdmin
         .from(itemTable)
-        .select('parent_item_id, item_type, method_key')
+        .select(`parent_item_id, item_type, method_key, ${itemFkColumn}`)
         .eq('id', item_id)
         .single()
       if (!itemCtxRow) {
         return mcpError('Exercício não encontrado ou não pertence a este treinador.')
       }
-      const itemCtx = itemCtxRow as { parent_item_id: string | null; item_type: string | null; method_key: string | null }
+      const itemCtx = itemCtxRow as unknown as { parent_item_id: string | null; item_type: string | null; method_key: string | null } & Record<string, string>
 
       const wantsAdvanced =
         (set_scheme !== undefined && set_scheme.length > 0) ||
@@ -575,10 +795,26 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       // R6: só item do tipo 'exercise' recebe prescrição de séries ou troca de
       // exercício (container de superset, cardio, aquecimento e nota não).
       if (itemCtx.item_type !== 'exercise' && (wantsAdvanced || set_scheme !== undefined || sets !== undefined || reps !== undefined || exercise_id !== undefined)) {
-        return mcpError(`Item do tipo '${itemCtx.item_type}' não aceita prescrição de séries nem troca de exercício. Campos válidos aqui: rest_seconds, notes, order_index.`)
+        return mcpError(`Item do tipo '${itemCtx.item_type}' não aceita prescrição de séries nem troca de exercício. Campos válidos aqui: rest_seconds, notes, order_index${itemCtx.item_type === 'cardio' ? ', cardio_config' : ''}.`)
+      }
+
+      // cardio_config só se aplica a blocos aeróbios.
+      if (cardio_config !== undefined && itemCtx.item_type !== 'cardio') {
+        return mcpError(`cardio_config só é válido para itens do tipo 'cardio' (este item é '${itemCtx.item_type}').`)
       }
 
       const updateData: Record<string, unknown> = {}
+      if (cardio_config !== undefined) {
+        // Alvo estruturado sem string → deriva a exibição (zonas resolvem na
+        // FCmáx do aluno em programas atribuídos).
+        const cfg: Record<string, unknown> = { ...cardio_config }
+        if (cfg.intensity_target && !cfg.intensity) {
+          const maxHr = await maxHrForWorkout(supabaseAdmin, itemCtx[itemFkColumn], workout_type)
+          const derived = formatIntensityTarget(cfg.intensity_target as CardioIntensityTarget, maxHr)
+          if (derived) cfg.intensity = derived
+        }
+        updateData.item_config = cfg
+      }
       if (rest_seconds !== undefined) updateData.rest_seconds = rest_seconds
       if (notes !== undefined) updateData.notes = notes
       if (exercise_function !== undefined) updateData.exercise_function = exercise_function
@@ -690,9 +926,11 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
 
       return mcpSuccess({
         workout_item: data,
-        message: schemeRows
-          ? `Exercício atualizado com método ${data.method_key ?? 'custom'} (${schemeRows.length} séries).`
-          : `Exercício atualizado: ${data.sets}x${data.reps}, descanso ${data.rest_seconds}s.`,
+        message: cardio_config !== undefined
+          ? 'Bloco aeróbio atualizado.'
+          : schemeRows
+            ? `Exercício atualizado com método ${data.method_key ?? 'custom'} (${schemeRows.length} séries).`
+            : `Exercício atualizado: ${data.sets}x${data.reps}, descanso ${data.rest_seconds}s.`,
       })
     }
   )
@@ -722,6 +960,9 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       if (!owns) {
         return mcpError('Sessão de treino não encontrada ou não pertence a este treinador.')
       }
+
+      const cardioSessionError = await rejectIfCardioSession(supabaseAdmin, workout_id, workout_type)
+      if (cardioSessionError) return mcpError(cardioSessionError)
 
       // Validate every exercise against the catalog up front (gather snapshots).
       // Escopo por owner: só sistema (owner_id null) ou do próprio treinador —

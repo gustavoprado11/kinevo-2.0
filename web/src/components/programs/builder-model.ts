@@ -16,6 +16,7 @@ import {
 } from '@kinevo/shared/lib/prescription/set-scheme'
 import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
 import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription'
+import type { WorkoutType } from '@kinevo/shared/types/workout-items'
 
 export type BuilderViewMode = 'normal' | 'preview' | 'compare' | 'ai_prescribe'
 
@@ -54,6 +55,8 @@ export interface Workout {
     order_index: number
     items: WorkoutItem[]
     frequency?: string[] // ['mon', 'tue', etc]
+    /** Tipo da sessão (migration 268). Ausente = 'strength'. */
+    workout_type?: WorkoutType
 }
 
 // Generate temp ID for new items
@@ -314,8 +317,20 @@ export function makeCardioItem(technicalNotes?: string | null): WorkoutItem {
     }
 }
 
-export function makeWorkout(name: string, orderIndex: number, frequency: string[] = []): Workout {
-    return { id: tempId(), name, order_index: orderIndex, items: [], frequency }
+export function makeWorkout(
+    name: string,
+    orderIndex: number,
+    frequency: string[] = [],
+    workoutType: WorkoutType = 'strength',
+): Workout {
+    return { id: tempId(), name, order_index: orderIndex, items: [], frequency, workout_type: workoutType }
+}
+
+/** Sessão pode virar 'cardio' apenas sem conteúdo de força; virar 'strength'
+ *  sempre pode. Guarda usada pelos toggles de tipo (web e mobile). */
+export function canSwitchWorkoutType(workout: Workout, target: WorkoutType): boolean {
+    if (target === 'strength') return true
+    return !workout.items.some(i => i.item_type === 'exercise' || i.item_type === 'superset')
 }
 
 // ── Mutações puras ───────────────────────────────────────────────────────────
@@ -366,6 +381,13 @@ export function updateWorkoutFrequencyIn(workouts: Workout[], workoutId: string,
     return mapWorkout(workouts, workoutId, w => ({ ...w, frequency: days }))
 }
 
+/** Troca o tipo da sessão respeitando canSwitchWorkoutType (no-op se inválido). */
+export function updateWorkoutTypeIn(workouts: Workout[], workoutId: string, type: WorkoutType): Workout[] {
+    return mapWorkout(workouts, workoutId, w =>
+        canSwitchWorkoutType(w, type) ? { ...w, workout_type: type } : w,
+    )
+}
+
 export function deleteWorkoutIn(workouts: Workout[], workoutId: string): Workout[] {
     return reindexWorkouts(workouts.filter(w => w.id !== workoutId))
 }
@@ -379,6 +401,7 @@ export function duplicateWorkoutIn(workouts: Workout[], workoutId: string, copyN
         order_index: workouts.length,
         items: source.items.map(cloneItem),
         frequency: [],
+        workout_type: source.workout_type ?? 'strength',
     }
     return [...workouts, copy]
 }

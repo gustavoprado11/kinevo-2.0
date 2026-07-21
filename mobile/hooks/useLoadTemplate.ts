@@ -44,6 +44,7 @@ export function useLoadTemplate(templateId: string | null): LoadResult {
                         name,
                         order_index,
                         frequency,
+                        workout_type,
                         workout_item_templates (
                             id,
                             item_type,

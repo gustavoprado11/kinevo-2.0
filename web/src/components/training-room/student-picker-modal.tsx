@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Search, User, Dumbbell, ChevronRight } from 'lucide-react'
+import { X, Search, User, Dumbbell, ChevronRight, Zap } from 'lucide-react'
 import { getTrainingRoomStudents, type TrainingRoomStudent, type WorkoutOption } from '@/actions/training-room/get-training-room-students'
 import { getStudentTodayWorkout } from '@/actions/training-room/get-student-today-workout'
 import { getWorkoutFormTriggers } from '@/actions/training-room/get-workout-form-triggers'
@@ -430,6 +430,12 @@ function WorkoutOptionButton({
             }`}>
                 {isFullyDone ? (
                     <svg className="h-4 w-4 text-emerald-500 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ) : workout.workoutType === 'cardio' ? (
+                    <Zap size={16} className={
+                        isSelected ? 'text-[#7C3AED] dark:text-violet-400'
+                            : workout.isPending ? 'text-amber-500 dark:text-amber-400'
+                            : 'text-cyan-600 dark:text-cyan-400'
+                    } />
                 ) : (
                     <Dumbbell size={16} className={
                         isSelected ? 'text-[#7C3AED] dark:text-violet-400'

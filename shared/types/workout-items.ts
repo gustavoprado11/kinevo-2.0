@@ -9,6 +9,14 @@
 /** All possible item_type values */
 export type WorkoutItemType = 'exercise' | 'superset' | 'note' | 'warmup' | 'cardio'
 
+/** Session-level type (workout_templates.workout_type / assigned_workouts.workout_type, migration 268) */
+export type WorkoutType = 'strength' | 'cardio'
+
+export const WORKOUT_TYPE_LABELS: Record<WorkoutType, string> = {
+    strength: 'Força',
+    cardio: 'Aeróbio',
+}
+
 /** Warmup type options */
 export type WarmupType = 'free' | 'light_cardio' | 'mobility' | 'activation'
 
@@ -79,6 +87,28 @@ export interface CardioIntervalConfig {
     rounds: number
 }
 
+/** Tipo do alvo de intensidade estruturado (pacote zonas). */
+export type CardioIntensityType = 'zone' | 'hr' | 'rpe' | 'pace'
+
+/**
+ * Alvo de intensidade estruturado do bloco aeróbio. Quando presente, o campo
+ * legado `intensity` (string) passa a ser DERIVADO dele (formatIntensityTarget
+ * em shared/lib/cardio/zones) — as superfícies de exibição continuam lendo a
+ * string, sem mudança.
+ */
+export interface CardioIntensityTarget {
+    type: CardioIntensityType
+    /** type 'zone': Z1–Z5 (resolvida por students.max_heart_rate_bpm). */
+    zone?: 1 | 2 | 3 | 4 | 5
+    /** type 'hr': faixa absoluta em bpm. */
+    hr_min_bpm?: number
+    hr_max_bpm?: number
+    /** type 'rpe': 1–10. */
+    rpe?: number
+    /** type 'pace': min/km, ex. "5:30" ou "5:30-6:00". */
+    pace_min_per_km?: string
+}
+
 /** Cardio item configuration */
 export interface CardioConfig {
     mode: CardioMode
@@ -87,9 +117,14 @@ export interface CardioConfig {
     objective?: CardioObjective
     duration_minutes?: number
     distance_km?: number
-    intensity?: string           // free-text (e.g. "Zona 2", "RPE 6", "130bpm")
+    intensity?: string           // free-text OU derivada de intensity_target
+    /** Alvo estruturado (zonas/FC/RPE/pace) — ver CardioIntensityTarget. */
+    intensity_target?: CardioIntensityTarget
     // Interval mode
     intervals?: CardioIntervalConfig
+    /** Protocolo nomeado (shared/lib/cardio/interval-protocols); editar os
+     *  números manualmente limpa o selo. */
+    protocol_key?: string
     notes?: string
 }
 

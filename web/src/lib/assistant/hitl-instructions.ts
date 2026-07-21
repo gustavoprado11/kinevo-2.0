@@ -160,6 +160,15 @@ const HITL_BUILD = `
      Monte o SPLIT definido no passo 4 (uma sessão por dia de treino, focos DISTINTOS, compostos primeiro,
      5–7 exercícios cada), com a frequência pedida. Defina scheduled_days de cada sessão (0=dom … 6=sáb),
      distribuindo os dias de forma coerente (evite treinar o mesmo grupo em dias consecutivos sem motivo).
+  5a) AERÓBIO: se o pedido incluir dias de aeróbio EXCLUSIVO (ex.: "3x força + 2x aeróbio zona 2"), crie
+     essas sessões com session_type='cardio' e itens SÓ no campo 'cardio' (bloco contínuo com
+     duration_minutes/equipment ou intervalado com intervals {work_seconds, rest_seconds, rounds}).
+     INTENSIDADE: prefira o alvo ESTRUTURADO — intensity_target {type:'zone', zone:2} (Z1–Z5, resolve na
+     FCmáx do aluno) ou {type:'rpe', rpe:6} / {type:'hr', hr_min_bpm, hr_max_bpm} / {type:'pace',
+     pace_min_per_km} — em vez de texto livre. Intervalado: prefira um protocolo nomeado via protocol_key
+     ('tabata' 20/10×8, 'hiit_30_30', 'norwegian_4x4' 4min/3min×4 — kinevo_list_training_methods lista
+     todos). Sessão aeróbia NÃO leva exercício de força. Cardio no FIM de uma sessão de força continua
+     sendo um item 'cardio' dentro dela (não muda o session_type).
   5b) CONTROLE DE QUALIDADE (automático): o app valida as regras do passo 4 em código na hora da criação.
      Se a resposta vier com quality_errors, o programa NÃO foi criado — corrija EXATAMENTE os pontos
      apontados (mantendo o resto do programa igual) e chame a MESMA tool de novo, sem perguntar ao

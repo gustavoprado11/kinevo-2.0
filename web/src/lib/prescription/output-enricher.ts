@@ -120,6 +120,7 @@ function enrichWorkout(
         name: compact.name,
         order_index: compact.order_index ?? fallbackIndex,
         scheduled_days: compact.scheduled_days,
+        workout_type: compact.workout_type ?? 'strength',
         items: compact.items.map((item, ii) =>
             enrichWorkoutItem(item, ii, exerciseMap)
         ),

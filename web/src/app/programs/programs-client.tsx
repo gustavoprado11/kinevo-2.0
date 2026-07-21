@@ -6,7 +6,7 @@ import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
 import {
     Plus, Search, MoreVertical, Pencil, Copy, UserPlus,
-    Trash2, FolderPlus, Loader2, X, Check
+    Trash2, FolderPlus, Loader2, X, Check, Zap
 } from 'lucide-react'
 import { assignProgram } from '@/app/students/[id]/actions/assign-program'
 import { duplicateProgram } from './actions/duplicate-program'
@@ -61,6 +61,7 @@ interface WorkoutInfo {
     name: string
     exerciseCount: number
     frequency: string[] | null
+    workout_type?: string
 }
 
 interface ProgramTemplate {
@@ -532,7 +533,14 @@ export function ProgramsClient({ trainer, programs: initialPrograms }: ProgramsC
                                                         <div key={workout.id} className="flex items-center justify-between">
                                                             <span className="text-sm text-[#1D1D1F] dark:text-k-text-secondary font-medium truncate">{workout.name}</span>
                                                             <div className="flex items-center gap-3 text-[11px] text-[#86868B] dark:text-k-text-quaternary shrink-0 ml-3">
-                                                                <span>{workout.exerciseCount} ex.</span>
+                                                                {workout.workout_type === 'cardio' ? (
+                                                                    <span className="flex items-center gap-1 text-cyan-600 dark:text-cyan-400 font-medium">
+                                                                        <Zap className="w-3 h-3" />
+                                                                        Aeróbio
+                                                                    </span>
+                                                                ) : (
+                                                                    <span>{workout.exerciseCount} ex.</span>
+                                                                )}
                                                                 {freq ? <span>{freq}</span> : <span className="text-[#FF9500] dark:text-amber-400 font-medium">Sem dia</span>}
                                                             </div>
                                                         </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { View, Text } from "react-native";
-import { Plus } from "lucide-react-native";
+import { Plus, Activity } from "lucide-react-native";
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -27,8 +27,9 @@ interface WorkoutSelectorCardProps {
 
 export function WorkoutSelectorCard({ workout, isActive, onPress, onLongPress }: WorkoutSelectorCardProps) {
     const colors = useV2Colors();
+    const isCardio = workout.workout_type === 'cardio';
 
-    const { exerciseCount, totalSets } = useMemo(() => {
+    const { exerciseCount, totalSets, cardioBlocks } = useMemo(() => {
         // Apenas item_type === 'exercise' conta como "exerc." e contribui
         // pra "séries". Blocos de note/warmup/cardio são contabilizados em
         // outras métricas (não no chip do selector).
@@ -38,7 +39,8 @@ export function WorkoutSelectorCard({ workout, isActive, onPress, onLongPress }:
             const schemeLen = it.set_scheme?.length ?? 0;
             return acc + (schemeLen > 0 ? schemeLen : (it.sets ?? 0));
         }, 0);
-        return { exerciseCount, totalSets };
+        const cardioBlocks = workout.items.filter((it) => it.item_type === 'cardio').length;
+        return { exerciseCount, totalSets, cardioBlocks };
     }, [workout.items]);
 
     return (
@@ -75,17 +77,23 @@ export function WorkoutSelectorCard({ workout, isActive, onPress, onLongPress }:
             }}
         >
             {/* Nome */}
-            <Text
-                style={{
-                    fontSize: 14,
-                    fontWeight: "700",
-                    color: isActive ? '#FFFFFF' : colors.text.primary,
-                    letterSpacing: -0.2,
-                }}
-                numberOfLines={1}
-            >
-                {workout.name}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                {isCardio && (
+                    <Activity size={12} color={isActive ? '#FFFFFF' : '#06b6d4'} strokeWidth={2.2} />
+                )}
+                <Text
+                    style={{
+                        fontSize: 14,
+                        fontWeight: "700",
+                        color: isActive ? '#FFFFFF' : colors.text.primary,
+                        letterSpacing: -0.2,
+                        flexShrink: 1,
+                    }}
+                    numberOfLines={1}
+                >
+                    {workout.name}
+                </Text>
+            </View>
 
             {/* Métricas */}
             <Text
@@ -97,7 +105,9 @@ export function WorkoutSelectorCard({ workout, isActive, onPress, onLongPress }:
                 }}
                 numberOfLines={1}
             >
-                {exerciseCount} {exerciseCount === 1 ? 'exerc' : 'exerc'} · {totalSets} {totalSets === 1 ? 'série' : 'séries'}
+                {isCardio
+                    ? `Aeróbio · ${cardioBlocks} ${cardioBlocks === 1 ? 'bloco' : 'blocos'}`
+                    : `${exerciseCount} exerc · ${totalSets} ${totalSets === 1 ? 'série' : 'séries'}`}
             </Text>
 
             {/* Mini-chips dias da semana */}

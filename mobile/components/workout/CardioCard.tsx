@@ -13,6 +13,7 @@ import {
     type CardioMode,
     type CardioEquipment,
 } from '@kinevo/shared/types/workout-items';
+import { cardioProtocolLabel, protocolMatchesIntervals } from '@kinevo/shared/lib/cardio/interval-protocols';
 import type { ExerciseData } from '../../hooks/useWorkoutSession';
 import type { TimerUpdateData } from '../../hooks/useLiveActivity';
 import { useV2Colors, useIsDark, type V2Palette } from '../../hooks/useV2Colors';
@@ -683,6 +684,11 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
     // ── IDLE STATE ────────────────────────────────────────────────────────────
     const prescriptionParts: string[] = [];
     if (isInterval && config.intervals) {
+        // Protocolo nomeado (Tabata, 4×4…) abre a linha quando os números batem.
+        const protocolLabel = protocolMatchesIntervals(config.protocol_key, config.intervals)
+            ? cardioProtocolLabel(config.protocol_key)
+            : null;
+        if (protocolLabel) prescriptionParts.push(protocolLabel);
         prescriptionParts.push(
             `${totalRounds}x (${workSeconds}s trabalho / ${restSeconds}s descanso)`
         );

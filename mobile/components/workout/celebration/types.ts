@@ -7,6 +7,11 @@ export interface CelebrationData {
     rpe: number;
 
     // ── NOVOS (opcionais) ──
+    /** Sessão aeróbia: variantes trocam séries/volume por blocos/tempo. */
+    sessionType?: 'strength' | 'cardio';
+    cardioBlocksCompleted?: number;
+    cardioBlocksTotal?: number;
+    cardioMinutes?: number;
     workoutName?: string;
     endDate?: Date;            // pra pickVariant. Default: new Date()
     prCount?: number;          // >0 ativa BadgePR

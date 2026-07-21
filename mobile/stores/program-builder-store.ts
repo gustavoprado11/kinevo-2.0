@@ -83,6 +83,8 @@ export interface Workout {
     name: string;
     order_index: number;
     frequency: string[];
+    /** Tipo da sessão (migration 268). 'strength' quando ausente. */
+    workout_type?: 'strength' | 'cardio';
     items: WorkoutItem[];
 }
 
@@ -199,6 +201,7 @@ interface AssignedWorkoutRow {
     name: string;
     order_index: number;
     scheduled_days?: number[] | null;
+    workout_type?: string | null;
     assigned_workout_items?: AssignedItemRow[] | null;
 }
 
@@ -246,6 +249,7 @@ interface TemplateWorkoutRow {
     name: string;
     order_index: number;
     frequency?: string[] | null;
+    workout_type?: string | null;
     workout_item_templates?: TemplateItemRow[] | null;
 }
 
@@ -339,10 +343,11 @@ interface ProgramBuilderState {
     updateStartDate: (date: string | null) => void;
 
     // Workouts
-    addWorkout: () => void;
+    addWorkout: (workoutType?: 'strength' | 'cardio') => void;
     removeWorkout: (workoutId: string) => void;
     renameWorkout: (workoutId: string, name: string) => void;
     updateWorkoutFrequency: (workoutId: string, days: string[]) => void;
+    setWorkoutType: (workoutId: string, workoutType: 'strength' | 'cardio') => void;
     setCurrentWorkout: (workoutId: string) => void;
 
     // Items
@@ -493,6 +498,7 @@ function workoutsFromAssignedProgram(rows: AssignedWorkoutRow[]): Workout[] {
             name: w.name,
             order_index: w.order_index,
             frequency: scheduledDaysToFrequency(w.scheduled_days),
+            workout_type: w.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
             items,
         };
     });
@@ -546,6 +552,7 @@ function workoutsFromTemplate(rows: TemplateWorkoutRow[]): Workout[] {
             name: w.name,
             order_index: w.order_index,
             frequency: Array.isArray(w.frequency) ? w.frequency : [],
+            workout_type: w.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
             items,
         };
     });
@@ -564,9 +571,14 @@ function workoutsFromBuilderData(builderData: BuilderProgramData): Workout[] {
         name: wt.name,
         order_index: wt.order_index,
         frequency: wt.frequency ?? [],
+        workout_type: wt.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
         items: (wt.workout_item_templates ?? []).map((it) => ({
             id: Crypto.randomUUID(),
-            item_type: 'exercise' as const,
+            // O snapshot da IA pode trazer blocos warmup/cardio/note além de
+            // exercícios — normaliza como os demais hidratadores.
+            item_type: (it.item_type === 'warmup' || it.item_type === 'cardio' || it.item_type === 'note'
+                ? it.item_type
+                : 'exercise') as WorkoutItem['item_type'],
             order_index: it.order_index,
             parent_item_id: null,
             exercise_id: it.exercise_id ?? '',
@@ -1095,12 +1107,13 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                 isDirty: true,
             })),
 
-            addWorkout: () => set((state) => {
+            addWorkout: (workoutType = 'strength') => set((state) => {
                 const newWorkout: Workout = {
                     id: Crypto.randomUUID(),
                     name: nextWorkoutName(state.draft.workouts),
                     order_index: state.draft.workouts.length,
                     frequency: [],
+                    workout_type: workoutType,
                     items: [],
                 };
                 return {
@@ -1112,6 +1125,21 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     isDirty: true,
                 };
             }),
+
+            setWorkoutType: (workoutId, workoutType) => set((state) => ({
+                draft: {
+                    ...state.draft,
+                    workouts: state.draft.workouts.map(w => {
+                        if (w.id !== workoutId) return w;
+                        // Guarda: virar aeróbio só sem conteúdo de força.
+                        if (workoutType === 'cardio' && w.items.some(i => i.item_type === 'exercise' || i.item_type === 'superset')) {
+                            return w;
+                        }
+                        return { ...w, workout_type: workoutType };
+                    }),
+                },
+                isDirty: true,
+            })),
 
             removeWorkout: (workoutId) => set((state) => {
                 const workouts = state.draft.workouts
@@ -1152,6 +1180,8 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
             addExercise: (workoutId, exercise) => set((state) => {
                 const workout = state.draft.workouts.find(w => w.id === workoutId);
                 if (!workout) return state;
+                // Sessão aeróbia não recebe exercício de força.
+                if (workout.workout_type === 'cardio') return state;
 
                 const newItem: WorkoutItem = {
                     id: Crypto.randomUUID(),

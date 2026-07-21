@@ -130,6 +130,10 @@ function renderLayer1(): string {
         '## FORMATO DE SAÍDA',
         'Retorne estritamente o JSON do schema fornecido. Cada exercício referencia um exercise_id do pool entregue na Camada 2. Campos obrigatórios por item de exercício: exercise_id, sets, reps, rest_seconds, exercise_function. Use exercise_function ∈ {warmup, activation, main, accessory, conditioning}. substitute_exercise_ids pode ter 0-2 UUIDs do mesmo pool.',
         '',
+        '## AERÓBIO (opcional)',
+        'Item aeróbio: item_type "cardio" com item_config (JSON string) no shape {"mode":"continuous"|"interval","equipment":"treadmill|bike|outdoor_run|rower|elliptical|other","duration_minutes":N,"intensity_target":{"type":"zone","zone":2},"intervals":{"work_seconds":N,"rest_seconds":N,"rounds":N},"protocol_key":"tabata"} — continuous usa duration_minutes; interval usa intervals (ou um protocol_key nomeado: tabata 20/10×8, hiit_15_15, hiit_30_30, hiit_40_20, norwegian_4x4 4min/3min×4). Intensidade: prefira intensity_target com zone 1–5 (Z1 recuperação … Z5 VO2max; resolve na FCmáx do aluno) ou {"type":"rpe","rpe":N}; texto livre em "intensity" só como último recurso. Sempre no FIM da sessão de força (maior order_index); não conta volume.',
+        'Sessão aeróbia EXCLUSIVA: quando o objetivo pedir dias só de aeróbio, crie o workout com workout_type "cardio" contendo SOMENTE itens cardio (as regras de composto/volume não se aplicam a ele). Workouts de força usam workout_type "strength" ou null.',
+        '',
         FEW_SHOT_EXAMPLES,
     ].join('\n')
 }

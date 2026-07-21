@@ -10,7 +10,7 @@ import {
     StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Clock, Dumbbell, Target, TrendingUp } from 'lucide-react-native';
+import { X, Clock, Dumbbell, Target, TrendingUp, Activity } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useV2Colors, type V2Palette } from '../../hooks/useV2Colors';
 
@@ -20,6 +20,11 @@ interface WorkoutSummaryData {
     completedSets: number;
     totalSets: number;
     totalVolume: number;
+    /** Sessão aeróbia: grid mostra blocos/tempo em vez de séries/volume. */
+    sessionType?: 'strength' | 'cardio';
+    cardioBlocksCompleted?: number;
+    cardioBlocksTotal?: number;
+    cardioMinutes?: number;
 }
 
 interface WorkoutFeedbackModalProps {
@@ -122,28 +127,48 @@ export function WorkoutFeedbackModal({ visible, onClose, onConfirm, summary }: W
                         >
                             {/* Workout Summary */}
                             {summary && (
-                                <View style={styles.summaryGrid}>
-                                    <SummaryItem
-                                        icon={<Clock size={15} color={colors.purple[600]} strokeWidth={2} />}
-                                        value={summary.duration}
-                                        label="Duração"
-                                    />
-                                    <SummaryItem
-                                        icon={<Dumbbell size={15} color={colors.purple[600]} strokeWidth={2} />}
-                                        value={String(summary.exerciseCount)}
-                                        label="Exercícios"
-                                    />
-                                    <SummaryItem
-                                        icon={<Target size={15} color={colors.purple[600]} strokeWidth={2} />}
-                                        value={`${summary.completedSets}/${summary.totalSets}`}
-                                        label="Séries"
-                                    />
-                                    <SummaryItem
-                                        icon={<TrendingUp size={15} color={colors.purple[600]} strokeWidth={2} />}
-                                        value={formatVolume(summary.totalVolume)}
-                                        label="Volume"
-                                    />
-                                </View>
+                                summary.sessionType === 'cardio' ? (
+                                    <View style={styles.summaryGrid}>
+                                        <SummaryItem
+                                            icon={<Clock size={15} color={colors.purple[600]} strokeWidth={2} />}
+                                            value={summary.duration}
+                                            label="Duração"
+                                        />
+                                        <SummaryItem
+                                            icon={<Target size={15} color={colors.purple[600]} strokeWidth={2} />}
+                                            value={`${summary.cardioBlocksCompleted ?? 0}/${summary.cardioBlocksTotal ?? 0}`}
+                                            label="Blocos"
+                                        />
+                                        <SummaryItem
+                                            icon={<Activity size={15} color={colors.purple[600]} strokeWidth={2} />}
+                                            value={`${summary.cardioMinutes ?? 0} min`}
+                                            label="Aeróbio"
+                                        />
+                                    </View>
+                                ) : (
+                                    <View style={styles.summaryGrid}>
+                                        <SummaryItem
+                                            icon={<Clock size={15} color={colors.purple[600]} strokeWidth={2} />}
+                                            value={summary.duration}
+                                            label="Duração"
+                                        />
+                                        <SummaryItem
+                                            icon={<Dumbbell size={15} color={colors.purple[600]} strokeWidth={2} />}
+                                            value={String(summary.exerciseCount)}
+                                            label="Exercícios"
+                                        />
+                                        <SummaryItem
+                                            icon={<Target size={15} color={colors.purple[600]} strokeWidth={2} />}
+                                            value={`${summary.completedSets}/${summary.totalSets}`}
+                                            label="Séries"
+                                        />
+                                        <SummaryItem
+                                            icon={<TrendingUp size={15} color={colors.purple[600]} strokeWidth={2} />}
+                                            value={formatVolume(summary.totalVolume)}
+                                            label="Volume"
+                                        />
+                                    </View>
+                                )
                             )}
 
                             {/* Intensity Section */}

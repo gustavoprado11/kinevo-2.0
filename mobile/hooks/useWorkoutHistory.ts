@@ -16,6 +16,10 @@ export interface HistorySession {
     workoutItems: HistoryWorkoutItem[];
     has_pre_checkin: boolean;
     has_post_checkin: boolean;
+    /** Sessão aeróbia (assigned_workouts.workout_type) — card mostra minutos, não tonelagem. */
+    workout_type: 'strength' | 'cardio';
+    /** Minutos de aeróbio executados (actual_duration_seconds dos blocos concluídos). */
+    cardio_minutes: number;
 }
 
 export interface HistoryWorkoutItem {
@@ -104,6 +108,7 @@ export function useWorkoutHistory() {
                     workout_name,
                     assigned_workout:assigned_workouts(
                         name,
+                        workout_type,
                         items:assigned_workout_items(
                             id, item_type, order_index, exercise_name, notes, item_config, parent_item_id,
                             exercises(name)
@@ -143,6 +148,15 @@ export function useWorkoutHistory() {
                 let sessionVol = 0;
                 const exerciseMap = new Map<string, HistoryExercise>();
 
+                // Logs de blocos cardio não são "exercícios": sem isto, cada
+                // cardio concluído virava um "Exercício" fantasma (peso 0, 1 rep)
+                // no agrupamento e no volume.
+                const cardioItemIds = new Set(
+                    (session.assigned_workout?.items || [])
+                        .filter((i: any) => i.item_type === 'cardio')
+                        .map((i: any) => i.id),
+                );
+
                 // Index logs by assigned_workout_item_id
                 const logsByItem = new Map<string, any[]>();
                 session.logs?.forEach((log: any) => {
@@ -152,6 +166,7 @@ export function useWorkoutHistory() {
                         if (!logsByItem.has(itemId)) logsByItem.set(itemId, []);
                         logsByItem.get(itemId)!.push(log);
                     }
+                    if (itemId && cardioItemIds.has(itemId)) return;
 
                     const weight = Number(log.weight) || 0;
                     const reps = Number(log.reps_completed) || 0;
@@ -247,6 +262,16 @@ export function useWorkoutHistory() {
                 totalVol += sessionVol;
                 totalSecs += session.duration_seconds ?? 0;
 
+                // Minutos de aeróbio: actual_duration_seconds do resultado do
+                // bloco (JSON no notes do set_log); fallback pro prescrito.
+                const cardioMinutes = Math.round(workoutItems.reduce((acc, wi) => {
+                    if (wi.itemType !== 'cardio' || !wi.cardioResult) return acc;
+                    const actual = wi.cardioResult.actual_duration_seconds;
+                    if (typeof actual === 'number') return acc + actual / 60;
+                    const prescribed = wi.cardioResult.duration_minutes;
+                    return acc + (typeof prescribed === 'number' ? prescribed : 0);
+                }, 0));
+
                 sessions.push({
                     id: session.id,
                     started_at: session.started_at,
@@ -259,6 +284,8 @@ export function useWorkoutHistory() {
                     workoutItems,
                     has_pre_checkin: !!session.pre_workout_submission_id,
                     has_post_checkin: !!session.post_workout_submission_id,
+                    workout_type: session.assigned_workout?.workout_type === 'cardio' ? 'cardio' : 'strength',
+                    cardio_minutes: cardioMinutes,
                 });
             });
 

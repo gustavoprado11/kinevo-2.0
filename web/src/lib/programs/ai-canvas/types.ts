@@ -12,8 +12,25 @@ export interface CanvasExercise {
     equipment?: string | null
 }
 
+/** Config de bloco aeróbio emitida pela IA (subset do CardioConfig canônico). */
+export interface CanvasCardioDTO {
+    mode: 'continuous' | 'interval'
+    equipment?: string | null
+    objective?: 'time' | 'distance' | null
+    duration_minutes?: number | null
+    distance_km?: number | null
+    intensity?: string | null
+    /** Alvo estruturado (zona/RPE) — CardioIntensityTarget do shared. */
+    intensity_target?: import('@kinevo/shared/types/workout-items').CardioIntensityTarget | null
+    intervals?: { work_seconds: number; rest_seconds: number; rounds: number } | null
+    /** Protocolo intervalado nomeado (shared/lib/cardio/interval-protocols). */
+    protocol_key?: string | null
+    notes?: string | null
+}
+
 export interface CanvasItemDTO {
-    exercise_id: string
+    /** Vazio/ausente apenas em itens cardio. */
+    exercise_id?: string | null
     sets?: number | null
     reps?: string | null
     rest_seconds?: number | null
@@ -23,12 +40,17 @@ export interface CanvasItemDTO {
     method?: MethodKey | null
     /** Tag de agrupamento: itens CONSECUTIVOS com a mesma tag viram um superset. */
     superset_group?: string | null
+    /** Quando presente, o item é um BLOCO AERÓBIO (item_type 'cardio') —
+     *  exercise_id/sets/reps/method/superset_group são ignorados. */
+    cardio?: CanvasCardioDTO | null
 }
 
 export interface CanvasSessionDTO {
     name: string
     /** 0=domingo … 6=sábado (mesma convenção do scheduled_days). */
     scheduled_days: number[]
+    /** Tipo da sessão (migration 268). Ausente = 'strength'. */
+    workout_type?: 'strength' | 'cardio'
     items: CanvasItemDTO[]
 }
 

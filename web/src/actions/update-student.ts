@@ -11,6 +11,8 @@ interface UpdateStudentInput {
     email: string
     phone?: string
     modality?: string | null
+    /** FCmáx (bpm) — resolve as zonas da prescrição aeróbia. Null limpa. */
+    maxHeartRateBpm?: number | null
 }
 
 interface UpdateStudentResult {
@@ -58,6 +60,12 @@ export async function updateStudent(
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return { success: false, error: 'E-mail inválido.' }
     }
+    if (
+        input.maxHeartRateBpm != null &&
+        (!Number.isInteger(input.maxHeartRateBpm) || input.maxHeartRateBpm < 100 || input.maxHeartRateBpm > 230)
+    ) {
+        return { success: false, error: 'FCmáx deve ser um inteiro entre 100 e 230 bpm.' }
+    }
 
     // Escopo (solo dono OU membro do estúdio) antes de qualquer op privilegiada.
     const scope = await getStudentScope(trainer.id)
@@ -89,6 +97,10 @@ export async function updateStudent(
             email,
             phone: input.phone?.trim() || null,
             modality: input.modality ?? null,
+            // Só toca a FCmáx quando o caller a envia (undefined preserva).
+            ...(input.maxHeartRateBpm !== undefined
+                ? { max_heart_rate_bpm: input.maxHeartRateBpm }
+                : {}),
         } as never)
         .eq('id', existing.id)
         .select()

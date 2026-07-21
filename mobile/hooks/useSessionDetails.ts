@@ -18,6 +18,8 @@ export interface CardioResult {
     distanceKm?: number;
     intensity?: string;
     intervals?: { work_seconds: number; rest_seconds: number; rounds: number };
+    actualDurationSeconds?: number;
+    completedRounds?: number;
 }
 
 export interface SessionItem {
@@ -43,6 +45,9 @@ export interface SessionStats {
     completedSets: number;
     totalTonnage: number;
     exerciseCount: number;
+    cardioBlocksTotal: number;
+    cardioBlocksDone: number;
+    cardioMinutes: number;
 }
 
 export interface SessionDetailsData {
@@ -53,6 +58,8 @@ export interface SessionDetailsData {
     rpe: number | null;
     feedback: string | null;
     workoutName: string;
+    /** Sessão aeróbia: stats do sheet mostram blocos/tempo, não séries/tonelagem. */
+    workoutType: 'strength' | 'cardio';
     items: SessionItem[];
     stats: SessionStats;
 }
@@ -108,6 +115,8 @@ function buildSessionItem(
                     distanceKm: parsed.distance_km,
                     intensity: parsed.intensity,
                     intervals: parsed.intervals,
+                    actualDurationSeconds: parsed.actual_duration_seconds,
+                    completedRounds: parsed.completed_rounds,
                 };
             } catch {
                 result.cardioResult = null;
@@ -143,7 +152,7 @@ export function useSessionDetails() {
                     feedback,
                     assigned_workout_id,
                     workout_name,
-                    assigned_workouts ( name )
+                    assigned_workouts ( name, workout_type )
                 `)
                 .eq('id', sessionId)
                 .single();
@@ -190,6 +199,9 @@ export function useSessionDetails() {
                 completedSets: 0,
                 totalTonnage: 0,
                 exerciseCount: 0,
+                cardioBlocksTotal: 0,
+                cardioBlocksDone: 0,
+                cardioMinutes: 0,
             };
 
             if (session.assigned_workout_id) {
@@ -240,6 +252,15 @@ export function useSessionDetails() {
                         stats.totalSetsPrescribed += sessionItem.setsPrescribed || 0;
                         stats.completedSets += sessionItem.setLogs.length;
                         stats.totalTonnage += sessionItem.setLogs.reduce((acc, s) => acc + s.weight * s.reps, 0);
+                    } else if (item.item_type === 'cardio') {
+                        stats.cardioBlocksTotal++;
+                        if (sessionItem.cardioResult) {
+                            stats.cardioBlocksDone++;
+                            const actual = sessionItem.cardioResult.actualDurationSeconds;
+                            stats.cardioMinutes += typeof actual === 'number'
+                                ? actual / 60
+                                : (sessionItem.cardioResult.durationMinutes ?? 0);
+                        }
                     }
 
                     items.push(sessionItem);
@@ -332,6 +353,7 @@ export function useSessionDetails() {
                 rpe: session.rpe,
                 feedback: session.feedback,
                 workoutName: session.assigned_workouts?.name || session.workout_name || 'Treino',
+                workoutType: session.assigned_workouts?.workout_type === 'cardio' ? 'cardio' : 'strength',
                 items,
                 stats,
             });

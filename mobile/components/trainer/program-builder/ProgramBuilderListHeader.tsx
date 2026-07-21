@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { Calendar, CalendarDays, Eye, Layers, Timer } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useV2Colors } from "@/hooks/useV2Colors";
@@ -70,11 +70,12 @@ export interface ProgramBuilderListHeaderProps {
     onUpdateStartDate: (date: string) => void;
 
     /** Handlers dos treinos. */
-    onAddWorkout: () => void;
+    onAddWorkout: (workoutType?: 'strength' | 'cardio') => void;
     onSelectWorkout: (workoutId: string) => void;
     onRenameWorkout: (workoutId: string, name: string) => void;
     onUpdateWorkoutFrequency: (workoutId: string, days: string[]) => void;
     onDeleteWorkout: (workoutId: string, name: string) => void;
+    onChangeWorkoutType?: (workoutId: string, type: 'strength' | 'cardio') => void;
 
     /** Action: visualizar preview como aluno (Eye icon). */
     onPreview: () => void;
@@ -118,6 +119,7 @@ export function ProgramBuilderListHeader({
     onRenameWorkout,
     onUpdateWorkoutFrequency,
     onDeleteWorkout,
+    onChangeWorkoutType,
     onPreview,
 }: ProgramBuilderListHeaderProps) {
     const colors = useV2Colors();
@@ -435,7 +437,11 @@ export function ProgramBuilderListHeader({
                 <WorkoutSelectorAddCard
                     onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        onAddWorkout();
+                        Alert.alert('Novo treino', 'Qual o tipo do treino?', [
+                            { text: 'Treino de força', onPress: () => onAddWorkout('strength') },
+                            { text: 'Treino aeróbio', onPress: () => onAddWorkout('cardio') },
+                            { text: 'Cancelar', style: 'cancel' },
+                        ]);
                     }}
                     pulse={workouts.every((w) => w.items.length === 0)}
                 />
@@ -451,6 +457,9 @@ export function ProgramBuilderListHeader({
                         onUpdateWorkoutFrequency(currentWorkout.id, days)
                     }
                     onDelete={() => onDeleteWorkout(currentWorkout.id, currentWorkout.name)}
+                    onChangeWorkoutType={onChangeWorkoutType
+                        ? (type) => onChangeWorkoutType(currentWorkout.id, type)
+                        : undefined}
                 />
             )}
 

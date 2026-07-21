@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text } from "react-native";
-import { Dumbbell, ChevronRight, Check, Minus } from "lucide-react-native";
+import { Activity, Dumbbell, ChevronRight, Check, Minus } from "lucide-react-native";
 import { PressableScale } from "../shared/PressableScale";
 import type { WeeklyProgress } from "@kinevo/shared/utils/schedule-projection";
 import { useV2Colors } from "../../hooks/useV2Colors";
@@ -39,6 +39,7 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                 const isFullyDone = expected > 0 && completed >= expected;
                 const isPartial = expected > 0 && completed > 0 && completed < expected;
                 const isDoneToday = todayCompletedIds?.has(workout.id) || false;
+                const isCardio = workout.workout_type === 'cardio';
 
                 return (
                     <PressableScale
@@ -77,7 +78,9 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                     borderRadius: 14,
                                     backgroundColor: isFullyDone
                                         ? 'rgba(16,185,129,0.14)'
-                                        : toRgba(brand.color, 0.12),
+                                        : isCardio
+                                            ? 'rgba(6,182,212,0.12)'
+                                            : toRgba(brand.color, 0.12),
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     marginRight: 16,
@@ -85,6 +88,8 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                             >
                                 {isFullyDone ? (
                                     <Check size={22} color="#16a34a" strokeWidth={2} />
+                                ) : isCardio ? (
+                                    <Activity size={22} color="#06b6d4" strokeWidth={1.5} />
                                 ) : (
                                     <Dumbbell size={22} color={brand.color} strokeWidth={1.5} />
                                 )}
@@ -125,7 +130,7 @@ export function WorkoutList({ workouts, onWorkoutPress, weeklyProgress, todayCom
                                             fontWeight: '400',
                                         }}
                                     >
-                                        {workout.items?.length || 0} exercícios
+                                        {isCardio ? 'Treino aeróbio' : `${workout.items?.length || 0} exercícios`}
                                     </Text>
 
                                     {expected > 0 && (

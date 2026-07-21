@@ -97,6 +97,8 @@ export interface CompactWorkout {
     order_index: number
     /** Days of week (0=Sun, 6=Sat) */
     scheduled_days: number[]
+    /** Session type (migration 268). Absent/null = 'strength'; 'cardio' = standalone aerobic session. */
+    workout_type?: 'strength' | 'cardio'
     /** Exercises in execution order */
     items: CompactWorkoutItem[]
 }
@@ -153,13 +155,17 @@ export const GENERATION_JSON_SCHEMA = {
                 items: {
                     type: 'object' as const,
                     additionalProperties: false,
-                    required: ['name', 'order_index', 'scheduled_days', 'items'],
+                    required: ['name', 'order_index', 'scheduled_days', 'workout_type', 'items'],
                     properties: {
                         name: { type: 'string' as const },
                         order_index: { type: 'number' as const },
                         scheduled_days: {
                             type: 'array' as const,
                             items: { type: 'number' as const },
+                        },
+                        workout_type: {
+                            type: ['string', 'null'] as const,
+                            enum: ['strength', 'cardio', null],
                         },
                         items: {
                             type: 'array' as const,
@@ -317,6 +323,7 @@ export function validateCompactGeneration(raw: unknown): CompactGenerationOutput
             name: w.name,
             order_index: typeof w.order_index === 'number' ? w.order_index : wi,
             scheduled_days: Array.isArray(w.scheduled_days) ? w.scheduled_days : [],
+            workout_type: (w.workout_type === 'cardio' ? 'cardio' : 'strength') as 'strength' | 'cardio',
             items: (w.items as any[]).map((it: any) => {
                 const itemType = it.item_type || 'exercise'
                 const parsedConfig = resolvedItemConfigs[configIndex++] ?? null

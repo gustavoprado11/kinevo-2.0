@@ -117,6 +117,8 @@ export interface SnapshotWorkout {
     name: string
     order_index: number
     scheduled_days?: number[]
+    /** Tipo da sessão (migration 268). Ausente = 'strength'. */
+    workout_type?: 'strength' | 'cardio'
     items: SnapshotItem[]
 }
 
@@ -218,6 +220,13 @@ export async function assignFromSnapshot(
         const keptItems: SnapshotItem[] = []
         const droppedIds: string[] = []
         for (const item of items) {
+            // Itens sem exercício de catálogo (cardio/warmup/note) passam direto —
+            // o filtro de ghost-id só se aplica a exercícios. Antes, blocos cardio
+            // (exercise_id null) eram dropados em silêncio aqui.
+            if (item.item_type && item.item_type !== 'exercise' && item.item_type !== 'superset') {
+                keptItems.push(item)
+                continue
+            }
             if (typeof item.exercise_id === 'string' && validExerciseIds.has(item.exercise_id)) {
                 keptItems.push(item)
             } else {
@@ -282,6 +291,7 @@ export async function assignFromSnapshot(
                 input.workoutSchedule?.[workout.order_index] ??
                 workout.scheduled_days ??
                 [],
+            workout_type: workout.workout_type ?? 'strength',
             items: items.map((item) => ({
                 item_type: item.item_type,
                 order_index: item.order_index,

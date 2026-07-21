@@ -12,6 +12,7 @@ interface AssignedWorkout {
     order_index: number;
     items?: { id: string }[];
     scheduled_days?: number[];
+    workout_type?: 'strength' | 'cardio';
     [key: string]: any;
 }
 

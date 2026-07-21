@@ -520,6 +520,7 @@ const PROGRESS_LABELS: Record<string, string> = {
     kinevo_create_student_draft_program: 'Montando o rascunho no perfil do aluno…',
     kinevo_add_workout_session: 'Adicionando um treino…',
     kinevo_add_exercise_to_session: 'Adicionando exercícios…',
+    kinevo_add_cardio_to_session: 'Adicionando bloco aeróbio…',
     kinevo_create_superset: 'Criando o superset…',
     kinevo_assign_program: 'Atribuindo o programa ao aluno…',
     kinevo_delete_program: 'Excluindo o rascunho…',

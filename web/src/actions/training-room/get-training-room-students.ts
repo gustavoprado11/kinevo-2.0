@@ -6,6 +6,7 @@ import { getScheduledWorkoutsForDate, getWeekRange } from '../../../../shared/ut
 export interface WorkoutOption {
     id: string
     name: string
+    workoutType: 'strength' | 'cardio'
     isToday: boolean // true if scheduled for today
     lastCompletedAt: string | null // ISO date of last completed session
     weeklyExpected: number  // scheduled occurrences this week
@@ -79,7 +80,7 @@ export async function getTrainingRoomStudents(): Promise<{
     const { data: workouts } = programIds.length > 0
         ? await supabase
             .from('assigned_workouts')
-            .select('id, name, assigned_program_id, scheduled_days')
+            .select('id, name, assigned_program_id, scheduled_days, workout_type')
             .in('assigned_program_id', programIds)
             .order('name')
         : { data: [] as any[] }
@@ -186,6 +187,7 @@ export async function getTrainingRoomStudents(): Promise<{
             return {
                 id: w.id,
                 name: w.name,
+                workoutType: w.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
                 isToday: todayIds.has(w.id),
                 lastCompletedAt: lastSessionMap.get(`${student.id}:${w.id}`) || null,
                 weeklyExpected,

@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     // Posse: o aluno tem que ser deste treinador.
     const { data: student } = await supabase
         .from('students')
-        .select('id, name')
+        .select('id, name, max_heart_rate_bpm')
         .eq('id', body.studentId)
         .eq('coach_id', trainer.id)
         .single()
@@ -80,6 +80,7 @@ export async function POST(req: Request) {
                     trainerName: trainer.name ?? '',
                     studentId: body.studentId,
                     studentName: student.name ?? '',
+                    studentMaxHr: student.max_heart_rate_bpm ?? null,
                     message: body.message,
                     history: Array.isArray(body.history) ? body.history.slice(-10) : [],
                     exercises: Array.isArray(body.exercises) ? body.exercises : [],

@@ -911,6 +911,7 @@ export type Database = {
           scheduled_days: number[] | null
           source_template_id: string | null
           updated_at: string
+          workout_type: string
         }
         Insert: {
           assigned_program_id: string
@@ -921,6 +922,7 @@ export type Database = {
           scheduled_days?: number[] | null
           source_template_id?: string | null
           updated_at?: string
+          workout_type?: string
         }
         Update: {
           assigned_program_id?: string
@@ -931,6 +933,7 @@ export type Database = {
           scheduled_days?: number[] | null
           source_template_id?: string | null
           updated_at?: string
+          workout_type?: string
         }
         Relationships: [
           {
@@ -3868,6 +3871,7 @@ export type Database = {
           is_private: boolean
           is_trainer_profile: boolean | null
           management_tags: string[] | null
+          max_heart_rate_bpm: number | null
           modality: string
           name: string
           notification_preferences: Json | null
@@ -3893,6 +3897,7 @@ export type Database = {
           is_private?: boolean
           is_trainer_profile?: boolean | null
           management_tags?: string[] | null
+          max_heart_rate_bpm?: number | null
           modality?: string
           name: string
           notification_preferences?: Json | null
@@ -3918,6 +3923,7 @@ export type Database = {
           is_private?: boolean
           is_trainer_profile?: boolean | null
           management_tags?: string[] | null
+          max_heart_rate_bpm?: number | null
           modality?: string
           name?: string
           notification_preferences?: Json | null
@@ -5111,6 +5117,7 @@ export type Database = {
           order_index: number
           program_template_id: string
           updated_at: string
+          workout_type: string
         }
         Insert: {
           created_at?: string
@@ -5120,6 +5127,7 @@ export type Database = {
           order_index: number
           program_template_id: string
           updated_at?: string
+          workout_type?: string
         }
         Update: {
           created_at?: string
@@ -5129,6 +5137,7 @@ export type Database = {
           order_index?: number
           program_template_id?: string
           updated_at?: string
+          workout_type?: string
         }
         Relationships: [
           {

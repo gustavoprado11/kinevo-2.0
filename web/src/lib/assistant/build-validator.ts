@@ -42,11 +42,14 @@ interface BuildItem {
     rounds?: number
     exercise_function?: string
     superset?: BuildSupersetChild[]
+    /** Bloco aeróbio (CardioConfig) — item sem exercise_id, fora das regras de força. */
+    cardio?: unknown
 }
 
 interface BuildSession {
     name: string
     scheduled_days?: number[]
+    session_type?: string
     items: BuildItem[]
 }
 
@@ -145,6 +148,19 @@ export function validateBuildArgs(
 
     for (const s of sessions) {
         const exercises = flatExercises(s)
+        const cardioBlocks = (s.items ?? []).filter((it) => it.cardio).length
+
+        // Sessão AERÓBIA (session_type='cardio' ou só blocos cardio): fora das
+        // regras de força — exige ao menos 1 bloco cardio e agenda.
+        if (s.session_type === 'cardio' || (exercises.length === 0 && cardioBlocks > 0)) {
+            if (cardioBlocks === 0) {
+                errors.push(`A sessão aeróbia "${s.name}" está sem blocos cardio (campo 'cardio' nos itens).`)
+            }
+            if (!s.scheduled_days || s.scheduled_days.length === 0) {
+                warnings.push(`Sessão "${s.name}": sem scheduled_days — defina os dias da semana.`)
+            }
+            continue
+        }
 
         // E1: sessão vazia.
         if (exercises.length === 0) {

@@ -30,6 +30,7 @@ export function CelebrationFitness({ data, onComplete, onShare }: CelebrationVar
   const hasPR = (data.prCount ?? 0) > 0;
   const hasStreak = (data.streakDays ?? 0) > 0;
   const hasDelta = (data.deltaVolumePct ?? 0) > 0;
+  const isCardio = data.sessionType === 'cardio';
   const subtitle = [data.workoutName, 'Hoje'].filter(Boolean).join(' · ');
 
   return (
@@ -57,13 +58,28 @@ export function CelebrationFitness({ data, onComplete, onShare }: CelebrationVar
         {/* Stats grid */}
         <Reveal clock={clock} start={2.6} end={2.9} style={s.statsGrid}>
           <Stat dot={ct.statDots[0]} label="duração"><Text style={s.statValue}>{data.duration}</Text></Stat>
-          <Stat dot={ct.statDots[1]} label="séries">
-            <CountText target={data.completedSets} startMs={2700} durMs={800} skip={reduce} style={s.statValue}
-              format={(n) => `${Math.floor(n)}/${data.totalSets}`} />
-          </Stat>
-          <Stat dot={ct.statDots[2]} label="volume">
-            <CountText target={data.totalVolume} startMs={2700} durMs={800} skip={reduce} style={s.statValue} format={volT} />
-          </Stat>
+          {isCardio ? (
+            <>
+              <Stat dot={ct.statDots[1]} label="blocos">
+                <CountText target={data.cardioBlocksCompleted ?? 0} startMs={2700} durMs={800} skip={reduce} style={s.statValue}
+                  format={(n) => `${Math.floor(n)}/${data.cardioBlocksTotal ?? 0}`} />
+              </Stat>
+              <Stat dot={ct.statDots[2]} label="aeróbio">
+                <CountText target={data.cardioMinutes ?? 0} startMs={2700} durMs={800} skip={reduce} style={s.statValue}
+                  format={(n) => `${Math.floor(n)} min`} />
+              </Stat>
+            </>
+          ) : (
+            <>
+              <Stat dot={ct.statDots[1]} label="séries">
+                <CountText target={data.completedSets} startMs={2700} durMs={800} skip={reduce} style={s.statValue}
+                  format={(n) => `${Math.floor(n)}/${data.totalSets}`} />
+              </Stat>
+              <Stat dot={ct.statDots[2]} label="volume">
+                <CountText target={data.totalVolume} startMs={2700} durMs={800} skip={reduce} style={s.statValue} format={volT} />
+              </Stat>
+            </>
+          )}
           <Stat dot={ct.statDots[3]} label="RPE">
             <CountText target={data.rpe} startMs={2700} durMs={800} skip={reduce} style={s.statValue}
               format={(n) => `${Math.floor(n)}/10`} />

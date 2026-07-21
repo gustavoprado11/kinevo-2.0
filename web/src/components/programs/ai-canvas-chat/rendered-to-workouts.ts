@@ -5,7 +5,7 @@
 // divergência no caminho de save. NÃO toca lib/prescription/ (motor protegido).
 
 import type { Exercise } from '@/types/exercise'
-import { makeExerciseItem, tempId, type Workout, type WorkoutItem } from '../builder-model'
+import { makeExerciseItem, makeCardioItem, tempId, type Workout, type WorkoutItem } from '../builder-model'
 import { applyPreset } from '@kinevo/shared/lib/prescription/set-scheme'
 import { SYSTEM_PRESETS } from '@kinevo/shared/lib/prescription/set-scheme-presets'
 import type { MethodKey } from '@kinevo/shared/types/prescription'
@@ -100,13 +100,37 @@ function groupSupersets(built: Array<{ item: WorkoutItem; group: string | null }
     return result.map((it, idx) => ({ ...it, order_index: idx }))
 }
 
+/** Constrói o item cardio do builder a partir do DTO da IA (mesmo factory do
+ *  botão "Aeróbio" — makeCardioItem — com o config completo por cima). */
+function buildCardioItem(cardio: NonNullable<CanvasItemDTO['cardio']>): WorkoutItem {
+    const item = makeCardioItem()
+    const config: Record<string, unknown> = { mode: cardio.mode }
+    if (cardio.equipment) config.equipment = cardio.equipment
+    if (cardio.mode === 'continuous') {
+        config.objective = cardio.objective ?? 'time'
+        if (cardio.duration_minutes != null) config.duration_minutes = cardio.duration_minutes
+        if (cardio.distance_km != null) config.distance_km = cardio.distance_km
+    } else if (cardio.intervals) {
+        config.intervals = cardio.intervals
+    }
+    if (cardio.intensity) config.intensity = cardio.intensity
+    if (cardio.intensity_target) config.intensity_target = cardio.intensity_target
+    if (cardio.protocol_key) config.protocol_key = cardio.protocol_key
+    if (cardio.notes) config.notes = cardio.notes
+    item.item_config = config
+    return item
+}
+
 /** RenderedProgram (saída da IA) → Workout[] do builder, com métodos + supersets. */
 export function renderedToWorkouts(program: RenderedProgram, exercises: Exercise[]): Workout[] {
     const byId = new Map(exercises.map(e => [e.id, e]))
     return (program.sessions ?? []).map((s, si) => {
         const built = (s.items ?? [])
             .map(it => {
-                const exercise = byId.get(it.exercise_id)
+                if (it.cardio) {
+                    return { item: buildCardioItem(it.cardio), group: null }
+                }
+                const exercise = it.exercise_id ? byId.get(it.exercise_id) : undefined
                 if (!exercise) return null // id fora do catálogo — ignora (render_program já filtra)
                 return { item: buildExerciseItem(it, exercise), group: it.superset_group?.trim() || null }
             })
@@ -117,6 +141,7 @@ export function renderedToWorkouts(program: RenderedProgram, exercises: Exercise
             order_index: si,
             items: groupSupersets(built),
             frequency: (s.scheduled_days ?? []).map(d => DAY_INT_TO_STRING[d]).filter(Boolean),
+            workout_type: s.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
         }
     })
 }
@@ -157,14 +182,33 @@ export function workoutsToSnapshot(
                         notes: it.notes ?? null,
                         method: it.method_key ?? null,
                     })
+                } else if (it.item_type === 'cardio') {
+                    // Blocos aeróbios entram no snapshot — a IA preserva/ajusta
+                    // sessões cardio entre turnos (antes eram omitidos e sumiam).
+                    const cfg = (it.item_config ?? {}) as Record<string, unknown>
+                    items.push({
+                        cardio: {
+                            mode: cfg.mode === 'interval' ? 'interval' : 'continuous',
+                            equipment: (cfg.equipment as string) ?? null,
+                            objective: (cfg.objective as 'time' | 'distance') ?? null,
+                            duration_minutes: (cfg.duration_minutes as number) ?? null,
+                            distance_km: (cfg.distance_km as number) ?? null,
+                            intensity: (cfg.intensity as string) ?? null,
+                            intensity_target: (cfg.intensity_target as import('@kinevo/shared/types/workout-items').CardioIntensityTarget) ?? null,
+                            intervals: (cfg.intervals as { work_seconds: number; rest_seconds: number; rounds: number }) ?? null,
+                            protocol_key: (cfg.protocol_key as string) ?? null,
+                            notes: (cfg.notes as string) ?? null,
+                        },
+                    })
                 }
-                // warmup/cardio/note: omitidos do snapshot (a IA foca nos exercícios).
+                // warmup/note: omitidos do snapshot (a IA foca na prescrição).
             }
             return {
                 name: w.name,
                 scheduled_days: (w.frequency ?? [])
                     .map(d => DAY_STR_TO_INT[d])
                     .filter((d): d is number => d !== undefined),
+                workout_type: w.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
                 items,
             }
         }),

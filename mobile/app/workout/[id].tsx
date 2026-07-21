@@ -154,6 +154,7 @@ export default function WorkoutPlayerScreen() {
     const {
         isLoading,
         workoutName,
+        workoutType,
         exercises,
         workoutNotes,
         getDuration,
@@ -369,7 +370,36 @@ export default function WorkoutPlayerScreen() {
         return { completedSets: completed, totalSets: total };
     }, [exercises]);
 
-    const allSetsCompleted = totalSets > 0 && completedSets === totalSets;
+    // Sessão aeróbia: o gate/labels contam BLOCOS de cardio, não séries — um
+    // bloco cardio só ganha setsData quando é concluído (toggleCardioComplete),
+    // então "séries" mostraria 0/0 antes de qualquer bloco rodar.
+    const isCardioSession = workoutType === 'cardio';
+    const { completedCardioBlocks, totalCardioBlocks } = useMemo(() => {
+        let completed = 0;
+        let total = 0;
+        exercises.forEach(ex => {
+            if (ex.item_type !== 'cardio') return;
+            total += 1;
+            if (ex.setsData.length > 0 && ex.setsData.every(s => s.completed)) completed += 1;
+        });
+        return { completedCardioBlocks: completed, totalCardioBlocks: total };
+    }, [exercises]);
+
+    const allSetsCompleted = isCardioSession
+        ? totalCardioBlocks > 0 && completedCardioBlocks === totalCardioBlocks
+        : totalSets > 0 && completedSets === totalSets;
+
+    // Tempo aeróbio real dos blocos concluídos: actual_duration_seconds é
+    // gravado no item_config pelo toggleCardioComplete; fallback pro prescrito.
+    const cardioActualMinutes = useMemo(() => Math.round(exercises.reduce((acc, ex) => {
+        if (ex.item_type !== 'cardio') return acc;
+        if (!(ex.setsData.length > 0 && ex.setsData[0].completed)) return acc;
+        const cfg = (ex.item_config || {}) as Record<string, any>;
+        if (typeof cfg.actual_duration_seconds === 'number') {
+            return acc + cfg.actual_duration_seconds / 60;
+        }
+        return acc + (typeof cfg.duration_minutes === 'number' ? cfg.duration_minutes : 0);
+    }, 0)), [exercises]);
 
     // Preferência de modo de execução (lista/foco), persistida por device (MMKV).
     // Fase 1: só o cabeçalho/toggle entram; os dois segmentos ainda renderizam a
@@ -390,6 +420,11 @@ export default function WorkoutPlayerScreen() {
         });
         return { doneExercises: done, totalExercises: total };
     }, [exercises]);
+
+    // Sessão aeróbia: a barra de conclusão conta blocos (o memo acima excluiria
+    // blocos ainda não engajados — a barra ficaria "0 de 0" o treino inteiro).
+    const progressDone = isCardioSession ? completedCardioBlocks : doneExercises;
+    const progressTotal = isCardioSession ? totalCardioBlocks : totalExercises;
 
     // Hint de primeiro treino (onboarding do aluno, migration 267). Banner
     // inline mostrado uma única vez; some pra sempre no X ou quando a primeira
@@ -855,6 +890,10 @@ export default function WorkoutPlayerScreen() {
                     totalSets,
                     totalVolume,
                     rpe,
+                    sessionType: workoutType,
+                    cardioBlocksCompleted: completedCardioBlocks,
+                    cardioBlocksTotal: totalCardioBlocks,
+                    cardioMinutes: cardioActualMinutes,
                     workoutName,
                     endDate: new Date(),
                     coach: profile?.coach
@@ -1153,13 +1192,13 @@ export default function WorkoutPlayerScreen() {
                     <WorkoutModeToggle mode={viewMode} onChange={setViewMode} />
                 </View>
 
-                {/* Completion bar (por exercício — D4) */}
+                {/* Completion bar (por exercício — D4; por bloco em sessão aeróbia) */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
                     <View style={{ flex: 1, height: 6, backgroundColor: colors.surface.card2, borderRadius: 3, overflow: 'hidden' }}>
-                        <View style={{ height: '100%', width: `${totalExercises > 0 ? (doneExercises / totalExercises) * 100 : 0}%`, backgroundColor: colors.purple[600], borderRadius: 3 }} />
+                        <View style={{ height: '100%', width: `${progressTotal > 0 ? (progressDone / progressTotal) * 100 : 0}%`, backgroundColor: colors.purple[600], borderRadius: 3 }} />
                     </View>
                     <Text style={{ color: colors.text.tertiary, fontSize: 11, fontWeight: '700' }}>
-                        {doneExercises} de {totalExercises} feito{doneExercises === 1 ? '' : 's'}
+                        {progressDone} de {progressTotal} feito{progressDone === 1 ? '' : 's'}
                     </Text>
                 </View>
             </View>
@@ -1180,7 +1219,7 @@ export default function WorkoutPlayerScreen() {
                             pages={focusItems.map((item, i) => {
                                 const eyebrow = (
                                     <Text style={{ fontSize: 10, fontWeight: '700', color: colors.purple[700], letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>
-                                        Exercício {i + 1} de {focusItems.length}
+                                        {isCardioSession ? 'Bloco' : 'Exercício'} {i + 1} de {focusItems.length}
                                     </Text>
                                 );
                                 if (item.type === 'exercise') {
@@ -1256,7 +1295,9 @@ export default function WorkoutPlayerScreen() {
                                 } else {
                                     Alert.alert(
                                         'Finalizar treino incompleto?',
-                                        `Você completou ${completedSets} de ${totalSets} séries. Deseja finalizar mesmo assim?`,
+                                        isCardioSession
+                                            ? `Você completou ${completedCardioBlocks} de ${totalCardioBlocks} bloco${totalCardioBlocks === 1 ? '' : 's'}. Deseja finalizar mesmo assim?`
+                                            : `Você completou ${completedSets} de ${totalSets} séries. Deseja finalizar mesmo assim?`,
                                         [
                                             { text: 'Continuar Treinando', style: 'cancel' },
                                             { text: 'Finalizar', style: 'destructive', onPress: handleFinish },
@@ -1480,7 +1521,9 @@ export default function WorkoutPlayerScreen() {
                         } else {
                             Alert.alert(
                                 'Finalizar treino incompleto?',
-                                `Você completou ${completedSets} de ${totalSets} séries. Deseja finalizar mesmo assim?`,
+                                isCardioSession
+                                    ? `Você completou ${completedCardioBlocks} de ${totalCardioBlocks} bloco${totalCardioBlocks === 1 ? '' : 's'}. Deseja finalizar mesmo assim?`
+                                    : `Você completou ${completedSets} de ${totalSets} séries. Deseja finalizar mesmo assim?`,
                                 [
                                     { text: 'Continuar Treinando', style: 'cancel' },
                                     { text: 'Finalizar', style: 'destructive', onPress: handleFinish },
@@ -1506,7 +1549,11 @@ export default function WorkoutPlayerScreen() {
                             fontWeight: '700',
                             fontSize: 16,
                         }}>
-                            {allSetsCompleted ? 'Finalizar Treino' : `Finalizar (${completedSets}/${totalSets})`}
+                            {allSetsCompleted
+                                ? 'Finalizar Treino'
+                                : isCardioSession
+                                    ? `Finalizar (${completedCardioBlocks}/${totalCardioBlocks})`
+                                    : `Finalizar (${completedSets}/${totalSets})`}
                         </Text>
                     )}
                 </TouchableOpacity>
@@ -1534,6 +1581,10 @@ export default function WorkoutPlayerScreen() {
                             return acc;
                         }, 0);
                     })(),
+                    sessionType: workoutType,
+                    cardioBlocksCompleted: completedCardioBlocks,
+                    cardioBlocksTotal: totalCardioBlocks,
+                    cardioMinutes: cardioActualMinutes,
                 }}
             />
             {/* Fase 14c — Pré-treino Readiness Sheet (antes da workout_session) */}

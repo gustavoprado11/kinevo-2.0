@@ -227,11 +227,21 @@ Prescreva quando:
 Modos:
 - "continuous": cardio contínuo em intensidade estável (zona 2, LISS). Para base aeróbia ou emagrecimento.
 - "interval": HIIT ou intervalado. Para condicionamento, VO2max, ou alunos com pouco tempo.
-Intensidade: use linguagem clara — "Zona 2 (FC 120-140bpm)", "RPE 6-7", "ritmo conversacional"
+Intensidade: prefira o alvo ESTRUTURADO no item_config — intensity_target: {"type":"zone","zone":2} (Z1–Z5;
+Z1 recuperação 50–60% FCmáx, Z2 base aeróbia, Z3 moderado, Z4 limiar, Z5 VO2max — o app resolve na FCmáx
+do aluno) ou {"type":"rpe","rpe":6}. Texto livre em intensity só quando nenhum se aplica.
+Intervalado: prefira um protocolo nomeado via protocol_key no item_config — "tabata" (20/10×8),
+"hiit_15_15", "hiit_30_30", "hiit_40_20", "norwegian_4x4" (4min/3min×4) — com intervals coerentes.
 
 ### Posicionamento
 - Aquecimento: SEMPRE order_index 0 (primeiro item do treino)
-- Aeróbio: SEMPRE maior order_index (último item do treino)`
+- Aeróbio: SEMPRE maior order_index (último item do treino)
+
+### Sessão aeróbia exclusiva (workout_type: "cardio")
+Quando o objetivo/pedido incluir DIAS SÓ DE AERÓBIO (ex.: "3x força + 2x aeróbio zona 2"), crie a sessão
+com workout_type: "cardio" e SOMENTE itens cardio dentro dela (nenhum exercício de força). As regras de
+composto/volume NÃO se aplicam a essas sessões. Sessões normais de força têm workout_type: "strength"
+(ou omitido). Cardio no FIM de uma sessão de força NÃO muda o workout_type dela.`
 }
 
 /**
@@ -287,6 +297,7 @@ Retorne exatamente este JSON (sem campos extras, sem texto fora do JSON):
       "name": "string — ex: Treino A — Push",
       "order_index": number,
       "scheduled_days": [number] (0=Dom, 6=Sáb),
+      "workout_type": "strength" | "cardio" (opcional; "cardio" só em sessão aeróbia exclusiva — sem exercícios de força),
       "items": [
         ... veja os tipos de item abaixo ...
       ]
@@ -541,6 +552,7 @@ export function parseAiResponse(rawJson: string): PrescriptionOutputSnapshot | n
             name: w.name,
             order_index: w.order_index ?? wi,
             scheduled_days: Array.isArray(w.scheduled_days) ? w.scheduled_days : [],
+            workout_type: (w.workout_type === 'cardio' ? 'cardio' : 'strength') as 'strength' | 'cardio',
             items: (w.items || []).map((item: any, ii: number) => {
                 const itemType = item.item_type || 'exercise'
 

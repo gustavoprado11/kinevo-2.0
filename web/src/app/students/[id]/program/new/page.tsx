@@ -42,7 +42,7 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
     ] = await Promise.all([
         supabase
             .from('students')
-            .select('id, name')
+            .select('id, name, max_heart_rate_bpm')
             .eq('id', studentId)
             .single(),
         supabase
@@ -124,6 +124,7 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
                 id: student.id,
                 name: student.name,
                 activeProgramName: activeProgram?.name || null,
+                maxHeartRateBpm: student.max_heart_rate_bpm ?? null,
             }}
             initialAssignmentType={isScheduled ? 'scheduled' : 'immediate'}
             prescriptionGenerationId={generationId}

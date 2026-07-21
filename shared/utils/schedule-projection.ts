@@ -58,6 +58,7 @@ export interface PendingWorkout {
   missedDate: string        // "12/03"
   exerciseCount: number
   notes?: string
+  workoutType?: 'strength' | 'cardio'
 }
 
 export interface WeeklyProgress {
@@ -217,6 +218,7 @@ const WEEK_DAYS_PT = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta
 export interface WorkoutWithMeta extends ScheduledWorkoutRef {
   items?: { id: string }[]
   notes?: string
+  workout_type?: 'strength' | 'cardio'
 }
 
 /**
@@ -258,6 +260,7 @@ export function calculateWeeklyProgress(
     date: Date
     exerciseCount: number
     notes?: string
+    workoutType?: 'strength' | 'cardio'
   }
   const allOccurrences: ScheduledOccurrence[] = []
 
@@ -281,6 +284,7 @@ export function calculateWeeklyProgress(
           date: occDate,
           exerciseCount: w.items?.length || 0,
           notes: w.notes,
+          workoutType: w.workout_type,
         })
       }
     }
@@ -334,6 +338,7 @@ export function calculateWeeklyProgress(
           missedDate: `${String(occ.date.getDate()).padStart(2, '0')}/${String(occ.date.getMonth() + 1).padStart(2, '0')}`,
           exerciseCount: occ.exerciseCount,
           notes: occ.notes,
+          workoutType: occ.workoutType,
         })
       }
     }

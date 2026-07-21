@@ -184,6 +184,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     // effect de save não pode regravá-lo com o estado final da tela.
     const hasFinishedRef = useRef(false);
     const [workoutName, setWorkoutName] = useState('');
+    const [workoutType, setWorkoutType] = useState<'strength' | 'cardio'>('strength');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Guard: prevent re-fetching workout data when auth session refreshes.
@@ -593,13 +594,14 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                 // 1. Get Workout Details
                 const { data: workout, error: workoutError }: { data: any; error: any } = await supabase
                     .from('assigned_workouts' as any)
-                    .select('name, assigned_program_id, scheduled_days')
+                    .select('name, assigned_program_id, scheduled_days, workout_type')
                     .eq('id', workoutId)
                     .single();
 
                 if (workoutError) throw workoutError;
                 if (mounted) {
                     setWorkoutName(workout.name);
+                    setWorkoutType(workout.workout_type === 'cardio' ? 'cardio' : 'strength');
                     setAssignedProgramId(workout.assigned_program_id || null);
                     scheduledDaysRef.current = workout.scheduled_days || null;
                 }
@@ -1533,7 +1535,9 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         duration_minutes: config.duration_minutes,
                         distance_km: config.distance_km,
                         intensity: config.intensity,
+                        intensity_target: config.intensity_target,
                         intervals: config.intervals,
+                        protocol_key: config.protocol_key,
                         actual_duration_seconds: config.actual_duration_seconds,
                         completed_rounds: config.completed_rounds,
                     });
@@ -1702,6 +1706,7 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
     return {
         isLoading,
         workoutName,
+        workoutType,
         exercises,
         workoutNotes,
         getDuration,

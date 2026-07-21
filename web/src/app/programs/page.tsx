@@ -12,7 +12,7 @@ export default async function ProgramsPage() {
         .select(`
             id, name, description, duration_weeks, created_at,
             workout_templates(
-                id, name, order_index, frequency,
+                id, name, order_index, frequency, workout_type,
                 workout_item_templates(
                     id, item_type,
                     exercises(
@@ -37,6 +37,7 @@ export default async function ProgramsPage() {
                 exerciseCount: (w.workout_item_templates || [])
                     .filter((item: any) => item.item_type === 'exercise').length,
                 frequency: w.frequency || null,
+                workout_type: w.workout_type === 'cardio' ? 'cardio' : 'strength',
             }))
 
         // Collect unique muscle groups from all exercises across all workouts

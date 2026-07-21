@@ -3,12 +3,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mcpSuccess, mcpError } from '../types'
 import { SYSTEM_PRESETS, COMPOUND_METHOD_KEYS } from '@kinevo/shared/lib/prescription/set-scheme-presets'
+import { CARDIO_PROTOCOLS } from '@kinevo/shared/lib/cardio/interval-protocols'
+import { HR_ZONES, zonePctLabel } from '@kinevo/shared/lib/cardio/zones'
 import { resolveGroupNames, balanceAcrossGroups } from './exercise-selection'
 
 export function registerExerciseReadTools(server: McpServer, trainerId: string) {
   server.tool(
     'kinevo_list_training_methods',
-    "List the advanced prescription capabilities available when building or editing workouts: training-method presets (pyramid, drop-set, cluster, 5x5, top+backoff), the per-set scheme fields, the valid set types, and how supersets work. Call this before prescribing advanced methods so you pass the right method_key, set_scheme, and rounds to kinevo_add_exercise_to_session / kinevo_update_workout_item.",
+    "List the advanced prescription capabilities available when building or editing workouts: training-method presets (pyramid, drop-set, cluster, 5x5, top+backoff), the per-set scheme fields, the valid set types, how supersets work, plus the AEROBIC toolkit — named interval protocols (Tabata, HIIT 30/30, 4×4 norueguês…) and the HR zone model (Z1–Z5) used by kinevo_add_cardio_to_session. Call this before prescribing advanced methods so you pass the right method_key/set_scheme/rounds or protocol/zone.",
     {},
     { title: 'Listar métodos de treino', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async () => {
@@ -53,6 +55,21 @@ export function registerExerciseReadTools(server: McpServer, trainerId: string) 
         supersets: {
           how: 'Use kinevo_create_superset to group 2+ exercises performed back-to-back with rest only after the group. The superset is a container item (item_type "superset") holding child exercises; rest_seconds on the container is the rest between rounds. Per-set schemes are not supported inside superset children (V1).',
         },
+        cardio_protocols: CARDIO_PROTOCOLS.map(p => ({
+          protocol: p.key,
+          name: p.label,
+          description: p.description,
+          work_seconds: p.intervals.work_seconds,
+          rest_seconds: p.intervals.rest_seconds,
+          rounds: p.intervals.rounds,
+          suggested_target: p.suggested_target,
+        })),
+        hr_zones: HR_ZONES.map(z => ({
+          zone: z.zone,
+          name: z.label,
+          range: zonePctLabel(z.zone),
+        })),
+        cardio_how_to_use: "Pass `protocol` to kinevo_add_cardio_to_session for a one-shot named interval block, and STRUCTURED intensity (zone 1-5, hr_min_bpm/hr_max_bpm, target_rpe, or pace_min_per_km) instead of free text — zones resolve to the student's bpm range via their max heart rate.",
       })
     }
   )

@@ -1,12 +1,14 @@
 'use client'
 
 import { useId, useState, useRef, useEffect } from 'react'
-import { Flame, Zap, FileText } from 'lucide-react'
+import { Dumbbell, Flame, Zap, FileText } from 'lucide-react'
 import type { Workout, WorkoutItem } from './program-builder-client'
 import type { Exercise } from '@/types/exercise'
 import { SortableWorkoutItem } from './sortable-workout-item'
 import { InlineExerciseSearch } from './inline-exercise-search'
 import { effectiveSetsForVolume } from '@kinevo/shared/lib/prescription/volume'
+import { canSwitchWorkoutType } from './builder-model'
+import type { WorkoutType } from '@kinevo/shared/types/workout-items'
 import {
     DndContext,
     closestCenter,
@@ -99,6 +101,7 @@ interface WorkoutPanelProps {
     workout: Workout
     exercises: Exercise[]
     onUpdateName: (name: string) => void
+    onUpdateWorkoutType?: (type: WorkoutType) => void
     onAddExercise: () => void
     onAddNote: () => void
     onAddWarmup?: () => void
@@ -174,6 +177,7 @@ export function WorkoutPanel({
     workout,
     exercises,
     onUpdateName,
+    onUpdateWorkoutType,
     onAddExercise,
     onAddNote,
     onAddWarmup,
@@ -282,6 +286,21 @@ export function WorkoutPanel({
         return sum
     }, 0)
 
+    const isCardioWorkout = workout.workout_type === 'cardio'
+    const cardioLocked = !canSwitchWorkoutType(workout, 'cardio')
+
+    // Sessão aeróbia: o header troca "séries" pela duração prescrita — soma
+    // do contínuo (duration_minutes) + intervalado ((work+rest)*rounds).
+    const totalCardioMinutes = Math.round(workout.items.reduce((sum, item) => {
+        if (item.item_type !== 'cardio') return sum
+        const cfg = item.item_config || {}
+        if (cfg.mode === 'interval' && cfg.intervals) {
+            const { work_seconds = 0, rest_seconds = 0, rounds = 0 } = cfg.intervals
+            return sum + ((work_seconds + rest_seconds) * rounds) / 60
+        }
+        return sum + (typeof cfg.duration_minutes === 'number' ? cfg.duration_minutes : 0)
+    }, 0))
+
     const selectedDayNames = DAYS.filter(d => (workout.frequency || []).includes(d.key)).map(d => d.name)
 
     return (
@@ -332,21 +351,68 @@ export function WorkoutPanel({
 
                     <div className="flex items-center gap-3 shrink-0">
                         {readonly ? (
-                            totalSets > 0 && (
-                                <div className="flex items-center gap-2 text-sm text-k-text-tertiary">
-                                    <span className="font-medium">{totalSets} séries</span>
-                                </div>
+                            isCardioWorkout ? (
+                                totalCardioMinutes > 0 && (
+                                    <div className="flex items-center gap-2 text-sm text-k-text-tertiary">
+                                        <span className="font-medium">{totalCardioMinutes} min</span>
+                                    </div>
+                                )
+                            ) : (
+                                totalSets > 0 && (
+                                    <div className="flex items-center gap-2 text-sm text-k-text-tertiary">
+                                        <span className="font-medium">{totalSets} séries</span>
+                                    </div>
+                                )
                             )
                         ) : (
                             <>
+                                {onUpdateWorkoutType && (
+                                    <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white dark:bg-surface-card border border-[#E8E8ED] dark:border-k-border-subtle">
+                                        <button
+                                            type="button"
+                                            onClick={() => onUpdateWorkoutType('strength')}
+                                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all ${
+                                                !isCardioWorkout
+                                                    ? 'bg-[#F5F5F7] dark:bg-glass-bg-active text-[#1D1D1F] dark:text-k-text-primary shadow-sm ring-1 ring-[#E8E8ED] dark:ring-k-border-subtle'
+                                                    : 'text-[#8E8E93] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                                            }`}
+                                            title="Treino de força"
+                                        >
+                                            <Dumbbell className="w-3 h-3" />
+                                            Força
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => onUpdateWorkoutType('cardio')}
+                                            disabled={!isCardioWorkout && cardioLocked}
+                                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                                                isCardioWorkout
+                                                    ? 'bg-[#F5F5F7] dark:bg-glass-bg-active text-cyan-600 dark:text-cyan-400 shadow-sm ring-1 ring-[#E8E8ED] dark:ring-k-border-subtle'
+                                                    : 'text-[#8E8E93] dark:text-k-text-quaternary hover:text-[#1D1D1F] dark:hover:text-k-text-primary'
+                                            }`}
+                                            title={!isCardioWorkout && cardioLocked
+                                                ? 'Remova os exercícios de força para converter em treino aeróbio'
+                                                : 'Treino aeróbio'}
+                                        >
+                                            <Zap className="w-3 h-3" />
+                                            Aeróbio
+                                        </button>
+                                    </div>
+                                )}
                                 <DaySelectorButtons
                                     frequency={workout.frequency || []}
                                     occupiedDays={occupiedDays}
                                     onUpdateFrequency={onUpdateFrequency}
                                     compact={isScrolled}
                                 />
-                                {totalSets > 0 && (
-                                    <span className="text-xs text-k-text-tertiary font-medium">{totalSets} séries</span>
+                                {isCardioWorkout ? (
+                                    totalCardioMinutes > 0 && (
+                                        <span className="text-xs text-k-text-tertiary font-medium">{totalCardioMinutes} min</span>
+                                    )
+                                ) : (
+                                    totalSets > 0 && (
+                                        <span className="text-xs text-k-text-tertiary font-medium">{totalSets} séries</span>
+                                    )
                                 )}
                             </>
                         )}
@@ -360,6 +426,39 @@ export function WorkoutPanel({
                     readonly ? (
                         <div className="text-center py-12">
                             <p className="text-[#86868B] dark:text-k-text-tertiary">Nenhum exercício neste treino</p>
+                        </div>
+                    ) : isCardioWorkout ? (
+                        <div className="py-6 rounded-xl border border-dashed border-[#E8E8ED] dark:border-k-border-subtle">
+                            <div className="max-w-md mx-auto space-y-5 px-6">
+                                {onAddCardio && (
+                                    <button
+                                        onClick={onAddCardio}
+                                        className="w-full flex flex-col items-center gap-2 py-6 px-3 rounded-xl border border-dashed border-cyan-200 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 hover:border-cyan-300 dark:hover:border-cyan-500/30 transition-all"
+                                    >
+                                        <Zap className="w-6 h-6" />
+                                        <span className="text-sm font-medium">Adicionar aeróbio</span>
+                                        <span className="text-[11px] text-k-text-quaternary">Contínuo ou intervalado — esteira, bike, corrida...</span>
+                                    </button>
+                                )}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {onAddWarmup && (
+                                        <button
+                                            onClick={onAddWarmup}
+                                            className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border border-dashed border-orange-200 dark:border-orange-500/20 text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:border-orange-300 dark:hover:border-orange-500/30 transition-all"
+                                        >
+                                            <Flame className="w-5 h-5" />
+                                            <span className="text-xs font-medium">Aquecimento</span>
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={onAddNote}
+                                        className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border border-dashed border-[#D2D2D7] dark:border-k-border-subtle text-[#6E6E73] dark:text-k-text-tertiary hover:text-[#1D1D1F] dark:hover:text-k-text-primary hover:bg-[#F5F5F7] dark:hover:bg-glass-bg-active hover:border-[#AEAEB2] dark:hover:border-k-border-primary transition-all"
+                                    >
+                                        <FileText className="w-5 h-5" />
+                                        <span className="text-xs font-medium">Nota</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <div className="py-6 rounded-xl border border-dashed border-[#E8E8ED] dark:border-k-border-subtle">
@@ -469,8 +568,8 @@ export function WorkoutPanel({
                                     </div>
                                 ))}
 
-                                {/* Inline search + Add buttons footer */}
-                                {onSearchAddExercise && (
+                                {/* Inline search + Add buttons footer (busca só em sessão de força) */}
+                                {onSearchAddExercise && !isCardioWorkout && (
                                     <div className="pt-6">
                                         <InlineExerciseSearch
                                             exercises={exercises}

@@ -133,6 +133,7 @@ export function snapshotToTreePayload(snapshot: PrescriptionOutputSnapshot): Tre
         name: w.name,
         order_index: w.order_index ?? wi,
         scheduled_days: Array.isArray(w.scheduled_days) ? w.scheduled_days : [],
+        workout_type: w.workout_type ?? 'strength',
         items: w.items
             // 'superset' no snapshot é pai virtual sem children materializados —
             // o motor determinístico não emite; descarta defensivamente.

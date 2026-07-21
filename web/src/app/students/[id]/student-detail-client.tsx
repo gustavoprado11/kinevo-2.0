@@ -100,6 +100,8 @@ interface Student {
     /** Estúdios: responsável pelo aluno (CTAs pessoais só para o dono). */
     coach_id?: string | null
     is_private?: boolean | null
+    /** FCmáx (bpm) — zonas da prescrição aeróbia. */
+    max_heart_rate_bpm?: number | null
 }
 
 interface AssignedProgram {

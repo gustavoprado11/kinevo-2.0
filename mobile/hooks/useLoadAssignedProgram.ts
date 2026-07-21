@@ -47,6 +47,7 @@ export function useLoadAssignedProgram(assignedProgramId: string | null): LoadRe
                         name,
                         order_index,
                         scheduled_days,
+                        workout_type,
                         assigned_workout_items (
                             id,
                             item_type,

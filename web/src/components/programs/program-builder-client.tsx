@@ -11,7 +11,7 @@ import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibrarySkeleton } from './exercise-library-panel-skeleton'
 import { VolumeSummary } from './volume-summary'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Settings } from 'lucide-react'
+import { ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, FileText, Settings, Zap } from 'lucide-react'
 import { KINEVO_DEFAULT_PREFERENCES, type PrescriptionPreferences } from '@/types/prescription-preferences'
 import { usePrescriptionPreferencesStore } from '@/stores/prescription-preferences-store'
 import { PreferencesBanner } from './preferences/preferences-banner'
@@ -33,6 +33,8 @@ import { usePrescriptionGenerationStream } from '@/hooks/use-prescription-genera
 import { consumePrescriptionAnimateFlag, setPrescriptionAnimateFlag } from './helpers/prescription-animate-flag'
 import { useBuilderDraft, buildDraftKey } from './helpers/use-builder-draft'
 import { WorkoutCardKebab } from './workout-card/WorkoutCardKebab'
+import { AddWorkoutButton } from './add-workout-button'
+import { CardioStudentHrContext } from './workout-card/cardio-student-context'
 
 // Code-split the heaviest on-demand panels: each only renders for a specific
 // builder mode (preview / ai_prescribe / compare) or when the AI feature is
@@ -98,6 +100,7 @@ interface ProgramData {
         name: string
         order_index: number
         frequency?: string[] | null
+        workout_type?: string | null
         workout_item_templates?: Array<{
             id: string
             item_type: string
@@ -139,6 +142,8 @@ interface StudentContext {
     id: string
     name: string
     activeProgramName?: string | null
+    /** FCmáx do aluno (students.max_heart_rate_bpm) — resolve zonas em bpm no CardioItemCard. */
+    maxHeartRateBpm?: number | null
 }
 
 interface ProgramBuilderClientProps {
@@ -451,6 +456,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                     name: wt.name,
                     order_index: wt.order_index,
                     frequency: wt.frequency || [],
+                    workout_type: wt.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
                     items
                 }
             })
@@ -470,6 +476,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         createWorkoutWithName,
         updateWorkoutName,
         updateWorkoutFrequency,
+        updateWorkoutType,
         deleteWorkout,
         duplicateWorkout,
         handleWorkoutDragEnd,
@@ -699,6 +706,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         const setDefaults = prescriptionPreferences?.set_defaults ?? KINEVO_DEFAULT_PREFERENCES.set_defaults
         const addCfg = prescriptionPreferences?.add_exercise ?? KINEVO_DEFAULT_PREFERENCES.add_exercise
         appendItemsWith(workoutId, (w) => {
+            // Sessão aeróbia não recebe exercício de força (drop da biblioteca,
+            // busca inline e painel lateral passam todos por aqui).
+            if (w.workout_type === 'cardio') return []
             // TODO v2: client model has single rest_seconds; pref.rest_isolation_seconds
             // is persisted but not consumed. See PRD_preferencias_prescricao_LIMITACOES_V1.md.
             const newItem = makeExerciseItem(exercise, {
@@ -853,7 +863,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         program_template_id: programId,
                         name: workout.name,
                         order_index: workout.order_index,
-                        frequency: workout.frequency
+                        frequency: workout.frequency,
+                        workout_type: workout.workout_type ?? 'strength',
                     })
                     .select('id')
                     .single()
@@ -1042,6 +1053,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         name: workout.name,
                         order_index: workout.order_index,
                         frequency: workout.frequency,
+                        workout_type: workout.workout_type ?? 'strength',
                     })
                     .select('id')
                     .single()
@@ -1125,6 +1137,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
     }
 
     return (
+        <CardioStudentHrContext.Provider value={studentContext?.maxHeartRateBpm ?? null}>
         <AppLayout
             trainerName={trainer.name}
             trainerEmail={trainer.email}
@@ -1518,6 +1531,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                                     }
                                                                 `}
                                                             >
+                                                                {workout.workout_type === 'cardio' && (
+                                                                    <Zap className="w-3 h-3 text-cyan-500 shrink-0" aria-label="Treino aeróbio" />
+                                                                )}
                                                                 {workout.name}
                                                                 {(!workout.frequency || workout.frequency.length === 0) && (
                                                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Sem dia da semana selecionado" />
@@ -1528,15 +1544,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                 </div>
                                             </SortableContext>
                                         </DndContext>
-                                        <button
-                                            onClick={addWorkout}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset transition-all ml-2"
-                                            title="Adicionar Treino"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                                            </svg>
-                                        </button>
+                                        <AddWorkoutButton onAdd={addWorkout} />
                                     </div>
                                     {/* Canvas (scrollable) */}
                                     <div
@@ -1553,6 +1561,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                     workout={activeWorkout}
                                                     exercises={localExercises}
                                                     onUpdateName={(name) => updateWorkoutName(activeWorkout.id, name)}
+                                                    onUpdateWorkoutType={(type) => updateWorkoutType(activeWorkout.id, type)}
                                                     onAddExercise={() => { }}
                                                     onAddNote={() => addNote(activeWorkout.id)}
                                                     onAddWarmup={() => addWarmup(activeWorkout.id)}
@@ -1670,6 +1679,9 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                                 }
                                                             `}
                                                         >
+                                                            {workout.workout_type === 'cardio' && (
+                                                                <Zap className="w-3 h-3 text-cyan-500 shrink-0" aria-label="Treino aeróbio" />
+                                                            )}
                                                             {workout.name}
                                                             {(!workout.frequency || workout.frequency.length === 0) && (
                                                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Sem dia da semana selecionado" />
@@ -1705,15 +1717,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                         </SortableContext>
                                     </DndContext>
 
-                                    <button
-                                        onClick={addWorkout}
-                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset transition-all ml-1 shrink-0"
-                                        title="Adicionar Treino"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                                        </svg>
-                                    </button>
+                                    <AddWorkoutButton onAdd={addWorkout} />
 
                                     {/* Inline Volume Summary */}
                                     <div className="ml-auto shrink-0" data-onboarding="program-volume">
@@ -1740,6 +1744,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                                         workout={activeWorkout}
                                                         exercises={localExercises}
                                                         onUpdateName={(name) => updateWorkoutName(activeWorkout.id, name)}
+                                                        onUpdateWorkoutType={(type) => updateWorkoutType(activeWorkout.id, type)}
                                                         onAddExercise={() => { }}
                                                         onAddNote={() => addNote(activeWorkout.id)}
                                                         onAddWarmup={() => addWarmup(activeWorkout.id)}
@@ -2094,5 +2099,6 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 </>
             )}
         </AppLayout>
+        </CardioStudentHrContext.Provider>
     )
 }

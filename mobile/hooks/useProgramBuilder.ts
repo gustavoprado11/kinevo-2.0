@@ -134,6 +134,7 @@ export function useProgramBuilder() {
                         name: workout.name,
                         order_index: workout.order_index,
                         frequency: workout.frequency,
+                        workout_type: workout.workout_type ?? 'strength',
                     } as any)
                     .select('id')
                     .single();
@@ -263,6 +264,7 @@ export function useProgramBuilder() {
                     name: w.name,
                     order_index: w.order_index,
                     frequency: w.frequency,
+                    workout_type: w.workout_type ?? 'strength',
                     items: w.items.map((it) => ({
                         item_type: it.item_type,
                         order_index: it.order_index,
@@ -494,6 +496,7 @@ export function useProgramBuilder() {
                             name: workout.name,
                             order_index: workout.order_index,
                             scheduled_days: frequencyToScheduledDays(workout.frequency),
+                            workout_type: workout.workout_type ?? 'strength',
                         } as any)
                         .select("id")
                         .single();
@@ -506,6 +509,7 @@ export function useProgramBuilder() {
                             name: workout.name,
                             order_index: workout.order_index,
                             scheduled_days: frequencyToScheduledDays(workout.frequency),
+                            workout_type: workout.workout_type ?? 'strength',
                         } as any)
                         .eq("id", workoutDbId);
                     if (updateWorkoutError) throw updateWorkoutError;
@@ -972,6 +976,7 @@ export function useProgramBuilder() {
         removeWorkout: store.removeWorkout,
         renameWorkout: store.renameWorkout,
         updateWorkoutFrequency: store.updateWorkoutFrequency,
+        setWorkoutType: store.setWorkoutType,
         setCurrentWorkout: store.setCurrentWorkout,
         addExercise: store.addExercise,
         swapExercise: store.swapExercise,

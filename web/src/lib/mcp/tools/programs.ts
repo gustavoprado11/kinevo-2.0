@@ -97,11 +97,11 @@ export function registerProgramReadTools(server: McpServer, trainerId: string) {
             student_id,
             students(id, name),
             assigned_workouts(
-              id, name, order_index, scheduled_days,
+              id, name, order_index, scheduled_days, workout_type,
               assigned_workout_items(
                 id, item_type, order_index, exercise_id, sets, reps,
                 rest_seconds, notes, method_key, rounds, exercise_function,
-                parent_item_id,
+                parent_item_id, item_config,
                 exercise_name, exercise_muscle_group, exercise_equipment,
                 exercises(id, name, equipment),
                 assigned_workout_item_sets(
@@ -144,11 +144,11 @@ export function registerProgramReadTools(server: McpServer, trainerId: string) {
         .select(`
           id, name, description, duration_weeks, created_at,
           workout_templates(
-            id, name, order_index, frequency,
+            id, name, order_index, frequency, workout_type,
             workout_item_templates(
               id, item_type, order_index, exercise_id, sets, reps,
               rest_seconds, notes, method_key, rounds, exercise_function,
-              parent_item_id,
+              parent_item_id, item_config,
               exercises(id, name, equipment),
               workout_item_set_templates(
                 set_number, set_type, reps, rest_seconds,
@@ -216,6 +216,7 @@ interface RawItem {
   rounds?: number | null
   exercise_function: string | null
   parent_item_id: string | null
+  item_config?: Record<string, unknown> | null
   exercise_name?: string | null
   exercise_muscle_group?: string | null
   exercise_equipment?: string | null
@@ -230,6 +231,7 @@ interface RawWorkout {
   order_index: number
   scheduled_days?: number[] | null
   frequency?: string[] | null
+  workout_type?: string | null
   assigned_workout_items?: RawItem[]
   items_raw?: RawItem[]
 }
@@ -255,6 +257,8 @@ interface StructuredItem {
   /** Per-set prescription (advanced methods). Null when the item uses the
    *  simple aggregate (sets/reps/rest) prescription. */
   set_scheme: RawSet[] | null
+  /** Cardio/warmup config (CardioConfig/WarmupConfig). Null for exercises. */
+  item_config?: Record<string, unknown> | null
   children?: StructuredItem[]
 }
 
@@ -291,6 +295,9 @@ function sortAndStructureWorkouts(workouts: RawWorkout[]) {
           rounds: item.rounds ?? null,
           exercise_function: item.exercise_function,
           set_scheme: setScheme,
+          item_config: (item.item_type === 'cardio' || item.item_type === 'warmup')
+            ? (item.item_config ?? null)
+            : undefined,
         }
 
         if (item.parent_item_id) {
@@ -326,6 +333,7 @@ function sortAndStructureWorkouts(workouts: RawWorkout[]) {
         name: w.name,
         order_index: w.order_index,
         scheduled_days: scheduledDays,
+        session_type: w.workout_type === 'cardio' ? 'cardio' : 'strength',
         items: rootItems,
       }
     })

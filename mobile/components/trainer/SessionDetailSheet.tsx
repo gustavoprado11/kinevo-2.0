@@ -383,25 +383,45 @@ export function SessionDetailSheet({ visible, sessionId, onClose }: SessionDetai
                             <IntensityGauge value={data.rpe} />
                         </View>
 
-                        {/* Stats Grid */}
-                        <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
-                            <StatCard icon={Clock} iconColor="#3b82f6" label="Duração" value={formatDuration(data.stats.durationSeconds)} />
-                            <StatCard icon={Dumbbell} iconColor={colors.purple[600]} label="Exercícios" value={String(data.stats.exerciseCount)} />
-                        </View>
-                        <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
-                            <StatCard
-                                icon={Activity}
-                                iconColor="#16a34a"
-                                label="Séries"
-                                value={`${data.stats.completedSets}${data.stats.totalSetsPrescribed ? `/${data.stats.totalSetsPrescribed}` : ""}`}
-                            />
-                            <StatCard
-                                icon={Activity}
-                                iconColor="#f59e0b"
-                                label="Tonelagem"
-                                value={`${data.stats.totalTonnage.toLocaleString("pt-BR")} kg`}
-                            />
-                        </View>
+                        {/* Stats Grid — sessão aeróbia mostra blocos/tempo, não séries/tonelagem */}
+                        {data.workoutType === 'cardio' ? (
+                            <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
+                                <StatCard icon={Clock} iconColor="#3b82f6" label="Duração" value={formatDuration(data.stats.durationSeconds)} />
+                                <StatCard
+                                    icon={Activity}
+                                    iconColor="#06b6d4"
+                                    label="Blocos"
+                                    value={`${data.stats.cardioBlocksDone}/${data.stats.cardioBlocksTotal}`}
+                                />
+                                <StatCard
+                                    icon={Activity}
+                                    iconColor="#0891b2"
+                                    label="Aeróbio"
+                                    value={`${Math.round(data.stats.cardioMinutes)} min`}
+                                />
+                            </View>
+                        ) : (
+                            <>
+                                <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
+                                    <StatCard icon={Clock} iconColor="#3b82f6" label="Duração" value={formatDuration(data.stats.durationSeconds)} />
+                                    <StatCard icon={Dumbbell} iconColor={colors.purple[600]} label="Exercícios" value={String(data.stats.exerciseCount)} />
+                                </View>
+                                <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
+                                    <StatCard
+                                        icon={Activity}
+                                        iconColor="#16a34a"
+                                        label="Séries"
+                                        value={`${data.stats.completedSets}${data.stats.totalSetsPrescribed ? `/${data.stats.totalSetsPrescribed}` : ""}`}
+                                    />
+                                    <StatCard
+                                        icon={Activity}
+                                        iconColor="#f59e0b"
+                                        label="Tonelagem"
+                                        value={`${data.stats.totalTonnage.toLocaleString("pt-BR")} kg`}
+                                    />
+                                </View>
+                            </>
+                        )}
 
                         {/* Workout Items */}
                         {data.items.length > 0 && (

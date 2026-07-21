@@ -1,7 +1,7 @@
 // LEGACY — ainda usado em app/(tabs)/home.tsx (modo aluno). Migrar quando refatorar área student (futura fase).
 import React, { useState } from "react";
 import { View, Text, Pressable } from "react-native";
-import { Dumbbell, ChevronRight, ChevronDown, Coffee, Check, Play, AlertCircle, PartyPopper, RotateCcw, ShieldCheck } from "lucide-react-native";
+import { Activity, Dumbbell, ChevronRight, ChevronDown, Coffee, Check, Play, AlertCircle, PartyPopper, RotateCcw, ShieldCheck } from "lucide-react-native";
 import Animated, {
     FadeIn,
     useSharedValue,
@@ -61,6 +61,14 @@ function ShareButton({ onPress }: { onPress: () => void }) {
 
 type TimeContext = 'today' | 'past' | 'future';
 
+// Sessão aeróbia não tem "exercícios" — o subtítulo vira o tipo do treino.
+function workoutSubtitle(w?: { items?: { length: number } | any[]; workout_type?: 'strength' | 'cardio' } | null): string {
+    if (!w) return '';
+    if (w.workout_type === 'cardio') return 'Treino aeróbio';
+    const count = (Array.isArray(w.items) ? w.items.length : w.items?.length) || 0;
+    return `${count} exercícios`;
+}
+
 interface ActionCardProps {
     /** Workout scheduled for today (may be null if rest day) */
     todayWorkout?: {
@@ -68,6 +76,7 @@ interface ActionCardProps {
         name: string;
         items?: { length: number } | any[];
         notes?: string;
+        workout_type?: 'strength' | 'cardio';
     } | null;
     /** Session completed today for the scheduled workout */
     todaySession?: {
@@ -93,6 +102,7 @@ interface ActionCardProps {
         name: string;
         items?: { length: number } | any[];
         notes?: string;
+        workout_type?: 'strength' | 'cardio';
     } | null;
     isCompleted?: boolean;
     isCompensated?: boolean;
@@ -252,7 +262,11 @@ export function ActionCard({
                     <View style={styles.heroCardInner}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <View style={styles.heroIcon}>
-                                <Dumbbell size={20} color={colors.purple[600]} />
+                                {workout.workout_type === 'cardio' ? (
+                                    <Activity size={20} color="#06b6d4" />
+                                ) : (
+                                    <Dumbbell size={20} color={colors.purple[600]} />
+                                )}
                             </View>
                             <View style={styles.badge}>
                                 <Text style={styles.badgeText}>PREVISTO</Text>
@@ -266,7 +280,7 @@ export function ActionCard({
                         )}
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
                             <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
-                                {(Array.isArray(workout.items) ? workout.items.length : workout.items?.length) || 0} exercícios
+                                {workoutSubtitle(workout)}
                             </Text>
                         </View>
                     </View>
@@ -308,7 +322,11 @@ export function ActionCard({
                     >
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                             <View style={[styles.heroIconDark, { backgroundColor: brand.tint30 }]}>
-                                <Dumbbell size={20} color="#FFFFFF" strokeWidth={2.2} />
+                                {todayWorkout.workout_type === 'cardio' ? (
+                                    <Activity size={20} color="#FFFFFF" strokeWidth={2.2} />
+                                ) : (
+                                    <Dumbbell size={20} color="#FFFFFF" strokeWidth={2.2} />
+                                )}
                             </View>
                             <View style={styles.heroBadge}>
                                 <Text style={styles.heroBadgeText}>Agendado</Text>
@@ -321,7 +339,7 @@ export function ActionCard({
                         )}
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
                             <Text style={styles.heroCount}>
-                                {(Array.isArray(todayWorkout.items) ? todayWorkout.items.length : todayWorkout.items?.length) || 0} exercícios
+                                {workoutSubtitle(todayWorkout)}
                             </Text>
                             <PressableScale
                                 onPress={() => onStartWorkout?.(todayWorkout.id)}
@@ -458,7 +476,11 @@ export function ActionCard({
                         >
                             <View style={[styles.cardInner, { borderColor: 'rgba(245, 158, 11, 0.15)' }]}>
                                 <View style={[styles.iconBadge, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
-                                    <Dumbbell size={20} color="#f59e0b" strokeWidth={1.5} />
+                                    {nextPending.workoutType === 'cardio' ? (
+                                        <Activity size={20} color="#f59e0b" strokeWidth={1.5} />
+                                    ) : (
+                                        <Dumbbell size={20} color="#f59e0b" strokeWidth={1.5} />
+                                    )}
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.cardTitle}>{nextPending.workoutName}</Text>
@@ -536,7 +558,11 @@ export function ActionCard({
                     <View style={styles.heroCardInner}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <View style={[styles.heroIcon, { backgroundColor: 'rgba(245, 158, 11, 0.08)' }]}>
-                                <Dumbbell size={20} color="#f59e0b" />
+                                {nextPending.workoutType === 'cardio' ? (
+                                    <Activity size={20} color="#f59e0b" />
+                                ) : (
+                                    <Dumbbell size={20} color="#f59e0b" />
+                                )}
                             </View>
                             <View style={[styles.badge, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
                                 <Text style={[styles.badgeText, { color: '#f59e0b' }]}>PENDENTE</Text>
@@ -548,7 +574,7 @@ export function ActionCard({
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
                             <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text.tertiary }}>
-                                {nextPending.exerciseCount} exercícios
+                                {nextPending.workoutType === 'cardio' ? 'Treino aeróbio' : `${nextPending.exerciseCount} exercícios`}
                             </Text>
                             <View style={[styles.startButton, { backgroundColor: '#f59e0b' }]}>
                                 <Play size={16} color="white" fill="white" />

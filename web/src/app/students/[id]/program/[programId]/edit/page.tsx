@@ -51,6 +51,7 @@ export default async function EditProgramPage({ params }: PageProps) {
                     name,
                     order_index,
                     scheduled_days,
+                    workout_type,
                     assigned_workout_items (
                         id,
                         item_type,
@@ -144,12 +145,20 @@ export default async function EditProgramPage({ params }: PageProps) {
         }
     }
 
+    // FCmáx do aluno — resolve as zonas do bloco aeróbio em bpm no builder.
+    const { data: studentRow } = await supabase
+        .from('students')
+        .select('max_heart_rate_bpm')
+        .eq('id', studentId)
+        .maybeSingle()
+
     return (
         <EditAssignedProgramClient
             trainer={trainer}
             program={program as any}
             exercises={mappedExercises}
             studentId={studentId}
+            studentMaxHr={studentRow?.max_heart_rate_bpm ?? null}
             sourceTemplateId={sourceTemplateId}
             formTriggers={formTriggers}
             formTriggerTemplates={triggerResult.templates || []}

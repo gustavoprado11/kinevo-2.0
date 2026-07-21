@@ -46,14 +46,22 @@ export function CelebrationReceipt({ data, onComplete, onShare }: CelebrationVar
   const hasStreak = (data.streakDays ?? 0) > 0;
   const hasDelta = (data.deltaVolumePct ?? 0) > 0;
   const dateCoach = ['Hoje', data.coach ? `Com ${data.coach.name}` : null].filter(Boolean).join(' · ');
-  const receiptNo = String(Math.floor(data.totalVolume / 100)).padStart(4, '0');
+  const isCardio = data.sessionType === 'cardio';
+  const receiptNo = String(Math.floor(isCardio ? (data.cardioMinutes ?? 0) : data.totalVolume / 100)).padStart(4, '0');
 
-  const rows = [
-    { l: 'Duração', v: data.duration, s: 1.1, e: 1.35 },
-    { l: 'Séries', v: `${data.completedSets}/${data.totalSets}`, s: 1.25, e: 1.5 },
-    { l: 'Volume', v: volT(data.totalVolume), s: 1.4, e: 1.65 },
-    { l: 'RPE', v: `${data.rpe}/10`, s: 1.55, e: 1.8 },
-  ];
+  const rows = isCardio
+    ? [
+        { l: 'Duração', v: data.duration, s: 1.1, e: 1.35 },
+        { l: 'Blocos', v: `${data.cardioBlocksCompleted ?? 0}/${data.cardioBlocksTotal ?? 0}`, s: 1.25, e: 1.5 },
+        { l: 'Aeróbio', v: `${data.cardioMinutes ?? 0} min`, s: 1.4, e: 1.65 },
+        { l: 'RPE', v: `${data.rpe}/10`, s: 1.55, e: 1.8 },
+      ]
+    : [
+        { l: 'Duração', v: data.duration, s: 1.1, e: 1.35 },
+        { l: 'Séries', v: `${data.completedSets}/${data.totalSets}`, s: 1.25, e: 1.5 },
+        { l: 'Volume', v: volT(data.totalVolume), s: 1.4, e: 1.65 },
+        { l: 'RPE', v: `${data.rpe}/10`, s: 1.55, e: 1.8 },
+      ];
 
   return (
     <ScreenWrap tintTop={T.tintReceiptTop}>

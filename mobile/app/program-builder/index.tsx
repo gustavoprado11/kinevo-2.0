@@ -115,6 +115,7 @@ export default function ProgramBuilderScreen() {
         removeWorkout,
         renameWorkout,
         updateWorkoutFrequency,
+        setWorkoutType,
         setCurrentWorkout,
         addExercise,
         swapExercise,
@@ -696,6 +697,7 @@ export default function ProgramBuilderScreen() {
                                 onSelectWorkout={setCurrentWorkout}
                                 onRenameWorkout={renameWorkout}
                                 onUpdateWorkoutFrequency={updateWorkoutFrequency}
+                                onChangeWorkoutType={setWorkoutType}
                                 onDeleteWorkout={handleDeleteWorkout}
                                 onPreview={() => {
                                     Haptics.selectionAsync();
@@ -811,6 +813,7 @@ export default function ProgramBuilderScreen() {
                     {/* Add Block Sheet — 4 options (exercise/warmup/cardio/note) */}
                     <AddBlockSheet
                         visible={showAddBlockSheet}
+                        sessionType={currentWorkout?.workout_type === 'cardio' ? 'cardio' : 'strength'}
                         onClose={() => setShowAddBlockSheet(false)}
                         onAddExercise={() => {
                             setShowAddBlockSheet(false);

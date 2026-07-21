@@ -31,6 +31,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
                 name,
                 order_index,
                 frequency,
+                workout_type,
                 workout_item_templates (
                     id,
                     item_type,

@@ -37,6 +37,8 @@ export interface AddBlockSheetProps {
     onAddWarmup: () => void;
     onAddCardio: () => void;
     onAddNote: () => void;
+    /** Sessão aeróbia esconde a opção "Exercício". Default: 'strength'. */
+    sessionType?: 'strength' | 'cardio';
 }
 
 interface BlockOption {
@@ -57,6 +59,7 @@ export function AddBlockSheet({
     onAddWarmup,
     onAddCardio,
     onAddNote,
+    sessionType = 'strength',
 }: AddBlockSheetProps) {
     const colors = useV2Colors();
     const isDark = useIsDark();
@@ -66,7 +69,7 @@ export function AddBlockSheet({
         cb();
     };
 
-    const options: BlockOption[] = [
+    const allOptions: BlockOption[] = [
         {
             key: "exercise",
             title: "Exercício",
@@ -108,6 +111,11 @@ export function AddBlockSheet({
             onPress: () => handleSelect(onAddNote),
         },
     ];
+
+    // Sessão aeróbia: sem exercício de força; cardio vira a primeira opção.
+    const options = sessionType === 'cardio'
+        ? [...allOptions.filter(o => o.key === 'cardio'), ...allOptions.filter(o => o.key === 'warmup' || o.key === 'note')]
+        : allOptions;
 
     return (
         <Modal

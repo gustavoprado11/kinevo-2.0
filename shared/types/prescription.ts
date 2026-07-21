@@ -166,6 +166,8 @@ export interface GeneratedWorkout {
     order_index: number
     /** Days of week this workout is scheduled (0=Sun, 6=Sat) */
     scheduled_days: number[]
+    /** Session type (migration 268). Absent = 'strength'. */
+    workout_type?: 'strength' | 'cardio'
     /** Exercises in order */
     items: GeneratedWorkoutItem[]
 }
@@ -639,6 +641,8 @@ export interface ProgramDraftWorkoutLike {
     order_index: number
     /** English lowercase day strings: 'sun','mon','tue','wed','thu','fri','sat'. */
     frequency: string[]
+    /** Session type (migration 268). Absent = 'strength'. */
+    workout_type?: 'strength' | 'cardio'
     items: ProgramDraftWorkoutItemLike[]
 }
 

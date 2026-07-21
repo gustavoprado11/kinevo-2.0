@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useId, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
-import { BookmarkPlus, ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks } from 'lucide-react'
+import { BookmarkPlus, ChevronLeft, Loader2, Calendar, AlertCircle, Smartphone, GitCompareArrows, X, ListChecks, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
@@ -61,6 +61,8 @@ import { useProgramSchedule } from './helpers/use-program-schedule'
 import { useCanvasDnd } from './helpers/use-canvas-dnd'
 import { useBuilderChrome } from './helpers/use-builder-chrome'
 import { useBuilderDraft, buildDraftKey } from './helpers/use-builder-draft'
+import { AddWorkoutButton } from './add-workout-button'
+import { CardioStudentHrContext } from './workout-card/cardio-student-context'
 
 
 interface AssignedProgramData {
@@ -76,6 +78,7 @@ interface AssignedProgramData {
         name: string
         order_index: number
         scheduled_days?: number[]
+        workout_type?: string | null
         assigned_workout_items: Array<{
             id: string
             item_type: string
@@ -111,6 +114,8 @@ interface EditAssignedProgramClientProps {
     program: AssignedProgramData
     exercises: Exercise[]
     studentId: string
+    /** FCmáx do aluno (students.max_heart_rate_bpm) — resolve zonas em bpm no CardioItemCard. */
+    studentMaxHr?: number | null
     /** Source template ID (for saving form triggers) */
     sourceTemplateId?: string | null
     /** Initial form triggers from source template */
@@ -123,7 +128,7 @@ interface EditAssignedProgramClientProps {
 }
 
 
-export function EditAssignedProgramClient({ trainer, program, exercises, studentId, sourceTemplateId, formTriggers: initialFormTriggers, formTriggerTemplates = [] }: EditAssignedProgramClientProps) {
+export function EditAssignedProgramClient({ trainer, program, exercises, studentId, studentMaxHr, sourceTemplateId, formTriggers: initialFormTriggers, formTriggerTemplates = [] }: EditAssignedProgramClientProps) {
     const router = useRouter()
     const tabDndId = useId()
     const { toast } = useToast()
@@ -313,6 +318,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                     name: wt.name,
                     order_index: wt.order_index,
                     frequency,
+                    workout_type: wt.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
                     items: parentItems,
                 }
             })
@@ -328,6 +334,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
         addWorkout,
         updateWorkoutName,
         updateWorkoutFrequency,
+        updateWorkoutType,
         deleteWorkout: deleteWorkoutFromModel,
         duplicateWorkout,
         handleWorkoutDragEnd,
@@ -430,11 +437,15 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     // (as preferências de prescrição só existem no builder de criação).
     const addExerciseFromLibrary = useCallback((exercise: Exercise) => {
         if (!activeWorkoutId) return
-        appendItemsWith(activeWorkoutId, () => [makeExerciseItem(exercise, {
-            setsCount: 3,
-            reps: '10-12',
-            restSeconds: 60,
-        })])
+        appendItemsWith(activeWorkoutId, (w) => {
+            // Sessão aeróbia não recebe exercício de força (drop + busca inline).
+            if (w.workout_type === 'cardio') return []
+            return [makeExerciseItem(exercise, {
+                setsCount: 3,
+                reps: '10-12',
+                restSeconds: 60,
+            })]
+        })
     }, [activeWorkoutId, appendItemsWith])
 
     // Drag-and-drop biblioteca → canvas
@@ -520,6 +531,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 name: workout.name,
                 order_index: workout.order_index,
                 scheduled_days: (workout.frequency || []).map(d => DAY_MAP[d]).filter(x => x !== undefined),
+                workout_type: workout.workout_type ?? 'strength',
                 items: workout.items.map(item => {
                     const aggs = aggregatesFromItem(item)
                     const itemRounds = effectiveRoundsForItem(item)
@@ -659,6 +671,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                         name: workout.name,
                         order_index: workout.order_index,
                         frequency: workout.frequency,
+                        workout_type: workout.workout_type ?? 'strength',
                     })
                     .select('id')
                     .single()
@@ -741,6 +754,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
     }
 
     return (
+        <CardioStudentHrContext.Provider value={studentMaxHr ?? null}>
         <AppLayout
             trainerName={trainer.name}
             trainerEmail={trainer.email}
@@ -1070,6 +1084,9 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                                     }
                                                                 `}
                                                             >
+                                                                {workout.workout_type === 'cardio' && (
+                                                                    <Zap className="w-3 h-3 text-cyan-500 shrink-0" aria-label="Treino aeróbio" />
+                                                                )}
                                                                 {workout.name}
                                                                 {(!workout.frequency || workout.frequency.length === 0) && (
                                                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Sem dia da semana selecionado" />
@@ -1080,15 +1097,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                 </div>
                                             </SortableContext>
                                         </DndContext>
-                                        <button
-                                            onClick={addWorkout}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset transition-all ml-2"
-                                            title="Adicionar Treino"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                                            </svg>
-                                        </button>
+                                        <AddWorkoutButton onAdd={addWorkout} />
                                     </div>
                                     {/* Canvas (scrollable) */}
                                     <div
@@ -1105,6 +1114,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                     workout={activeWorkout}
                                                     exercises={localExercises}
                                                     onUpdateName={(newName) => updateWorkoutName(activeWorkout.id, newName)}
+                                                    onUpdateWorkoutType={(type) => updateWorkoutType(activeWorkout.id, type)}
                                                     onAddExercise={() => { }}
                                                     onAddNote={() => addNote(activeWorkout.id)}
                                                     onAddWarmup={() => addWarmup(activeWorkout.id)}
@@ -1222,6 +1232,9 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                                 }
                                                             `}
                                                         >
+                                                            {workout.workout_type === 'cardio' && (
+                                                                <Zap className="w-3 h-3 text-cyan-500 shrink-0" aria-label="Treino aeróbio" />
+                                                            )}
                                                             {workout.name}
                                                             {(!workout.frequency || workout.frequency.length === 0) && (
                                                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Sem dia da semana selecionado" />
@@ -1257,15 +1270,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                         </SortableContext>
                                     </DndContext>
 
-                                    <button
-                                        onClick={addWorkout}
-                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:text-k-text-primary hover:bg-surface-inset transition-all ml-1 shrink-0"
-                                        title="Adicionar Treino"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                                        </svg>
-                                    </button>
+                                    <AddWorkoutButton onAdd={addWorkout} />
 
                                     {/* Inline Volume Summary */}
                                     <div className="ml-auto shrink-0">
@@ -1292,6 +1297,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                                                         workout={activeWorkout}
                                                         exercises={localExercises}
                                                         onUpdateName={(newName) => updateWorkoutName(activeWorkout.id, newName)}
+                                                        onUpdateWorkoutType={(type) => updateWorkoutType(activeWorkout.id, type)}
                                                         onAddExercise={() => { }}
                                                         onAddNote={() => addNote(activeWorkout.id)}
                                                         onAddWarmup={() => addWarmup(activeWorkout.id)}
@@ -1419,5 +1425,6 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 </div>
             )}
         </AppLayout>
+        </CardioStudentHrContext.Provider>
     )
 }

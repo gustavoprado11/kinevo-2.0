@@ -17,6 +17,8 @@ interface Student {
     modality: 'online' | 'presential'
     avatar_url: string | null
     created_at: string
+    /** FCmáx (bpm) — resolve as zonas da prescrição aeróbia. */
+    max_heart_rate_bpm?: number | null
 }
 
 export interface FormTemplateOption {
@@ -66,6 +68,8 @@ export function StudentModal({
     const [email, setEmail] = useState('')
     const [phone, setPhone] = useState('')
     const [modality, setModality] = useState<'online' | 'presential'>('online')
+    // FCmáx como string pro input (vazio = não cadastrada → zonas em %FCmáx).
+    const [maxHr, setMaxHr] = useState('')
     const [isPrivate, setIsPrivate] = useState(false)
     const [selectedFormId, setSelectedFormId] = useState('')
     const [error, setError] = useState<string | null>(null)
@@ -99,6 +103,7 @@ export function StudentModal({
                 setEmail(initialData.email)
                 setPhone(initialData.phone ?? '')
                 setModality(initialData.modality || 'online')
+                setMaxHr(initialData.max_heart_rate_bpm != null ? String(initialData.max_heart_rate_bpm) : '')
             } else {
                 setName('')
                 setEmail('')
@@ -129,6 +134,7 @@ export function StudentModal({
                 email: email.trim().toLowerCase(),
                 phone: phone.trim(),
                 modality,
+                maxHeartRateBpm: maxHr.trim() ? parseInt(maxHr, 10) : null,
             })
 
             if (!result.success) {
@@ -372,6 +378,29 @@ export function StudentModal({
                                         </label>
                                     </div>
                                 </div>
+
+                                {/* FCmáx — só edição (a criação mantém o fluxo enxuto). Resolve
+                                    as zonas (Z1–Z5) do bloco aeróbio em bpm para este aluno. */}
+                                {isEdit && (
+                                    <div>
+                                        <label htmlFor="maxHr" className="mb-1.5 block text-[11px] font-bold text-[#6E6E73] dark:text-k-text-quaternary uppercase tracking-wide">
+                                            FCmáx <span className="font-medium text-[#86868B] dark:text-k-text-quaternary ml-1">(bpm, opcional)</span>
+                                        </label>
+                                        <input
+                                            id="maxHr"
+                                            type="number"
+                                            min={100}
+                                            max={230}
+                                            value={maxHr}
+                                            onChange={(e) => setMaxHr(e.target.value)}
+                                            className="w-full rounded-lg border border-[#D2D2D7] dark:border-k-border-subtle bg-white dark:bg-glass-bg px-3.5 py-3 text-[#1D1D1F] dark:text-k-text-primary placeholder:text-[#AEAEB2] dark:placeholder:text-k-text-quaternary focus:outline-none focus:border-[#7C3AED] dark:focus:border-violet-500/50 focus:ring-4 focus:ring-[#7C3AED]/20 dark:focus:ring-violet-500/20 transition-all text-sm"
+                                            placeholder="Ex: 190"
+                                        />
+                                        <p className="mt-1.5 text-xs text-[#86868B] dark:text-k-text-quaternary">
+                                            Usada para resolver as zonas de FC da prescrição aeróbia (Z1–Z5). Sem valor, as zonas aparecem em % da FCmáx.
+                                        </p>
+                                    </div>
+                                )}
 
                                 {/* Aluno particular — só coach de estúdio, só criação */}
                                 {!isEdit && isStudioCoach && (

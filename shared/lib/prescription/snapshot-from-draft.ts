@@ -116,6 +116,7 @@ export function buildSnapshotFromDraft(
             name: w.name,
             order_index: w.order_index,
             scheduled_days: scheduledDays,
+            workout_type: w.workout_type ?? 'strength',
             items,
         }
     })

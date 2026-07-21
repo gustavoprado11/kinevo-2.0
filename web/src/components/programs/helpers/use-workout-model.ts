@@ -29,7 +29,9 @@ import {
     updateItemIn,
     updateWorkoutFrequencyIn,
     updateWorkoutNameIn,
+    updateWorkoutTypeIn,
 } from '../builder-model'
+import type { WorkoutType } from '@kinevo/shared/types/workout-items'
 
 export interface UseWorkoutModelOptions {
     /** Lazy initializer do estado (mesma semântica do useState). */
@@ -73,8 +75,8 @@ export function useWorkoutModel({ initialWorkouts, workoutName }: UseWorkoutMode
 
     // — Workout-level —
 
-    const addWorkout = useCallback(() => {
-        const newWorkout = makeWorkout(nameFor(workouts.length), workouts.length)
+    const addWorkout = useCallback((workoutType: WorkoutType = 'strength') => {
+        const newWorkout = makeWorkout(nameFor(workouts.length), workouts.length, [], workoutType)
         setWorkouts(prev => [...prev, newWorkout])
         setActiveWorkoutId(newWorkout.id)
     }, [workouts.length, nameFor])
@@ -92,6 +94,10 @@ export function useWorkoutModel({ initialWorkouts, workoutName }: UseWorkoutMode
 
     const updateWorkoutFrequency = useCallback((workoutId: string, days: string[]) => {
         setWorkouts(prev => updateWorkoutFrequencyIn(prev, workoutId, days))
+    }, [])
+
+    const updateWorkoutType = useCallback((workoutId: string, type: WorkoutType) => {
+        setWorkouts(prev => updateWorkoutTypeIn(prev, workoutId, type))
     }, [])
 
     const deleteWorkout = useCallback((workoutId: string) => {
@@ -216,6 +222,7 @@ export function useWorkoutModel({ initialWorkouts, workoutName }: UseWorkoutMode
         createWorkoutWithName,
         updateWorkoutName,
         updateWorkoutFrequency,
+        updateWorkoutType,
         deleteWorkout,
         duplicateWorkout,
         handleWorkoutDragEnd,

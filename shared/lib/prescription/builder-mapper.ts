@@ -26,6 +26,7 @@ export interface BuilderProgramData {
         name: string
         order_index: number
         frequency?: string[]
+        workout_type?: string | null
         workout_item_templates?: Array<{
             id: string
             item_type: string
@@ -103,6 +104,7 @@ export function mapAiOutputToBuilderData(
             frequency: workout.scheduled_days
                 .map(d => DAY_INT_TO_STRING[d])
                 .filter(Boolean),
+            workout_type: workout.workout_type ?? 'strength',
             workout_item_templates: workout.items.map(item => ({
                 id: tempId(),
                 item_type: (item.item_type || 'exercise') as string,

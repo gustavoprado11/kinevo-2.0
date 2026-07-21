@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, LayoutAnimation, Platform, UIManager, TouchableOpacity, FlatList, type ListRenderItem } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    Calendar, Trophy, ChevronDown, Flame, Check, Clock, Dumbbell, Repeat2, ClipboardCheck, FileText,
+    Calendar, Trophy, ChevronDown, Flame, Check, Clock, Dumbbell, Repeat2, ClipboardCheck, FileText, Activity, Target,
 } from 'lucide-react-native';
 import Animated, {
     useSharedValue,
@@ -484,9 +484,13 @@ function HistoryCard({ session }: { session: HistorySession }) {
 
     const dateStr = formatActivityDate(session.completed_at);
     const totalSets = session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+    // Sessão aeróbia de verdade (workout_type) usa a identidade cyan do cardio;
+    // tonelagem/séries/intensidade não fazem sentido pra ela.
+    const isCardioSession = session.workout_type === 'cardio';
     const category = getWorkoutCategory(session.workout_name);
-    const catStyle = CATEGORY_STYLE[category];
+    const catStyle = isCardioSession ? { bg: 'rgba(6,182,212,0.12)', fg: '#0891b2' } : CATEGORY_STYLE[category];
     const intensity = getIntensity(session.volume_load);
+    const cardioBlocksDone = session.workoutItems.filter(i => i.itemType === 'cardio' && i.cardioResult).length;
 
     return (
         <PressableScale
@@ -517,7 +521,11 @@ function HistoryCard({ session }: { session: HistorySession }) {
                             alignItems: 'center', justifyContent: 'center', marginRight: 12,
                         }}
                     >
-                        <Dumbbell size={16} color={catStyle.fg} strokeWidth={1.8} />
+                        {isCardioSession ? (
+                            <Activity size={16} color={catStyle.fg} strokeWidth={1.8} />
+                        ) : (
+                            <Dumbbell size={16} color={catStyle.fg} strokeWidth={1.8} />
+                        )}
                     </View>
                     <View style={{ flex: 1, marginRight: 12 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -526,7 +534,7 @@ function HistoryCard({ session }: { session: HistorySession }) {
                             <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 17, fontWeight: '700', letterSpacing: -0.2, color: colors.text.primary }}>
                                 {session.workout_name}
                             </Text>
-                            <IntensityBadge level={intensity} />
+                            {!isCardioSession && <IntensityBadge level={intensity} />}
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
                             <Text style={{ fontSize: 11.5, color: colors.text.tertiary, fontWeight: '500' }}>
@@ -567,18 +575,37 @@ function HistoryCard({ session }: { session: HistorySession }) {
                                 : '—'}
                         </Text>
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Dumbbell size={14} color={colors.text.tertiary} strokeWidth={1.8} />
-                        <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.text.secondary, fontVariant: ['tabular-nums'] }}>
-                            {formatTon(session.volume_load, 1)} t
-                        </Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Repeat2 size={14} color={colors.text.tertiary} strokeWidth={1.8} />
-                        <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.text.secondary, fontVariant: ['tabular-nums'] }}>
-                            {totalSets} séries
-                        </Text>
-                    </View>
+                    {isCardioSession ? (
+                        <>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Activity size={14} color={colors.text.tertiary} strokeWidth={1.8} />
+                                <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.text.secondary, fontVariant: ['tabular-nums'] }}>
+                                    {session.cardio_minutes} min aeróbio
+                                </Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Target size={14} color={colors.text.tertiary} strokeWidth={1.8} />
+                                <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.text.secondary, fontVariant: ['tabular-nums'] }}>
+                                    {cardioBlocksDone} bloco{cardioBlocksDone === 1 ? '' : 's'}
+                                </Text>
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Dumbbell size={14} color={colors.text.tertiary} strokeWidth={1.8} />
+                                <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.text.secondary, fontVariant: ['tabular-nums'] }}>
+                                    {formatTon(session.volume_load, 1)} t
+                                </Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Repeat2 size={14} color={colors.text.tertiary} strokeWidth={1.8} />
+                                <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.text.secondary, fontVariant: ['tabular-nums'] }}>
+                                    {totalSets} séries
+                                </Text>
+                            </View>
+                        </>
+                    )}
                 </View>
             </View>
 

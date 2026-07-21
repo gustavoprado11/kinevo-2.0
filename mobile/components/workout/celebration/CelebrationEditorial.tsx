@@ -22,7 +22,10 @@ export function CelebrationEditorial({ data, onComplete, onShare }: CelebrationV
   const reduce = useReduceMotion();
   const ct = useCelebTokens();
   const clock = useCelebrationClock(3.5, reduce);
-  const pct = data.totalSets > 0 ? Math.round((data.completedSets / data.totalSets) * 100) : 100;
+  const isCardio = data.sessionType === 'cardio';
+  const pct = isCardio
+    ? ((data.cardioBlocksTotal ?? 0) > 0 ? Math.round(((data.cardioBlocksCompleted ?? 0) / data.cardioBlocksTotal!) * 100) : 100)
+    : (data.totalSets > 0 ? Math.round((data.completedSets / data.totalSets) * 100) : 100);
 
   useEffect(() => {
     if (reduce) { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); return; }
@@ -36,7 +39,12 @@ export function CelebrationEditorial({ data, onComplete, onShare }: CelebrationV
   const hasPR = (data.prCount ?? 0) > 0;
   const hasStreak = (data.streakDays ?? 0) > 0;
   const hasDelta = (data.deltaVolumePct ?? 0) > 0;
-  const subLine = [`${data.completedSets}/${data.totalSets} séries`, data.coach ? `Com ${data.coach.name}` : null].filter(Boolean).join(' · ');
+  const subLine = [
+    isCardio
+      ? `${data.cardioBlocksCompleted ?? 0}/${data.cardioBlocksTotal ?? 0} bloco${(data.cardioBlocksTotal ?? 0) === 1 ? '' : 's'}`
+      : `${data.completedSets}/${data.totalSets} séries`,
+    data.coach ? `Com ${data.coach.name}` : null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <ScreenWrap tintTop={T.tintEditorialTop}>
@@ -64,12 +72,25 @@ export function CelebrationEditorial({ data, onComplete, onShare }: CelebrationV
         {/* Stats row */}
         <Reveal clock={clock} start={2.05} end={2.35} style={s.statsRow}>
           <StatCol label="duração"><Text style={s.statValue}>{data.duration}</Text></StatCol>
-          <StatCol label="volume">
-            <CountText target={data.totalVolume} startMs={2100} durMs={700} skip={reduce} style={s.statValue} format={volT} />
-          </StatCol>
-          <StatCol label="séries">
-            <CountText target={data.completedSets} startMs={2100} durMs={700} skip={reduce} style={s.statValue} format={(n) => `${Math.floor(n)}`} />
-          </StatCol>
+          {isCardio ? (
+            <>
+              <StatCol label="aeróbio">
+                <CountText target={data.cardioMinutes ?? 0} startMs={2100} durMs={700} skip={reduce} style={s.statValue} format={(n) => `${Math.floor(n)} min`} />
+              </StatCol>
+              <StatCol label="blocos">
+                <CountText target={data.cardioBlocksCompleted ?? 0} startMs={2100} durMs={700} skip={reduce} style={s.statValue} format={(n) => `${Math.floor(n)}`} />
+              </StatCol>
+            </>
+          ) : (
+            <>
+              <StatCol label="volume">
+                <CountText target={data.totalVolume} startMs={2100} durMs={700} skip={reduce} style={s.statValue} format={volT} />
+              </StatCol>
+              <StatCol label="séries">
+                <CountText target={data.completedSets} startMs={2100} durMs={700} skip={reduce} style={s.statValue} format={(n) => `${Math.floor(n)}`} />
+              </StatCol>
+            </>
+          )}
           <StatCol label="RPE"><Text style={s.statValue}>{data.rpe}/10</Text></StatCol>
         </Reveal>
 

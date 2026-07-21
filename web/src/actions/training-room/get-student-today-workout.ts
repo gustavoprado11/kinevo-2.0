@@ -9,6 +9,7 @@ interface GetStudentWorkoutResult {
     data: {
         assignedProgramId: string
         workoutName: string
+        workoutType: 'strength' | 'cardio'
         exercises: ExerciseData[]
         workoutNotes: WorkoutNote[]
     } | null
@@ -65,7 +66,7 @@ export async function getStudentTodayWorkout(
     // Fetch assigned workout
     const { data: workout } = await supabase
         .from('assigned_workouts')
-        .select('id, name, assigned_program_id')
+        .select('id, name, assigned_program_id, workout_type')
         .eq('id', assignedWorkoutId)
         .single()
 
@@ -232,6 +233,7 @@ export async function getStudentTodayWorkout(
         data: {
             assignedProgramId: workout.assigned_program_id,
             workoutName: workout.name,
+            workoutType: workout.workout_type === 'cardio' ? 'cardio' : 'strength',
             exercises,
             workoutNotes,
         },

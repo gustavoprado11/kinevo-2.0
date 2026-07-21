@@ -16,6 +16,9 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
 import { z } from 'zod'
 import { buildChatContext } from '@/lib/assistant/context-builder'
+import { formatIntensityTarget } from '@kinevo/shared/lib/cardio/zones'
+import { CARDIO_PROTOCOLS, cardioProtocol } from '@kinevo/shared/lib/cardio/interval-protocols'
+import type { CardioIntensityTarget } from '@kinevo/shared/types/workout-items'
 import type {
     CanvasChatMessage,
     CanvasExercise,
@@ -56,8 +59,18 @@ function snapshotForPrompt(program: RenderedProgram): string {
     if (!program.sessions || program.sessions.length === 0) return '(canvas vazio — nenhuma sessão ainda)'
     const lines = program.sessions.map((s, i) => {
         const days = (s.scheduled_days ?? []).join(',')
-        const items = (s.items ?? []).map(it => `    - ${it.exercise_id} ${it.sets ?? '?'}x${it.reps ?? '?'}`).join('\n')
-        return `  Sessão ${i + 1}: "${s.name}" [dias ${days || '—'}]\n${items || '    (sem exercícios)'}`
+        const typeTag = s.workout_type === 'cardio' ? ' [AERÓBIA]' : ''
+        const items = (s.items ?? []).map(it => {
+            if (it.cardio) {
+                const c = it.cardio
+                const desc = c.mode === 'interval' && c.intervals
+                    ? `intervalado ${c.intervals.work_seconds}s/${c.intervals.rest_seconds}s ×${c.intervals.rounds}`
+                    : `contínuo ${c.duration_minutes ?? '?'}min`
+                return `    - [cardio] ${desc}${c.intensity ? ` (${c.intensity})` : ''}`
+            }
+            return `    - ${it.exercise_id} ${it.sets ?? '?'}x${it.reps ?? '?'}`
+        }).join('\n')
+        return `  Sessão ${i + 1}: "${s.name}"${typeTag} [dias ${days || '—'}]\n${items || '    (sem exercícios)'}`
     })
     const meta = `nome="${program.name ?? ''}" duração=${program.duration_weeks ?? '—'}sem`
     return `${meta}\n${lines.join('\n')}`
@@ -84,6 +97,12 @@ function buildSystemPrompt(studentContext: string, studentName: string, currentP
         '- MÉTODOS (campo "method" do item): drop_set (queda de carga sem descanso — ótimo p/ finalizar isoladores), pyramid_down/pyramid_up (pirâmide de reps), 5x5 (força em compostos), top_backoff (série pesada + backoffs ~80%), cluster (rest-pause). Aplique em 1–2 exercícios-CHAVE por sessão quando fizer sentido; o resto fica em séries retas (sem method).',
         '- SUPERSETS (campo "superset_group"): p/ bi-set/tri-set, dê a MESMA tag (ex.: "A1") a itens CONSECUTIVOS (antagonistas ou economia de tempo). Um exercício em superset NÃO leva method.',
         '',
+        'AERÓBIO:',
+        '- SESSÃO AERÓBIA EXCLUSIVA (pedido tipo "3x força + 2x aeróbio zona 2"): crie a sessão com workout_type="cardio" e itens SÓ com o campo "cardio" (sem exercise_id). Bloco contínuo: { mode:"continuous", equipment (treadmill/bike/outdoor_run/rower/elliptical/…), duration_minutes OU objective:"distance"+distance_km }. Sessão aeróbia NÃO leva exercício de força; as regras 1–5 acima não se aplicam a ela.',
+        '- INTENSIDADE: prefira o campo ESTRUTURADO — zone (1–5: Z1 recuperação, Z2 base aeróbia, Z3 moderado, Z4 limiar, Z5 VO2max; resolve na FCmáx do aluno automaticamente) OU rpe (1–10). Texto livre em intensity só quando nenhum dos dois se aplica.',
+        '- INTERVALADO: prefira um protocol nomeado — tabata (20/10×8, all-out), hiit_15_15, hiit_30_30, hiit_40_20, norwegian_4x4 (4min/3min×4, limiar) — que já preenche intervals + intensidade sugerida. Só monte intervals manualmente quando nenhum protocolo servir.',
+        '- Cardio no FIM de uma sessão de força: adicione um item com "cardio" no final da sessão normal (workout_type continua "strength").',
+        '',
         'COMO MONTAR:',
         '- Chame search_exercises UMA VEZ POR GRUPO MUSCULAR (parâmetro muscle) pra achar os exercícios certos de cada sessão — busque quantas vezes precisar ANTES de montar.',
         '- Use SOMENTE exercise_id retornado por search_exercises. NUNCA invente ids.',
@@ -99,6 +118,8 @@ export interface RunCanvasTurnArgs {
     trainerName: string
     studentId: string
     studentName: string
+    /** FCmáx do aluno — resolve "Zona N" em bpm na string derivada do bloco aeróbio. */
+    studentMaxHr?: number | null
     message: string
     history: CanvasChatMessage[]
     exercises: CanvasExercise[]
@@ -115,7 +136,7 @@ export interface RunCanvasTurnResult {
 }
 
 export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasTurnResult> {
-    const { trainerId, trainerName, studentId, studentName, message, history, exercises, currentProgram, onEvent } = args
+    const { trainerId, trainerName, studentId, studentName, studentMaxHr, message, history, exercises, currentProgram, onEvent } = args
 
     // Canvas é SEMPRE prescrição (montar/ajustar treino) → precisa do detalhe clínico
     // e dos check-ins para prescrever com segurança (restrições/dores).
@@ -160,8 +181,10 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
                 sessions: z.array(z.object({
                     name: z.string().describe('Nome da sessão (ex.: "Treino A — Inferiores")'),
                     scheduled_days: z.array(z.number()).describe('Dias 0=domingo … 6=sábado (ex.: [1,4] = seg/qui)'),
+                    workout_type: z.enum(['strength', 'cardio']).optional()
+                        .describe('Tipo da sessão. "cardio" = sessão aeróbia exclusiva (itens só com o campo cardio). Padrão: strength.'),
                     items: z.array(z.object({
-                        exercise_id: z.string().describe('exercise_id REAL do catálogo'),
+                        exercise_id: z.string().optional().describe('exercise_id REAL do catálogo. Omitir apenas em itens cardio.'),
                         sets: z.number().optional().describe('Número de séries'),
                         reps: z.string().optional().describe('Reps (ex.: "8-12", "10", "AMRAP")'),
                         rest_seconds: z.number().optional().describe('Descanso entre séries (s)'),
@@ -170,7 +193,27 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
                             .describe('Método de série. standard=séries retas (padrão). drop_set=queda de carga; pyramid_down/up=pirâmide; 5x5=força; top_backoff=top+backoffs; cluster=rest-pause. Use só em 1–2 exercícios-chave/sessão.'),
                         superset_group: z.string().optional()
                             .describe('Tag p/ superset (ex.: "A1"). Itens CONSECUTIVOS com a MESMA tag viram um bi/tri-set. Não combine com method no mesmo item.'),
-                    })).describe('Exercícios na ordem (compostos primeiro)'),
+                        cardio: z.object({
+                            mode: z.enum(['continuous', 'interval']),
+                            equipment: z.enum(['treadmill', 'bike', 'elliptical', 'rower', 'stairmaster', 'jump_rope', 'outdoor_run', 'outdoor_bike', 'swimming', 'other']).optional(),
+                            objective: z.enum(['time', 'distance']).optional(),
+                            duration_minutes: z.number().optional(),
+                            distance_km: z.number().optional(),
+                            zone: z.number().int().min(1).max(5).optional()
+                                .describe('Alvo ESTRUTURADO preferido: zona de FC Z1–Z5 (1=Recuperação 50–60% FCmáx, 2=Base aeróbia, 3=Moderado, 4=Limiar, 5=VO2max). Resolve na FCmáx do aluno.'),
+                            rpe: z.number().int().min(1).max(10).optional()
+                                .describe('Alvo estruturado alternativo: RPE 1–10 (use zone OU rpe, não os dois)'),
+                            intensity: z.string().optional().describe('Texto livre de intensidade — só quando zone/rpe não se aplicam (ex.: "130-140bpm")'),
+                            protocol: z.enum(CARDIO_PROTOCOLS.map(p => p.key) as [string, ...string[]]).optional()
+                                .describe('Protocolo intervalado nomeado (tabata 20/10×8, hiit_15_15, hiit_30_30, hiit_40_20, norwegian_4x4 4min/3min×4) — preenche intervals + intensidade sugerida; dispensa o objeto intervals.'),
+                            intervals: z.object({
+                                work_seconds: z.number(),
+                                rest_seconds: z.number(),
+                                rounds: z.number(),
+                            }).optional().describe('mode=interval sem protocol: obrigatório'),
+                            notes: z.string().optional(),
+                        }).optional().describe('Quando presente, o item é um BLOCO AERÓBIO — exercise_id/sets/reps/method são ignorados.'),
+                    })).describe('Itens na ordem (compostos primeiro; blocos cardio onde couber)'),
                 })).describe('Sessões na ordem (Treino A, B, …)'),
             }),
             execute: async ({ name, duration_weeks, sessions }) => {
@@ -178,21 +221,58 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
                 const cleanSessions: CanvasSessionDTO[] = (sessions ?? []).map(s => ({
                     name: s.name,
                     scheduled_days: Array.isArray(s.scheduled_days) ? s.scheduled_days.filter(d => d >= 0 && d <= 6) : [],
+                    workout_type: s.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
                     items: (s.items ?? [])
                         .filter(it => {
+                            // Bloco cardio não referencia o catálogo; exercício precisa de id válido.
+                            if (it.cardio) return true
                             const ok = !!it.exercise_id && catalogById.has(it.exercise_id)
                             if (!ok) dropped++
                             return ok
                         })
-                        .map(it => ({
-                            exercise_id: it.exercise_id,
-                            sets: it.sets ?? null,
-                            reps: it.reps ?? null,
-                            rest_seconds: it.rest_seconds ?? null,
-                            notes: it.notes ?? null,
-                            method: it.method && it.method !== 'standard' ? it.method : null,
-                            superset_group: it.superset_group?.trim() || null,
-                        })),
+                        .map(it => {
+                            if (it.cardio) {
+                                // Protocolo nomeado → números + selo; zone/rpe → alvo
+                                // estruturado + string derivada (FCmáx do aluno).
+                                const protocolDef = cardioProtocol(it.cardio.protocol)
+                                const intervals = it.cardio.intervals ?? protocolDef?.intervals ?? null
+                                let target: CardioIntensityTarget | null = null
+                                if (it.cardio.zone != null) target = { type: 'zone', zone: it.cardio.zone as 1 | 2 | 3 | 4 | 5 }
+                                else if (it.cardio.rpe != null) target = { type: 'rpe', rpe: it.cardio.rpe }
+                                else if (protocolDef) target = protocolDef.suggested_target
+                                const derived = target ? formatIntensityTarget(target, studentMaxHr ?? null) : null
+                                return {
+                                    exercise_id: null,
+                                    sets: null,
+                                    reps: null,
+                                    rest_seconds: null,
+                                    notes: null,
+                                    method: null,
+                                    superset_group: null,
+                                    cardio: {
+                                        mode: protocolDef ? 'interval' as const : it.cardio.mode,
+                                        equipment: it.cardio.equipment ?? null,
+                                        objective: it.cardio.objective ?? null,
+                                        duration_minutes: it.cardio.duration_minutes ?? null,
+                                        distance_km: it.cardio.distance_km ?? null,
+                                        intensity: derived ?? it.cardio.intensity ?? null,
+                                        intensity_target: target,
+                                        intervals,
+                                        protocol_key: protocolDef?.key ?? null,
+                                        notes: it.cardio.notes ?? null,
+                                    },
+                                }
+                            }
+                            return {
+                                exercise_id: it.exercise_id,
+                                sets: it.sets ?? null,
+                                reps: it.reps ?? null,
+                                rest_seconds: it.rest_seconds ?? null,
+                                notes: it.notes ?? null,
+                                method: it.method && it.method !== 'standard' ? it.method : null,
+                                superset_group: it.superset_group?.trim() || null,
+                            }
+                        }),
                 }))
                 const program: RenderedProgram = {
                     name: name ?? currentProgram.name ?? null,

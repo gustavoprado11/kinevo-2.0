@@ -12,6 +12,7 @@ import {
 import { activateAssignedProgram } from '@/lib/programs/activate-assigned-program'
 import { insertStudentNotification } from '@/lib/student-notifications'
 import { sendStudentPush } from '@/lib/push-notifications'
+import { cardioConfigSchema } from '@/lib/programs/cardio-config-schema'
 
 export function registerProgramWriteTools(server: McpServer, trainerId: string) {
   server.tool(
@@ -97,8 +98,10 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
         name: z.string().describe("Session name (e.g., 'Treino A - Peito e Tríceps')"),
         scheduled_days: z.array(z.number().int().min(0).max(6)).optional()
           .describe('Suggested weekdays for this session as integers (0=Sunday … 6=Saturday). Stored as the template frequency and copied as the schedule when assigned. E.g. [1,4] = Mon/Thu.'),
+        session_type: z.enum(['strength', 'cardio']).optional()
+          .describe("Session type. 'cardio' = standalone aerobic session — its items must be cardio blocks (no exercises/supersets). Defaults to 'strength'."),
         items: z.array(z.object({
-          exercise_id: z.string().uuid().optional().describe('Exercise ID from the catalog. Required unless this item is a superset.'),
+          exercise_id: z.string().uuid().optional().describe('Exercise ID from the catalog. Required unless this item is a superset or a cardio block.'),
           sets: z.number().min(1).max(20).optional().describe('Number of sets (simple mode). Ignored when set_scheme is provided.'),
           reps: z.string().optional().describe("Reps prescription (simple mode, e.g., '12', '8-12', 'AMRAP'). Ignored when set_scheme is provided."),
           rest_seconds: z.number().min(0).max(600).optional().describe('Rest between sets in seconds (simple mode). Defaults to 90.'),
@@ -115,17 +118,26 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional(),
             notes: z.string().optional(),
           })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds is the rest after each round (carried by the LAST exercise — execution uses per-exercise rest).'),
-        })).describe('Ordered list of exercises/supersets in this session.'),
+          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intervals?: { work_seconds, rest_seconds, rounds }, notes? }."),
+        })).describe('Ordered list of exercises/supersets/cardio blocks in this session.'),
       })).min(1).describe('Ordered list of workout sessions in the template.'),
     },
     { title: 'Criar template de programa', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ name, description, duration_weeks, sessions }) => {
       const supabaseAdmin = createAdminClient()
 
+      // Sessão aeróbia só aceita blocos cardio.
+      for (const s of sessions) {
+        if (s.session_type === 'cardio' && s.items.some(it => !it.cardio)) {
+          return mcpError(`Sessão "${s.name}" é aeróbia (session_type='cardio') — todos os itens devem ser blocos cardio (campo 'cardio').`)
+        }
+      }
+
       // Gather every referenced exercise id and validate against the catalog up front.
       const exerciseIds = new Set<string>()
       for (const s of sessions) {
         for (const it of s.items) {
+          if (it.cardio) continue
           if (it.superset) for (const c of it.superset) exerciseIds.add(c.exercise_id)
           else if (it.exercise_id) exerciseIds.add(it.exercise_id)
         }
@@ -156,6 +168,20 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
         const items: Array<Record<string, unknown>> = []
         for (let ii = 0; ii < s.items.length; ii++) {
           const it = s.items[ii]
+
+          if (it.cardio) {
+            items.push({
+              item_type: 'cardio',
+              order_index: ii,
+              exercise_id: null,
+              sets: null,
+              reps: null,
+              rest_seconds: null,
+              item_config: it.cardio,
+              notes: null,
+            })
+            continue
+          }
 
           if (it.superset) {
             // Superset container + children (children carry no set_scheme in
@@ -230,6 +256,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           name: s.name,
           order_index: wi,
           frequency: sortedDays !== undefined ? sortedDays.map(d => DAY_INT_TO_STR[d]) : [],
+          workout_type: s.session_type ?? 'strength',
           items,
         })
       }
@@ -278,8 +305,10 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
         name: z.string().describe("Session name (e.g., 'Treino A - Peito e Tríceps')"),
         scheduled_days: z.array(z.number().int().min(0).max(6)).optional()
           .describe('Weekdays this session is scheduled, as integers (0=Sunday … 6=Saturday). Drives the student calendar and reminders. E.g. [1,4] = Mon/Thu. Always set these.'),
+        session_type: z.enum(['strength', 'cardio']).optional()
+          .describe("Session type. 'cardio' = standalone aerobic session — its items must be cardio blocks (no exercises/supersets). Defaults to 'strength'."),
         items: z.array(z.object({
-          exercise_id: z.string().uuid().optional().describe('Exercise ID from the catalog. Required unless this item is a superset.'),
+          exercise_id: z.string().uuid().optional().describe('Exercise ID from the catalog. Required unless this item is a superset or a cardio block.'),
           sets: z.number().min(1).max(20).optional().describe('Number of sets (simple mode). Ignored when set_scheme is provided.'),
           reps: z.string().optional().describe("Reps prescription (simple mode, e.g., '12', '8-12', 'AMRAP'). Ignored when set_scheme is provided."),
           rest_seconds: z.number().min(0).max(600).optional().describe('Rest between sets in seconds (simple mode). Defaults to 90.'),
@@ -296,7 +325,8 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional(),
             notes: z.string().optional(),
           })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds is the rest after each round (carried by the LAST exercise — execution uses per-exercise rest).'),
-        })).describe('Ordered list of exercises/supersets in this session.'),
+          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intervals?: { work_seconds, rest_seconds, rounds }, notes? }."),
+        })).describe('Ordered list of exercises/supersets/cardio blocks in this session.'),
       })).min(1).describe('Ordered list of workout sessions in the program.'),
     },
     { title: 'Criar rascunho de programa do aluno', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
@@ -314,12 +344,20 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
         return mcpError('Aluno não encontrado ou não pertence a este treinador.')
       }
 
+      // Sessão aeróbia só aceita blocos cardio.
+      for (const s of sessions) {
+        if (s.session_type === 'cardio' && s.items.some(it => !it.cardio)) {
+          return mcpError(`Sessão "${s.name}" é aeróbia (session_type='cardio') — todos os itens devem ser blocos cardio (campo 'cardio').`)
+        }
+      }
+
       // Reúne os exercícios referenciados; valida no catálogo E resolve o snapshot
       // denormalizado (nome, grupo muscular, equipamento) — mesma origem que o
       // builder usa ao gravar (muscleGroupOf). A RPC grava esse snapshot.
       const exerciseIds = new Set<string>()
       for (const s of sessions) {
         for (const it of s.items) {
+          if (it.cardio) continue
           if (it.superset) for (const c of it.superset) exerciseIds.add(c.exercise_id)
           else if (it.exercise_id) exerciseIds.add(it.exercise_id)
         }
@@ -362,6 +400,20 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
         const items: Array<Record<string, unknown>> = []
         for (let ii = 0; ii < s.items.length; ii++) {
           const it = s.items[ii]
+
+          if (it.cardio) {
+            items.push({
+              item_type: 'cardio',
+              order_index: ii,
+              exercise_id: null,
+              sets: null,
+              reps: null,
+              rest_seconds: null,
+              item_config: it.cardio,
+              notes: null,
+            })
+            continue
+          }
 
           if (it.superset) {
             // R7: rest por FILHO — intermediários 0, o último carrega o
@@ -440,6 +492,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           name: s.name,
           order_index: wi,
           scheduled_days: scheduledDays,
+          workout_type: s.session_type ?? 'strength',
           items,
         })
       }
