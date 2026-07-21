@@ -12,7 +12,7 @@ import {
 import { activateAssignedProgram } from '@/lib/programs/activate-assigned-program'
 import { insertStudentNotification } from '@/lib/student-notifications'
 import { sendStudentPush } from '@/lib/push-notifications'
-import { cardioConfigSchema } from '@/lib/programs/cardio-config-schema'
+import { cardioConfigSchema, deriveCardioDisplayFields } from '@/lib/programs/cardio-config-schema'
 
 export function registerProgramWriteTools(server: McpServer, trainerId: string) {
   server.tool(
@@ -118,7 +118,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional(),
             notes: z.string().optional(),
           })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds is the rest after each round (carried by the LAST exercise — execution uses per-exercise rest).'),
-          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intervals?: { work_seconds, rest_seconds, rounds }, notes? }."),
+          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval'|'phased', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intensity_target?, intervals?: { work_seconds, rest_seconds, rounds }, segments? (phased: ordered phases, each { kind: 'steady'|'interval', label?, duration_minutes?, intervals?, intensity_target?, intensity? }), notes? }. Prefer intensity_target over free-text intensity; for 'phased', set intensity PER SEGMENT and omit block-level duration/intensity (derived)."),
         })).describe('Ordered list of exercises/supersets/cardio blocks in this session.'),
       })).min(1).describe('Ordered list of workout sessions in the template.'),
     },
@@ -177,7 +177,8 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
               sets: null,
               reps: null,
               rest_seconds: null,
-              item_config: it.cardio,
+              // Template não tem aluno → zonas caem no rótulo percentual.
+              item_config: deriveCardioDisplayFields(it.cardio, null),
               notes: null,
             })
             continue
@@ -325,7 +326,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional(),
             notes: z.string().optional(),
           })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds is the rest after each round (carried by the LAST exercise — execution uses per-exercise rest).'),
-          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intervals?: { work_seconds, rest_seconds, rounds }, notes? }."),
+          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval'|'phased', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intensity_target?, intervals?: { work_seconds, rest_seconds, rounds }, segments? (phased: ordered phases, each { kind: 'steady'|'interval', label?, duration_minutes?, intervals?, intensity_target?, intensity? }), notes? }. Prefer intensity_target over free-text intensity; for 'phased', set intensity PER SEGMENT and omit block-level duration/intensity (derived)."),
         })).describe('Ordered list of exercises/supersets/cardio blocks in this session.'),
       })).min(1).describe('Ordered list of workout sessions in the program.'),
     },
@@ -334,15 +335,17 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
       const supabaseAdmin = createAdminClient()
 
       // Posse do aluno: o draft só pode ser criado para um aluno deste treinador.
+      // FCmáx junto: resolve zonas de cardio em bpm nos derivados.
       const { data: student } = await supabaseAdmin
         .from('students')
-        .select('id')
+        .select('id, max_heart_rate_bpm')
         .eq('id', student_id)
         .eq('coach_id', trainerId)
         .single()
       if (!student) {
         return mcpError('Aluno não encontrado ou não pertence a este treinador.')
       }
+      const studentMaxHr = student.max_heart_rate_bpm ?? null
 
       // Sessão aeróbia só aceita blocos cardio.
       for (const s of sessions) {
@@ -409,7 +412,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
               sets: null,
               reps: null,
               rest_seconds: null,
-              item_config: it.cardio,
+              item_config: deriveCardioDisplayFields(it.cardio, studentMaxHr),
               notes: null,
             })
             continue

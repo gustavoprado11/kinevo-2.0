@@ -14,7 +14,7 @@ export interface CanvasExercise {
 
 /** Config de bloco aeróbio emitida pela IA (subset do CardioConfig canônico). */
 export interface CanvasCardioDTO {
-    mode: 'continuous' | 'interval'
+    mode: 'continuous' | 'interval' | 'phased'
     equipment?: string | null
     objective?: 'time' | 'distance' | null
     duration_minutes?: number | null
@@ -25,6 +25,9 @@ export interface CanvasCardioDTO {
     intervals?: { work_seconds: number; rest_seconds: number; rounds: number } | null
     /** Protocolo intervalado nomeado (shared/lib/cardio/interval-protocols). */
     protocol_key?: string | null
+    /** Modo 'phased': sequência de fases (CardioSegment do shared), já com
+     *  intensidades derivadas — duration_minutes/intensity do bloco viram totais. */
+    segments?: import('@kinevo/shared/types/workout-items').CardioSegment[] | null
     notes?: string | null
 }
 

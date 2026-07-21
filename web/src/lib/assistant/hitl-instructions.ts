@@ -167,7 +167,11 @@ const HITL_BUILD = `
      FCmáx do aluno) ou {type:'rpe', rpe:6} / {type:'hr', hr_min_bpm, hr_max_bpm} / {type:'pace',
      pace_min_per_km} — em vez de texto livre. Intervalado: prefira um protocolo nomeado via protocol_key
      ('tabata' 20/10×8, 'hiit_30_30', 'norwegian_4x4' 4min/3min×4 — kinevo_list_training_methods lista
-     todos). Sessão aeróbia NÃO leva exercício de força. Cardio no FIM de uma sessão de força continua
+     todos). POR FASES: quando o aeróbio tem estrutura em sequência (aquecimento + bloco principal +
+     volta à calma, séries intervaladas diferentes, contínuo com intensidades variadas), use mode:'phased'
+     + segments — cada fase {kind:'steady', duration_minutes, intensity_target, label?} ou
+     {kind:'interval', intervals, intensity_target?}; a intensidade vai POR FASE e o app deriva o total.
+     Sessão aeróbia NÃO leva exercício de força. Cardio no FIM de uma sessão de força continua
      sendo um item 'cardio' dentro dela (não muda o session_type).
   5b) CONTROLE DE QUALIDADE (automático): o app valida as regras do passo 4 em código na hora da criação.
      Se a resposta vier com quality_errors, o programa NÃO foi criado — corrija EXATAMENTE os pontos

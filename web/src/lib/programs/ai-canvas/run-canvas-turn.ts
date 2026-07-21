@@ -18,7 +18,8 @@ import { z } from 'zod'
 import { buildChatContext } from '@/lib/assistant/context-builder'
 import { formatIntensityTarget } from '@kinevo/shared/lib/cardio/zones'
 import { CARDIO_PROTOCOLS, cardioProtocol } from '@kinevo/shared/lib/cardio/interval-protocols'
-import type { CardioIntensityTarget } from '@kinevo/shared/types/workout-items'
+import { cardioTotalSeconds, summarizeSegments } from '@kinevo/shared/lib/cardio/segments'
+import type { CardioConfig, CardioIntensityTarget, CardioSegment } from '@kinevo/shared/types/workout-items'
 import type {
     CanvasChatMessage,
     CanvasExercise,
@@ -63,10 +64,12 @@ function snapshotForPrompt(program: RenderedProgram): string {
         const items = (s.items ?? []).map(it => {
             if (it.cardio) {
                 const c = it.cardio
-                const desc = c.mode === 'interval' && c.intervals
-                    ? `intervalado ${c.intervals.work_seconds}s/${c.intervals.rest_seconds}s ×${c.intervals.rounds}`
-                    : `contínuo ${c.duration_minutes ?? '?'}min`
-                return `    - [cardio] ${desc}${c.intensity ? ` (${c.intensity})` : ''}`
+                const desc = c.mode === 'phased' && c.segments?.length
+                    ? `por fases (${c.segments.length}) ${summarizeSegments(c.segments)}`
+                    : c.mode === 'interval' && c.intervals
+                        ? `intervalado ${c.intervals.work_seconds}s/${c.intervals.rest_seconds}s ×${c.intervals.rounds}`
+                        : `contínuo ${c.duration_minutes ?? '?'}min`
+                return `    - [cardio] ${desc}${c.intensity && c.mode !== 'phased' ? ` (${c.intensity})` : ''}`
             }
             return `    - ${it.exercise_id} ${it.sets ?? '?'}x${it.reps ?? '?'}`
         }).join('\n')
@@ -101,6 +104,7 @@ function buildSystemPrompt(studentContext: string, studentName: string, currentP
         '- SESSÃO AERÓBIA EXCLUSIVA (pedido tipo "3x força + 2x aeróbio zona 2"): crie a sessão com workout_type="cardio" e itens SÓ com o campo "cardio" (sem exercise_id). Bloco contínuo: { mode:"continuous", equipment (treadmill/bike/outdoor_run/rower/elliptical/…), duration_minutes OU objective:"distance"+distance_km }. Sessão aeróbia NÃO leva exercício de força; as regras 1–5 acima não se aplicam a ela.',
         '- INTENSIDADE: prefira o campo ESTRUTURADO — zone (1–5: Z1 recuperação, Z2 base aeróbia, Z3 moderado, Z4 limiar, Z5 VO2max; resolve na FCmáx do aluno automaticamente) OU rpe (1–10). Texto livre em intensity só quando nenhum dos dois se aplica.',
         '- INTERVALADO: prefira um protocol nomeado — tabata (20/10×8, all-out), hiit_15_15, hiit_30_30, hiit_40_20, norwegian_4x4 (4min/3min×4, limiar) — que já preenche intervals + intensidade sugerida. Só monte intervals manualmente quando nenhum protocolo servir.',
+        '- POR FASES (mode:"phased" + segments): quando a sessão aeróbia tem estrutura em sequência — aquecimento + bloco principal + volta à calma, séries intervaladas diferentes em sequência, ou contínuo com intensidades variadas. Cada fase é { kind:"steady", duration_minutes, zone/rpe, label? } ou { kind:"interval", protocol OU intervals, zone/rpe? }. A intensidade vai POR FASE (não no bloco). Ex.: aeróbio 4×4 completo = steady 10min zone 1 → interval norwegian_4x4 → steady 5min zone 1.',
         '- Cardio no FIM de uma sessão de força: adicione um item com "cardio" no final da sessão normal (workout_type continua "strength").',
         '',
         'COMO MONTAR:',
@@ -194,7 +198,8 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
                         superset_group: z.string().optional()
                             .describe('Tag p/ superset (ex.: "A1"). Itens CONSECUTIVOS com a MESMA tag viram um bi/tri-set. Não combine com method no mesmo item.'),
                         cardio: z.object({
-                            mode: z.enum(['continuous', 'interval']),
+                            mode: z.enum(['continuous', 'interval', 'phased'])
+                                .describe("'phased' = sequência de fases (segments) executadas em ordem — ex.: 10min Z1 → Tabata → 5min Z1"),
                             equipment: z.enum(['treadmill', 'bike', 'elliptical', 'rower', 'stairmaster', 'jump_rope', 'outdoor_run', 'outdoor_bike', 'swimming', 'other']).optional(),
                             objective: z.enum(['time', 'distance']).optional(),
                             duration_minutes: z.number().optional(),
@@ -211,6 +216,21 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
                                 rest_seconds: z.number(),
                                 rounds: z.number(),
                             }).optional().describe('mode=interval sem protocol: obrigatório'),
+                            segments: z.array(z.object({
+                                kind: z.enum(['steady', 'interval']).describe("'steady' = fase contínua; 'interval' = bloco work/rest × rounds"),
+                                label: z.string().optional().describe('Nome da fase (ex.: "Aquecimento", "Volta à calma")'),
+                                duration_minutes: z.number().optional().describe('steady: duração da fase em minutos'),
+                                protocol: z.enum(CARDIO_PROTOCOLS.map(p => p.key) as [string, ...string[]]).optional()
+                                    .describe('interval: protocolo nomeado (preenche intervals + intensidade sugerida)'),
+                                intervals: z.object({
+                                    work_seconds: z.number(),
+                                    rest_seconds: z.number(),
+                                    rounds: z.number(),
+                                }).optional().describe('interval sem protocol: obrigatório'),
+                                zone: z.number().int().min(1).max(5).optional().describe('Intensidade da fase: zona Z1–Z5'),
+                                rpe: z.number().int().min(1).max(10).optional().describe('Intensidade da fase: RPE 1–10'),
+                                intensity: z.string().optional().describe('Texto livre de intensidade da fase'),
+                            })).optional().describe('mode=phased: sequência de fases em ordem. Intensidade POR FASE (zone/rpe), não no bloco.'),
                             notes: z.string().optional(),
                         }).optional().describe('Quando presente, o item é um BLOCO AERÓBIO — exercise_id/sets/reps/method são ignorados.'),
                     })).describe('Itens na ordem (compostos primeiro; blocos cardio onde couber)'),
@@ -231,6 +251,54 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
                             return ok
                         })
                         .map(it => {
+                            if (it.cardio && it.cardio.mode === 'phased' && it.cardio.segments?.length) {
+                                // Por fases: deriva a intensidade de cada fase
+                                // (zona/RPE/protocolo, FCmáx do aluno) + totais.
+                                const builtSegments: CardioSegment[] = it.cardio.segments
+                                    .map(seg => {
+                                        const segProtocol = seg.kind === 'interval' ? cardioProtocol(seg.protocol) : null
+                                        let target: CardioIntensityTarget | null = null
+                                        if (seg.zone != null) target = { type: 'zone', zone: seg.zone as 1 | 2 | 3 | 4 | 5 }
+                                        else if (seg.rpe != null) target = { type: 'rpe', rpe: seg.rpe }
+                                        else if (segProtocol) target = segProtocol.suggested_target
+                                        const derived = target ? formatIntensityTarget(target, studentMaxHr ?? null) : null
+                                        const out: CardioSegment = { kind: seg.kind }
+                                        if (seg.label) out.label = seg.label
+                                        if (seg.kind === 'steady' && seg.duration_minutes != null) out.duration_minutes = seg.duration_minutes
+                                        if (seg.kind === 'interval') {
+                                            const iv = seg.intervals ?? segProtocol?.intervals
+                                            if (iv) out.intervals = iv
+                                        }
+                                        if (target) out.intensity_target = target
+                                        if (derived) out.intensity = derived
+                                        else if (seg.intensity) out.intensity = seg.intensity
+                                        return out
+                                    })
+                                    .filter(seg => (seg.kind === 'steady' ? seg.duration_minutes != null : !!seg.intervals))
+                                const totalSeconds = cardioTotalSeconds({ mode: 'phased', segments: builtSegments } as CardioConfig)
+                                return {
+                                    exercise_id: null,
+                                    sets: null,
+                                    reps: null,
+                                    rest_seconds: null,
+                                    notes: null,
+                                    method: null,
+                                    superset_group: null,
+                                    cardio: {
+                                        mode: 'phased' as const,
+                                        equipment: it.cardio.equipment ?? null,
+                                        objective: null,
+                                        duration_minutes: totalSeconds > 0 ? Math.max(1, Math.round(totalSeconds / 60)) : null,
+                                        distance_km: null,
+                                        intensity: summarizeSegments(builtSegments) || null,
+                                        intensity_target: null,
+                                        intervals: null,
+                                        protocol_key: null,
+                                        segments: builtSegments,
+                                        notes: it.cardio.notes ?? null,
+                                    },
+                                }
+                            }
                             if (it.cardio) {
                                 // Protocolo nomeado → números + selo; zone/rpe → alvo
                                 // estruturado + string derivada (FCmáx do aluno).
@@ -250,7 +318,8 @@ export async function runCanvasTurn(args: RunCanvasTurnArgs): Promise<RunCanvasT
                                     method: null,
                                     superset_group: null,
                                     cardio: {
-                                        mode: protocolDef ? 'interval' as const : it.cardio.mode,
+                                        // 'phased' sem segments não se sustenta — degrada pra contínuo.
+                                        mode: protocolDef ? 'interval' as const : it.cardio.mode === 'phased' ? 'continuous' as const : it.cardio.mode,
                                         equipment: it.cardio.equipment ?? null,
                                         objective: it.cardio.objective ?? null,
                                         duration_minutes: it.cardio.duration_minutes ?? null,

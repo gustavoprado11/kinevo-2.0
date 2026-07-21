@@ -11,10 +11,11 @@ import {
   validateSetScheme,
 } from '@kinevo/shared/lib/prescription/set-scheme'
 import { isCompoundMethod } from '@kinevo/shared/lib/prescription/set-scheme-presets'
-import { cardioConfigSchema } from '@/lib/programs/cardio-config-schema'
+import { cardioConfigSchema, deriveCardioDisplayFields } from '@/lib/programs/cardio-config-schema'
 import { formatIntensityTarget } from '@kinevo/shared/lib/cardio/zones'
 import { CARDIO_PROTOCOLS, cardioProtocol } from '@kinevo/shared/lib/cardio/interval-protocols'
-import type { CardioIntensityTarget } from '@kinevo/shared/types/workout-items'
+import { cardioTotalSeconds, summarizeSegments } from '@kinevo/shared/lib/cardio/segments'
+import type { CardioConfig, CardioIntensityTarget, CardioSegment } from '@kinevo/shared/types/workout-items'
 
 type WorkoutType = 'template' | 'assigned'
 
@@ -41,6 +42,54 @@ function scheduleColumn(programType: WorkoutType, days: number[]): Record<string
     ? { frequency: unique.map(d => DAY_INT_TO_STR[d]) }
     : { scheduled_days: unique }
 }
+
+// ----------------------------------------------------------------------------
+// Cardio: intensidade estruturada (compartilhada entre o bloco e cada fase)
+// ----------------------------------------------------------------------------
+
+interface StructuredIntensityParams {
+  zone?: number
+  hr_min_bpm?: number
+  hr_max_bpm?: number
+  target_rpe?: number
+  pace_min_per_km?: string
+}
+
+/** No máximo UM tipo de alvo estruturado; valida a faixa de FC. */
+function resolveIntensityTarget(p: StructuredIntensityParams): { target: CardioIntensityTarget | null; error?: string } {
+  const structuredCount = [p.zone != null, p.hr_min_bpm != null || p.hr_max_bpm != null, p.target_rpe != null, p.pace_min_per_km != null]
+    .filter(Boolean).length
+  if (structuredCount > 1) {
+    return { target: null, error: 'Informe apenas UM tipo de intensidade estruturada: zone OU hr_min_bpm+hr_max_bpm OU target_rpe OU pace_min_per_km.' }
+  }
+  if (p.zone != null) return { target: { type: 'zone', zone: p.zone as 1 | 2 | 3 | 4 | 5 } }
+  if (p.hr_min_bpm != null || p.hr_max_bpm != null) {
+    if (p.hr_min_bpm == null || p.hr_max_bpm == null || p.hr_min_bpm > p.hr_max_bpm) {
+      return { target: null, error: 'Faixa de FC exige hr_min_bpm e hr_max_bpm, com mínimo ≤ máximo.' }
+    }
+    return { target: { type: 'hr', hr_min_bpm: p.hr_min_bpm, hr_max_bpm: p.hr_max_bpm } }
+  }
+  if (p.target_rpe != null) return { target: { type: 'rpe', rpe: p.target_rpe } }
+  if (p.pace_min_per_km != null) return { target: { type: 'pace', pace_min_per_km: p.pace_min_per_km } }
+  return { target: null }
+}
+
+/** Zod de UMA fase do modo 'phased' — mesma gramática de intensidade do bloco. */
+const cardioSegmentZod = z.object({
+  kind: z.enum(['steady', 'interval']).describe("'steady' = fase contínua (duration_minutes); 'interval' = bloco work/rest × rounds"),
+  label: z.string().max(60).optional().describe("Nome da fase (ex.: 'Aquecimento', 'Bloco principal', 'Volta à calma')"),
+  duration_minutes: z.number().min(0.5).max(600).optional().describe('steady: duração-alvo da fase em minutos'),
+  protocol: z.enum(CARDIO_PROTOCOLS.map(p => p.key) as [string, ...string[]]).optional().describe('interval: protocolo nomeado que preenche work/rest/rounds + intensidade sugerida. Números explícitos vencem.'),
+  work_seconds: z.number().int().min(5).max(3600).optional().describe('interval: trabalho em segundos'),
+  rest_seconds: z.number().int().min(0).max(3600).optional().describe('interval: descanso em segundos'),
+  rounds: z.number().int().min(1).max(100).optional().describe('interval: número de rounds'),
+  zone: z.number().int().min(1).max(5).optional().describe('Intensidade da fase: zona de FC Z1–Z5'),
+  hr_min_bpm: z.number().int().min(60).max(230).optional(),
+  hr_max_bpm: z.number().int().min(60).max(230).optional(),
+  target_rpe: z.number().int().min(1).max(10).optional().describe('Intensidade da fase: RPE 1–10'),
+  pace_min_per_km: z.string().max(20).optional().describe("Intensidade da fase: pace min/km (ex.: '5:30')"),
+  intensity: z.string().max(200).optional().describe('Texto livre de intensidade da fase (fallback quando não há alvo estruturado)'),
+})
 
 // ----------------------------------------------------------------------------
 // Per-set prescription (advanced methods: pyramid, drop-set, cluster, 5x5, …)
@@ -480,11 +529,11 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
 
   server.tool(
     'kinevo_add_cardio_to_session',
-    "Add an aerobic (cardio) block to a workout session — continuous (time or distance target: treadmill, bike, outdoor run…) or interval (work/rest × rounds). Use inside standalone aerobic sessions (session_type='cardio') or at the end of a strength session. Prefer STRUCTURED intensity over free text: zone (Z1–Z5, resolved to the student's bpm range via max heart rate), hr_min_bpm/hr_max_bpm, target_rpe, or pace_min_per_km. For intervals, prefer a named protocol (tabata, hiit_15_15, hiit_30_30, hiit_40_20, norwegian_4x4 — see kinevo_list_training_methods) which fills work/rest/rounds + suggested intensity in one shot. The student executes it with a guided timer in the app.",
+    "Add an aerobic (cardio) block to a workout session — continuous (time or distance target: treadmill, bike, outdoor run…), interval (work/rest × rounds), or phased (a SEQUENCE of phases executed in order — e.g., 10min Z1 warmup → Tabata → 5min Z1 cooldown; also different interval blocks back-to-back, or a continuous session with varying intensities). Use inside standalone aerobic sessions (session_type='cardio') or at the end of a strength session. Prefer STRUCTURED intensity over free text: zone (Z1–Z5, resolved to the student's bpm range via max heart rate), hr_min_bpm/hr_max_bpm, target_rpe, or pace_min_per_km. For intervals, prefer a named protocol (tabata, hiit_15_15, hiit_30_30, hiit_40_20, norwegian_4x4 — see kinevo_list_training_methods) which fills work/rest/rounds + suggested intensity in one shot. The student executes it with a guided timer in the app (phased runs each phase in sequence).",
     {
       workout_id: z.string().uuid().describe('The workout session ID to add the cardio block to'),
       program_type: z.enum(['template', 'assigned']).default('assigned').describe('Whether the session belongs to a template or an assigned program'),
-      mode: z.enum(['continuous', 'interval']).default('continuous').describe("'continuous' = steady state (time/distance target); 'interval' = work/rest rounds (HIIT). Passing `protocol` implies 'interval'."),
+      mode: z.enum(['continuous', 'interval', 'phased']).default('continuous').describe("'continuous' = steady state (time/distance target); 'interval' = work/rest rounds (HIIT); 'phased' = sequence of phases via `segments`. Passing `protocol` implies 'interval'; passing `segments` implies 'phased'."),
       equipment: z.enum(['treadmill', 'bike', 'elliptical', 'rower', 'stairmaster', 'jump_rope', 'outdoor_run', 'outdoor_bike', 'swimming', 'other']).optional().describe('Equipment/modality (Esteira, Bicicleta, Elíptico, Remo, Escada, Corda, Corrida Outdoor, Bike Outdoor, Natação, Outro)'),
       objective: z.enum(['time', 'distance']).optional().describe("Continuous mode target type: 'time' (duration_minutes) or 'distance' (distance_km). Default 'time'."),
       duration_minutes: z.number().min(1).max(600).optional().describe('Continuous mode: target duration in minutes'),
@@ -499,11 +548,12 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       work_seconds: z.number().int().min(5).max(3600).optional().describe('Interval mode: work phase in seconds'),
       interval_rest_seconds: z.number().int().min(0).max(3600).optional().describe('Interval mode: rest phase in seconds'),
       rounds: z.number().int().min(1).max(100).optional().describe('Interval mode: number of work/rest rounds'),
+      segments: z.array(cardioSegmentZod).min(1).max(12).optional().describe("Phased mode: the ordered sequence of phases. Each phase is 'steady' (duration_minutes + intensity) or 'interval' (protocol OR work/rest/rounds + intensity). Ex.: [{kind:'steady',duration_minutes:10,zone:1,label:'Aquecimento'},{kind:'interval',protocol:'tabata'},{kind:'steady',duration_minutes:5,zone:1,label:'Volta à calma'}]. Intensity is defined PER PHASE — not at the block level."),
       notes: z.string().max(2000).optional().describe('Technical note shown to the student on the cardio card'),
       order_index: z.number().min(0).optional().describe('Position in the session. If omitted, appends at the end.'),
     },
     { title: 'Adicionar bloco aeróbio', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    async ({ workout_id, program_type, mode, equipment, objective, duration_minutes, distance_km, zone, hr_min_bpm, hr_max_bpm, target_rpe, pace_min_per_km, intensity, protocol, work_seconds, interval_rest_seconds, rounds, notes, order_index }) => {
+    async ({ workout_id, program_type, mode, equipment, objective, duration_minutes, distance_km, zone, hr_min_bpm, hr_max_bpm, target_rpe, pace_min_per_km, intensity, protocol, work_seconds, interval_rest_seconds, rounds, segments, notes, order_index }) => {
       const supabaseAdmin = createAdminClient()
 
       const owns = await verifyWorkoutOwnership(supabaseAdmin, workout_id, program_type, trainerId)
@@ -511,26 +561,16 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         return mcpError('Sessão de treino não encontrada ou não pertence a este treinador.')
       }
 
-      // Alvo de intensidade estruturado: no máximo UM tipo por chamada.
-      const structuredCount = [zone != null, hr_min_bpm != null || hr_max_bpm != null, target_rpe != null, pace_min_per_km != null]
-        .filter(Boolean).length
-      if (structuredCount > 1) {
-        return mcpError('Informe apenas UM tipo de intensidade estruturada: zone OU hr_min_bpm+hr_max_bpm OU target_rpe OU pace_min_per_km.')
-      }
-      let intensityTarget: CardioIntensityTarget | null = null
-      if (zone != null) intensityTarget = { type: 'zone', zone: zone as 1 | 2 | 3 | 4 | 5 }
-      else if (hr_min_bpm != null || hr_max_bpm != null) {
-        if (hr_min_bpm == null || hr_max_bpm == null || hr_min_bpm > hr_max_bpm) {
-          return mcpError('Faixa de FC exige hr_min_bpm e hr_max_bpm, com mínimo ≤ máximo.')
-        }
-        intensityTarget = { type: 'hr', hr_min_bpm, hr_max_bpm }
-      } else if (target_rpe != null) intensityTarget = { type: 'rpe', rpe: target_rpe }
-      else if (pace_min_per_km != null) intensityTarget = { type: 'pace', pace_min_per_km }
+      // Alvo de intensidade estruturado do BLOCO: no máximo UM tipo por chamada.
+      const resolved = resolveIntensityTarget({ zone, hr_min_bpm, hr_max_bpm, target_rpe, pace_min_per_km })
+      if (resolved.error) return mcpError(resolved.error)
+      let intensityTarget = resolved.target
 
       // Protocolo nomeado: implica interval e preenche números + alvo sugerido
       // (params explícitos vencem os números; alvo explícito vence o sugerido).
+      // `segments` implica phased e vence tudo.
       const protocolDef = cardioProtocol(protocol)
-      const effectiveMode = protocolDef ? 'interval' : mode
+      const effectiveMode = segments && segments.length > 0 ? 'phased' : protocolDef ? 'interval' : mode
       if (protocolDef && !intensityTarget) {
         intensityTarget = protocolDef.suggested_target
       }
@@ -538,7 +578,53 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       // Monta o item_config no shape canônico (CardioConfig) e valida.
       const config: Record<string, unknown> = { mode: effectiveMode }
       if (equipment !== undefined) config.equipment = equipment
-      if (effectiveMode === 'continuous') {
+      if (effectiveMode === 'phased') {
+        if (!segments || segments.length === 0) {
+          return mcpError("Modo 'phased' exige segments (1–12 fases, cada uma 'steady' ou 'interval').")
+        }
+        if (intensityTarget) {
+          return mcpError("No modo 'phased' a intensidade é POR FASE: defina zone/hr/rpe/pace dentro de cada segmento, não no bloco.")
+        }
+        const maxHr = await maxHrForWorkout(supabaseAdmin, workout_id, program_type)
+        const built: CardioSegment[] = []
+        for (const [i, seg] of segments.entries()) {
+          const segResolved = resolveIntensityTarget(seg)
+          if (segResolved.error) return mcpError(`Fase ${i + 1}: ${segResolved.error}`)
+          const segProtocolDef = seg.kind === 'interval' ? cardioProtocol(seg.protocol) : null
+          const target = segResolved.target ?? segProtocolDef?.suggested_target ?? null
+          const out: CardioSegment = { kind: seg.kind }
+          if (seg.label) out.label = seg.label
+          if (seg.kind === 'steady') {
+            if (seg.duration_minutes == null) {
+              return mcpError(`Fase ${i + 1}: fase contínua ('steady') exige duration_minutes.`)
+            }
+            out.duration_minutes = seg.duration_minutes
+          } else {
+            const w = seg.work_seconds ?? segProtocolDef?.intervals.work_seconds
+            const r = seg.rest_seconds ?? segProtocolDef?.intervals.rest_seconds
+            const n = seg.rounds ?? segProtocolDef?.intervals.rounds
+            if (w === undefined || r === undefined || n === undefined) {
+              return mcpError(`Fase ${i + 1}: bloco intervalado exige work_seconds, rest_seconds e rounds — ou um protocol nomeado.`)
+            }
+            out.intervals = { work_seconds: w, rest_seconds: r, rounds: n }
+          }
+          if (target) {
+            out.intensity_target = target
+            const derived = formatIntensityTarget(target, maxHr)
+            if (derived) out.intensity = derived
+          } else if (seg.intensity) {
+            out.intensity = seg.intensity
+          }
+          built.push(out)
+        }
+        config.segments = built
+        // Derivados — a espinha da retrocompat: superfícies antigas e o Watch
+        // leem duration_minutes (total) e intensity (resumo), não segments.
+        const totalSeconds = cardioTotalSeconds({ mode: 'phased', segments: built } as CardioConfig)
+        if (totalSeconds > 0) config.duration_minutes = Math.max(1, Math.round(totalSeconds / 60))
+        const summary = summarizeSegments(built)
+        if (summary) config.intensity = summary
+      } else if (effectiveMode === 'continuous') {
         config.objective = objective ?? 'time'
         if (duration_minutes !== undefined) config.duration_minutes = duration_minutes
         if (distance_km !== undefined) config.distance_km = distance_km
@@ -557,14 +643,16 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       }
 
       // String exibida: derivada do alvo (resolvendo zona na FCmáx do aluno em
-      // programas atribuídos) ou o texto livre do caller.
-      if (intensityTarget) {
-        config.intensity_target = intensityTarget
-        const maxHr = await maxHrForWorkout(supabaseAdmin, workout_id, program_type)
-        const derived = formatIntensityTarget(intensityTarget, maxHr)
-        if (derived) config.intensity = derived
-      } else if (intensity !== undefined) {
-        config.intensity = intensity
+      // programas atribuídos) ou o texto livre do caller. Phased já derivou.
+      if (effectiveMode !== 'phased') {
+        if (intensityTarget) {
+          config.intensity_target = intensityTarget
+          const maxHr = await maxHrForWorkout(supabaseAdmin, workout_id, program_type)
+          const derived = formatIntensityTarget(intensityTarget, maxHr)
+          if (derived) config.intensity = derived
+        } else if (intensity !== undefined) {
+          config.intensity = intensity
+        }
       }
       if (notes !== undefined) config.notes = notes
 
@@ -617,12 +705,15 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       }
 
       const finalIntervals = config.intervals as { work_seconds: number; rest_seconds: number; rounds: number } | undefined
-      const summary = effectiveMode === 'interval' && finalIntervals
-        ? `${protocolDef && config.protocol_key ? `${protocolDef.label} — ` : ''}intervalado ${finalIntervals.work_seconds}s on / ${finalIntervals.rest_seconds}s off × ${finalIntervals.rounds}`
-        : (objective ?? 'time') === 'distance'
-          ? `contínuo ${distance_km ?? '?'} km`
-          : `contínuo ${duration_minutes ?? '?'} min`
-      const intensityStr = typeof config.intensity === 'string' ? config.intensity : null
+      const summary = effectiveMode === 'phased'
+        ? `por fases: ${typeof config.intensity === 'string' ? config.intensity : `${(config.segments as unknown[]).length} fases`}`
+        : effectiveMode === 'interval' && finalIntervals
+          ? `${protocolDef && config.protocol_key ? `${protocolDef.label} — ` : ''}intervalado ${finalIntervals.work_seconds}s on / ${finalIntervals.rest_seconds}s off × ${finalIntervals.rounds}`
+          : (objective ?? 'time') === 'distance'
+            ? `contínuo ${distance_km ?? '?'} km`
+            : `contínuo ${duration_minutes ?? '?'} min`
+      // Phased: o resumo já embute as intensidades por fase — não repete.
+      const intensityStr = effectiveMode !== 'phased' && typeof config.intensity === 'string' ? config.intensity : null
       return mcpSuccess({
         workout_item: { id: data.id, item_type: 'cardio', order_index: data.order_index, config: parsedConfig.data },
         message: `Bloco aeróbio adicionado (${summary}${intensityStr ? `, ${intensityStr}` : ''}).`,
@@ -754,7 +845,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       order_index: z.number().min(0).optional().describe('New position in the session'),
       set_scheme: z.array(setSchemaZod).optional().describe('Advanced per-set prescription. Replaces the entire existing scheme. Pass an empty array [] to remove the scheme and revert to simple mode (also clears method_key). When non-empty, sets/reps/rest_seconds are derived from it.'),
       rounds: z.number().min(1).max(20).optional().describe('Rounds the set_scheme repeats (compound methods). Defaults to 1.'),
-      cardio_config: cardioConfigSchema.optional().describe("Cardio blocks only (item_type='cardio'): replaces the ENTIRE aerobic config. Shape: { mode: 'continuous'|'interval', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intervals?: { work_seconds, rest_seconds, rounds }, notes? }."),
+      cardio_config: cardioConfigSchema.optional().describe("Cardio blocks only (item_type='cardio'): replaces the ENTIRE aerobic config. Shape: { mode: 'continuous'|'interval'|'phased', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intensity_target?, intervals?: { work_seconds, rest_seconds, rounds }, segments? (phased: array of { kind: 'steady'|'interval', label?, duration_minutes?, intervals?, intensity_target?, intensity? }), notes? }. For 'phased', duration_minutes/intensity are derived from segments automatically when omitted."),
     },
     { title: 'Atualizar exercício', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ item_id, workout_type, exercise_id, sets, reps, rest_seconds, notes, exercise_function, method_key, order_index, set_scheme, rounds, cardio_config }) => {
@@ -805,15 +896,10 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
 
       const updateData: Record<string, unknown> = {}
       if (cardio_config !== undefined) {
-        // Alvo estruturado sem string → deriva a exibição (zonas resolvem na
-        // FCmáx do aluno em programas atribuídos).
-        const cfg: Record<string, unknown> = { ...cardio_config }
-        if (cfg.intensity_target && !cfg.intensity) {
-          const maxHr = await maxHrForWorkout(supabaseAdmin, itemCtx[itemFkColumn], workout_type)
-          const derived = formatIntensityTarget(cfg.intensity_target as CardioIntensityTarget, maxHr)
-          if (derived) cfg.intensity = derived
-        }
-        updateData.item_config = cfg
+        // Deriva os campos legados de exibição (zonas resolvem na FCmáx do
+        // aluno em programas atribuídos; phased deriva por fase + totais).
+        const maxHr = await maxHrForWorkout(supabaseAdmin, itemCtx[itemFkColumn], workout_type)
+        updateData.item_config = deriveCardioDisplayFields({ ...cardio_config }, maxHr)
       }
       if (rest_seconds !== undefined) updateData.rest_seconds = rest_seconds
       if (notes !== undefined) updateData.notes = notes

@@ -106,7 +106,11 @@ function buildCardioItem(cardio: NonNullable<CanvasItemDTO['cardio']>): WorkoutI
     const item = makeCardioItem()
     const config: Record<string, unknown> = { mode: cardio.mode }
     if (cardio.equipment) config.equipment = cardio.equipment
-    if (cardio.mode === 'continuous') {
+    if (cardio.mode === 'phased' && cardio.segments?.length) {
+        config.segments = cardio.segments
+        // duration_minutes/intensity derivados já vêm do turno da IA.
+        if (cardio.duration_minutes != null) config.duration_minutes = cardio.duration_minutes
+    } else if (cardio.mode === 'continuous') {
         config.objective = cardio.objective ?? 'time'
         if (cardio.duration_minutes != null) config.duration_minutes = cardio.duration_minutes
         if (cardio.distance_km != null) config.distance_km = cardio.distance_km
@@ -188,7 +192,7 @@ export function workoutsToSnapshot(
                     const cfg = (it.item_config ?? {}) as Record<string, unknown>
                     items.push({
                         cardio: {
-                            mode: cfg.mode === 'interval' ? 'interval' : 'continuous',
+                            mode: cfg.mode === 'interval' ? 'interval' : cfg.mode === 'phased' ? 'phased' : 'continuous',
                             equipment: (cfg.equipment as string) ?? null,
                             objective: (cfg.objective as 'time' | 'distance') ?? null,
                             duration_minutes: (cfg.duration_minutes as number) ?? null,
@@ -197,6 +201,7 @@ export function workoutsToSnapshot(
                             intensity_target: (cfg.intensity_target as import('@kinevo/shared/types/workout-items').CardioIntensityTarget) ?? null,
                             intervals: (cfg.intervals as { work_seconds: number; rest_seconds: number; rounds: number }) ?? null,
                             protocol_key: (cfg.protocol_key as string) ?? null,
+                            segments: (cfg.segments as import('@kinevo/shared/types/workout-items').CardioSegment[]) ?? null,
                             notes: (cfg.notes as string) ?? null,
                         },
                     })
