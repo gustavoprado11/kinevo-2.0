@@ -15,9 +15,9 @@ import {
 } from '../tool-policy'
 
 describe('tool-policy — classificação', () => {
-    it('cobre as 62 tools', () => {
-        expect(ALL_MCP_TOOLS.length).toBe(62)
-        expect(new Set(ALL_MCP_TOOLS).size).toBe(62) // sem duplicatas
+    it('cobre as 63 tools', () => {
+        expect(ALL_MCP_TOOLS.length).toBe(63)
+        expect(new Set(ALL_MCP_TOOLS).size).toBe(63) // sem duplicatas
     })
 
     it('READ ∪ WRITE = todas; READ ∩ WRITE = ∅', () => {
@@ -108,8 +108,8 @@ describe('tool-policy — pesos de crédito', () => {
 })
 
 describe('tool-policy — subsetting', () => {
-    it('sem intenção → todas as 62', () => {
-        expect(resolveToolSubset([]).length).toBe(62)
+    it('sem intenção → todas as 63', () => {
+        expect(resolveToolSubset([]).length).toBe(63)
     })
 
     it('intenção financeiro inclui core + tools financeiras, exclui agenda', () => {
