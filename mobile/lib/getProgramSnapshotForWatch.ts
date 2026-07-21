@@ -268,7 +268,9 @@ export async function getProgramSnapshotForWatch(
         itemType: 'cardio' as const,
         orderIndex: item.effectiveOrder ?? 999,
         config: {
-          mode: cfg.mode || 'continuous',
+          // O Watch não executa fases: 'phased' degrada para continuous com os
+          // campos derivados (duration_minutes = total, intensity = resumo).
+          mode: cfg.mode === 'phased' ? 'continuous' : (cfg.mode || 'continuous'),
           equipment: cfg.equipment,
           equipmentLabel: cfg.equipment ? EQUIPMENT_LABELS[cfg.equipment] ?? undefined : undefined,
           objective: cfg.objective,

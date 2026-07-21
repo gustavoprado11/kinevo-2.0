@@ -1538,8 +1538,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         intensity_target: config.intensity_target,
                         intervals: config.intervals,
                         protocol_key: config.protocol_key,
+                        segments: config.segments,
                         actual_duration_seconds: config.actual_duration_seconds,
                         completed_rounds: config.completed_rounds,
+                        completed_segments: config.completed_segments,
+                        total_segments: config.total_segments,
                     });
                     setLogs.push({
                         workout_session_id: currentSessionId,

@@ -59,6 +59,7 @@ export function EditCardioSheet({
     const [intensity, setIntensity] = useState(parsed.intensity);
     const [notes, setNotes] = useState(parsed.notes);
     const isInterval = parsed.isInterval;
+    const isPhased = parsed.isPhased;
 
     useEffect(() => {
         if (visible) {
@@ -287,8 +288,8 @@ export function EditCardioSheet({
                                     </ScrollView>
                                 </View>
 
-                                {isInterval ? (
-                                    /* Protocolo intervalado (web): preservado, não editável aqui */
+                                {isInterval || isPhased ? (
+                                    /* Estrutura definida no web: preservada, não editável aqui */
                                     <View
                                         style={{
                                             flexDirection: "row",
@@ -311,9 +312,9 @@ export function EditCardioSheet({
                                                 color: colors.text.secondary,
                                             }}
                                         >
-                                            Protocolo intervalado definido no painel web — os
-                                            intervalos são preservados. Aqui você edita
-                                            equipamento, intensidade e observações.
+                                            {isPhased
+                                                ? "Treino por fases definido no painel web — as fases e intensidades são preservadas. Aqui você edita equipamento e observações."
+                                                : "Protocolo intervalado definido no painel web — os intervalos são preservados. Aqui você edita equipamento, intensidade e observações."}
                                         </Text>
                                     </View>
                                 ) : (
@@ -342,17 +343,19 @@ export function EditCardioSheet({
                                     </>
                                 )}
 
-                                {/* Intensidade */}
-                                <View style={{ marginBottom: 14 }}>
-                                    <Text style={fieldLabelStyle}>Intensidade (opcional)</Text>
-                                    <TextInput
-                                        value={intensity}
-                                        onChangeText={setIntensity}
-                                        placeholder="Ex: Zona 2, RPE 6, 130-150bpm"
-                                        placeholderTextColor={colors.text.tertiary}
-                                        style={inputStyle}
-                                    />
-                                </View>
+                                {/* Intensidade — no phased ela é derivada das fases (web) */}
+                                {!isPhased ? (
+                                    <View style={{ marginBottom: 14 }}>
+                                        <Text style={fieldLabelStyle}>Intensidade (opcional)</Text>
+                                        <TextInput
+                                            value={intensity}
+                                            onChangeText={setIntensity}
+                                            placeholder="Ex: Zona 2, RPE 6, 130-150bpm"
+                                            placeholderTextColor={colors.text.tertiary}
+                                            style={inputStyle}
+                                        />
+                                    </View>
+                                ) : null}
 
                                 {/* Notes */}
                                 <View style={{ marginBottom: 16 }}>

@@ -1,5 +1,5 @@
 // Fase 7: dark mode adapt via makeStyles(colors) factory + useV2Colors.
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, AppState } from 'react-native';
 import { BlurView } from 'expo-blur';
 import {
@@ -12,8 +12,10 @@ import {
     type CardioConfig,
     type CardioMode,
     type CardioEquipment,
+    type CardioSegment,
 } from '@kinevo/shared/types/workout-items';
 import { cardioProtocolLabel, protocolMatchesIntervals } from '@kinevo/shared/lib/cardio/interval-protocols';
+import { segmentStructureLabel } from '@kinevo/shared/lib/cardio/segments';
 import type { ExerciseData } from '../../hooks/useWorkoutSession';
 import type { TimerUpdateData } from '../../hooks/useLiveActivity';
 import { useV2Colors, useIsDark, type V2Palette } from '../../hooks/useV2Colors';
@@ -28,6 +30,41 @@ interface CardioCardProps {
 
 type CardioTimerState = 'idle' | 'countdown' | 'active' | 'completing' | 'completed';
 type IntervalPhase = 'work' | 'rest';
+
+/** Segmento normalizado do modo 'phased' — shape achatado que o driver do
+ *  timer consome (steady = alvo em segundos; interval = work/rest/rounds). */
+interface RuntimeSegment {
+    kind: 'steady' | 'interval';
+    label?: string;
+    /** steady: alvo total em segundos. */
+    seconds: number;
+    work: number;
+    rest: number;
+    rounds: number;
+    intensity?: string;
+}
+
+function normalizeSegments(segments: CardioSegment[] | undefined): RuntimeSegment[] {
+    return (segments ?? [])
+        .map((s): RuntimeSegment | null => {
+            if (s.kind === 'interval') {
+                if (!s.intervals) return null;
+                return {
+                    kind: 'interval',
+                    label: s.label,
+                    seconds: 0,
+                    work: s.intervals.work_seconds || 30,
+                    rest: s.intervals.rest_seconds ?? 0,
+                    rounds: s.intervals.rounds || 1,
+                    intensity: s.intensity,
+                };
+            }
+            const seconds = Math.round((s.duration_minutes ?? 0) * 60);
+            if (seconds <= 0) return null;
+            return { kind: 'steady', label: s.label, seconds, work: 0, rest: 0, rounds: 0, intensity: s.intensity };
+        })
+        .filter((s): s is RuntimeSegment => s !== null);
+}
 
 const COUNTDOWN_SECONDS = 5;
 
@@ -67,6 +104,36 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
     const estimatedIntervalSeconds = isInterval
         ? (workSeconds * totalRounds) + (restSeconds * (totalRounds - 1))
         : 0;
+
+    // ── Modo 'phased': sequência de segmentos (o driver troca a "cara" do
+    // configRef a cada segmento; o tick contínuo/intervalado roda inalterado).
+    const phasedSegments = useMemo(
+        () => (mode === 'phased' ? normalizeSegments(config.segments) : []),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [mode, exercise.item_config],
+    );
+    const isPhased = mode === 'phased' && phasedSegments.length > 0;
+    const [segmentIndex, setSegmentIndex] = useState(0);
+    const segmentIndexRef = useRef(0);
+    // Elapsed acumulado no INÍCIO do segmento atual (alvo steady é por segmento).
+    const segmentStartElapsedRef = useRef(0);
+    const [segmentStartElapsed, setSegmentStartElapsed] = useState(0);
+    const phasedSegmentsRef = useRef(phasedSegments);
+    phasedSegmentsRef.current = phasedSegments;
+
+    // Valores runtime do segmento ativo (modos simples = os do config, como antes).
+    const activeSegment = isPhased
+        ? phasedSegments[Math.min(segmentIndex, phasedSegments.length - 1)]
+        : null;
+    const runIsInterval = activeSegment ? activeSegment.kind === 'interval' : isInterval;
+    const runWorkSeconds = activeSegment?.kind === 'interval' ? activeSegment.work : workSeconds;
+    const runRestSeconds = activeSegment?.kind === 'interval' ? activeSegment.rest : restSeconds;
+    const runTotalRounds = activeSegment?.kind === 'interval' ? activeSegment.rounds : totalRounds;
+    const runContinuousTotal = activeSegment
+        ? (activeSegment.kind === 'steady' ? activeSegment.seconds : 0)
+        : totalContinuousSeconds;
+    const runHasContinuousTarget = activeSegment ? activeSegment.kind === 'steady' : hasContinuousTarget;
+    const runIntensity = activeSegment ? (activeSegment.intensity ?? config.intensity) : config.intensity;
 
     // ── Render state (drives UI) ───────────────────────────────────────────
     const [cardState, setCardState] = useState<CardioTimerState>(
@@ -115,9 +182,50 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
         ? EQUIPMENT_ICONS[config.equipment] || Dumbbell
         : null;
 
-    // Stable ref for config values used inside the interval
-    const configRef = useRef({ equipmentLabel, intensity: config.intensity, isInterval, totalRounds, workSeconds, restSeconds, hasContinuousTarget, totalContinuousSeconds });
-    configRef.current = { equipmentLabel, intensity: config.intensity, isInterval, totalRounds, workSeconds, restSeconds, hasContinuousTarget, totalContinuousSeconds };
+    // Stable ref for config values used inside the interval. Em 'phased' os
+    // valores refletem o SEGMENTO ATIVO (o render recomputa; transições dentro
+    // do tick escrevem sincronamente via applySegmentToConfigRef).
+    const configRef = useRef({
+        equipmentLabel,
+        intensity: runIntensity,
+        isInterval: runIsInterval,
+        totalRounds: runTotalRounds,
+        workSeconds: runWorkSeconds,
+        restSeconds: runRestSeconds,
+        hasContinuousTarget: runHasContinuousTarget,
+        totalContinuousSeconds: runContinuousTotal,
+        isPhased,
+        phasedCount: phasedSegments.length,
+    });
+    configRef.current = {
+        equipmentLabel,
+        intensity: runIntensity,
+        isInterval: runIsInterval,
+        totalRounds: runTotalRounds,
+        workSeconds: runWorkSeconds,
+        restSeconds: runRestSeconds,
+        hasContinuousTarget: runHasContinuousTarget,
+        totalContinuousSeconds: runContinuousTotal,
+        isPhased,
+        phasedCount: phasedSegments.length,
+    };
+
+    /** Escreve sincronamente no configRef a "cara" do segmento idx — o tick e
+     *  a recuperação de background leem só daqui entre renders. */
+    const applySegmentToConfigRef = useCallback((idx: number) => {
+        const seg = phasedSegmentsRef.current[idx];
+        if (!seg) return;
+        configRef.current = {
+            ...configRef.current,
+            intensity: seg.intensity ?? configRef.current.intensity,
+            isInterval: seg.kind === 'interval',
+            totalRounds: seg.kind === 'interval' ? seg.rounds : 0,
+            workSeconds: seg.kind === 'interval' ? seg.work : 0,
+            restSeconds: seg.kind === 'interval' ? seg.rest : 0,
+            hasContinuousTarget: seg.kind === 'steady',
+            totalContinuousSeconds: seg.kind === 'steady' ? seg.seconds : 0,
+        };
+    }, []);
 
     // ── Helper: notify Live Activity (reads from refs) ───────────────────
     const notifyTimerUpdateFromRef = useCallback((
@@ -166,6 +274,46 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
         }, 2000);
     }, [completingScale, completingOpacity]);
 
+    /** Inicializa o estado de fase para o segmento idx (início do bloco phased
+     *  e cada transição de segmento passam por aqui). */
+    const beginSegment = useCallback((idx: number) => {
+        const seg = phasedSegmentsRef.current[idx];
+        if (!seg) return;
+        segmentIndexRef.current = idx;
+        setSegmentIndex(idx);
+        segmentStartElapsedRef.current = elapsedRef.current;
+        setSegmentStartElapsed(elapsedRef.current);
+        applySegmentToConfigRef(idx);
+        if (seg.kind === 'interval') {
+            phaseRef.current = 'work';
+            currentRoundRef.current = 1;
+            phaseRemainingRef.current = seg.work;
+            setPhase('work');
+            setCurrentRound(1);
+            setPhaseRemaining(seg.work);
+            phaseStartTimeRef.current = Date.now();
+            phaseDurationRef.current = seg.work;
+            notifyTimerUpdateFromRef(seg.work, seg.work, 'work', 1);
+        } else {
+            phaseStartTimeRef.current = Date.now();
+            phaseDurationRef.current = seg.seconds;
+            notifyTimerUpdateFromRef(seg.seconds, seg.seconds);
+        }
+    }, [applySegmentToConfigRef, notifyTimerUpdateFromRef]);
+
+    /** Fim da prescrição do TRECHO atual: em phased avança para o próximo
+     *  segmento; no último (ou nos modos simples) conclui de verdade. O check
+     *  manual NÃO passa por aqui — ele conclui o bloco inteiro. */
+    const finishSegment = useCallback(() => {
+        const cfg = configRef.current;
+        if (cfg.isPhased && segmentIndexRef.current < cfg.phasedCount - 1) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            beginSegment(segmentIndexRef.current + 1);
+            return;
+        }
+        doStartCompleting();
+    }, [beginSegment, doStartCompleting]);
+
     // ── SINGLE STABLE INTERVAL ───────────────────────────────────────────
     // Only created/destroyed when isTimerActive flips.
     const isTimerActive = cardState === 'countdown' || (cardState === 'active' && isRunning);
@@ -188,7 +336,9 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                     setCountdownValue(COUNTDOWN_SECONDS);
 
                     // Initialize timer state
-                    if (cfg.isInterval) {
+                    if (cfg.isPhased) {
+                        beginSegment(0);
+                    } else if (cfg.isInterval) {
                         phaseRef.current = 'work';
                         currentRoundRef.current = 1;
                         phaseRemainingRef.current = cfg.workSeconds;
@@ -233,7 +383,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
 
                         if (curPhase === 'work') {
                             if (curRound >= cfg.totalRounds) {
-                                doStartCompleting();
+                                finishSegment();
                                 return;
                             }
                             // work → rest
@@ -264,24 +414,31 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                         setPhaseRemaining(nextRemaining);
                     }
                 } else {
-                    // Continuous mode
-                    if (cfg.hasContinuousTarget && elapsedRef.current >= cfg.totalContinuousSeconds) {
-                        doStartCompleting();
+                    // Continuous mode — alvo POR SEGMENTO em phased (elapsed é
+                    // acumulado do bloco; o início do segmento desconta).
+                    const segElapsed = elapsedRef.current - segmentStartElapsedRef.current;
+                    if (cfg.hasContinuousTarget && segElapsed >= cfg.totalContinuousSeconds) {
+                        finishSegment();
                     }
                 }
             }
         }, 1000);
 
         return () => clearInterval(intervalId);
-    }, [isTimerActive, doStartCompleting, notifyTimerUpdateFromRef, countdownScale]);
+    }, [isTimerActive, doStartCompleting, finishSegment, beginSegment, notifyTimerUpdateFromRef, countdownScale]);
 
     // Notify parent on completion
     useEffect(() => {
         if (cardState === 'completed' && onCardioToggleRef.current) {
+            const cfg = configRef.current;
             onCardioToggleRef.current(exercise.id, true, {
                 actual_duration_seconds: elapsedRef.current,
-                completed_rounds: isInterval ? currentRoundRef.current : undefined,
+                completed_rounds: cfg.isInterval ? currentRoundRef.current : undefined,
                 mode,
+                // Em 'phased': até onde o aluno chegou (check manual pode
+                // concluir no meio — registra a fase alcançada).
+                completed_segments: cfg.isPhased ? segmentIndexRef.current + 1 : undefined,
+                total_segments: cfg.isPhased ? cfg.phasedCount : undefined,
             });
         }
     }, [cardState]);
@@ -298,6 +455,105 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
             ) return;
 
             const cfg = configRef.current;
+
+            if (cfg.isPhased) {
+                // Fast-forward pode atravessar SEGMENTOS inteiros. Simula a
+                // sequência a partir do checkpoint (phaseStartTimeRef) e
+                // assenta no segmento/fase onde o relógio de parede caiu.
+                const segs = phasedSegmentsRef.current;
+                let idx = segmentIndexRef.current;
+                let seg = segs[idx];
+                if (!seg) return;
+
+                const fullSeconds = (s: RuntimeSegment) =>
+                    s.kind === 'steady' ? s.seconds : s.work * s.rounds + s.rest * Math.max(s.rounds - 1, 0);
+
+                let elapsedInPhase = (Date.now() - phaseStartTimeRef.current) / 1000;
+                let curPhase = phaseRef.current;
+                let curRound = currentRoundRef.current;
+                let curPhaseDuration = phaseDurationRef.current;
+                let segStartElapsed = segmentStartElapsedRef.current;
+                // Steady retomado no meio tem phaseDuration = restante; o que
+                // já foi cumprido do segmento antes do checkpoint:
+                let posBase = seg.kind === 'steady' ? seg.seconds - curPhaseDuration : 0;
+                let crossed = false;
+
+                for (;;) {
+                    if (seg.kind === 'interval') {
+                        let segmentDone = false;
+                        while (elapsedInPhase >= curPhaseDuration) {
+                            elapsedInPhase -= curPhaseDuration;
+                            if (curPhase === 'work') {
+                                if (curRound >= seg.rounds) { segmentDone = true; break; }
+                                curPhase = 'rest';
+                                curPhaseDuration = seg.rest;
+                            } else {
+                                curRound += 1;
+                                curPhase = 'work';
+                                curPhaseDuration = seg.work;
+                            }
+                        }
+                        if (!segmentDone) break;
+                    } else {
+                        if (elapsedInPhase < curPhaseDuration) break;
+                        elapsedInPhase -= curPhaseDuration;
+                    }
+                    // Segmento venceu em background — avança para o próximo
+                    if (idx >= segs.length - 1) {
+                        doStartCompleting();
+                        return;
+                    }
+                    segStartElapsed += fullSeconds(seg);
+                    idx += 1;
+                    seg = segs[idx];
+                    crossed = true;
+                    posBase = 0;
+                    curPhase = 'work';
+                    curRound = 1;
+                    curPhaseDuration = seg.kind === 'interval' ? seg.work : seg.seconds;
+                }
+
+                if (crossed) {
+                    segmentIndexRef.current = idx;
+                    setSegmentIndex(idx);
+                    segmentStartElapsedRef.current = segStartElapsed;
+                    setSegmentStartElapsed(segStartElapsed);
+                    applySegmentToConfigRef(idx);
+                }
+
+                if (seg.kind === 'interval') {
+                    const remaining = Math.max(1, Math.ceil(curPhaseDuration - elapsedInPhase));
+                    phaseRef.current = curPhase;
+                    currentRoundRef.current = curRound;
+                    phaseRemainingRef.current = remaining;
+                    phaseStartTimeRef.current = Date.now() - (curPhaseDuration - remaining) * 1000;
+                    phaseDurationRef.current = curPhaseDuration;
+                    setPhase(curPhase);
+                    setCurrentRound(curRound);
+                    setPhaseRemaining(remaining);
+                    if (crossed) {
+                        // elapsed aproximado ao cruzar (posição nominal na fase)
+                        const approx = Math.round(
+                            segStartElapsed
+                            + (curRound - 1) * (seg.work + seg.rest)
+                            + (curPhase === 'rest' ? seg.work : 0)
+                            + (curPhaseDuration - remaining)
+                        );
+                        elapsedRef.current = Math.max(elapsedRef.current, approx);
+                        setElapsed(elapsedRef.current);
+                    }
+                    notifyTimerUpdateFromRef(remaining, curPhaseDuration, curPhase, curRound);
+                } else {
+                    const posInSegment = Math.floor(posBase + elapsedInPhase);
+                    elapsedRef.current = Math.max(elapsedRef.current, segStartElapsed + posInSegment);
+                    setElapsed(elapsedRef.current);
+                    const newRemaining = Math.max(1, seg.seconds - posInSegment);
+                    phaseStartTimeRef.current = Date.now();
+                    phaseDurationRef.current = newRemaining;
+                    notifyTimerUpdateFromRef(newRemaining, seg.seconds);
+                }
+                return;
+            }
 
             if (cfg.isInterval) {
                 // Fast-forward through potentially multiple missed phases
@@ -356,7 +612,7 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
             }
         });
         return () => sub.remove();
-    }, [doStartCompleting, notifyTimerUpdateFromRef]);
+    }, [doStartCompleting, notifyTimerUpdateFromRef, applySegmentToConfigRef]);
 
     // Cleanup completing timeout on unmount
     useEffect(() => {
@@ -382,6 +638,10 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
             phaseRef.current = 'work';
             setPhaseRemaining(workSeconds);
             phaseRemainingRef.current = workSeconds;
+            setSegmentIndex(0);
+            segmentIndexRef.current = 0;
+            setSegmentStartElapsed(0);
+            segmentStartElapsedRef.current = 0;
             if (onCardioToggleRef.current) onCardioToggleRef.current(exercise.id, false);
         } else {
             // Check — mark completed
@@ -412,60 +672,82 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
     const handleResume = () => {
         isRunningRef.current = true;
         setIsRunning(true);
-        // Resume without countdown — reset phase start for background recovery
-        if (isInterval) {
-            const phaseTotalSecs = phaseRef.current === 'work' ? workSeconds : restSeconds;
+        // Resume without countdown — reset phase start for background recovery.
+        // Lê do configRef: em 'phased' os valores são do segmento ativo.
+        const cfg = configRef.current;
+        if (cfg.isInterval) {
+            const phaseTotalSecs = phaseRef.current === 'work' ? cfg.workSeconds : cfg.restSeconds;
             phaseStartTimeRef.current = Date.now();
             phaseDurationRef.current = phaseRemainingRef.current;
             notifyTimerUpdateFromRef(phaseRemainingRef.current, phaseTotalSecs, phaseRef.current, currentRoundRef.current);
-        } else if (hasContinuousTarget) {
-            const remaining = totalContinuousSeconds - elapsedRef.current;
+        } else if (cfg.hasContinuousTarget) {
+            const remaining = Math.max(1, cfg.totalContinuousSeconds - (elapsedRef.current - segmentStartElapsedRef.current));
             phaseStartTimeRef.current = Date.now();
             phaseDurationRef.current = remaining;
-            notifyTimerUpdateFromRef(remaining, totalContinuousSeconds);
+            notifyTimerUpdateFromRef(remaining, cfg.totalContinuousSeconds);
         }
     };
 
     const handleSkipPhase = () => {
-        if (!isInterval) return;
+        const cfg = configRef.current;
+        if (!cfg.isInterval) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
         const curPhase = phaseRef.current;
         const curRound = currentRoundRef.current;
 
         if (curPhase === 'work') {
-            if (curRound >= totalRounds) {
-                doStartCompleting();
+            if (curRound >= cfg.totalRounds) {
+                finishSegment();
                 return;
             }
             phaseRef.current = 'rest';
-            phaseRemainingRef.current = restSeconds;
+            phaseRemainingRef.current = cfg.restSeconds;
             setPhase('rest');
-            setPhaseRemaining(restSeconds);
-            notifyTimerUpdateFromRef(restSeconds, restSeconds, 'rest', curRound);
+            setPhaseRemaining(cfg.restSeconds);
+            phaseStartTimeRef.current = Date.now();
+            phaseDurationRef.current = cfg.restSeconds;
+            notifyTimerUpdateFromRef(cfg.restSeconds, cfg.restSeconds, 'rest', curRound);
         } else {
             const nextRound = curRound + 1;
             phaseRef.current = 'work';
             currentRoundRef.current = nextRound;
-            phaseRemainingRef.current = workSeconds;
+            phaseRemainingRef.current = cfg.workSeconds;
             setPhase('work');
             setCurrentRound(nextRound);
-            setPhaseRemaining(workSeconds);
-            notifyTimerUpdateFromRef(workSeconds, workSeconds, 'work', nextRound);
+            setPhaseRemaining(cfg.workSeconds);
+            phaseStartTimeRef.current = Date.now();
+            phaseDurationRef.current = cfg.workSeconds;
+            notifyTimerUpdateFromRef(cfg.workSeconds, cfg.workSeconds, 'work', nextRound);
         }
     };
 
-    // Computed values
-    const continuousRemaining = Math.max(0, totalContinuousSeconds - elapsed);
-    const continuousProgress = hasContinuousTarget && totalContinuousSeconds > 0
-        ? Math.min(1, elapsed / totalContinuousSeconds)
+    /** Em 'phased', pula o SEGMENTO steady atual (o interval usa handleSkipPhase). */
+    const handleSkipSegment = () => {
+        if (!configRef.current.isPhased) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        finishSegment();
+    };
+
+    // Computed values — em 'phased' o alvo contínuo é do SEGMENTO ativo,
+    // então o elapsed relevante desconta o início do segmento.
+    const segRelElapsed = isPhased ? Math.max(0, elapsed - segmentStartElapsed) : elapsed;
+    const continuousRemaining = Math.max(0, runContinuousTotal - segRelElapsed);
+    const continuousProgress = runHasContinuousTarget && runContinuousTotal > 0
+        ? Math.min(1, segRelElapsed / runContinuousTotal)
         : 0;
+    const phaseIndicatorText = isPhased && activeSegment
+        ? `Fase ${Math.min(segmentIndex, phasedSegments.length - 1) + 1}/${phasedSegments.length}`
+            + (activeSegment.label ? ` · ${activeSegment.label}` : '')
+        : null;
 
     // ── COMPLETING STATE ─────────────────────────────────────────────────────
     if (cardState === 'completing') {
-        const completingText = isInterval
-            ? `${currentRound}/${totalRounds} rounds`
-            : null;
+        const completingText = isPhased
+            ? `${phasedSegments.length} fases`
+            : isInterval
+                ? `${currentRound}/${totalRounds} rounds`
+                : null;
 
         return (
             <BlurView
@@ -490,9 +772,11 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
 
     // ── COMPLETED STATE ──────────────────────────────────────────────────────
     if (cardState === 'completed') {
-        const summary = isInterval
-            ? `${totalRounds}/${totalRounds} rounds \u00B7 ${formatTimer(elapsed)}`
-            : formatTimer(elapsed);
+        const summary = isPhased
+            ? `${phasedSegments.length} fases \u00B7 ${formatTimer(elapsed)}`
+            : isInterval
+                ? `${totalRounds}/${totalRounds} rounds \u00B7 ${formatTimer(elapsed)}`
+                : formatTimer(elapsed);
 
         return (
             <BlurView
@@ -545,8 +829,8 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
         );
     }
 
-    // ── ACTIVE STATE — INTERVAL MODE ─────────────────────────────────────────
-    if (cardState === 'active' && isInterval) {
+    // ── ACTIVE STATE — INTERVAL MODE (modo interval ou segmento interval em phased)
+    if (cardState === 'active' && runIsInterval) {
         const isWork = phase === 'work';
         const phaseColor = isWork ? '#dc2626' : '#059669';
         const phaseLabel = isWork ? 'TRABALHO' : 'DESCANSO';
@@ -586,6 +870,10 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                     </TouchableOpacity>
                 </View>
 
+                {phaseIndicatorText ? (
+                    <Text style={styles.phaseIndicatorText}>{phaseIndicatorText}</Text>
+                ) : null}
+
                 <View style={styles.phaseBadgeRow}>
                     <View style={[styles.phaseBadge, {
                         backgroundColor: isWork ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)',
@@ -604,10 +892,10 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                     {formatTimer(phaseRemaining)}
                 </Text>
 
-                <Text style={styles.roundLabel}>Round {currentRound} / {totalRounds}</Text>
+                <Text style={styles.roundLabel}>Round {currentRound} / {runTotalRounds}</Text>
 
                 <View style={styles.dotsRow}>
-                    {Array.from({ length: totalRounds }, (_, i) => {
+                    {Array.from({ length: runTotalRounds }, (_, i) => {
                         let dotColor = '#D6D3D0';
                         if (i < currentRound - 1) dotColor = '#06b6d4';
                         else if (i === currentRound - 1) dotColor = phaseColor;
@@ -634,6 +922,12 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                     <Text style={styles.title}>Aeróbio</Text>
                     <View style={{ flex: 1 }} />
 
+                    {isPhased ? (
+                        <TouchableOpacity onPress={handleSkipSegment} style={styles.controlCircle} activeOpacity={0.7}>
+                            <SkipForward size={14} color="#57534E" />
+                        </TouchableOpacity>
+                    ) : null}
+
                     {isRunning ? (
                         <TouchableOpacity onPress={handlePause} style={styles.controlCircle} activeOpacity={0.7}>
                             <Pause size={14} color="#57534E" />
@@ -653,6 +947,10 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                     </TouchableOpacity>
                 </View>
 
+                {phaseIndicatorText ? (
+                    <Text style={styles.phaseIndicatorText}>{phaseIndicatorText}</Text>
+                ) : null}
+
                 {equipmentLabel && EquipmentIcon ? (
                     <View style={styles.equipmentInline}>
                         <EquipmentIcon size={14} color="#8A8681" />
@@ -661,19 +959,19 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                 ) : null}
 
                 <Text style={styles.timerDisplay}>
-                    {hasContinuousTarget ? formatTimer(continuousRemaining) : formatTimer(elapsed)}
+                    {runHasContinuousTarget ? formatTimer(continuousRemaining) : formatTimer(elapsed)}
                 </Text>
 
-                {hasContinuousTarget ? (
+                {runHasContinuousTarget ? (
                     <View style={styles.progressBarTrack}>
                         <View style={[styles.progressBarFill, { width: `${continuousProgress * 100}%` }]} />
                     </View>
                 ) : null}
 
-                {config.intensity ? (
+                {runIntensity ? (
                     <View style={styles.intensityRow}>
                         <View style={styles.intensityBadge}>
-                            <Text style={styles.intensityText}>{config.intensity}</Text>
+                            <Text style={styles.intensityText}>{runIntensity}</Text>
                         </View>
                     </View>
                 ) : null}
@@ -692,11 +990,17 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
         prescriptionParts.push(
             `${totalRounds}x (${workSeconds}s trabalho / ${restSeconds}s descanso)`
         );
-    } else {
+    } else if (!isPhased) {
+        // Em 'phased' a prescrição vira a lista de fases abaixo — os campos
+        // derivados (duration_minutes/intensity) seriam redundantes aqui.
         if (config.duration_minutes) prescriptionParts.push(`${config.duration_minutes} min`);
         if (config.distance_km) prescriptionParts.push(`${config.distance_km} km`);
     }
-    if (config.intensity && !isInterval) prescriptionParts.push(config.intensity);
+    if (config.intensity && !isInterval && !isPhased) prescriptionParts.push(config.intensity);
+    const phasedTotalSeconds = phasedSegments.reduce(
+        (acc, s) => acc + (s.kind === 'steady' ? s.seconds : s.work * s.rounds + s.rest * Math.max(s.rounds - 1, 0)),
+        0,
+    );
     const prescriptionText = prescriptionParts.join(' \u00B7 ');
 
     return (
@@ -741,9 +1045,30 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                 <Text style={styles.subtitle}>{prescriptionText}</Text>
             ) : null}
 
+            {isPhased && config.segments ? (
+                <View style={styles.phasedList}>
+                    {config.segments.map((segment, i) => (
+                        <View key={i} style={styles.phasedRow}>
+                            <Text style={styles.phasedIndex}>{i + 1}</Text>
+                            <Text style={styles.phasedText} numberOfLines={1}>
+                                {[segment.label, segmentStructureLabel(segment), segment.intensity]
+                                    .filter(Boolean)
+                                    .join(' \u00b7 ')}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+            ) : null}
+
+            {isPhased && phasedTotalSeconds > 0 ? (
+                <Text style={styles.estimatedDuration}>
+                    {'\u2248 '}{formatTimer(phasedTotalSeconds)}
+                </Text>
+            ) : null}
+
             {isInterval && estimatedIntervalSeconds > 0 ? (
                 <Text style={styles.estimatedDuration}>
-                    \u2248 {formatTimer(estimatedIntervalSeconds)}
+                    {'\u2248 '}{formatTimer(estimatedIntervalSeconds)}
                 </Text>
             ) : null}
 
@@ -822,6 +1147,34 @@ function makeStyles(colors: V2Palette) {
             color: colors.text.tertiary,
             marginTop: 4,
             lineHeight: 18,
+        },
+        phasedList: {
+            marginTop: 6,
+            gap: 3,
+        },
+        phasedRow: {
+            flexDirection: 'row',
+            alignItems: 'baseline',
+            gap: 6,
+        },
+        phasedIndex: {
+            fontSize: 11,
+            color: colors.text.quaternary,
+            fontVariant: ['tabular-nums'],
+            minWidth: 12,
+        },
+        phasedText: {
+            flex: 1,
+            fontSize: 13,
+            color: colors.text.tertiary,
+        },
+        phaseIndicatorText: {
+            fontSize: 12,
+            fontWeight: '600',
+            color: colors.text.tertiary,
+            marginTop: 6,
+            textTransform: 'uppercase' as const,
+            letterSpacing: 0.5,
         },
         equipmentInline: {
             flexDirection: 'row',

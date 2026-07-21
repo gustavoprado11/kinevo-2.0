@@ -22,6 +22,9 @@ import {
 export interface ParsedCardioConfig {
     /** Protocolo intervalado (definido no web) — o sheet mobile não o edita. */
     isInterval: boolean;
+    /** Modo por fases (definido no web) — estrutura E intensidade são derivadas
+     *  dos segments; o sheet mobile edita só equipamento/observações. */
+    isPhased: boolean;
     equipment: CardioEquipment | null;
     objective: CardioObjective;
     /** duration_minutes (time) ou distance_km (distance), conforme objective. */
@@ -57,10 +60,15 @@ function equipmentFromLegacyModality(raw: unknown): CardioEquipment | null {
     return null;
 }
 
+function hasSegments(cfg: Record<string, unknown>): boolean {
+    return Array.isArray(cfg.segments) && cfg.segments.length > 0;
+}
+
 /** Lê um item_config cru (canônico OU legado mobile) para o estado do sheet. */
 export function parseCardioConfig(raw: Record<string, unknown> | null | undefined): ParsedCardioConfig {
     const cfg = raw ?? {};
     const isInterval = cfg.mode === "interval";
+    const isPhased = cfg.mode === "phased" && hasSegments(cfg);
     const objective: CardioObjective = cfg.objective === "distance" ? "distance" : "time";
 
     const equipment = isCardioEquipment(cfg.equipment)
@@ -75,6 +83,7 @@ export function parseCardioConfig(raw: Record<string, unknown> | null | undefine
 
     return {
         isInterval,
+        isPhased,
         equipment,
         objective,
         target,
@@ -95,19 +104,23 @@ export function buildCardioConfig(
 ): Record<string, unknown> {
     const cfg = { ...(raw ?? {}) };
     const isInterval = cfg.mode === "interval";
+    const isPhased = cfg.mode === "phased" && hasSegments(cfg);
 
     delete cfg.modality;
     delete cfg.target;
 
-    cfg.mode = isInterval ? "interval" : "continuous";
+    cfg.mode = isInterval ? "interval" : isPhased ? "phased" : "continuous";
     if (edits.equipment) cfg.equipment = edits.equipment;
     else delete cfg.equipment;
-    if (edits.intensity.trim()) cfg.intensity = edits.intensity.trim();
-    else delete cfg.intensity;
+    // Phased: intensity é DERIVADA dos segments (resumo) — o sheet não a edita.
+    if (!isPhased) {
+        if (edits.intensity.trim()) cfg.intensity = edits.intensity.trim();
+        else delete cfg.intensity;
+    }
     if (edits.notes.trim()) cfg.notes = edits.notes.trim();
     else delete cfg.notes;
 
-    if (!isInterval) {
+    if (!isInterval && !isPhased) {
         cfg.objective = edits.objective;
         if (edits.objective === "distance") {
             if (edits.target !== null) cfg.distance_km = edits.target;
@@ -120,6 +133,7 @@ export function buildCardioConfig(
         }
     }
     // Intervalado: objective/duration/distance/intervals ficam como o web gravou.
+    // Phased: segments + duration_minutes/intensity derivados ficam intactos.
 
     return cfg;
 }
@@ -132,6 +146,14 @@ export function formatCardioPreview(raw: Record<string, unknown> | null | undefi
 
     if (parsed.equipment) parts.push(CARDIO_EQUIPMENT_LABELS[parsed.equipment]);
     else if (typeof cfg.modality === "string" && cfg.modality.trim()) parts.push(cfg.modality.trim());
+
+    if (parsed.isPhased) {
+        const segments = cfg.segments as unknown[];
+        parts.push(`${segments.length} fases`);
+        const total = asFiniteNumber(cfg.duration_minutes);
+        if (total !== null) parts.push(`${total}min`);
+        return parts.join(" · ");
+    }
 
     if (parsed.isInterval) {
         const intervals = cfg.intervals as { work_seconds?: number; rest_seconds?: number; rounds?: number } | undefined;

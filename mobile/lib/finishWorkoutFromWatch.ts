@@ -526,7 +526,10 @@ export async function finishWorkoutFromWatch(
         duration_minutes: config.duration_minutes,
         distance_km: config.distance_km,
         intensity: config.intensity,
+        intensity_target: config.intensity_target,
         intervals: config.intervals,
+        protocol_key: config.protocol_key,
+        segments: config.segments,
         actual_duration_seconds: cardio.elapsedSeconds,
         completed_rounds: config.completed_rounds,
       });

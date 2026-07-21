@@ -19,6 +19,7 @@ describe('parseCardioConfig', () => {
         });
         expect(p).toEqual({
             isInterval: false,
+            isPhased: false,
             equipment: 'treadmill',
             objective: 'time',
             target: 20,
@@ -60,6 +61,17 @@ describe('parseCardioConfig', () => {
         });
         expect(p.isInterval).toBe(true);
         expect(p.equipment).toBe('bike');
+    });
+
+    it('detecta modo por fases (só com segments válidos)', () => {
+        const p = parseCardioConfig({
+            mode: 'phased',
+            segments: [{ kind: 'steady', duration_minutes: 10 }],
+        });
+        expect(p.isPhased).toBe(true);
+        // 'phased' sem segments não é tratado como phased
+        expect(parseCardioConfig({ mode: 'phased' }).isPhased).toBe(false);
+        expect(parseCardioConfig({ mode: 'phased', segments: [] }).isPhased).toBe(false);
     });
 });
 
@@ -111,6 +123,32 @@ describe('buildCardioConfig', () => {
         expect(out.duration_minutes).toBe(10);
         expect(out.equipment).toBe('rower');
         expect(out.intensity).toBe('RPE 8');
+        expect(out.notes).toBe('nota nova');
+    });
+
+    it('PRESERVA treino por fases do web (mode/segments/derivados intocados)', () => {
+        const webConfig = {
+            mode: 'phased',
+            equipment: 'treadmill',
+            segments: [
+                { kind: 'steady', duration_minutes: 10, intensity: 'Zona 1' },
+                { kind: 'interval', intervals: { work_seconds: 20, rest_seconds: 10, rounds: 8 }, intensity: 'RPE 9' },
+            ],
+            duration_minutes: 14,          // derivado (total)
+            intensity: '10min Zona 1 → 8× 20/10 RPE 9', // derivado (resumo)
+        };
+        const out = buildCardioConfig(webConfig, {
+            equipment: 'bike',
+            objective: 'time',
+            target: 99,          // ignorado em modo phased
+            intensity: 'tentou sobrescrever', // ignorado: derivada dos segments
+            notes: 'nota nova',
+        });
+        expect(out.mode).toBe('phased');
+        expect(out.segments).toEqual(webConfig.segments);
+        expect(out.duration_minutes).toBe(14);
+        expect(out.intensity).toBe('10min Zona 1 → 8× 20/10 RPE 9');
+        expect(out.equipment).toBe('bike');
         expect(out.notes).toBe('nota nova');
     });
 
@@ -166,6 +204,14 @@ describe('formatCardioPreview', () => {
 
     it('legado com modalidade desconhecida mostra o texto livre', () => {
         expect(formatCardioPreview({ modality: 'Circuito', target: 15 })).toBe('Circuito · 15min');
+    });
+
+    it('por fases: contagem + total derivado', () => {
+        expect(formatCardioPreview({
+            mode: 'phased', equipment: 'treadmill',
+            segments: [{ kind: 'steady' }, { kind: 'interval' }, { kind: 'steady' }],
+            duration_minutes: 23,
+        })).toBe('Esteira · 3 fases · 23min');
     });
 
     it('vazio → "Cardio livre"', () => {
