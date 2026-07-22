@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import { createClient } from '@/lib/supabase/client'
 import { WorkoutPanel } from './workout-panel'
-import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableWorkoutTab } from './sortable-workout-tab'
 import { ExerciseLibrarySkeleton } from './exercise-library-panel-skeleton'
@@ -1545,10 +1545,10 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                         <VolumeSummary workouts={workouts} />
                                     </div>
                                     {/* Tabs */}
-                                    <div data-onboarding="program-workouts" className="flex items-center gap-1 p-4 overflow-x-auto no-scrollbar border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-canvas">
+                                    <div data-onboarding="program-workouts" className="flex items-center gap-1 p-4 border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-canvas">
                                         <DndContext id={tabDndId} sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
-                                            <SortableContext items={workouts.map(w => w.id)} strategy={horizontalListSortingStrategy}>
-                                                <div className="bg-white dark:bg-surface-card p-1 rounded-xl flex gap-1 items-center border border-[#E8E8ED] dark:border-k-border-subtle">
+                                            <SortableContext items={workouts.map(w => w.id)} strategy={rectSortingStrategy}>
+                                                <div className="bg-white dark:bg-surface-card p-1 rounded-xl flex flex-wrap gap-1 items-center min-w-0 border border-[#E8E8ED] dark:border-k-border-subtle">
                                                     {workouts.map((workout) => (
                                                         <SortableWorkoutTab key={workout.id} id={workout.id}>
                                                             <button
@@ -1695,8 +1695,8 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 {/* Workout Tabs + Volume Summary (combined, wraps on overflow) */}
                                 <div data-onboarding="program-workouts" className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 border-b border-[#E8E8ED] dark:border-k-border-subtle bg-[#F5F5F7] dark:bg-surface-canvas">
                                     <DndContext id={tabDndId} sensors={tabSensors} collisionDetection={closestCenter} onDragEnd={handleWorkoutDragEnd}>
-                                        <SortableContext items={workouts.map(w => w.id)} strategy={horizontalListSortingStrategy}>
-                                            <div className="bg-white dark:bg-surface-card p-1 rounded-xl flex gap-1 items-center border border-[#E8E8ED] dark:border-k-border-subtle">
+                                        <SortableContext items={workouts.map(w => w.id)} strategy={rectSortingStrategy}>
+                                            <div className="bg-white dark:bg-surface-card p-1 rounded-xl flex flex-wrap gap-1 items-center min-w-0 border border-[#E8E8ED] dark:border-k-border-subtle">
                                                 {workouts.map((workout) => (
                                                     <SortableWorkoutTab key={workout.id} id={workout.id}>
                                                         <button
