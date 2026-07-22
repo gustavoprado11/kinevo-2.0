@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetch as expoFetch } from 'expo/fetch';
 import { supabase } from '../lib/supabase';
+import type { AssistantTurnMode } from '../components/assistant/AssistantComposer';
 
 const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://www.kinevoapp.com';
 
@@ -224,7 +225,7 @@ export interface UseAssistantChatReturn {
     streamingText: string | null;
     error: AssistantError | null;
     summary: AiUsageSummary | null;
-    send: (text: string) => Promise<void>;
+    send: (text: string, mode?: AssistantTurnMode) => Promise<void>;
     stop: () => void;
     confirmAction: (part: ConfirmationPart, editedArgs?: Record<string, unknown>) => Promise<void>;
     cancelAction: (part: ConfirmationPart) => Promise<void>;
@@ -382,7 +383,7 @@ export function useAssistantChat(opts?: { studentId?: string }): UseAssistantCha
 
     const clearError = useCallback(() => setError(null), []);
 
-    const send = useCallback(async (text: string) => {
+    const send = useCallback(async (text: string, mode?: AssistantTurnMode) => {
         const content = text.trim();
         if (!content || sendingRef.current) return;
 
@@ -436,7 +437,7 @@ export function useAssistantChat(opts?: { studentId?: string }): UseAssistantCha
             // 2. Envia o turno (streaming NDJSON com progresso + tokens ao vivo).
             const result = await streamTurn(
                 convId,
-                { input: content, clientMessageId: uuidv4() },
+                { input: content, clientMessageId: uuidv4(), ...(mode ? { mode } : {}) },
                 {
                     onProgress: (label) => setProgress(label),
                     onTextDelta: (delta) => setStreamingText((t) => (t ?? '') + delta),

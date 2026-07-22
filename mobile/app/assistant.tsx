@@ -29,7 +29,7 @@ import { useV2Colors } from '../hooks/useV2Colors';
 import { useAssistantChat, type AssistantError } from '../hooks/useAssistantChat';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { AssistantMessageBubble } from '../components/assistant/AssistantMessageBubble';
-import { AssistantComposer, type AssistantComposerHandle } from '../components/assistant/AssistantComposer';
+import { AssistantComposer, type AssistantComposerHandle, type AssistantTurnMode } from '../components/assistant/AssistantComposer';
 import { AssistantParts } from '../components/assistant/AssistantParts';
 import { AssistantConversationsSheet } from '../components/assistant/AssistantConversationsSheet';
 import { CreditMeter } from '../components/assistant/CreditMeter';
@@ -54,6 +54,8 @@ export default function AssistantChatScreen() {
     const { messages, isSending, progress, streamingText, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError } =
         useAssistantChat({ studentId: scopedStudentId });
     const [input, setInput] = useState('');
+    // Modo do turno (Agir/Planejar/Analisar) — enviado a cada envio.
+    const [chatMode, setChatMode] = useState<AssistantTurnMode>('agir');
     const [showConversations, setShowConversations] = useState(false);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const voice = useVoiceInput((t) => setInput(t));
@@ -115,7 +117,7 @@ export default function AssistantChatScreen() {
         const text = (raw ?? input).trim();
         if (!text) return;
         setInput('');
-        void send(text);
+        void send(text, chatMode);
         scrollToEnd();
     };
 
@@ -243,6 +245,8 @@ export default function AssistantChatScreen() {
                         micAvailable={voice.available}
                         sending={isSending}
                         onStop={stop}
+                        mode={chatMode}
+                        onModeChange={setChatMode}
                     />
                 </View>
             </KeyboardAvoidingView>
