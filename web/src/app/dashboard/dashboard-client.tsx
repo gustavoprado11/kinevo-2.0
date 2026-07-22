@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useMemo, lazy, Suspense, useCallback, useEffect } from 'react'
+import { useState, useMemo, lazy, Suspense, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/layout'
 import dynamic from 'next/dynamic'
-import { TrainerProfileBanner } from '@/components/dashboard/trainer-profile-banner'
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { StatCards } from '@/components/dashboard/stat-cards'
 import { QuickActions } from '@/components/dashboard/quick-actions'
@@ -13,16 +12,16 @@ import { UpcomingAppointmentsWidget } from '@/components/dashboard/upcoming-appo
 import { WidgetGrid } from '@/components/dashboard/widget-grid'
 import { WidgetPicker } from '@/components/dashboard/widget-picker'
 // Overlays fora do chunk inicial da rota (45% do tráfego está aqui): nenhum
-// é necessário pro primeiro paint — o StudentModal abre por clique, o
-// WelcomeModal/Tour só aparecem pra conta nova. ssr:false adia o JS (incl.
-// framer-motion do WelcomeModal) pra depois da hidratação. Mesmo padrão dos
-// painéis do program builder.
+// é necessário pro primeiro paint — o StudentModal abre por clique, a
+// WelcomeJourneyModal/Tour só aparecem pra conta nova. ssr:false adia o JS
+// (incl. framer-motion) pra depois da hidratação. Mesmo padrão dos painéis
+// do program builder.
 const StudentModal = dynamic(
     () => import('@/components/student-modal').then(m => ({ default: m.StudentModal })),
     { ssr: false },
 )
-const WelcomeModal = dynamic(
-    () => import('@/components/onboarding/widgets/welcome-modal').then(m => ({ default: m.WelcomeModal })),
+const WelcomeJourneyModal = dynamic(
+    () => import('@/components/onboarding/widgets/welcome-journey-modal').then(m => ({ default: m.WelcomeJourneyModal })),
     { ssr: false },
 )
 const TourRunner = dynamic(
@@ -225,16 +224,6 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
         ),
     }), [data, trainer.id, rankedStudents, handleMarkAsPaid, handleSellPlan, handleArchiveStudent])
 
-    // Coordenação dos banners do topo: no máximo UM por vez, com prioridade
-    // TrainerProfile > Modality. Evita o empilhamento que empurrava os KPIs
-    // pra baixo da dobra.
-    const [profileBannerDismissed, setProfileBannerDismissed] = useState(true)
-    useEffect(() => {
-        setProfileBannerDismissed(!!localStorage.getItem('kinevo_trainer_profile_banner_dismissed'))
-    }, [])
-    // Modality só aparece depois que o banner de perfil (maior prioridade) foi dispensado.
-    const showModalityToast = profileBannerDismissed
-
     return (
         <AppLayout
             trainerName={trainer.name}
@@ -245,12 +234,11 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             trainerModalityFocus={trainer.modality_focus ?? null}
             students={students.map(s => ({ id: s.id, name: s.name, status: s.status }))}
         >
-            {/* Modality Inference Toast (Fase 17b) — só renderiza se modalityFocus=null
-                + 3+ alunos com modality dominante >= 80% + tip não dispensada.
-                Suprimido enquanto Migration ou TrainerProfile (maior prioridade) estiverem ativos. */}
-            {showModalityToast && <ModalityInferenceToast studentsCount={students.length} />}
+            {/* Modality Inference Toast (Fase 17b) — auto-gate: só renderiza se
+                modalityFocus=null + 3+ alunos com modality dominante >= 80% + tip
+                não dispensada. Fallback pra quem pulou a modalidade na jornada. */}
+            <ModalityInferenceToast studentsCount={students.length} />
 
-            {/* Trainer Profile Banner (conditional, dismissible) — maior prioridade entre os banners do dashboard. */}
             {/* Gestor na visão pessoal: caminho de volta pra visão do estúdio */}
             {isStudioManager && (
                 <div className="mb-4 flex justify-end">
@@ -260,7 +248,6 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
                     </div>
                 </div>
             )}
-            <TrainerProfileBanner selfStudentId={selfStudentId} />
 
             {/* 1. Saudação — always fixed */}
             <DashboardHeader
@@ -290,8 +277,11 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
                 hasPaidSolo={hasPaidSolo}
             />
 
-            <WelcomeModal trainerName={trainer.name} />
-            {/* Fase 17b — sem `steps`; TourRunner resolve por modalityFocus do store. */}
+            {/* Jornada de boas-vindas (1º login) — substitui banner + WelcomeModal.
+                Ao final, CTA abre o builder do perfil do treinador com ?welcome=1. */}
+            <WelcomeJourneyModal trainerName={trainer.name} selfStudentId={selfStudentId} />
+            {/* Tour do menu lateral: NÃO auto-inicia mais — fica sob demanda no "?" do
+                DashboardHeader. TourRunner montado aqui só pra renderizá-lo quando pedido. */}
             <TourRunner tourId="welcome" />
 
             {/* Archive Confirmation Modal */}

@@ -8,6 +8,7 @@ import { useUnreadMessagesCount } from '@/hooks/use-unread-messages-count'
 import { InlineSearchBar } from '@/components/search/inline-search-bar'
 import type { SearchStudent } from '@/components/search/search-results'
 import { AssistantMark } from '@/components/assistant/assistant-mark'
+import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 
 interface DashboardHeaderProps {
     trainerName: string
@@ -78,6 +79,9 @@ export function DashboardHeader({ trainerName, students = [] }: DashboardHeaderP
                 <span className="text-[13px] text-k-text-tertiary mt-1.5 block" suppressHydrationWarning>{formatDate()}</span>
             </div>
             <div className="flex items-center gap-2">
+                {/* "?" — reabre o tour de visão geral do menu (sob demanda; deixou de auto-iniciar). */}
+                <TourHelpButton tourId="welcome" />
+
                 {/* Inline search bar — expands on click/⌘K, overlay so siblings stay still */}
                 <InlineSearchBar students={students} />
 
