@@ -50,6 +50,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
         activeId, active,
         messages, loadingMessages,
         input, setInput,
+        mode, setMode,
         sending, liveSteps, liveText, textResetCount,
         focusedStudentId, setFocusedStudentId,
         banner, dismissBanner,
@@ -232,6 +233,8 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     liveText={liveText}
                     textResetCount={textResetCount}
                     input={input}
+                    mode={mode}
+                    onModeChange={setMode}
                     trainerName={trainerName}
                     students={students}
                     banner={banner}
@@ -255,6 +258,8 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     students={students.map((s) => ({ id: s.id, name: s.name, avatarUrl: s.avatarUrl }))}
                     hasStudents={students.length > 0}
                     input={input}
+                    mode={mode}
+                    onModeChange={setMode}
                     sending={sending}
                     banner={banner}
                     onDismissBanner={dismissBanner}

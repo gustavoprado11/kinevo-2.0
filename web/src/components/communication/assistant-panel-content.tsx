@@ -83,6 +83,7 @@ export function AssistantPanelContent() {
         activeId, active,
         messages, loadingMessages,
         input, setInput,
+        mode, setMode,
         sending, liveSteps, liveText, textResetCount,
         focusedStudentId,
         banner, dismissBanner,
@@ -282,6 +283,8 @@ export function AssistantPanelContent() {
                         liveText={liveText}
                         textResetCount={textResetCount}
                         input={input}
+                        mode={mode}
+                        onModeChange={setMode}
                         trainerName={null}
                         students={students}
                         banner={banner}

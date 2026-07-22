@@ -534,6 +534,48 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .kv-msg-in { animation: none; }
 }
+
+/* ================================================================== */
+/*  Composer do Assistente — menus, glow do enviar, pulso do ditado    */
+/*  (design "Assistente Composer": animações premium do composer)       */
+/* ================================================================== */
+/* Pop de menu (escopo/modo) — sobe e revela com um leve overshoot. */
+@keyframes kvPop {
+  from { opacity: 0; transform: translateY(9px) scale(0.965); }
+  to   { opacity: 1; transform: none; }
+}
+.kv-pop {
+  animation: kvPop 200ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+}
+/* Item de menu — cascata suave (usar com animation-delay inline). */
+@keyframes kvMenuItem {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+.kv-menu-item {
+  animation: kvMenuItem 260ms ease both;
+}
+/* Glow do botão enviar quando há texto pronto — respira em violeta. */
+@keyframes kvSendGlow {
+  0%, 100% { box-shadow: 0 2px 10px rgba(124, 58, 237, 0.28); }
+  50%      { box-shadow: 0 4px 20px 2px rgba(124, 58, 237, 0.55); }
+}
+.kv-send-glow {
+  animation: kvSendGlow 2.6s ease-in-out infinite;
+}
+/* Pulso do microfone enquanto dita — anel vermelho que expande. */
+@keyframes kvMicPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.42); }
+  70%  { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+.kv-mic-pulse {
+  animation: kvMicPulse 1.6s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kv-pop, .kv-menu-item, .kv-send-glow, .kv-mic-pulse { animation: none; }
+}
+
 /* ================================================================== */
 /*  Landing Hero / AI — phase 1 utilities                              */
 /* ================================================================== */

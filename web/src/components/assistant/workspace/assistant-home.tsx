@@ -6,16 +6,16 @@
  * Apresentacional; envia ações via callbacks do AssistantWorkspace.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import Link from 'next/link'
-import { Send, Loader2, ChevronDown, ChevronRight, Globe, Check, Wallet, Users, Dumbbell, MessageCircle, Coins, UserPlus, Wand2 } from 'lucide-react'
+import { ChevronRight, Wallet, Users, Dumbbell, MessageCircle, Coins, UserPlus, Wand2 } from 'lucide-react'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AttentionItem } from '@/lib/assistant/home-data'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
 import { attentionKind, KIND_TAG, attentionPrompt } from '@/lib/assistant/attention'
 import { avatarFor, greeting, timeShort } from './ui-util'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
-import { MicButton } from './mic-button'
+import { AssistantComposer, type AssistantTurnMode } from './assistant-composer'
 import { AssistantMark } from '@/components/assistant/assistant-mark'
 import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
@@ -66,6 +66,8 @@ interface Props {
     students: { id: string; name: string; avatarUrl: string | null }[]
     hasStudents: boolean
     input: string
+    mode: AssistantTurnMode
+    onModeChange: (m: AssistantTurnMode) => void
     sending: boolean
     banner: AssistantBannerData | null
     onDismissBanner: () => void
@@ -80,37 +82,12 @@ interface Props {
 }
 
 export function AssistantHome({
-    trainerName, summary, attention, recents, focusedStudentId, students, hasStudents, input, sending, banner,
-    onDismissBanner, onInput, onSend, onStarter, onFocusStudent, onOpenConversation,
+    trainerName, summary, attention, recents, focusedStudentId, students, hasStudents, input, mode, sending, banner,
+    onDismissBanner, onInput, onSend, onModeChange, onStarter, onFocusStudent, onOpenConversation,
     showStyleInvite, onStartStyleInterview,
 }: Props) {
     const firstName = (trainerName ?? '').split(' ')[0] || 'treinador'
     const composerRef = useRef<HTMLTextAreaElement>(null)
-
-    // Seletor de escopo (Geral ⇄ aluno em foco): dropdown clicável.
-    const [scopeOpen, setScopeOpen] = useState(false)
-    const [scopeSearch, setScopeSearch] = useState('')
-    const scopeRef = useRef<HTMLDivElement>(null)
-    useEffect(() => {
-        if (!scopeOpen) return
-        const onClick = (e: MouseEvent) => {
-            if (scopeRef.current && !scopeRef.current.contains(e.target as Node)) setScopeOpen(false)
-        }
-        document.addEventListener('mousedown', onClick)
-        return () => document.removeEventListener('mousedown', onClick)
-    }, [scopeOpen])
-    const focusedStudent = focusedStudentId ? students.find((s) => s.id === focusedStudentId) ?? null : null
-    const initialsOf = (name: string) => name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
-    const filteredStudents = students.filter((s) => s.name.toLowerCase().includes(scopeSearch.trim().toLowerCase()))
-
-    // O composer cresce com o conteúdo (até ~280px; depois rola internamente).
-    // Recalcula a cada mudança de texto — inclusive ao ser preenchido por um card.
-    useEffect(() => {
-        const el = composerRef.current
-        if (!el) return
-        el.style.height = 'auto'
-        el.style.height = `${Math.min(el.scrollHeight, 280)}px`
-    }, [input])
 
     // Clicar num card preenche o composer (não envia): o treinador revisa/ajusta e
     // dispara. Foca + traz o composer à vista, já que ele fica no topo da home.
@@ -145,32 +122,27 @@ export function AssistantHome({
                     </h1>
                 </div>
 
-                {/* Composer — mesma moldura/foco da conversa (flat, cinza suave) */}
-                <div data-onboarding="assistant-composer" className="rounded-[22px] border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-elevated p-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_4px_rgba(60,60,67,0.07)]">
-                    <textarea
-                        ref={composerRef}
-                        data-assistant-composer
-                        value={input}
-                        onChange={(e) => onInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
-                        rows={2}
-                        aria-label="Diga o que fazer no Kinevo"
-                        placeholder="Diga o que fazer no Kinevo — ou escolha um aluno…"
-                        // outline inline: vence a regra global unlayered `:focus-visible` do
-                        // globals.css (Tailwind v4 layered perde p/ unlayered). O foco fica só
-                        // na borda do card (focus-within), não no textarea interno.
-                        style={{ outline: 'none' }}
-                        className="max-h-[280px] w-full resize-none overflow-y-auto bg-transparent px-4 py-3 text-[16px] leading-relaxed text-k-text-primary dark:text-foreground placeholder:text-k-text-quaternary dark:placeholder:text-muted-foreground/60"
-                    />
-                    <div className="flex items-center gap-2.5 px-2 pb-1 pt-1">
-                        <MicButton disabled={sending} value={input} onChange={onInput} />
-                        <span className="flex-1" />
-                        <button onClick={onSend} disabled={sending || !input.trim()}
-                            className="flex h-10 items-center gap-2 rounded-[12px] bg-primary px-[18px] text-[14px] font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
-                            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" strokeWidth={2} />} Agir
-                        </button>
-                    </div>
-                </div>
+                {/* Composer — design "Assistente Composer" (escopo + modo inline) */}
+                <AssistantComposer
+                    input={input}
+                    onInput={onInput}
+                    onSend={onSend}
+                    sending={sending}
+                    placeholder="Diga o que fazer no Kinevo — ou escolha um aluno…"
+                    ariaLabel="Diga o que fazer no Kinevo"
+                    mode={mode}
+                    onModeChange={onModeChange}
+                    menuDirection="down"
+                    textareaRef={composerRef}
+                    maxTextareaHeight={280}
+                    anchor="assistant-composer"
+                    scope={hasStudents ? {
+                        students: students.map((s) => ({ id: s.id, name: s.name })),
+                        focusedStudentId,
+                        onFocusStudent,
+                        anchor: 'assistant-scope',
+                    } : undefined}
+                />
 
                 {/* Erro/cota — a aba não engole mais falhas em silêncio (B2). */}
                 {banner && (
@@ -179,63 +151,12 @@ export function AssistantHome({
                     </div>
                 )}
 
-                {/* Contexto */}
-                <div data-onboarding="assistant-scope" className="mt-3.5 flex flex-wrap items-center gap-2.5">
-                    {!hasStudents ? (
+                {/* Contexto: CTA (sem alunos) + medidor de créditos */}
+                <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
+                    {!hasStudents && (
                         <Link href="/students" className="inline-flex items-center gap-2 rounded-control bg-primary px-3.5 py-[7px] text-[12.5px] font-semibold text-primary-foreground transition hover:opacity-90">
                             <UserPlus className="h-3.5 w-3.5" strokeWidth={2} /> Crie seu primeiro aluno
                         </Link>
-                    ) : (
-                        <div className="relative" ref={scopeRef}>
-                            {/* Seletor de escopo único: Geral (todos) ⇄ aluno em foco. */}
-                            <button onClick={() => setScopeOpen((o) => !o)}
-                                className={`inline-flex items-center gap-2 rounded-control border px-3.5 py-[7px] text-[12.5px] font-semibold transition ${focusedStudent
-                                    ? 'border-k-border-subtle bg-surface-inset text-k-text-primary'
-                                    : 'border-k-border-subtle bg-surface-card text-k-text-secondary hover:bg-surface-inset'}`}>
-                                {focusedStudent ? (
-                                    <>
-                                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-k-border-subtle bg-surface-card text-[9px] font-semibold text-k-text-secondary">{initialsOf(focusedStudent.name)}</span>
-                                        <span className="max-w-[160px] truncate">{focusedStudent.name}</span>
-                                        <span role="button" tabIndex={0} aria-label="Voltar para Geral"
-                                            onClick={(e) => { e.stopPropagation(); onFocusStudent(null) }}
-                                            className="ml-0.5 text-[14px] leading-none text-k-text-quaternary hover:text-k-text-primary">×</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Globe className="h-3.5 w-3.5 text-k-text-tertiary" strokeWidth={1.7} /> Geral · todos os alunos
-                                    </>
-                                )}
-                                <ChevronDown className="h-3.5 w-3.5 text-k-text-quaternary" strokeWidth={2} />
-                            </button>
-
-                            {scopeOpen && (
-                                <div className="absolute left-0 top-full z-modal mt-1.5 w-[264px] overflow-hidden rounded-xl border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-card shadow-xl">
-                                    <button onClick={() => { onFocusStudent(null); setScopeOpen(false) }}
-                                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-[13px] font-medium text-k-text-primary dark:text-foreground transition hover:bg-surface-inset dark:hover:bg-glass-bg">
-                                        <Globe className="h-4 w-4 shrink-0 text-primary dark:text-violet-400" strokeWidth={2} />
-                                        <span className="flex-1 text-left">Geral · todos os alunos</span>
-                                        {!focusedStudent && <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.4} />}
-                                    </button>
-                                    <div className="border-t border-k-border-subtle dark:border-k-border-subtle" />
-                                    <div className="p-2">
-                                        <input value={scopeSearch} onChange={(e) => setScopeSearch(e.target.value)} placeholder="Buscar aluno…"
-                                            className="w-full rounded-lg border border-k-border-subtle dark:border-k-border-subtle bg-surface-inset dark:bg-glass-bg px-3 py-1.5 text-[13px] text-k-text-primary dark:text-foreground placeholder:text-k-text-quaternary dark:placeholder:text-muted-foreground/60 focus:outline-none" />
-                                    </div>
-                                    <div className="max-h-[220px] overflow-y-auto pb-1">
-                                        {filteredStudents.length === 0 ? (
-                                            <p className="px-3 py-3 text-[12.5px] text-k-text-tertiary dark:text-muted-foreground">Nenhum aluno encontrado.</p>
-                                        ) : filteredStudents.map((s) => (
-                                            <button key={s.id} onClick={() => { onFocusStudent(s.id); setScopeOpen(false); setScopeSearch('') }}
-                                                className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition hover:bg-surface-inset dark:hover:bg-glass-bg">
-                                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-k-border-subtle bg-surface-inset text-[10px] font-semibold text-k-text-secondary">{initialsOf(s.name)}</span>
-                                                <span className="flex-1 truncate text-left text-k-text-primary dark:text-foreground">{s.name}</span>
-                                                {focusedStudentId === s.id && <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.4} />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
                     )}
                     <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-k-text-tertiary">
                         <Coins className="h-[15px] w-[15px] text-k-text-quaternary" strokeWidth={1.7} />

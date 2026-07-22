@@ -30,6 +30,12 @@ interface MicButtonProps {
     studentId?: string
     /** Botão redondo — combina com o composer em pílula do dock lateral. */
     round?: boolean
+    /**
+     * Aparência. 'bordered' (default) = pílula com borda (dock/legado). 'ghost' =
+     * botão redondo sem borda que só ganha fundo no hover; ditando, fica vermelho
+     * e pulsa (anel) — o visual do design "Assistente Composer".
+     */
+    variant?: 'bordered' | 'ghost'
 }
 
 // ── Web Speech API (não tipada na lib DOM padrão) ──
@@ -68,7 +74,7 @@ function joinBase(base: string, transcript: string): string {
     return [base.trim(), transcript.trim()].filter(Boolean).join(' ')
 }
 
-export function MicButton({ disabled, value, onChange, studentId, round = false }: MicButtonProps) {
+export function MicButton({ disabled, value, onChange, studentId, round = false, variant = 'bordered' }: MicButtonProps) {
     const [state, setState] = useState<MicState>('idle')
     const [errorTitle, setErrorTitle] = useState<string | null>(null)
 
@@ -234,6 +240,24 @@ export function MicButton({ disabled, value, onChange, studentId, round = false 
     const busy = state === 'transcribing'
     const recording = state === 'recording'
     const isError = state === 'error'
+    const ghost = variant === 'ghost'
+
+    // Ghost (composer): redondo, sem borda; ditando fica vermelho e pulsa. Bordered
+    // (legado/dock): pílula com borda + ícone Square animado ao gravar.
+    const shapeCls = ghost
+        ? 'h-9 w-9 rounded-full active:scale-90'
+        : `h-9 w-9 border ${round ? 'rounded-full' : 'rounded-[11px]'}`
+    const stateCls = ghost
+        ? recording
+            ? 'bg-[#FEF2F2] dark:bg-rose-500/10 text-[#EF4444] dark:text-rose-300 kv-mic-pulse'
+            : isError
+              ? 'bg-[#FEF2F2] dark:bg-rose-500/10 text-[#BE123C] dark:text-rose-300'
+              : 'text-k-text-secondary dark:text-muted-foreground/80 hover:bg-surface-inset dark:hover:bg-glass-bg'
+        : recording
+          ? 'border-primary bg-primary text-white'
+          : isError
+            ? 'border-[#F5C2C0] dark:border-rose-500/30 bg-[#FEF2F2] dark:bg-rose-500/10 text-[#BE123C] dark:text-rose-300'
+            : 'border-k-border-subtle dark:border-k-border-subtle text-k-text-secondary dark:text-muted-foreground/80 hover:bg-surface-inset dark:hover:bg-glass-bg'
 
     return (
         <button
@@ -243,24 +267,22 @@ export function MicButton({ disabled, value, onChange, studentId, round = false 
             aria-label={recording ? 'Parar ditado' : 'Ditar por voz'}
             aria-pressed={recording}
             title={errorTitle ?? (recording ? 'Parar ditado' : 'Ditar por voz')}
-            className={`flex h-9 w-9 shrink-0 items-center justify-center border transition disabled:opacity-50 ${
-                round ? 'rounded-full' : 'rounded-[11px]'
-            } ${
-                recording
-                    ? 'border-primary bg-primary text-white'
-                    : isError
-                      ? 'border-[#F5C2C0] dark:border-rose-500/30 bg-[#FEF2F2] dark:bg-rose-500/10 text-[#BE123C] dark:text-rose-300'
-                      : 'border-k-border-subtle dark:border-k-border-subtle text-k-text-secondary dark:text-muted-foreground/80 hover:bg-surface-inset dark:hover:bg-glass-bg'
-            }`}
+            className={`flex shrink-0 items-center justify-center transition disabled:opacity-50 ${shapeCls} ${stateCls}`}
         >
             {busy ? (
                 <Loader2 className="h-[17px] w-[17px] animate-spin" strokeWidth={2} />
             ) : recording ? (
-                <Square className="h-[15px] w-[15px] animate-pulse fill-current" strokeWidth={2} />
+                // Ghost mantém o ícone de microfone (vermelho, pulsando); bordered usa
+                // o quadrado de "parar".
+                ghost ? (
+                    <Mic className="h-[18px] w-[18px]" strokeWidth={1.9} />
+                ) : (
+                    <Square className="h-[15px] w-[15px] animate-pulse fill-current" strokeWidth={2} />
+                )
             ) : isError ? (
                 <MicOff className="h-[17px] w-[17px]" strokeWidth={2} />
             ) : (
-                <Mic className="h-[17px] w-[17px]" strokeWidth={2} />
+                <Mic className={ghost ? 'h-[18px] w-[18px]' : 'h-[17px] w-[17px]'} strokeWidth={1.9} />
             )}
         </button>
     )

@@ -13,6 +13,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { bannerFromError, type AssistantBannerData } from './assistant-banner'
+import type { AssistantTurnMode } from '@/lib/assistant/command-engine'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { ConversationListItem, AssistantMessage } from '@/lib/assistant/conversations'
 import { markFirstAssistantChat } from '@/lib/assistant/onboarding-milestone'
@@ -34,6 +35,9 @@ export function useAssistantThread({ initialSummary = null, initialConversations
     const [messages, setMessages] = useState<AssistantMessage[]>([])
     const [loadingMessages, setLoadingMessages] = useState(false)
     const [input, setInput] = useState('')
+    // Modo do composer (Agir/Planejar/Analisar) — enviado a cada turno. Vive na
+    // thread p/ persistir na transição home → conversa dentro da sessão.
+    const [mode, setMode] = useState<AssistantTurnMode>('agir')
     const [sending, setSending] = useState(false)
     const [liveSteps, setLiveSteps] = useState<string[]>([])
     const [liveText, setLiveText] = useState('') // U-STREAM: texto da resposta chegando token a token
@@ -150,7 +154,8 @@ export function useAssistantThread({ initialSummary = null, initialConversations
             const res = await fetch(`/api/assistant/conversations/${convId}`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 // Onda 6: voice=true → surface 'voice' no servidor (resposta falável).
-                body: JSON.stringify({ input: text, clientMessageId, ...(opts?.voice ? { voice: true } : {}) }),
+                // mode: Agir/Planejar/Analisar (Analisar = turno somente-leitura).
+                body: JSON.stringify({ input: text, clientMessageId, mode, ...(opts?.voice ? { voice: true } : {}) }),
                 signal: ac.signal,
             })
             // Erros de setup (gate/cota/rate/validação) vêm como JSON não-2xx.
@@ -224,7 +229,7 @@ export function useAssistantThread({ initialSummary = null, initialConversations
         } finally {
             setSending(false); setLiveSteps([]); setLiveText(''); abortRef.current = null
         }
-    }, [input, sending, activeId, focusedStudentId, students])
+    }, [input, sending, activeId, focusedStudentId, students, mode])
 
     // Onda 6: turno por voz (hands-free) — mesma thread, resposta curta/falável.
     // Devolve a mensagem final para o cliente FALAR (TTS) e decidir o próximo passo.
@@ -297,6 +302,7 @@ export function useAssistantThread({ initialSummary = null, initialConversations
         activeId, active,
         messages, loadingMessages,
         input, setInput,
+        mode, setMode,
         sending, liveSteps, liveText, textResetCount,
         focusedStudentId, setFocusedStudentId,
         banner, dismissBanner,

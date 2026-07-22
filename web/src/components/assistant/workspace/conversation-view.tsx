@@ -18,9 +18,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Check, Send, Loader2, ArrowLeft, Pencil, Search, PenLine, ArrowUpRight, Square, AudioLines, Volume2 } from 'lucide-react'
+import { Check, Send, Loader2, ArrowLeft, Pencil, Search, PenLine, ArrowUpRight, AudioLines, Volume2 } from 'lucide-react'
 import { CreditMeter } from '@/components/assistant/credit-meter'
 import { ToolConfirmationCard } from '@/components/assistant/tool-confirmation-card'
+import { AssistantComposer, type AssistantTurnMode } from './assistant-composer'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type {
     ConversationListItem,
@@ -31,7 +32,6 @@ import type { QuestionRequest, ProposalRequest } from '@/lib/assistant/hitl-type
 import { avatarFor } from './ui-util'
 import { executedText } from '@/lib/assistant/tool-labels'
 import { AssistantBanner, type AssistantBannerData } from './assistant-banner'
-import { MicButton } from './mic-button'
 import { useVoiceMode, VOICE_MODE_ENABLED, type VoiceModeState } from './use-voice-mode'
 import { AssistantMark } from '@/components/assistant/assistant-mark'
 
@@ -49,6 +49,8 @@ interface Props {
     /** Incrementa a cada text_reset do stream — o modo voz corta a fala parcial. */
     textResetCount: number
     input: string
+    mode: AssistantTurnMode
+    onModeChange: (m: AssistantTurnMode) => void
     trainerName: string | null
     students: PickStudent[]
     banner: AssistantBannerData | null
@@ -101,8 +103,8 @@ function parseMcpPayload(result: unknown): Record<string, unknown> | null {
 }
 
 export function ConversationView({
-    active, summary, messages, loadingMessages, sending, liveSteps, liveText, textResetCount, input, students, banner,
-    onDismissBanner, onInput, onSend, onStop, onSendText, onBackHome, onRename, onConfirmResolved, onVoiceTurn,
+    active, summary, messages, loadingMessages, sending, liveSteps, liveText, textResetCount, input, mode, students, banner,
+    onDismissBanner, onInput, onSend, onStop, onSendText, onModeChange, onBackHome, onRename, onConfirmResolved, onVoiceTurn,
 }: Props) {
     const streamRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -119,14 +121,6 @@ export function ConversationView({
     useEffect(() => {
         if (streamRef.current) streamRef.current.scrollTop = streamRef.current.scrollHeight
     }, [messages, sending, liveSteps, liveText])
-
-    // Composer cresce com o conteúdo (até ~200px; depois rola internamente).
-    useEffect(() => {
-        const el = inputRef.current
-        if (!el) return
-        el.style.height = 'auto'
-        el.style.height = `${Math.min(el.scrollHeight, 200)}px`
-    }, [input])
 
     // ── Seleção rápida de aluno (C) ──
     // Heurística por texto (legado): NÃO mostrar quando a mensagem já traz um card
@@ -223,25 +217,33 @@ export function ConversationView({
                                 onInterrupt={voice.interrupt} onStop={voice.stop} />
                         </div>
                     )}
-                    {showSuggestions && !banner && !voiceOn && (
-                        <div className="mb-2.5 flex flex-wrap items-center gap-2">
-                            {suggestions.map((s) => (
-                                <button key={s} onClick={() => onSendText(s)} disabled={sending}
-                                    className="inline-flex items-center rounded-full border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-3 py-1.5 text-[12.5px] font-medium text-k-text-secondary dark:text-muted-foreground/80 transition hover:border-k-border-primary dark:hover:border-k-border-primary hover:bg-surface-inset dark:hover:bg-glass-bg hover:text-k-text-primary dark:hover:text-foreground disabled:opacity-50">
-                                    {s}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                    <div className="flex items-end gap-2 rounded-[22px] border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-2.5 py-2 transition focus-within:border-[#C7C7CC] dark:focus-within:border-k-border-primary focus-within:shadow-[0_0_0_3px_rgba(60,60,67,0.07)]">
-                        {VOICE_MODE_ENABLED && onVoiceTurn && voice.supported && (
+                    <AssistantComposer
+                        input={input}
+                        onInput={onInput}
+                        onSend={onSend}
+                        onStop={onStop}
+                        sending={sending}
+                        textareaDisabled={sending}
+                        placeholder={active.studentName ? `Diga o que fazer com ${active.studentName.split(' ')[0]}…` : 'Diga o que fazer no Kinevo…'}
+                        ariaLabel={active.studentName ? `Mensagem para o assistente sobre ${active.studentName}` : 'Mensagem para o assistente'}
+                        mode={mode}
+                        onModeChange={onModeChange}
+                        menuDirection="up"
+                        textareaRef={inputRef}
+                        maxTextareaHeight={200}
+                        hideMic={voiceOn}
+                        // Escopo já está fixo no cabeçalho da conversa → sem seletor aqui.
+                        chips={showSuggestions && !banner && !voiceOn
+                            ? suggestions.map((s) => ({ label: s, onClick: () => onSendText(s) }))
+                            : undefined}
+                        toolbarLead={VOICE_MODE_ENABLED && onVoiceTurn && voice.supported ? (
                             <button
                                 type="button"
                                 onClick={() => (voiceOn ? voice.stop() : voice.start())}
                                 title={voiceOn ? 'Sair do modo voz' : 'Modo voz (mãos livres)'}
                                 aria-label={voiceOn ? 'Sair do modo voz' : 'Modo voz (mãos livres)'}
                                 aria-pressed={voiceOn}
-                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] border transition ${
+                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition active:scale-90 ${
                                     voiceOn
                                         ? 'border-primary bg-primary text-white'
                                         : 'border-k-border-subtle dark:border-k-border-subtle text-k-text-secondary dark:text-muted-foreground/80 hover:bg-surface-inset dark:hover:bg-glass-bg'
@@ -249,34 +251,8 @@ export function ConversationView({
                             >
                                 <AudioLines className="h-[17px] w-[17px]" strokeWidth={2} />
                             </button>
-                        )}
-                        {!voiceOn && <MicButton disabled={sending} value={input} onChange={onInput} />}
-                        <textarea
-                            ref={inputRef}
-                            data-assistant-composer
-                            value={input}
-                            onChange={(e) => onInput(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
-                            disabled={sending}
-                            rows={1}
-                            aria-label={active.studentName ? `Mensagem para o assistente sobre ${active.studentName}` : 'Mensagem para o assistente'}
-                            placeholder={active.studentName ? `Diga o que fazer com ${active.studentName.split(' ')[0]}…` : 'Diga o que fazer no Kinevo…'}
-                            // outline inline: vence a regra global unlayered `:focus-visible`; foco fica na borda do card.
-                            style={{ outline: 'none' }}
-                            className="max-h-[200px] flex-1 resize-none overflow-y-auto bg-transparent px-1.5 py-2 text-[15px] leading-[1.5] text-k-text-primary dark:text-foreground placeholder:text-k-text-quaternary dark:placeholder:text-muted-foreground/60"
-                        />
-                        {sending ? (
-                            <button onClick={onStop} type="button" title="Parar"
-                                className="flex h-[36px] items-center gap-1.5 rounded-[14px] border border-k-border-primary dark:border-k-border-subtle bg-white dark:bg-surface-elevated px-4 text-[13px] font-bold text-k-text-primary dark:text-foreground transition hover:bg-surface-inset dark:hover:bg-glass-bg">
-                                <Square className="h-3 w-3" strokeWidth={2.5} fill="currentColor" /> Parar
-                            </button>
-                        ) : (
-                            <button onClick={onSend} disabled={!input.trim()}
-                                className="flex h-[36px] items-center gap-1.5 rounded-[14px] bg-primary px-4 text-[13px] font-bold text-white transition hover:brightness-105 disabled:opacity-40">
-                                <Send className="h-[15px] w-[15px]" strokeWidth={2} /> Agir
-                            </button>
-                        )}
-                    </div>
+                        ) : undefined}
+                    />
                     <div className="mt-2 flex justify-center gap-4 text-[10.5px] text-k-text-quaternary dark:text-muted-foreground/60">
                         <span><kbd className="rounded border border-k-border-subtle dark:border-k-border-subtle bg-white dark:bg-glass-bg px-1.5 font-mono text-k-text-tertiary dark:text-muted-foreground">Enter</kbd> enviar</span>
                         <span>ações sensíveis sempre pedem confirmação</span>
