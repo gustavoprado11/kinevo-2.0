@@ -288,6 +288,48 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    // Jornada de boas-vindas: quando o treinador chega no builder do próprio
+    // perfil via ?welcome=1 (CTA da WelcomeJourneyModal), auto-inicia o tour do
+    // builder assim que o wizard de preferências fecha. Poll defensivo em vez de
+    // um setTimeout com deps de store: o builder re-renderiza muito ao carregar
+    // draft/preferências e a hidratação do onboarding pode chegar depois, o que
+    // fazia o disparo único se perder. Lê tudo via getState (sempre fresco);
+    // guardado por ref + tours_completed (nunca repete). Sem ?welcome nada
+    // auto-inicia — filosofia híbrida.
+    const builderTourStartedRef = useRef(false)
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        if (!new URLSearchParams(window.location.search).has('welcome')) return
+        const iv = setInterval(() => {
+            if (builderTourStartedRef.current) { clearInterval(iv); return }
+            // Espera o wizard de preferências (auto-abre no 1º acesso) fechar.
+            if (usePrescriptionPreferencesStore.getState().isWizardOpen) return
+            const store = useOnboardingStore.getState()
+            if (store.activeTourId) return
+            // "Já visto?" — não exige hidratação (que nem sempre roda nesta rota):
+            // lê tours_completed do store E do localStorage persistido (disponível
+            // antes do hydrate). Igual ao tour manual, que dispara sem hidratar.
+            let done = store.isTourCompleted('program_builder')
+            if (!done) {
+                try {
+                    const raw = localStorage.getItem('kinevo-onboarding')
+                    done = !!raw && JSON.parse(raw)?.state?.state?.tours_completed?.includes?.('program_builder')
+                } catch { /* localStorage indisponível — segue */ }
+            }
+            if (done) { clearInterval(iv); return }
+            // Só dispara quando o canvas já montou (o 1º passo ancora nas abas).
+            if (!document.querySelector('[data-onboarding="program-workouts"]')) return
+            clearInterval(iv)
+            builderTourStartedRef.current = true
+            // Canvas de edição: os passos ancoram na biblioteca/volume/abas/tipo,
+            // que só existem no modo 'normal' (a view padrão pode ser 'preview').
+            setBuilderViewMode('normal')
+            store.startTour('program_builder', 'auto')
+        }, 300)
+        // Não fica polando pra sempre se algo travar.
+        const stop = setTimeout(() => clearInterval(iv), 20000)
+        return () => { clearInterval(iv); clearTimeout(stop) }
+    }, [])
 
     const [showActivateConfirm, setShowActivateConfirm] = useState(false)
     const [showTemplateDialog, setShowTemplateDialog] = useState(false)
@@ -1355,6 +1397,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         )}
                         {formTriggerTemplates.length > 0 && (
                             <button
+                                data-onboarding="builder-checkin"
                                 onClick={() => setCheckinExpanded(!checkinExpanded)}
                                 className={`relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
                                     checkinExpanded
@@ -1371,6 +1414,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             </button>
                         )}
                         <button
+                            data-onboarding="builder-preview"
                             onClick={builderViewMode === 'preview' ? handleExitPreview : handleEnterPreview}
                             className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
                                 builderViewMode === 'preview'
@@ -1383,6 +1427,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                         </button>
                         {studentContext && (
                             <button
+                                data-onboarding="builder-compare"
                                 onClick={builderViewMode === 'compare' ? handleExitCompare : handleEnterCompare}
                                 className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
                                     builderViewMode === 'compare'
@@ -1395,6 +1440,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             </button>
                         )}
                         <button
+                            data-onboarding="builder-text"
                             onClick={builderViewMode === 'ai_prescribe' ? handleExitAiPrescribe : handleEnterAiPrescribe}
                             className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 ${
                                 builderViewMode === 'ai_prescribe'
@@ -1410,6 +1456,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                 <span className="mx-1 h-5 w-px bg-k-border-subtle" aria-hidden />
                                 <button
                                     ref={preferencesGearButtonRef}
+                                    data-onboarding="builder-preferences"
                                     onClick={openPreferencesDrawer}
                                     className="w-8 h-8 flex items-center justify-center rounded-lg text-[#AEAEB2] dark:text-k-text-quaternary hover:bg-[#F5F5F7]/60 dark:hover:bg-glass-bg/50 hover:text-[#1D1D1F] dark:hover:text-k-text-primary transition-colors duration-150"
                                     title="Preferências de prescrição"

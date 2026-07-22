@@ -7,6 +7,7 @@ import { OnboardingSpotlight } from '../primitives/onboarding-spotlight'
 import { OnboardingTooltip } from '../primitives/onboarding-tooltip'
 import { resolveSteps } from './tour-definitions'
 import { WelcomeMobileStep } from '../widgets/welcome-mobile-step'
+import { SupersetDemo } from '../widgets/superset-demo'
 
 interface TourRunnerProps {
   tourId: string
@@ -183,6 +184,8 @@ export function TourRunner({ tourId, steps: stepsProp, delay = 500, autoStart = 
           customContent={
             currentStep.customContentId === 'welcome-mobile-step'
               ? <WelcomeMobileStep />
+              : currentStep.customContentId === 'superset-demo'
+              ? <SupersetDemo />
               : undefined
           }
         />

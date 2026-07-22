@@ -189,37 +189,100 @@ export const TOUR_STEPS: Record<string, TourStep[]> = {
     },
   ],
 
+  // Passeio completo do builder. Dispara sozinho na 1ª criação de programa
+  // (jornada de boas-vindas → ?welcome=1, após o wizard de preferências) e
+  // fica sob demanda no "?" (TourHelpButton) do próprio builder.
+  // Passos condicionais (compare exige contexto de aluno; check-in exige
+  // formulários) usam o auto-skip de 2s do TourRunner quando o alvo não existe.
   program_builder: [
     {
       id: 'builder-1',
       targetSelector: '[data-onboarding="program-workouts"]',
-      title: 'Dias de Treino',
+      title: 'Seus dias de treino',
       description:
-        'Cada aba representa um dia (A, B, C...). Adicione quantos dias precisar e organize exercícios dentro de cada um.',
+        'Cada aba é um dia (A, B, C...). Adicione quantos precisar no + e organize os exercícios dentro de cada um.',
       placement: 'bottom',
     },
     {
       id: 'builder-2',
-      targetSelector: '[data-onboarding="program-exercise-library"]',
-      title: 'Biblioteca de Exercícios',
+      targetSelector: '[aria-label="Tipo do treino"]',
+      title: 'Força ou aeróbio',
       description:
-        'Arraste exercícios para o treino ou use o botão + para adicionar. Filtre por grupo muscular para encontrar mais rápido.',
-      placement: 'left',
+        'Cada treino pode ser de força ou só aeróbio (zonas, intervalos, contínuo). O app do aluno se adapta ao tipo.',
+      placement: 'top',
     },
     {
       id: 'builder-3',
-      targetSelector: '[data-onboarding="program-volume"]',
-      title: 'Volume Semanal Automático',
+      targetSelector: '[data-onboarding="program-exercise-library"]',
+      title: 'Biblioteca de exercícios',
       description:
-        'Total de séries por grupo muscular calculado em tempo real. Use como guia para equilibrar o programa.',
-      placement: 'bottom',
+        'Arraste um exercício pro treino ou use o + pra adicionar. Filtre por grupo muscular pra achar mais rápido.',
+      placement: 'left',
     },
     {
       id: 'builder-4',
-      targetSelector: '[data-onboarding="program-save"]',
-      title: 'Salvar e Publicar',
+      targetSelector: '[data-onboarding="program-workouts"]',
+      title: 'Como criar um superset',
       description:
-        'Salve como template reutilizável ou atribua direto ao aluno. Escolha início imediato ou data agendada.',
+        'Pra unir dois exercícios, passe o mouse entre eles e clique em “Criar superset”. Veja como funciona:',
+      placement: 'bottom',
+      spotlightPadding: 16,
+      customContentId: 'superset-demo',
+    },
+    {
+      id: 'builder-5',
+      targetSelector: '[data-onboarding="program-volume"]',
+      title: 'Volume semanal automático',
+      description:
+        'Total de séries por grupo muscular, calculado em tempo real. Use como guia pra equilibrar o programa.',
+      placement: 'bottom',
+    },
+    {
+      id: 'builder-6',
+      targetSelector: '[data-onboarding="builder-preferences"]',
+      title: 'Preferências de prescrição',
+      description:
+        'Defina uma vez seus padrões — séries, reps, descanso, campos que você usa — e o builder já vem do seu jeito toda vez.',
+      placement: 'bottom',
+    },
+    {
+      id: 'builder-7',
+      targetSelector: '[data-onboarding="builder-text"]',
+      title: 'Texto para treino',
+      description:
+        'Já tem o treino escrito? Cole aqui e a IA estrutura em exercícios e séries pra você revisar.',
+      placement: 'bottom',
+    },
+    {
+      id: 'builder-8',
+      targetSelector: '[data-onboarding="builder-compare"]',
+      title: 'Comparar com o anterior',
+      description:
+        'Veja lado a lado o programa anterior do aluno e monte o próximo ciclo em cima do que ele executava.',
+      placement: 'bottom',
+    },
+    {
+      id: 'builder-9',
+      targetSelector: '[data-onboarding="builder-preview"]',
+      title: 'Pré-visualizar no celular',
+      description:
+        'Veja o treino exatamente como o aluno recebe no app — antes de publicar.',
+      placement: 'bottom',
+    },
+    {
+      id: 'builder-10',
+      targetSelector: '[data-onboarding="builder-checkin"]',
+      title: 'Configurar check-in',
+      description:
+        'Dispare um formulário antes ou depois do treino: RPE, dor, feedback. Aparece quando você já tem formulários criados.',
+      placement: 'bottom',
+    },
+    {
+      id: 'builder-11',
+      targetSelector: '[data-onboarding="program-save"]',
+      title: 'Salvar e publicar',
+      description:
+        'Salve como modelo reutilizável ou atribua direto ao aluno. Escolha início imediato ou data agendada.',
       placement: 'top',
     },
   ],
