@@ -14,6 +14,9 @@ export interface ScheduledWorkoutRef {
   id: string
   name: string
   scheduled_days: number[] // 0 = Sunday … 6 = Saturday
+  /** Opcional (retrocompat): superfícies que passam o tipo recebem a projeção
+   *  já rotulada — sem ele, tudo projeta como 'strength'. */
+  workout_type?: string | null
 }
 
 export interface SessionRef {
@@ -27,6 +30,10 @@ export interface SessionRef {
 
 export type CalendarDayStatus =
   | 'done'
+  /** Dia com 2+ treinos agendados onde só PARTE foi concluída (dual-day
+   *  força+aeróbio). Sem ele, o dia colapsava em 'done' e o treino que
+   *  faltou sumia da cobrança. */
+  | 'partial'
   | 'done_historic'
   | 'missed'
   | 'compensated'
@@ -41,7 +48,7 @@ export interface CalendarDay {
   isToday: boolean
   isInProgram: boolean
   programWeek: number | null // 1-indexed
-  scheduledWorkouts: { id: string; name: string }[]
+  scheduledWorkouts: { id: string; name: string; workout_type: 'strength' | 'cardio' }[]
   completedSessions: SessionRef[]
   status: CalendarDayStatus
 }
@@ -201,12 +208,16 @@ export function getScheduledWorkoutsForDate(
   workouts: ScheduledWorkoutRef[],
   programStartedAt: string | Date,
   durationWeeks?: number | null,
-): { id: string; name: string }[] {
+): { id: string; name: string; workout_type: 'strength' | 'cardio' }[] {
   if (!isDateInProgram(date, programStartedAt, durationWeeks)) return []
   const dayOfWeek = date.getDay()
   return workouts
     .filter((w) => w.scheduled_days?.includes(dayOfWeek))
-    .map((w) => ({ id: w.id, name: w.name }))
+    .map((w) => ({
+      id: w.id,
+      name: w.name,
+      workout_type: w.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
+    }))
 }
 
 // ---------------------------------------------------------------------------
@@ -485,7 +496,16 @@ export function generateCalendarDays(
       // Outside current program: show historic sessions if any
       status = historicCompleted.length > 0 ? 'done_historic' : 'rest'
     } else if (completedSessions.length > 0) {
-      status = 'done'
+      // Dual-day: com 2+ treinos agendados, 'done' exige cobrir TODOS —
+      // cada treino agendado com sessão própria, ou nº de sessões ≥ nº de
+      // agendados (cobre o aluno que treinou um treino trocado). Cobertura
+      // parcial vira 'partial' pra o treino que faltou não sumir.
+      const completedIds = new Set(completedSessions.map((s) => s.assigned_workout_id))
+      const allCovered =
+        scheduled.length <= 1 ||
+        scheduled.every((sw) => completedIds.has(sw.id)) ||
+        completedSessions.length >= scheduled.length
+      status = allCovered ? 'done' : 'partial'
     } else if (scheduled.length > 0) {
       if (d < today) {
         // Missed day — check if all scheduled workouts were compensated elsewhere in the week
