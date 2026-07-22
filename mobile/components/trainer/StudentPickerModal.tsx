@@ -11,7 +11,7 @@ import {
     Image,
     Alert,
 } from 'react-native';
-import { X, Search, ChevronRight, Dumbbell, ChevronLeft } from 'lucide-react-native';
+import { X, Search, ChevronRight, Dumbbell, ChevronLeft, Activity } from 'lucide-react-native';
 import { getScheduledWorkoutsForDate } from '../../../shared/utils/schedule-projection';
 import { useTrainingRoomStudents, useFetchStudentWorkout } from '../../hooks/useTrainerWorkoutSession';
 import { useTrainingRoomStore, MAX_SIMULTANEOUS_STUDENTS } from '../../stores/training-room-store';
@@ -32,6 +32,8 @@ interface WorkoutOption {
     id: string;
     name: string;
     isToday: boolean;
+    /** 'cardio' distingue sessão aeróbia no picker (RPC 271). */
+    workoutType: 'strength' | 'cardio';
 }
 
 interface StudentWithWorkouts {
@@ -101,6 +103,7 @@ export function StudentPickerModal({ visible, onClose, initialStudentId }: Stude
                     id: w.id,
                     name: w.name,
                     isToday: todayIds.has(w.id),
+                    workoutType: w.workout_type === 'cardio' ? 'cardio' as const : 'strength' as const,
                 }));
 
                 return {
@@ -539,7 +542,11 @@ function WorkoutOptionButton({
                     justifyContent: 'center',
                 }}
             >
-                <Dumbbell size={16} color={isSelected ? colors.purple[600] : '#8A8681'} />
+                {workout.workoutType === 'cardio' ? (
+                    <Activity size={16} color={isSelected ? colors.purple[600] : '#06b6d4'} strokeWidth={2.2} />
+                ) : (
+                    <Dumbbell size={16} color={isSelected ? colors.purple[600] : '#8A8681'} />
+                )}
             </View>
             <Text
                 style={{

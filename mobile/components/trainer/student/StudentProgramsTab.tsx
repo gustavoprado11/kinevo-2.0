@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActionSheetIOS, Platform } from "react-native";
-import { Calendar, Sparkles, FileText, Pencil, MoreHorizontal, Trash2, Play } from "lucide-react-native";
+import { Calendar, Sparkles, FileText, Pencil, MoreHorizontal, Trash2, Play, Activity, Dumbbell } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useRouter, useFocusEffect } from "expo-router";
 import { getStudentDraftSummary, removeProgramDraft, type ProgramDraftSummary } from "../../../lib/program-drafts";
@@ -459,7 +459,7 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
                             </Text>
                         </View>
 
-                        {/* Workouts */}
+                        {/* Workouts — aeróbio distinguido da força (dual-day) */}
                         {data.activeProgram.workouts.map((w) => (
                             <View
                                 key={w.id}
@@ -469,11 +469,18 @@ export function StudentProgramsTab({ data, onRefresh }: Props) {
                                     borderTopColor: "rgba(0,0,0,0.06)",
                                 }}
                             >
-                                <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text.primary }}>
-                                    {w.name}
-                                </Text>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                    {w.workout_type === "cardio" ? (
+                                        <Activity size={13} color="#06b6d4" strokeWidth={2.2} />
+                                    ) : (
+                                        <Dumbbell size={13} color={colors.text.tertiary} strokeWidth={2} />
+                                    )}
+                                    <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: colors.text.primary }} numberOfLines={1}>
+                                        {w.name}
+                                    </Text>
+                                </View>
                                 {w.scheduled_days && w.scheduled_days.length > 0 && (
-                                    <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 3 }}>
+                                    <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 3, marginLeft: 19 }}>
                                         {w.scheduled_days.map((d) => DAY_NAMES[d] || d).join(", ")}
                                     </Text>
                                 )}

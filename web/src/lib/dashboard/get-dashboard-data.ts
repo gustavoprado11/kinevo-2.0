@@ -82,6 +82,7 @@ export interface DailyActivityItem {
 export interface ScheduledTodayItem {
     studentName: string
     workoutName: string
+    workoutType: 'strength' | 'cardio'
 }
 
 export interface RankedStudentItem {
@@ -275,7 +276,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             .from('assigned_programs')
             .select(`
                 id, name, student_id, duration_weeks, started_at, status,
-                assigned_workouts(id, name, scheduled_days)
+                assigned_workouts(id, name, scheduled_days, workout_type)
             `)
             .eq('trainer_id', trainerId)
             .eq('status', 'active'),
@@ -524,7 +525,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         const workouts = (program as any).assigned_workouts ?? []
         const todayWorkouts = getScheduledWorkoutsForDate(
             today,
-            workouts.map((w: any) => ({ id: w.id, name: w.name, scheduled_days: w.scheduled_days })),
+            workouts.map((w: any) => ({ id: w.id, name: w.name, scheduled_days: w.scheduled_days, workout_type: w.workout_type })),
             program.started_at,
             program.duration_weeks,
         )
@@ -534,6 +535,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
             scheduledToday.push({
                 studentName: student.name,
                 workoutName: w.name,
+                workoutType: w.workout_type,
             })
         }
     }

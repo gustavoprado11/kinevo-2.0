@@ -31,6 +31,8 @@ export interface StudentDetailData {
             name: string;
             order_index: number;
             scheduled_days: number[];
+            /** 'strength' | 'cardio' — RPC 271; ausente em cache antigo. */
+            workout_type?: string | null;
         }[];
     } | null;
     programHistory: {

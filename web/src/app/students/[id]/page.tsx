@@ -54,7 +54,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
                 assigned_workouts (
                     id,
                     name,
-                    scheduled_days
+                    scheduled_days,
+                    workout_type,
+                    order_index
                 )
             `)
             .eq('student_id', id)
@@ -308,8 +310,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         const scheduledPastDays = days
             .filter(d => d.isInProgram && d.date <= today && d.scheduledWorkouts.length > 0)
             .sort((a, b) => b.date.getTime() - a.date.getTime())
+        // 'partial' (dual-day com 1 de 2 feitos) mantém a sequência — o aluno
+        // treinou no dia; a cobrança do treino que faltou é visual, no calendário.
         for (const d of scheduledPastDays) {
-            if (d.status === 'done' || d.status === 'compensated') streak++
+            if (d.status === 'done' || d.status === 'partial' || d.status === 'compensated') streak++
             else break
         }
 
@@ -320,7 +324,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             if (!d.isInProgram || !d.programWeek || d.scheduledWorkouts.length === 0 || d.date > today) continue
             const entry = weekMap.get(d.programWeek) ?? { scheduled: 0, done: 0 }
             entry.scheduled++
-            if (d.status === 'done' || d.status === 'compensated') entry.done++
+            if (d.status === 'done' || d.status === 'partial' || d.status === 'compensated') entry.done++
             weekMap.set(d.programWeek, entry)
         }
         weeklyAdherence = Array.from(weekMap.entries())

@@ -35,6 +35,8 @@ interface TrainingRoomStudent {
         id: string;
         name: string;
         scheduled_days: number[];
+        /** 'strength' | 'cardio' — RPC 271. */
+        workout_type?: string | null;
     }[];
 }
 

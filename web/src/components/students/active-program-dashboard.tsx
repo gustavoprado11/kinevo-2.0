@@ -5,7 +5,7 @@ import { SessionDetailSheet } from './session-detail-sheet'
 import { ProgramCalendar } from './program-calendar'
 import { AdherenceTrendStrip } from './adherence-trend-strip'
 import { getProgramWeek, getProgramEndDate } from '@kinevo/shared/utils/schedule-projection'
-import { Flame, Activity, ArrowUpRight, FileText, CalendarPlus, Plus, MoreHorizontal, CheckCircle, ArrowLeftRight, ChevronDown, MessageSquare } from 'lucide-react'
+import { Flame, Activity, ArrowUpRight, FileText, CalendarPlus, Plus, MoreHorizontal, CheckCircle, ArrowLeftRight, ChevronDown, MessageSquare, Dumbbell, Zap } from 'lucide-react'
 import { WARMUP_TYPE_LABELS, CARDIO_EQUIPMENT_LABELS } from '@kinevo/shared/types/workout-items'
 import type { SessionItem } from '@/app/students/[id]/actions/get-session-details'
 import type { RangeSession } from '@/app/students/[id]/actions/get-sessions-for-range'
@@ -122,6 +122,8 @@ interface AssignedProgram {
         id: string
         name: string
         scheduled_days: number[]
+        workout_type?: string | null
+        order_index?: number
     }>
 }
 
@@ -305,6 +307,16 @@ export function ActiveProgramDashboard({
     const workoutsPerWeek = (program.assigned_workouts ?? [])
         .reduce((sum, w) => sum + (w.scheduled_days?.length || 0), 0)
 
+    // Grade da semana: a prescrição visível sem abrir o builder — força e
+    // aeróbio lado a lado, com os dias de cada um (semana começa na segunda).
+    const weekGridWorkouts = (program.assigned_workouts ?? [])
+        .slice()
+        .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+    const DAY_ABBR = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
+    const MONDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
+    const formatScheduledDays = (days: number[] | null | undefined) =>
+        MONDAY_ORDER.filter((d) => days?.includes(d)).map((d) => DAY_ABBR[d]).join(' · ')
+
     return (
         <div className="space-y-6">
             {/* Main Program Card */}
@@ -483,6 +495,33 @@ export function ActiveProgramDashboard({
                         saíram daqui — viviam duplicados com o header e agora moram
                         na StudentKpiRuler, no topo da página. */}
 
+                    {/* Treinos da semana — a prescrição inteira (força + aeróbio)
+                        visível sem abrir o builder. */}
+                    {weekGridWorkouts.length > 0 && (
+                        <div className="mb-6">
+                            <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-k-text-tertiary">
+                                Treinos da semana
+                            </span>
+                            <div className="mt-2 rounded-control border border-k-border-subtle divide-y divide-k-border-subtle overflow-hidden">
+                                {weekGridWorkouts.map((w) => (
+                                    <div key={w.id} className="flex items-center gap-2.5 bg-surface-card px-3 py-2">
+                                        {w.workout_type === 'cardio' ? (
+                                            <Zap className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--accent-cardio)' }} aria-label="Treino aeróbio" />
+                                        ) : (
+                                            <Dumbbell className="w-3.5 h-3.5 shrink-0 text-k-text-tertiary" aria-label="Treino de força" />
+                                        )}
+                                        <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-k-text-secondary">
+                                            {w.name}
+                                        </span>
+                                        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.08em] tabular-nums text-k-text-quaternary">
+                                            {formatScheduledDays(w.scheduled_days) || 'Sem agenda'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Onda 2 — Faixa de tendência de adesão (12 semanas). */}
                     {program.started_at && weeklyAdherence.length >= 2 && (
                         <AdherenceTrendStrip
@@ -517,7 +556,7 @@ export function ActiveProgramDashboard({
                                     studentId={studentId}
                                     initialWeekStart={initialWeekStart}
                                     onDayClick={(day) => {
-                                        if (day.status === 'done' && day.completedSessions.length > 0) {
+                                        if ((day.status === 'done' || day.status === 'partial') && day.completedSessions.length > 0) {
                                             handleSessionClick(day.completedSessions[0].id)
                                         }
                                     }}

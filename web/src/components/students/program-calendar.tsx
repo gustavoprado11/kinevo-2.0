@@ -48,6 +48,12 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
         bg: 'bg-foreground',
         text: 'text-background',
     },
+    // Dual-day (força+aeróbio) com só parte concluída: tinta suavizada e a
+    // célula mostra a fração (1/2) — o treino que faltou continua cobrado.
+    partial: {
+        bg: 'bg-foreground/55',
+        text: 'text-background',
+    },
     done_historic: {
         bg: 'bg-foreground/50',
         text: 'text-background',
@@ -79,6 +85,12 @@ const STATUS_CONFIG: Record<CalendarDay['status'], { bg: string; ring?: string; 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Nome do treino rotulado por tipo nos tooltips — o aeróbio deixa de ser
+ *  indistinguível da força quando os dois dividem o mesmo dia. */
+function workoutLabel(w: { name: string; workout_type?: 'strength' | 'cardio' }): string {
+    return w.workout_type === 'cardio' ? `${w.name} (aeróbio)` : w.name
+}
 
 function DayLabel({ text }: { text: string }) {
     return (
@@ -166,6 +178,10 @@ function WeekView({
                                 >
                                     {day.status === 'done' ? (
                                         <CheckIcon />
+                                    ) : day.status === 'partial' ? (
+                                        <span className="font-mono text-[10px] font-semibold tabular-nums text-background">
+                                            {day.completedSessions.length}/{day.scheduledWorkouts.length}
+                                        </span>
                                     ) : day.status === 'compensated' ? (
                                         <CheckIcon className="w-4 h-4 text-k-text-secondary" />
                                     ) : cfg.icon === 'x' ? (
@@ -185,16 +201,27 @@ function WeekView({
                                         <span className="text-k-text-secondary">Treino (programa anterior)</span>
                                     ) : day.status === 'done' ? (
                                         <span>Realizado{day.completedSessions[0]?.rpe != null ? ` · PSE ${day.completedSessions[0].rpe}` : ''}</span>
+                                    ) : day.status === 'partial' ? (
+                                        <span>
+                                            {day.completedSessions.length} de {day.scheduledWorkouts.length} realizados
+                                            {(() => {
+                                                const doneIds = new Set(day.completedSessions.map(s => s.assigned_workout_id))
+                                                const missing = day.scheduledWorkouts.filter(w => !doneIds.has(w.id))
+                                                return missing.length > 0
+                                                    ? <span className="text-k-text-secondary"> · faltou: {missing.map(w => workoutLabel(w)).join(' · ')}</span>
+                                                    : null
+                                            })()}
+                                        </span>
                                     ) : day.status === 'compensated' ? (
                                         <span className="text-k-text-secondary">
                                             Compensado em outro dia
                                         </span>
                                     ) : day.status === 'missed' ? (
                                         <span className="text-red-500 dark:text-red-400">
-                                            Faltou: {day.scheduledWorkouts.map(w => w.name).join(' · ') || 'Treino'}
+                                            Faltou: {day.scheduledWorkouts.map(w => workoutLabel(w)).join(' · ') || 'Treino'}
                                         </span>
                                     ) : day.status === 'scheduled' ? (
-                                        <span>Agendado: {day.scheduledWorkouts.map(w => w.name).join(' · ')}</span>
+                                        <span>Agendado: {day.scheduledWorkouts.map(w => workoutLabel(w)).join(' · ')}</span>
                                     ) : (
                                         <span className="text-k-text-tertiary">Descanso</span>
                                     )}
@@ -240,10 +267,11 @@ function MonthView({
                 {days.map((day) => {
                     const isCurrentMonth = day.date.getMonth() === anchorMonth
                     const isDone = day.status === 'done'
+                    const isPartial = day.status === 'partial'
                     const isHistoric = day.status === 'done_historic'
                     const isMissed = day.status === 'missed'
                     const isScheduled = day.status === 'scheduled'
-                    const isClickable = (isDone || isHistoric || isMissed || isScheduled || day.status === 'compensated') && isCurrentMonth
+                    const isClickable = (isDone || isPartial || isHistoric || isMissed || isScheduled || day.status === 'compensated') && isCurrentMonth
 
                     const rpe = day.completedSessions[0]?.rpe
 
@@ -263,6 +291,10 @@ function MonthView({
                                 {isCurrentMonth && isDone && (
                                     <div className="absolute inset-0.5 rounded-lg bg-foreground" />
                                 )}
+                                {/* Parcial (dual-day, 1 de 2): tinta a meio tom */}
+                                {isCurrentMonth && isPartial && (
+                                    <div className="absolute inset-0.5 rounded-lg bg-foreground/55" />
+                                )}
                                 {/* Historic: tinta suavizada */}
                                 {isCurrentMonth && isHistoric && (
                                     <div className="absolute inset-0.5 rounded-lg bg-foreground/15" />
@@ -273,7 +305,7 @@ function MonthView({
                                 )}
                                 {/* The number */}
                                 <span className={`relative font-mono text-xs leading-none tabular-nums ${
-                                    isDone && isCurrentMonth
+                                    (isDone || isPartial) && isCurrentMonth
                                         ? 'text-background font-semibold'
                                         : isHistoric && isCurrentMonth
                                             ? 'text-k-text-primary font-semibold'
@@ -298,9 +330,13 @@ function MonthView({
                             </div>
 
                             {/* Tooltip — tinta invertida (padrão F2) */}
-                            {isCurrentMonth && (isDone || isHistoric || isMissed) && (
+                            {isCurrentMonth && (isDone || isPartial || isHistoric || isMissed) && (
                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-foreground rounded-md font-mono text-[9px] font-medium text-background opacity-0 group-hover/cell:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap">
-                                    {isDone ? (rpe != null ? `PSE ${rpe}` : 'Concluído') : isHistoric ? 'Programa anterior' : 'Faltou'}
+                                    {isDone
+                                        ? (rpe != null ? `PSE ${rpe}` : 'Concluído')
+                                        : isPartial
+                                            ? `${day.completedSessions.length} de ${day.scheduledWorkouts.length} realizados`
+                                            : isHistoric ? 'Programa anterior' : 'Faltou'}
                                 </div>
                             )}
                         </button>
@@ -339,15 +375,15 @@ function MetricsBar({ days }: { days: CalendarDay[] }) {
         // Count sessions from current program (in-program days)
         const relevant = days.filter(d => d.isInProgram && d.date <= today)
         const scheduledPast = relevant.filter(d => d.scheduledWorkouts.length > 0).length
-        const fulfilledPast = relevant.filter(d => d.status === 'done' || d.status === 'compensated').length
+        const fulfilledPast = relevant.filter(d => d.status === 'done' || d.status === 'partial' || d.status === 'compensated').length
         const rate = scheduledPast > 0 ? Math.round((fulfilledPast / scheduledPast) * 100) : 0
 
         // Count ALL completed sessions (including historic from other programs)
-        const allCompleted = days.filter(d => d.date <= today && (d.status === 'done' || d.status === 'done_historic' || d.status === 'compensated')).length
+        const allCompleted = days.filter(d => d.date <= today && (d.status === 'done' || d.status === 'partial' || d.status === 'done_historic' || d.status === 'compensated')).length
 
         // Historic-only sessions
         const historicCount = days.filter(d => d.date <= today && d.status === 'done_historic').length
-        const currentCount = days.filter(d => d.date <= today && d.status === 'done').length
+        const currentCount = days.filter(d => d.date <= today && (d.status === 'done' || d.status === 'partial')).length
 
         // Are we viewing a period that has program data?
         const hasProgramDays = relevant.length > 0
@@ -358,7 +394,7 @@ function MetricsBar({ days }: { days: CalendarDay[] }) {
             (a, b) => b.date.getTime() - a.date.getTime()
         )
         for (const d of sorted) {
-            if (d.status === 'done' || d.status === 'compensated') streak++
+            if (d.status === 'done' || d.status === 'partial' || d.status === 'compensated') streak++
             else break
         }
 

@@ -48,6 +48,8 @@ const MONTH_DAY_HEADER_HEIGHT = 26; // D S T Q Q S S row
 // alternam light/dark; são pontos sutis que funcionam em ambos modos).
 const STATUS_COLORS: Record<CalendarDay["status"], string> = {
     done: "#22c55e",
+    // Dual-day (força+aeróbio) com só parte concluída
+    partial: "#22c55e",
     done_historic: "#22c55e",
     missed: "#ef4444",
     compensated: "#8A8681",
@@ -58,6 +60,7 @@ const STATUS_COLORS: Record<CalendarDay["status"], string> = {
 
 const STATUS_DOT_COLORS: Record<CalendarDay["status"], string | null> = {
     done: "#6D28D9",
+    partial: "#a78bfa",
     done_historic: "#a78bfa",
     missed: "#ef4444",
     compensated: "#8A8681",
@@ -505,7 +508,7 @@ export function UnifiedCalendar({
                         const isCurrentMonth = day.date.getMonth() === anchorMonth;
                         const isSelected = day.dateKey === selectedKey;
                         const isToday = day.isToday;
-                        const dotColor = day.status === "done" ? brand.color : STATUS_DOT_COLORS[day.status];
+                        const dotColor = day.status === "done" || day.status === "partial" ? brand.color : STATUS_DOT_COLORS[day.status];
                         const isClickable = isCurrentMonth;
 
                         return (

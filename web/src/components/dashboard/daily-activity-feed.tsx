@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { SessionDetailSheet } from '@/components/students/session-detail-sheet'
-import { Clock, Filter, MessageCircle } from 'lucide-react'
+import { Clock, Filter, MessageCircle, Dumbbell, Zap } from 'lucide-react'
 
 
 interface DailyActivityItem {
@@ -20,6 +20,7 @@ interface DailyActivityItem {
 interface ScheduledTodayItem {
     studentName: string
     workoutName: string
+    workoutType?: 'strength' | 'cardio'
 }
 
 type RpeFilter = 'all' | 'low' | 'medium' | 'high'
@@ -195,6 +196,11 @@ export function DailyActivityFeed({ activities, scheduledToday }: DailyActivityF
                             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-k-text-quaternary block">Agendados para hoje</span>
                             {scheduledToday.map((s, i) => (
                                 <div key={i} className="flex items-center justify-center gap-2 text-xs text-k-text-secondary">
+                                    {s.workoutType === 'cardio' ? (
+                                        <Zap className="h-3 w-3 shrink-0" style={{ color: 'var(--accent-cardio)' }} aria-label="Treino aeróbio" />
+                                    ) : (
+                                        <Dumbbell className="h-3 w-3 shrink-0 text-k-text-quaternary" aria-label="Treino de força" />
+                                    )}
                                     <span>{s.studentName}</span>
                                     <span className="text-k-text-quaternary">·</span>
                                     <span>{s.workoutName}</span>
