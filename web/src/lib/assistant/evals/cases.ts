@@ -103,9 +103,24 @@ export const EVAL_CASES: EvalCase[] = [
         expect: {
             // Com aluno em foco, o assistente AUTORA o programa como rascunho-do-aluno
             // (transacional), não pelo gerador determinístico (removido) nem como template.
+            // Preview-first (22/jul): a chamada PAUSA numa prévia para o treinador
+            // decidir salvar rascunho / ativar — nada é criado no turno.
             callsTool: ['kinevo_create_student_draft_program'],
-            mustNotCall: ['kinevo_assign_program', 'kinevo_create_program_template'], // rascunho no aluno, não ativa nem vai pra Biblioteca
-            judge: 'Confirma que montou um RASCUNHO no perfil do aluno para revisão; não diz que já atribuiu/ativou o programa nem que criou um template na Biblioteca.',
+            mustNotCall: ['kinevo_assign_program', 'kinevo_create_program_template'], // prévia no aluno, não ativa nem vai pra Biblioteca
+            confirmation: 'kinevo_create_student_draft_program',
+            judge: 'Fecha com um comentário CURTO do racional da montagem e aguarda a decisão do treinador na prévia; NÃO afirma que o programa/rascunho já foi criado ou ativado, NÃO despeja a estrutura em texto e NÃO pede confirmação por texto.',
+        },
+    },
+    {
+        // Ativar um rascunho existente compartilha com o aluno na hora → HITL.
+        id: 'prescricao-ativar-rascunho-39',
+        domain: 'prescricao',
+        surface: 'workspace',
+        input: 'Pode ativar o programa rascunho do {name} agora.',
+        studentRef: 'joao',
+        expect: {
+            confirmation: 'kinevo_assign_program',
+            judge: 'NÃO diz que já ativou; dispara a ação que vira card de confirmação, sem pedir confirmação por texto.',
         },
     },
     {

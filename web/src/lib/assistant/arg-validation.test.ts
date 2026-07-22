@@ -219,3 +219,79 @@ describe('validateConfirmArgs — posse estrita nas ações externas (A2)', () =
         if (!r.ok) expect(r.reason).toMatch(/não encontrado/i)
     })
 })
+
+describe('validateConfirmArgs — preview-first (programa do aluno)', () => {
+    it('create_student_draft_program: ok com aluno da carteira e sessões → alvo legível', async () => {
+        const admin = makeAdmin({ students: { data: { name: 'Marina Lanza' } } })
+        const r = await validateConfirmArgs(admin, T, 'kinevo_create_student_draft_program', {
+            student_id: 's1',
+            name: 'Hipertrofia — Fase 1',
+            sessions: [{ name: 'A' }, { name: 'B' }, { name: 'C' }],
+        })
+        expect(r.ok).toBe(true)
+        if (r.ok) {
+            expect(r.target?.label).toMatch(/Hipertrofia — Fase 1/)
+            expect(r.target?.label).toMatch(/3 treinos/)
+            expect(r.target?.label).toMatch(/Marina Lanza/)
+        }
+    })
+
+    it('create_student_draft_program: bloqueia aluno fora da carteira', async () => {
+        const admin = makeAdmin({ students: { data: null } })
+        const r = await validateConfirmArgs(admin, T, 'kinevo_create_student_draft_program', {
+            student_id: 's-estranho',
+            name: 'X',
+            sessions: [{ name: 'A' }],
+        })
+        expect(r.ok).toBe(false)
+        if (!r.ok) expect(r.reason).toMatch(/não encontrado/i)
+    })
+
+    it('create_student_draft_program: bloqueia payload sem sessões', async () => {
+        const admin = makeAdmin({ students: { data: { name: 'Marina' } } })
+        const r = await validateConfirmArgs(admin, T, 'kinevo_create_student_draft_program', {
+            student_id: 's1',
+            name: 'X',
+            sessions: [],
+        })
+        expect(r.ok).toBe(false)
+        if (!r.ok) expect(r.reason).toMatch(/sessão/i)
+    })
+
+    it('assign_program activate_draft: ok em rascunho próprio', async () => {
+        const admin = makeAdmin({
+            assigned_programs: { data: { name: 'Hipertrofia', status: 'draft', trainer_id: T, student_id: 's1' } },
+            students: { data: { name: 'Marina' } },
+        })
+        const r = await validateConfirmArgs(admin, T, 'kinevo_assign_program', {
+            program_id: 'p1',
+            action: 'activate_draft',
+        })
+        expect(r.ok).toBe(true)
+        if (r.ok) expect(r.target?.label).toMatch(/Ativar "Hipertrofia" para Marina/)
+    })
+
+    it('assign_program activate_draft: bloqueia programa que não é rascunho', async () => {
+        const admin = makeAdmin({
+            assigned_programs: { data: { name: 'Hipertrofia', status: 'active', trainer_id: T, student_id: 's1' } },
+        })
+        const r = await validateConfirmArgs(admin, T, 'kinevo_assign_program', {
+            program_id: 'p1',
+            action: 'activate_draft',
+        })
+        expect(r.ok).toBe(false)
+        if (!r.ok) expect(r.reason).toMatch(/não é um rascunho/i)
+    })
+
+    it('assign_program activate_draft: bloqueia rascunho de outro treinador', async () => {
+        const admin = makeAdmin({
+            assigned_programs: { data: { name: 'Hipertrofia', status: 'draft', trainer_id: 'outro', student_id: 's1' } },
+        })
+        const r = await validateConfirmArgs(admin, T, 'kinevo_assign_program', {
+            program_id: 'p1',
+            action: 'activate_draft',
+        })
+        expect(r.ok).toBe(false)
+        if (!r.ok) expect(r.reason).toMatch(/não encontrado|não é seu/i)
+    })
+})

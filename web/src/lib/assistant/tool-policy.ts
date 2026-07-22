@@ -146,6 +146,14 @@ export const CONFIRM_TOOLS: ReadonlySet<string> = new Set<McpToolName>([
     // de dados JÁ compartilhados com o aluno.
     'kinevo_archive_student',
     'kinevo_correct_assessment',
+    // Preview-first (22/jul): o build transacional do rascunho pausa e vira a
+    // PRÉVIA do programa no chat (o engine re-anexa um execute de captura — ver
+    // command-engine — para o gate de qualidade continuar corrigindo o modelo);
+    // a criação real acontece no execute-tool quando o treinador aprova.
+    'kinevo_create_student_draft_program',
+    // Ativar/atribuir compartilha com o ALUNO na hora (notifica + aparece no app)
+    // — pausa para confirmação como toda ação que sai para o aluno.
+    'kinevo_assign_program',
 ])
 
 /** Escrita = tudo que não é leitura. (CONFIRM ⊆ WRITE.) */

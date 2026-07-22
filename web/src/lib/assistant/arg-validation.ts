@@ -322,6 +322,56 @@ export async function validateConfirmArgs(
                 return { ok: true, target: { label } }
             }
 
+            // Preview-first (22/jul): o card de prévia do programa mostra o alvo
+            // legível; posse do aluno é estrita (o payload inteiro depende dele).
+            case 'kinevo_create_student_draft_program': {
+                const sid = str(args.student_id)
+                if (!sid) return { ok: false, reason: 'Faltou indicar o aluno do programa.' }
+                const name = await studentName(admin, trainerId, sid)
+                if (!name) return { ok: false, reason: 'Aluno não encontrado na sua carteira.' }
+                const sessions = Array.isArray(args.sessions) ? args.sessions.length : 0
+                if (sessions === 0) return { ok: false, reason: 'O programa veio sem nenhuma sessão de treino.' }
+                const progName = str(args.name) ?? 'Programa'
+                return {
+                    ok: true,
+                    target: {
+                        label: `${progName} · ${sessions} treino${sessions > 1 ? 's' : ''} · para ${name}`,
+                        details: { recipientName: name },
+                    },
+                }
+            }
+
+            // Ativar/atribuir compartilha com o aluno na hora: valida posse e estado
+            // antes do card (e de novo na execução — defense-in-depth).
+            case 'kinevo_assign_program': {
+                const programId = str(args.program_id)
+                if (!programId) return { ok: false, reason: 'Faltou indicar o programa.' }
+                const action = str(args.action)
+                if (action === 'activate_draft') {
+                    const { data: p } = await admin
+                        .from('assigned_programs')
+                        .select('name, status, trainer_id, student_id')
+                        .eq('id', programId)
+                        .maybeSingle()
+                    const prog = p as
+                        | { name: string; status: string; trainer_id: string; student_id: string }
+                        | null
+                    if (!prog || prog.trainer_id !== trainerId) {
+                        return { ok: false, reason: 'Programa não encontrado ou não é seu.' }
+                    }
+                    if (prog.status !== 'draft') {
+                        return { ok: false, reason: `Esse programa não é um rascunho (status atual: ${prog.status}).` }
+                    }
+                    const name = (await studentName(admin, trainerId, prog.student_id)) ?? 'aluno'
+                    return { ok: true, target: { label: `Ativar "${prog.name}" para ${name}` } }
+                }
+                // assign_template: posse do template + aluno (best-effort no rótulo).
+                const sid = str(args.student_id)
+                const name = await studentName(admin, trainerId, sid)
+                if (sid && !name) return { ok: false, reason: 'Aluno não encontrado na sua carteira.' }
+                return { ok: true, target: name ? { label: `Atribuir programa a ${name}` } : null }
+            }
+
             // Sem validador estrito (a tool já checa posse na execução): libera com
             // alvo genérico — o card mostra o resumo dos args como hoje.
             default:

@@ -295,6 +295,39 @@ const CONFIRM_TITLES: Record<string, string> = {
     kinevo_generate_checkout_link: 'Gerar link de pagamento',
     kinevo_archive_student: 'Arquivar aluno',
     kinevo_correct_assessment: 'Corrigir avaliação finalizada',
+    kinevo_create_student_draft_program: 'Criar programa para o aluno',
+    kinevo_assign_program: 'Ativar programa do aluno',
+}
+
+/**
+ * Preview-first (22/jul): o build transacional do rascunho é CONFIRM_TOOL (a
+ * ponte tira o execute), mas ganha um execute de CAPTURA no engine — o payload
+ * validado pelo gate de qualidade vira a PRÉVIA do programa no chat, e a criação
+ * real só acontece no execute-tool quando o treinador aprova (salvar/ativar).
+ */
+const DRAFT_PROGRAM_TOOL = 'kinevo_create_student_draft_program'
+
+/** Resultado sintético devolvido ao modelo quando a prévia é capturada. */
+function previewCaptureResult(): unknown {
+    return {
+        content: [{
+            type: 'text',
+            text: JSON.stringify({
+                preview_pending: true,
+                message:
+                    'Prévia do programa apresentada ao treinador — o programa AINDA NÃO foi criado. ' +
+                    'Encerre com 1–2 frases sobre o racional da montagem e aguarde a decisão dele no card. ' +
+                    'NÃO chame mais tools neste turno e NÃO repita a estrutura em texto (o card já mostra o programa completo).',
+            }),
+        }],
+    }
+}
+
+/** A captura da prévia (não é uma execução real — sai de crédito/parts/memória). */
+function isPreviewCaptureResult(result: unknown): boolean {
+    const content = (result as { content?: Array<{ text?: string }> } | null)?.content
+    return Array.isArray(content) && typeof content[0]?.text === 'string' &&
+        content[0].text.includes('"preview_pending":true')
 }
 
 function summarizeArgs(args: Record<string, unknown>): string {
@@ -694,6 +727,22 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             }
         }
 
+        // PREVIEW-FIRST: re-anexa um execute de captura no build do rascunho (a
+        // ponte o tirou por ser CONFIRM_TOOL). O gate de qualidade embrulha ESTE
+        // execute — a correção in-turn (quality_errors → modelo re-chama) continua
+        // viva; passando no gate, o payload é capturado e vira a prévia no fim.
+        let programPreviewArgs: Record<string, unknown> | null = null
+        const draftTool = projectedTools[DRAFT_PROGRAM_TOOL]
+        if (draftTool) {
+            projectedTools[DRAFT_PROGRAM_TOOL] = {
+                ...draftTool,
+                execute: (async (args) => {
+                    programPreviewArgs = (args ?? {}) as Record<string, unknown>
+                    return previewCaptureResult()
+                }) as typeof draftTool.execute,
+            }
+        }
+
         // Guard anti-loop nas leituras (dedup por tool+args no turno).
         const { tools: readGuardedTools, reset: resetReadGuard } = withReadGuard(projectedTools)
         // Aluno em foco: o modelo já TEM o aluno (UUID + perfil no contexto) e não
@@ -1075,6 +1124,9 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 // — libera o dedup de leituras para as re-consultas legítimas.
                 opts.onTextReset?.()
                 resetReadGuard()
+                // Prévia capturada por uma tentativa que morreu não vale: a
+                // re-rodada monta (e captura) do zero.
+                programPreviewArgs = null
             }
         }
         if (!result) throw lastErr ?? new Error('Turno falhou sem resultado.')
@@ -1103,6 +1155,14 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             for (const tr of step.toolResults) {
                 executedIds.add(tr.toolCallId)
                 executed.push({ toolName: tr.toolName, args: tr.input ?? {}, result: tr.output })
+            }
+        }
+        // Preview-first: a captura da prévia NÃO é uma execução — sai da lista
+        // (não vira part "executado", não entra em crédito nem memória). A
+        // criação real é cobrada no execute-tool quando o treinador aprova.
+        for (let i = executed.length - 1; i >= 0; i--) {
+            if (executed[i].toolName === DRAFT_PROGRAM_TOOL && isPreviewCaptureResult(executed[i].result)) {
+                executed.splice(i, 1)
             }
         }
 
@@ -1148,6 +1208,23 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                     confirmation = card
                 }
                 break
+            }
+        }
+
+        // Preview-first: o payload capturado do build vira o card de PRÉVIA do
+        // programa (uma confirmação rica — a UI renderiza a estrutura completa
+        // com "Salvar rascunho" / "Ativar agora"). Tem precedência sobre outro
+        // card pendente do mesmo turno: qualquer outra ação dependeria de um
+        // programa que ainda não existe.
+        if (programPreviewArgs) {
+            const card = buildConfirmation(DRAFT_PROGRAM_TOOL, programPreviewArgs)
+            const validation = await validateConfirmArgs(admin, trainerId, DRAFT_PROGRAM_TOOL, programPreviewArgs)
+            if (!validation.ok) {
+                blockedReason = validation.reason
+                confirmation = null
+            } else {
+                if (validation.target) card.summary = validation.target.label
+                confirmation = card
             }
         }
 
@@ -1199,6 +1276,11 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             : disambigQuestion
               ? disambigQuestion.question
               : (result.text || (question?.question ?? '') || (proposal ? 'Aprova a proposta abaixo?' : ''))
+
+        // Prévia sem texto do modelo: nunca deixa o card aparecer "mudo".
+        if (!finalText && confirmation?.toolName === DRAFT_PROGRAM_TOOL) {
+            finalText = 'Montei o programa — revise a prévia abaixo e escolha entre salvar como rascunho ou já ativar para o aluno.'
+        }
 
         // Defesa em profundidade: um turno que terminou SEM texto, pergunta, proposta
         // e confirmação (ex.: estourou maxSteps sem concluir) jamais pode aparecer em
