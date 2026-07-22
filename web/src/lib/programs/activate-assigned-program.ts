@@ -137,23 +137,50 @@ export async function activateAssignedProgram(params: {
     const nowIso = new Date().toISOString()
     const expiresAt = computeExpiresAt(nowIso, (program.duration_weeks as number | null) ?? null)
 
-    const {
-        data: activatedRows,
-        error: updateError,
-    } = await supabaseAdmin
-        .from('assigned_programs')
-        .update({
-            status: 'active',
-            started_at: nowIso,
-            updated_at: nowIso,
-            expires_at: expiresAt,
-        })
-        .eq('id', assignedProgramId)
-        .eq('trainer_id', ownerTrainerId)
-        // Aceita 'scheduled' (fila, ativação manual ou via cron) e 'draft'
-        // (programa criado fora do builder, ex.: assistente via MCP).
-        .in('status', ['scheduled', 'draft'])
-        .select('id')
+    // Encerra o programa vigente do aluno (o novo o substitui). Chamado pelo
+    // vencedor da ativação — e, via retry, quando o índice de 1-ativo bloqueia.
+    const completePreviousActives = () =>
+        supabaseAdmin
+            .from('assigned_programs')
+            .update({
+                status: 'completed',
+                completed_at: nowIso,
+                updated_at: nowIso,
+            })
+            .eq('student_id', program.student_id)
+            .eq('trainer_id', ownerTrainerId)
+            .neq('id', assignedProgramId)
+            .in('status', ['active', 'expired'])
+
+    // Ativação OTIMISTA primeiro: o filtro de status é o mutex da corrida (o
+    // perdedor vê 0 linhas → already_active, sem tocar em nada).
+    const attemptActivate = () =>
+        supabaseAdmin
+            .from('assigned_programs')
+            .update({
+                status: 'active',
+                started_at: nowIso,
+                updated_at: nowIso,
+                expires_at: expiresAt,
+            })
+            .eq('id', assignedProgramId)
+            .eq('trainer_id', ownerTrainerId)
+            // Aceita 'scheduled' (fila, ativação manual ou via cron) e 'draft'
+            // (programa criado fora do builder, ex.: assistente via MCP).
+            .in('status', ['scheduled', 'draft'])
+            .select('id')
+
+    let { data: activatedRows, error: updateError } = await attemptActivate()
+
+    // RENOVAÇÃO: o aluno ainda tem um programa ATIVO → o índice parcial
+    // idx_assigned_programs_active_unique (migration 015) rejeita com 23505.
+    // Completa o vigente e re-tenta UMA vez (as validações do alvo já passaram).
+    let completedBeforeActivate = false
+    if (updateError && (updateError as { code?: string }).code === '23505') {
+        await completePreviousActives()
+        completedBeforeActivate = true
+        ;({ data: activatedRows, error: updateError } = await attemptActivate())
+    }
 
     if (updateError) {
         return {
@@ -178,17 +205,7 @@ export async function activateAssignedProgram(params: {
         }
     }
 
-    await supabaseAdmin
-        .from('assigned_programs')
-        .update({
-            status: 'completed',
-            completed_at: nowIso,
-            updated_at: nowIso,
-        })
-        .eq('student_id', program.student_id)
-        .eq('trainer_id', ownerTrainerId)
-        .neq('id', assignedProgramId)
-        .in('status', ['active', 'expired'])
+    if (!completedBeforeActivate) await completePreviousActives()
 
     const programName = program.name ?? 'Novo programa'
 
