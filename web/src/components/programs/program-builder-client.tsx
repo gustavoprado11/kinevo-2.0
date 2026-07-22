@@ -177,12 +177,16 @@ interface ProgramBuilderClientProps {
     initialName?: string
     initialDescription?: string
     initialDurationWeeks?: number | null
-    /** Programa ATIVO do aluno — quando presente (e o canvas abre em branco),
-     *  o builder oferece o modal "Em branco × Copiar programa atual". */
+    /** Programa-fonte da oferta de cópia — o ATIVO do aluno ou, sem ativo, o
+     *  ANTERIOR mais recente (expirado/encerrado). Quando presente (e o canvas
+     *  abre em branco), o builder oferece o modal "Em branco × Copiar". */
     copyOffer?: {
+        sourceProgramId: string
         programName: string
         workoutCount: number | null
         durationWeeks: number | null
+        /** true = fonte é o programa anterior (sem ativo) — muda o texto. */
+        isPrevious: boolean
     } | null
 }
 
@@ -2129,11 +2133,12 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 </>
             )}
 
-            {/* Escolha de partida: em branco × copiar o programa ativo do aluno.
-                Só aparece quando há o que copiar (copyOffer) e o canvas abriu
-                em branco — IA e deep-link ?from=current pulam. Durante a cópia
-                o modal PERMANECE aberto com spinner (useTransition) até o novo
-                canvas montar — a navegação leva segundos no primeiro hit. */}
+            {/* Escolha de partida: em branco × copiar o programa ATIVO (ou o
+                ANTERIOR, quando não há ativo — expirado/encerrado). Só aparece
+                quando há o que copiar (copyOffer) e o canvas abriu em branco —
+                IA e deep-link ?from= pulam. Durante a cópia o modal PERMANECE
+                aberto com spinner (useTransition) até o novo canvas montar —
+                a navegação leva segundos no primeiro hit. */}
             {copyChoiceOpen && copyOffer && (
                 <div className="kv-modal-overlay-in fixed inset-0 z-modal flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="copy-choice-title">
                     <div className="kv-modal-panel-in w-full max-w-md rounded-panel border border-k-border-subtle bg-surface-card p-6">
@@ -2146,14 +2151,24 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                                     Como começar o novo programa?
                                 </h2>
                                 <p className="mt-1 text-sm leading-relaxed text-k-text-tertiary">
-                                    {studentContext?.name ?? 'Este aluno'} tem um programa ativo. Você pode
-                                    partir dele e ajustar o próximo ciclo em cima do que já está sendo executado.
+                                    {copyOffer.isPrevious ? (
+                                        <>
+                                            {studentContext?.name ?? 'Este aluno'} não tem um programa ativo,
+                                            mas você pode partir do programa anterior e montar o próximo ciclo
+                                            em cima do que ele executava.
+                                        </>
+                                    ) : (
+                                        <>
+                                            {studentContext?.name ?? 'Este aluno'} tem um programa ativo. Você pode
+                                            partir dele e ajustar o próximo ciclo em cima do que já está sendo executado.
+                                        </>
+                                    )}
                                 </p>
                             </div>
                         </div>
                         <div className="mt-4 rounded-control border border-k-border-subtle bg-surface-inset px-3.5 py-2.5">
                             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-k-text-tertiary">
-                                Programa ativo
+                                {copyOffer.isPrevious ? 'Programa anterior' : 'Programa ativo'}
                             </p>
                             <p className="mt-1 truncate text-sm font-medium text-k-text-primary">
                                 {copyOffer.programName}
@@ -2182,14 +2197,16 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                             <button
                                 onClick={() => {
                                     startCopyTransition(() => {
-                                        router.push(`${window.location.pathname}?from=current`)
+                                        router.push(`${window.location.pathname}?from=${copyOffer.sourceProgramId}`)
                                     })
                                 }}
                                 disabled={copyPending}
                                 className="inline-flex items-center gap-2 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-80"
                             >
                                 {copyPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                                {copyPending ? 'Copiando programa…' : 'Copiar programa atual'}
+                                {copyPending
+                                    ? 'Copiando programa…'
+                                    : copyOffer.isPrevious ? 'Copiar programa anterior' : 'Copiar programa atual'}
                             </button>
                         </div>
                     </div>

@@ -11,6 +11,8 @@ interface CopyCurrentProgramModalProps {
     programName: string;
     workoutCount: number | null;
     durationWeeks: number | null;
+    /** true = fonte é o programa ANTERIOR (aluno sem ativo) — muda os textos. */
+    isPrevious?: boolean;
     /** Cópia em andamento: spinner no botão primário, ambos desabilitados. */
     copying: boolean;
     onStartBlank: () => void;
@@ -29,6 +31,7 @@ export function CopyCurrentProgramModal({
     programName,
     workoutCount,
     durationWeeks,
+    isPrevious = false,
     copying,
     onStartBlank,
     onCopy,
@@ -76,8 +79,9 @@ export function CopyCurrentProgramModal({
                                 Como começar o novo programa?
                             </Text>
                             <Text style={{ marginTop: 4, fontSize: 13, lineHeight: 19, color: colors.text.secondary }}>
-                                {studentName || "Este aluno"} tem um programa ativo. Você pode partir
-                                dele e ajustar o próximo ciclo em cima do que já está sendo executado.
+                                {isPrevious
+                                    ? `${studentName || "Este aluno"} não tem um programa ativo, mas você pode partir do programa anterior e montar o próximo ciclo em cima do que ele executava.`
+                                    : `${studentName || "Este aluno"} tem um programa ativo. Você pode partir dele e ajustar o próximo ciclo em cima do que já está sendo executado.`}
                             </Text>
                         </View>
                     </View>
@@ -102,7 +106,7 @@ export function CopyCurrentProgramModal({
                                 color: colors.text.tertiary,
                             }}
                         >
-                            Programa ativo
+                            {isPrevious ? "Programa anterior" : "Programa ativo"}
                         </Text>
                         <Text
                             numberOfLines={1}
@@ -124,7 +128,7 @@ export function CopyCurrentProgramModal({
                             onCopy();
                         }}
                         accessibilityRole="button"
-                        accessibilityLabel="Copiar programa atual"
+                        accessibilityLabel={isPrevious ? "Copiar programa anterior" : "Copiar programa atual"}
                         style={{
                             marginTop: 18,
                             flexDirection: "row",
@@ -139,7 +143,9 @@ export function CopyCurrentProgramModal({
                     >
                         {copying && <ActivityIndicator size="small" color="#ffffff" />}
                         <Text style={{ fontSize: 15, fontWeight: "600", color: "#ffffff" }}>
-                            {copying ? "Copiando programa…" : "Copiar programa atual"}
+                            {copying
+                                ? "Copiando programa…"
+                                : isPrevious ? "Copiar programa anterior" : "Copiar programa atual"}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity

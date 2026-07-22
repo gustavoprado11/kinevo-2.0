@@ -220,10 +220,55 @@ export default function ProgramBuilderScreen() {
     }, []);
 
     const [copyOffer, setCopyOffer] = useState<"idle" | "offer" | "copying" | "closed">("idle");
-    const activeProgramForCopy = studentDetail?.activeProgram ?? null;
+    // Fonte da cópia: o programa ATIVO ou, sem ativo, o ANTERIOR mais recente
+    // (expirado/encerrado — buscado por query direta; a RPC de histórico não
+    // traz 'expired'). isPrevious muda os textos do modal.
+    const [copySource, setCopySource] = useState<{
+        id: string;
+        name: string;
+        workoutCount: number | null;
+        durationWeeks: number | null;
+        isPrevious: boolean;
+    } | null>(null);
     useEffect(() => {
-        if (!copyOfferEligibleRef.current || copyOffer !== "idle") return;
-        if (!activeProgramForCopy) return;
+        if (!copyOfferEligibleRef.current || copyOffer !== "idle" || copySource) return;
+        const sid = params.studentId;
+        if (!studentDetail || !sid) return;
+        const active = studentDetail.activeProgram;
+        if (active) {
+            setCopySource({
+                id: active.id,
+                name: active.name,
+                workoutCount: active.workouts?.length ?? null,
+                durationWeeks: active.duration_weeks,
+                isPrevious: false,
+            });
+            return;
+        }
+        let cancelled = false;
+        (supabase as any)
+            .from("assigned_programs")
+            .select("id, name, duration_weeks, assigned_workouts(count)")
+            .eq("student_id", sid)
+            .in("status", ["expired", "completed", "paused"])
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+            .then(({ data }: { data: any }) => {
+                if (cancelled || !data) return;
+                setCopySource({
+                    id: data.id,
+                    name: data.name,
+                    workoutCount: data.assigned_workouts?.[0]?.count ?? null,
+                    durationWeeks: data.duration_weeks ?? null,
+                    isPrevious: true,
+                });
+            });
+        return () => { cancelled = true; };
+    }, [studentDetail, copyOffer, copySource, params.studentId]);
+
+    useEffect(() => {
+        if (!copySource || copyOffer !== "idle") return;
         // Só oferece enquanto o canvas está intocado — se o treinador já
         // começou a montar enquanto o detail carregava, não interrompe.
         const d = useProgramBuilderStore.getState().draft;
@@ -234,14 +279,14 @@ export default function ProgramBuilderScreen() {
             return;
         }
         setCopyOffer("offer");
-    }, [activeProgramForCopy, copyOffer]);
+    }, [copySource, copyOffer]);
 
     const handleCopyCurrentProgram = useCallback(async () => {
         const sid = params.studentId;
-        if (!activeProgramForCopy || !sid) return;
+        if (!copySource || !sid) return;
         setCopyOffer("copying");
         try {
-            const tree = await fetchAssignedProgramTree(activeProgramForCopy.id);
+            const tree = await fetchAssignedProgramTree(copySource.id);
             initFromAssignedProgramCopy(sid, tree);
             setCopyOffer("closed");
         } catch (e) {
@@ -251,7 +296,7 @@ export default function ProgramBuilderScreen() {
                 e instanceof Error ? e.message : "Tente novamente.",
             );
         }
-    }, [activeProgramForCopy, params.studentId, initFromAssignedProgramCopy]);
+    }, [copySource, params.studentId, initFromAssignedProgramCopy]);
 
     // Autosave-to-shelf: persiste o rascunho de CRIAÇÃO na prateleira
     // (lib/program-drafts) a cada alteração relevante, para que ele apareça na
@@ -1018,13 +1063,14 @@ export default function ProgramBuilderScreen() {
                             router.back();
                         }}
                     />
-                    {activeProgramForCopy && (
+                    {copySource && (
                         <CopyCurrentProgramModal
                             visible={copyOffer === "offer" || copyOffer === "copying"}
                             studentName={studentName || null}
-                            programName={activeProgramForCopy.name}
-                            workoutCount={activeProgramForCopy.workouts?.length ?? null}
-                            durationWeeks={activeProgramForCopy.duration_weeks}
+                            programName={copySource.name}
+                            workoutCount={copySource.workoutCount}
+                            durationWeeks={copySource.durationWeeks}
+                            isPrevious={copySource.isPrevious}
                             copying={copyOffer === "copying"}
                             onStartBlank={() => setCopyOffer("closed")}
                             onCopy={handleCopyCurrentProgram}

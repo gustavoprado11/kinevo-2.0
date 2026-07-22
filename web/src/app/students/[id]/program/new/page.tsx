@@ -63,6 +63,23 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
         redirect('/students')
     }
 
+    // Sem programa ativo (expirado/encerrado), a oferta de cópia cai no
+    // programa ANTERIOR mais recente — o treinador monta o próximo ciclo em
+    // cima do que o aluno executava, em vez de partir do zero.
+    let previousProgram: typeof activeProgram = null
+    if (!activeProgram) {
+        const { data } = await supabase
+            .from('assigned_programs')
+            .select('id, name, duration_weeks, assigned_workouts(count)')
+            .eq('student_id', studentId)
+            .in('status', ['expired', 'completed', 'paused'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        previousProgram = data
+    }
+    const copySourceProgram = activeProgram ?? previousProgram
+
     // ── "Começar do programa atual": hidrata o builder com uma CÓPIA sem
     // perdas do programa ativo (métodos/set schemes, supersets, cardio/fases,
     // agenda, notas) — ids regenerados, vira um programa NOVO ao salvar.
@@ -171,10 +188,12 @@ export default async function NewStudentProgramPage({ params, searchParams }: Pa
             initialName={copiedMeta?.name}
             initialDescription={copiedMeta?.description ?? undefined}
             initialDurationWeeks={copiedMeta?.durationWeeks}
-            copyOffer={!generationId && !copiedWorkouts && activeProgram ? {
-                programName: activeProgram.name,
-                workoutCount: (activeProgram.assigned_workouts as { count: number }[] | null)?.[0]?.count ?? null,
-                durationWeeks: activeProgram.duration_weeks ?? null,
+            copyOffer={!generationId && !copiedWorkouts && copySourceProgram ? {
+                sourceProgramId: copySourceProgram.id,
+                programName: copySourceProgram.name,
+                workoutCount: (copySourceProgram.assigned_workouts as { count: number }[] | null)?.[0]?.count ?? null,
+                durationWeeks: copySourceProgram.duration_weeks ?? null,
+                isPrevious: !activeProgram,
             } : null}
             studentContext={{
                 id: student.id,
