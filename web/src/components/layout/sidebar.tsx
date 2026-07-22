@@ -43,7 +43,6 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
     // aplicado pós-hidratação e confirmado por fetch — ver useAiAccessState.
     const { aiAllowed, consultoriaAllowed, homeStyle, setHomeStyle: setHomeStyleState } = useAiAccessState()
     const [switchingAssistant, startSwitch] = useTransition()
-    const [switchingClassic, startSwitchClassic] = useTransition()
     const profileRef = useRef<HTMLDivElement>(null)
     const openChat = useCommunicationStore(s => s.openChat)
 
@@ -98,13 +97,11 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
 
     // Clássico: ?h=classic evita o bounce de volta ao Assistente se a escrita da
     // preferência ainda não sincronizou nesta carga (espelha o AssistantWorkspace).
-    // Navegação ótimista em transição — igual ao goAssistant — para o pill mostrar
-    // o spinner e segurar a tela atual até o /dashboard estar pronto (troca suave).
     const goClassic = () => {
         setHomeStyleState('classic')
         setCachedHomeStyle('classic')
         void setHomeStyle('classic')
-        startSwitchClassic(() => { router.push('/dashboard?h=classic') })
+        router.push('/dashboard?h=classic')
     }
 
     const isActive = (hrefOrItem: string | NavItem) => {
@@ -179,7 +176,7 @@ export function Sidebar({ financialBadge, trainerName, trainerEmail, trainerAvat
             {aiAllowed && !isCollapsed && (
                 <ModeToggle
                     active={assistantMode ? 'assistant' : 'classic'}
-                    switchingTo={switchingAssistant ? 'assistant' : switchingClassic ? 'classic' : undefined}
+                    switchingTo={switchingAssistant ? 'assistant' : undefined}
                     onClassic={goClassic}
                     onAssistant={goAssistant}
                 />

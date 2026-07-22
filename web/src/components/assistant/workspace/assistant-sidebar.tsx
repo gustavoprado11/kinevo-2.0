@@ -52,12 +52,15 @@ interface Props {
     switchingClassic?: boolean
     /** Posiciona a sidebar como `fixed` (uso na casca AppLayout, fora da home do chat). */
     fixed?: boolean
+    /** Skeleton do Suspense (assistente/loading.tsx): rail em skeleton, sem contadores. */
+    loading?: boolean
 }
 
 export function AssistantSidebar({
     trainerName, trainerEmail, trainerAvatarUrl, students, conversations, activeConversationId, focusedStudentId,
     segment, search, onSegment, onSearch, onHome, onNewConversation, onSelectStudent,
     onSelectConversation, onDeleteConversation, onToggleClassic, switchingClassic = false, fixed = false,
+    loading = false,
 }: Props) {
     const router = useRouter()
     const pathname = usePathname()
@@ -330,6 +333,7 @@ export function AssistantSidebar({
                 onSelectStudent={onSelectStudent}
                 onSelectConversation={onSelectConversation}
                 onDeleteConversation={onDeleteConversation}
+                loading={loading}
             />
 
             {/* Perfil (idêntico ao Clássico) */}

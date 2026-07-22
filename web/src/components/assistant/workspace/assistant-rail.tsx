@@ -57,11 +57,14 @@ interface Props {
     onSelectStudent: (id: string) => void
     onSelectConversation: (id: string) => void
     onDeleteConversation?: (id: string) => void
+    /** Skeleton do Suspense (assistente/loading.tsx): rows cinza em vez da lista/estado-vazio. */
+    loading?: boolean
 }
 
 export function AssistantRail({
     students, conversations, activeConversationId, focusedStudentId,
     segment, search, onSegment, onSearch, onSelectStudent, onSelectConversation, onDeleteConversation,
+    loading = false,
 }: Props) {
     const q = search.trim().toLowerCase()
     const filteredStudents = q ? students.filter((s) => s.name.toLowerCase().includes(q)) : students
@@ -84,11 +87,11 @@ export function AssistantRail({
                 <div className="flex rounded-control bg-surface-inset p-[3px]">
                     <button onClick={() => onSegment('alunos')}
                         className={`flex-1 rounded-[6px] py-1.5 text-[12px] font-semibold transition ${segment === 'alunos' ? 'border border-k-border-subtle bg-surface-card text-k-text-primary' : 'border border-transparent text-k-text-tertiary hover:text-k-text-primary'}`}>
-                        Alunos <span className="font-medium tabular-nums text-k-text-quaternary">{students.length}</span>
+                        Alunos {!loading && <span className="font-medium tabular-nums text-k-text-quaternary">{students.length}</span>}
                     </button>
                     <button onClick={() => onSegment('conversas')}
                         className={`flex-1 rounded-[6px] py-1.5 text-[12px] font-semibold transition ${segment === 'conversas' ? 'border border-k-border-subtle bg-surface-card text-k-text-primary' : 'border border-transparent text-k-text-tertiary hover:text-k-text-primary'}`}>
-                        Conversas <span className="font-medium tabular-nums text-k-text-quaternary">{conversations.length}</span>
+                        Conversas {!loading && <span className="font-medium tabular-nums text-k-text-quaternary">{conversations.length}</span>}
                     </button>
                 </div>
             </div>
@@ -103,7 +106,16 @@ export function AssistantRail({
 
             {/* Lista */}
             <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-3">
-                {segment === 'alunos' ? (
+                {loading ? (
+                    <div className="space-y-0.5 pt-1">
+                        {Array.from({ length: 7 }).map((_, i) => (
+                            <div key={i} className="flex items-center gap-2.5 rounded-control px-2 py-2">
+                                <div className="h-[32px] w-[32px] shrink-0 rounded-[10px] bg-surface-inset" />
+                                <div className="h-3 flex-1 rounded bg-surface-inset" style={{ maxWidth: `${45 + ((i * 17) % 40)}%` }} />
+                            </div>
+                        ))}
+                    </div>
+                ) : segment === 'alunos' ? (
                     <>
                         {filteredStudents.map((s) => {
                             const on = s.id === focusedStudentId
