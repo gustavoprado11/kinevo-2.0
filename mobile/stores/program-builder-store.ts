@@ -188,6 +188,7 @@ interface AssignedItemRow {
     item_config?: Record<string, unknown> | null;
     method_key?: MethodKey | null;
     rounds?: number | null;
+    exercise_function?: string | null;
     assigned_workout_item_sets?: AssignedSetRow[] | null;
     /** Resolved exercise name (joined separately). */
     exercise_name?: string;
@@ -326,6 +327,19 @@ interface ProgramBuilderState {
      * `collapseExpandedScheme` to reconstruct the per-round scheme.
      */
     initFromAssignedProgram: (
+        studentId: string,
+        program: AssignedProgramHydrationData,
+    ) => void;
+    /**
+     * Hydrate the draft with a COPY of an assigned program ("começar do
+     * programa atual", paridade com o web). Same mapping as
+     * `initFromAssignedProgram`, but every workout/item gets a fresh uuid
+     * (superset parent links remapped) and no editing linkage — the save
+     * flow creates a NEW program via the normal create/assign path. Name is
+     * suggested as "<original> — novo ciclo"; the draft starts dirty so the
+     * autosave-to-shelf persists it immediately.
+     */
+    initFromAssignedProgramCopy: (
         studentId: string,
         program: AssignedProgramHydrationData,
     ) => void;
@@ -485,7 +499,7 @@ function workoutsFromAssignedProgram(rows: AssignedWorkoutRow[]): Workout[] {
                 reps: it.reps ?? '10',
                 rest_seconds: it.rest_seconds ?? 60,
                 notes: it.notes ?? null,
-                exercise_function: null,
+                exercise_function: it.exercise_function ?? null,
                 item_config: (it.item_config as Record<string, unknown>) ?? {},
                 substitute_exercise_ids: it.substitute_exercise_ids ?? [],
                 set_scheme: finalScheme,
@@ -1006,6 +1020,59 @@ export const useProgramBuilderStore = create<ProgramBuilderState>()(
                     draft,
                     currentWorkoutId: workouts[0].id,
                     isDirty: false,
+                    isSaving: false,
+                });
+            },
+
+            initFromAssignedProgramCopy: (studentId, program) => {
+                const base = workoutsFromAssignedProgram(program.assigned_workouts ?? []);
+                let workouts: Workout[] = base.map((w) => {
+                    // Ids novos com remap dos vínculos de superset — a cópia é
+                    // um programa NOVO; ids do banco aqui fariam o save de
+                    // criação colidir com linhas existentes.
+                    const idMap = new Map<string, string>();
+                    for (const it of w.items) idMap.set(it.id, Crypto.randomUUID());
+                    return {
+                        ...w,
+                        id: Crypto.randomUUID(),
+                        items: w.items.map((it) => ({
+                            ...it,
+                            id: idMap.get(it.id)!,
+                            parent_item_id: it.parent_item_id
+                                ? idMap.get(it.parent_item_id) ?? null
+                                : null,
+                        })),
+                    };
+                });
+                if (workouts.length === 0) {
+                    workouts = [{
+                        id: Crypto.randomUUID(),
+                        name: 'Treino A',
+                        order_index: 0,
+                        frequency: [],
+                        items: [],
+                    }];
+                }
+                const draft: ProgramDraft = {
+                    name: program.name ? `${program.name} — novo ciclo` : '',
+                    description: program.description ?? '',
+                    duration_weeks: program.duration_weeks ?? null,
+                    start_date: null,
+                    assignment_type: null,
+                    studentId,
+                    workouts,
+                    generationId: null,
+                    originatedFromAi: false,
+                    originalSnapshot: null,
+                    editingAssignedProgramId: null,
+                    editingTemplateId: null,
+                    originalWorkoutIds: [],
+                    originalItemIds: [],
+                };
+                set({
+                    draft,
+                    currentWorkoutId: workouts[0].id,
+                    isDirty: true,
                     isSaving: false,
                 });
             },

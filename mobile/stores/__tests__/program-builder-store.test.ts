@@ -352,4 +352,106 @@ describe('program-builder-store', () => {
             expect(draft.originatedFromAi).toBe(true);
         });
     });
+
+    describe('initFromAssignedProgramCopy', () => {
+        const ASSIGNED = {
+            id: 'prog-db-1',
+            name: 'Hipertrofia Base',
+            description: 'Ciclo de base',
+            duration_weeks: 8,
+            status: 'active',
+            started_at: '2026-07-01T10:00:00.000Z',
+            scheduled_start_date: null,
+            assigned_workouts: [
+                {
+                    id: 'w-db-1',
+                    name: 'Treino A',
+                    order_index: 0,
+                    scheduled_days: [1, 4],
+                    workout_type: 'strength',
+                    assigned_workout_items: [
+                        {
+                            id: 'it-db-1',
+                            item_type: 'superset',
+                            order_index: 0,
+                            parent_item_id: null,
+                            exercise_id: null,
+                            sets: null,
+                            reps: null,
+                            rest_seconds: 90,
+                            notes: null,
+                            rounds: 3,
+                        },
+                        {
+                            id: 'it-db-2',
+                            item_type: 'exercise',
+                            order_index: 0,
+                            parent_item_id: 'it-db-1',
+                            exercise_id: 'ex-1',
+                            exercise_name: 'Supino Reto',
+                            sets: 3,
+                            reps: '10',
+                            rest_seconds: 0,
+                            notes: null,
+                            exercise_function: 'main',
+                        },
+                    ],
+                },
+            ],
+        };
+
+        it('regenerates all ids and remaps superset parent links', () => {
+            useProgramBuilderStore.getState().initFromAssignedProgramCopy('student-c', ASSIGNED);
+            const { draft } = useProgramBuilderStore.getState();
+
+            const w = draft.workouts[0];
+            expect(w.id).not.toBe('w-db-1');
+            const parent = w.items.find((i) => i.item_type === 'superset')!;
+            const child = w.items.find((i) => i.item_type === 'exercise')!;
+            expect(parent.id).not.toBe('it-db-1');
+            expect(child.id).not.toBe('it-db-2');
+            expect(child.parent_item_id).toBe(parent.id);
+        });
+
+        it('copies metadata with "— novo ciclo" name and no editing linkage', () => {
+            useProgramBuilderStore.getState().initFromAssignedProgramCopy('student-c', ASSIGNED);
+            const { draft, isDirty } = useProgramBuilderStore.getState();
+
+            expect(draft.name).toBe('Hipertrofia Base — novo ciclo');
+            expect(draft.description).toBe('Ciclo de base');
+            expect(draft.duration_weeks).toBe(8);
+            expect(draft.studentId).toBe('student-c');
+            expect(draft.editingAssignedProgramId).toBeNull();
+            expect(draft.editingTemplateId).toBeNull();
+            expect(draft.originalWorkoutIds).toEqual([]);
+            expect(draft.originalItemIds).toEqual([]);
+            expect(draft.start_date).toBeNull();
+            expect(draft.assignment_type).toBeNull();
+            expect(isDirty).toBe(true);
+        });
+
+        it('preserves schedule, rounds and exercise_function through the copy', () => {
+            useProgramBuilderStore.getState().initFromAssignedProgramCopy('student-c', ASSIGNED);
+            const { draft } = useProgramBuilderStore.getState();
+
+            const w = draft.workouts[0];
+            expect(w.frequency).toEqual(['mon', 'thu']);
+            const parent = w.items.find((i) => i.item_type === 'superset')!;
+            const child = w.items.find((i) => i.item_type === 'exercise')!;
+            expect(parent.rounds).toBe(3);
+            expect(child.exercise_function).toBe('main');
+            expect(child.exercise_name).toBe('Supino Reto');
+        });
+
+        it('falls back to a placeholder Treino A when the program has no workouts', () => {
+            useProgramBuilderStore.getState().initFromAssignedProgramCopy('student-c', {
+                ...ASSIGNED,
+                assigned_workouts: [],
+            });
+            const { draft } = useProgramBuilderStore.getState();
+            expect(draft.workouts).toHaveLength(1);
+            expect(draft.workouts[0].name).toBe('Treino A');
+            expect(draft.workouts[0].items).toHaveLength(0);
+        });
+    });
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
     View,
     Text,
@@ -37,7 +37,9 @@ import { openAIPrescriptionMenu } from "@/components/trainer/program-builder/AIP
 import { AIPrescriptionSheet } from "@/components/trainer/program-builder/AIPrescriptionSheet";
 import { TextPrescriptionSheet } from "@/components/trainer/student/TextPrescriptionSheet";
 import { AssignProgramWizard } from "@/components/trainer/student/AssignProgramWizard";
+import { CopyCurrentProgramModal } from "@/components/trainer/program-builder/CopyCurrentProgramModal";
 import { useStudentDetail } from "@/hooks/useStudentDetail";
+import { fetchAssignedProgramTree } from "@/hooks/useLoadAssignedProgram";
 import { mapAiOutputToBuilderData } from "@kinevo/shared/lib/prescription/builder-mapper";
 import {
     summarizeSetScheme,
@@ -72,6 +74,7 @@ export default function ProgramBuilderScreen() {
     const [editingCardioItemId, setEditingCardioItemId] = useState<string | null>(null);
     const { isTablet } = useResponsive();
     const initFromAiSnapshot = useProgramBuilderStore((s) => s.initFromAiSnapshot);
+    const initFromAssignedProgramCopy = useProgramBuilderStore((s) => s.initFromAssignedProgramCopy);
     const loadDraft = useProgramBuilderStore((s) => s.loadDraft);
     const setSetScheme = useProgramBuilderStore((s) => s.setSetScheme);
     const addNote = useProgramBuilderStore((s) => s.addNote);
@@ -168,6 +171,11 @@ export default function ProgramBuilderScreen() {
         return () => { cancelled = true; };
     }, [cardioStudentId]);
 
+    // ── "Começar do programa atual" (paridade com o web) ──
+    // Marcado no effect de init quando o builder abre no caminho create LIMPO;
+    // a oferta concretiza quando o studentDetail chegar com programa ativo.
+    const copyOfferEligibleRef = useRef(false);
+
     useEffect(() => {
         // When coming from text prescription, AI hand-off, or edit-existing,
         // the store is already pre-filled (`initFromParsedText` /
@@ -202,7 +210,48 @@ export default function ProgramBuilderScreen() {
         // mode=ai opens the AI sheet on a fresh draft, but only after we
         // make sure the draft is initialized.
         initNewProgram(params.studentId);
+        // Caminho create LIMPO (sem mode, sem rascunho retomável): candidato à
+        // oferta "copiar programa atual" — concretiza quando o studentDetail
+        // chegar com programa ativo (effect abaixo). mode=ai é escolha
+        // explícita de IA; rascunho pendente já tem o próprio prompt.
+        if (!params.mode && params.studentId) {
+            copyOfferEligibleRef.current = true;
+        }
     }, []);
+
+    const [copyOffer, setCopyOffer] = useState<"idle" | "offer" | "copying" | "closed">("idle");
+    const activeProgramForCopy = studentDetail?.activeProgram ?? null;
+    useEffect(() => {
+        if (!copyOfferEligibleRef.current || copyOffer !== "idle") return;
+        if (!activeProgramForCopy) return;
+        // Só oferece enquanto o canvas está intocado — se o treinador já
+        // começou a montar enquanto o detail carregava, não interrompe.
+        const d = useProgramBuilderStore.getState().draft;
+        const untouched = !d.name.trim() && d.workouts.every((w) => w.items.length === 0)
+            && !d.editingAssignedProgramId && !d.editingTemplateId && !d.originatedFromAi;
+        if (!untouched) {
+            setCopyOffer("closed");
+            return;
+        }
+        setCopyOffer("offer");
+    }, [activeProgramForCopy, copyOffer]);
+
+    const handleCopyCurrentProgram = useCallback(async () => {
+        const sid = params.studentId;
+        if (!activeProgramForCopy || !sid) return;
+        setCopyOffer("copying");
+        try {
+            const tree = await fetchAssignedProgramTree(activeProgramForCopy.id);
+            initFromAssignedProgramCopy(sid, tree);
+            setCopyOffer("closed");
+        } catch (e) {
+            setCopyOffer("offer");
+            toast.error(
+                "Não foi possível copiar",
+                e instanceof Error ? e.message : "Tente novamente.",
+            );
+        }
+    }, [activeProgramForCopy, params.studentId, initFromAssignedProgramCopy]);
 
     // Autosave-to-shelf: persiste o rascunho de CRIAÇÃO na prateleira
     // (lib/program-drafts) a cada alteração relevante, para que ele apareça na
@@ -969,6 +1018,18 @@ export default function ProgramBuilderScreen() {
                             router.back();
                         }}
                     />
+                    {activeProgramForCopy && (
+                        <CopyCurrentProgramModal
+                            visible={copyOffer === "offer" || copyOffer === "copying"}
+                            studentName={studentName || null}
+                            programName={activeProgramForCopy.name}
+                            workoutCount={activeProgramForCopy.workouts?.length ?? null}
+                            durationWeeks={activeProgramForCopy.duration_weeks}
+                            copying={copyOffer === "copying"}
+                            onStartBlank={() => setCopyOffer("closed")}
+                            onCopy={handleCopyCurrentProgram}
+                        />
+                    )}
                 </>
               )}
 
