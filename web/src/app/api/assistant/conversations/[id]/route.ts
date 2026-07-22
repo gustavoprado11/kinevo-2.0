@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { gateAssistant, runAssistantTurn, UUID_RE } from '@/lib/assistant/command-engine'
+import { gateAssistant, runAssistantTurn, parseTurnMode, UUID_RE } from '@/lib/assistant/command-engine'
 import { limitTurn } from '@/lib/assistant/rate-limits'
 import { parseStyleState, saveStyleState, type StyleState } from '@/lib/assistant/style-state'
 import { assistantErrorResponse } from '@/lib/assistant/errors'
@@ -166,6 +166,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         // system-prompt responde curto/falável e o metering/trace marca 'voice'.
         const isVoiceTurn = body?.voice === true
 
+        // Modo do composer (Agir/Planejar/Analisar). Analisar deixa o turno em
+        // somente-leitura; Planejar pede plano antes de agir. Default 'agir'.
+        const turnMode = parseTurnMode(body?.mode)
+
         // Rate-limit de turno (G6) — anti-amplificação de custo.
         const rl = await limitTurn(trainer.id)
         if (!rl.allowed) {
@@ -264,6 +268,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                         surface: isVoiceTurn ? 'voice' : 'workspace',
                         periodType: gate?.period ?? 'month',
                         tier: gate?.tier,
+                        mode: turnMode,
                         history,
                         studentId: existing.conversation.student_id ?? undefined,
                         programFocus,

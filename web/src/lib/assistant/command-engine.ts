@@ -505,6 +505,20 @@ export interface ExecutedToolSummary {
     args?: Record<string, unknown>
 }
 
+/**
+ * Modo do turno (composer do Assistente):
+ *  - 'agir'     → executa ações no Kinevo (comportamento padrão/histórico).
+ *  - 'planejar' → propõe um plano antes de agir; não escreve nada sem o "ok".
+ *  - 'analisar' → SOMENTE LEITURA: o catálogo do turno cai para READ_TOOLS, então
+ *                 nenhuma escrita/confirmação é sequer possível (garantia forte).
+ */
+export type AssistantTurnMode = 'agir' | 'planejar' | 'analisar'
+
+/** Normaliza um valor cru (body da rota) para um modo válido; default 'agir'. */
+export function parseTurnMode(raw: unknown): AssistantTurnMode {
+    return raw === 'planejar' || raw === 'analisar' ? raw : 'agir'
+}
+
 export interface AssistantTurnInput {
     admin: SupabaseClient
     trainerId: string
@@ -523,6 +537,9 @@ export interface AssistantTurnInput {
     route?: string
     /** Aluno em foco (UUID) — enriquece o contexto e direciona as tools. */
     studentId?: string
+    /** Modo do composer (Agir/Planejar/Analisar). Default 'agir'. Analisar corta o
+     *  catálogo para READ_TOOLS; os três injetam uma instrução no system-prompt. */
+    mode?: AssistantTurnMode
     /** Programa em foco (Onda 2): o mais recente tocado na conversa — o modelo
      *  edita direto pelos IDs do bloco <<DADOS_DE_TOOLS>> em vez de reler. */
     programFocus?: ProgramFocus | null
@@ -735,6 +752,19 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
             // disponível só no botão "Gerar com IA" do builder.
         }
 
+        // Modo do composer (Agir/Planejar/Analisar). 'analisar' = SOMENTE LEITURA:
+        // remove do catálogo tudo que não é READ_TOOLS (writes/confirm/propor) —
+        // garantia FORTE (o turno não consegue alterar dados mesmo se o modelo
+        // tentar), não só uma instrução no prompt. perguntar_treinador (client tool,
+        // sem execute) fica para o modelo ainda poder esclarecer.
+        const turnMode: AssistantTurnMode = opts.mode ?? 'agir'
+        if (turnMode === 'analisar') {
+            for (const name of Object.keys(tools)) {
+                if (name === 'perguntar_treinador') continue
+                if (!READ_TOOLS.has(name)) delete tools[name]
+            }
+        }
+
         // 2. Prompt + histórico. Instruções estáveis (system-prompt v2) primeiro;
         //    bloco HITL/MCP em seguida; contexto dinâmico por último (studentId
         //    enriquece com o perfil do aluno).
@@ -766,8 +796,18 @@ export async function runAssistantTurn(opts: AssistantTurnInput): Promise<Assist
                 ? await loadStyleBlock(admin, trainerId)
                 : ''
 
+        // Instrução do modo do composer. 'agir' é o padrão histórico (sem bloco).
+        // 'analisar' reforça no prompt o que o corte de tools já garante; 'planejar'
+        // muda o COMPORTAMENTO (propor antes de agir) — não há corte de tools nele.
+        const modeInstructions =
+            turnMode === 'analisar'
+                ? '\n\n## MODO ANALISAR (somente leitura)\nO treinador está em modo ANALISAR. Você só pode LER e RESPONDER — NÃO altere nada (nada de criar/editar/atribuir/enviar/excluir). Suas ferramentas de escrita estão desativadas neste turno. Se o pedido exigir uma ação, explique o que faria e diga que ele pode trocar para o modo "Agir" para você executar.'
+                : turnMode === 'planejar'
+                  ? '\n\n## MODO PLANEJAR (planeje antes de agir)\nO treinador está em modo PLANEJAR. Antes de QUALQUER ação que altere dados, apresente primeiro um PLANO curto e claro (o que você fará, em quais alunos/programas) e peça o "ok" — use a tool propor_ao_treinador quando o plano tiver itens revisáveis. NÃO crie, edite, atribua, envie nem exclua nada sem a aprovação explícita dele. Leituras para embasar o plano são bem-vindas.'
+                  : ''
         const system =
             buildInstructions(surface) +
+            modeInstructions +
             buildMcpHitlInstructions({ intents, buildTurn }) +
             '\n\n' +
             dynamicContext +

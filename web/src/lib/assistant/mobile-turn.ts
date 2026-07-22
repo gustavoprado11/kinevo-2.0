@@ -11,7 +11,7 @@
  * Mantido separado da rota web (streaming) que já funciona.
  */
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { gateAssistant, runAssistantTurn, UUID_RE, type AssistantGate, type AssistantHistoryMessage } from '@/lib/assistant/command-engine'
+import { gateAssistant, runAssistantTurn, parseTurnMode, UUID_RE, type AssistantGate, type AssistantHistoryMessage, type AssistantTurnMode } from '@/lib/assistant/command-engine'
 import { limitTurn } from '@/lib/assistant/rate-limits'
 import {
     getConversationWithMessages,
@@ -50,6 +50,8 @@ export interface MobileTurnContext {
     programFocus?: ProgramFocus | null
     /** Onda 6: turno iniciado por voz — resposta curta/falável + surface 'voice'. */
     voice?: boolean
+    /** Modo do composer (Agir/Planejar/Analisar). Default 'agir'. */
+    mode?: AssistantTurnMode
     userMessage: AssistantMessage
     isFirstUserMessage: boolean
 }
@@ -66,6 +68,7 @@ export async function prepareMobileTurn(args: {
     rawInput: unknown
     clientMessageId?: unknown
     voice?: boolean
+    mode?: unknown
 }): Promise<PrepareResult> {
     const { trainerId, trainerName, conversationId } = args
 
@@ -139,6 +142,7 @@ export async function prepareMobileTurn(args: {
             studentId: existing.conversation.student_id ?? undefined,
             programFocus,
             voice: args.voice === true,
+            mode: parseTurnMode(args.mode),
             userMessage,
             isFirstUserMessage,
         },
@@ -168,6 +172,7 @@ export async function finishMobileTurn(
         surface: ctx.voice === true ? 'voice' : 'mobile',
         periodType: ctx.gate.period,
         tier: ctx.gate.tier,
+        mode: ctx.mode,
         history: ctx.history,
         studentId: ctx.studentId,
         programFocus: ctx.programFocus,
