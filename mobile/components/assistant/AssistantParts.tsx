@@ -16,6 +16,7 @@ import { CheckCircle2, ShieldAlert, HelpCircle, ListChecks, Check, X, User, Spar
 import * as Haptics from 'expo-haptics';
 import { v2 } from '@kinevo/shared/tokens';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { AssistantProgramPreview } from './AssistantProgramPreview';
 import type { AssistantPart, ConfirmationPart } from '../../hooks/useAssistantChat';
 
 const { spacing, radius } = v2;
@@ -72,10 +73,12 @@ interface AssistantPartsProps {
     onOpenStudent?: (studentId: string) => void;
     /** Abre a thread de mensagens com um aluno (deep-link pós-envio). */
     onOpenMessages?: (studentId: string) => void;
+    /** Preview-first: ações da prévia de programa (salvar / ativar / descartar). */
+    onPreviewAction?: (part: ConfirmationPart, action: 'save' | 'activate' | 'discard') => void;
     disabled?: boolean;
 }
 
-export function AssistantParts({ parts, onAnswer, onConfirm, onCancel, onOpenDraft, onOpenStudent, onOpenMessages, disabled }: AssistantPartsProps) {
+export function AssistantParts({ parts, onAnswer, onConfirm, onCancel, onOpenDraft, onOpenStudent, onOpenMessages, onPreviewAction, disabled }: AssistantPartsProps) {
     if (!parts || parts.length === 0) return null;
     return (
         <View style={{ gap: spacing[3] }}>
@@ -96,11 +99,26 @@ export function AssistantParts({ parts, onAnswer, onConfirm, onCancel, onOpenDra
                                 />
                             );
                         }
-                        // Rascunho criado no perfil do aluno (via MCP): abre o builder NATIVO.
-                        if (part.toolName === 'kinevo_create_student_draft_program' && onOpenDraft) {
+                        // Rascunho criado no perfil do aluno (via MCP): abre o builder
+                        // NATIVO — ou, com o desfecho combinado do preview-first
+                        // (activated), o card de programa ATIVO com link pro aluno.
+                        if (part.toolName === 'kinevo_create_student_draft_program' || part.toolName === 'kinevo_assign_program') {
                             const payload = parseMcpPayload(part.result);
                             const prog = payload?.program as { id?: string; name?: string } | undefined;
-                            if (!payload?.error && prog?.id) {
+                            const assigned = payload?.assigned_program as { id?: string; name?: string } | undefined;
+                            if (payload?.activated === true) {
+                                const sid = typeof payload.student_id === 'string' ? payload.student_id : null;
+                                return (
+                                    <GeneratedProgramCard
+                                        key={idx}
+                                        title={assigned?.name ?? prog?.name ?? 'Programa'}
+                                        subtitle="Ativo — já visível para o aluno."
+                                        actionLabel="Ver aluno"
+                                        onPress={sid && onOpenStudent ? () => onOpenStudent(sid) : undefined}
+                                    />
+                                );
+                            }
+                            if (part.toolName === 'kinevo_create_student_draft_program' && onOpenDraft && !payload?.error && prog?.id) {
                                 const programId = prog.id;
                                 return (
                                     <GeneratedProgramCard
@@ -142,6 +160,22 @@ export function AssistantParts({ parts, onAnswer, onConfirm, onCancel, onOpenDra
                             />
                         );
                     case 'confirmation': {
+                        // Preview-first: o build pendente vira a PRÉVIA rica do
+                        // programa (salvar / ativar / descartar), não o card genérico.
+                        if (
+                            part.status === 'pending' &&
+                            part.request.toolName === 'kinevo_create_student_draft_program' &&
+                            onPreviewAction
+                        ) {
+                            return (
+                                <AssistantProgramPreview
+                                    key={idx}
+                                    part={part}
+                                    disabled={disabled}
+                                    onAction={onPreviewAction}
+                                />
+                            );
+                        }
                         if (part.status === 'pending' && onConfirm && onCancel) {
                             return (
                                 <ConfirmationCard
@@ -363,7 +397,8 @@ function GeneratedProgramCard({
     title: string;
     subtitle: string;
     actionLabel: string;
-    onPress: () => void;
+    /** Sem destino (ex.: payload sem student_id) o card fica informativo. */
+    onPress?: () => void;
 }) {
     const colors = useV2Colors();
     return (
@@ -398,27 +433,29 @@ function GeneratedProgramCard({
                     </Text>
                 </View>
             </View>
-            <Pressable
-                onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    onPress();
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={actionLabel}
-                style={{ borderRadius: radius.md, overflow: 'hidden' }}
-            >
-                <LinearGradient
-                    colors={[colors.purple[500], colors.purple[700]]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11 }}
+            {onPress ? (
+                <Pressable
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        onPress();
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={actionLabel}
+                    style={{ borderRadius: radius.md, overflow: 'hidden' }}
                 >
-                    <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 13, color: '#FFFFFF' }}>
-                        {actionLabel}
-                    </Text>
-                    <ArrowUpRight size={15} color="#FFFFFF" strokeWidth={2.2} />
-                </LinearGradient>
-            </Pressable>
+                    <LinearGradient
+                        colors={[colors.purple[500], colors.purple[700]]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11 }}
+                    >
+                        <Text style={{ fontFamily: 'MonaSans_700Bold', fontSize: 13, color: '#FFFFFF' }}>
+                            {actionLabel}
+                        </Text>
+                        <ArrowUpRight size={15} color="#FFFFFF" strokeWidth={2.2} />
+                    </LinearGradient>
+                </Pressable>
+            ) : null}
         </View>
     );
 }

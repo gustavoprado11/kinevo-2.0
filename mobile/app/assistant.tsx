@@ -51,7 +51,7 @@ export default function AssistantChatScreen() {
     const scopedStudentId = typeof params.studentId === 'string' ? params.studentId : undefined;
     const scopedStudentName = typeof params.studentName === 'string' ? params.studentName : undefined;
 
-    const { messages, isSending, progress, streamingText, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError } =
+    const { messages, isSending, progress, streamingText, error, summary, send, stop, confirmAction, cancelAction, previewAction, loadConversation, reset, clearError } =
         useAssistantChat({ studentId: scopedStudentId });
     const [input, setInput] = useState('');
     // Modo do turno (Agir/Planejar/Analisar) — enviado a cada envio.
@@ -202,6 +202,7 @@ export default function AssistantChatScreen() {
                                         onAnswer={(t) => submit(t)}
                                         onConfirm={(part, editedArgs) => void confirmAction(part, editedArgs)}
                                         onCancel={(part) => void cancelAction(part)}
+                                        onPreviewAction={(part, action) => void previewAction(part, action)}
                                         onOpenDraft={(programId) =>
                                             router.push(`/program-builder/edit/${programId}` as never)
                                         }

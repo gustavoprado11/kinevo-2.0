@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Sparkles } from 'lucide-react-native';
 import { v2 } from '@kinevo/shared/tokens';
 import { useV2Colors } from '../../hooks/useV2Colors';
+import { MarkdownText } from './MarkdownText';
 
 const { spacing } = v2;
 
@@ -72,18 +73,8 @@ export function AssistantMessageBubble({ role, text, children }: AssistantMessag
                 <Sparkles size={16} color="#FFFFFF" strokeWidth={1.6} />
             </LinearGradient>
             <View style={{ flex: 1, minWidth: 0, gap: spacing[3] }}>
-                {text ? (
-                    <Text
-                        style={{
-                            fontFamily: 'MonaSans_500Medium',
-                            fontSize: 14,
-                            lineHeight: 22,
-                            color: colors.text.secondary,
-                        }}
-                    >
-                        {text}
-                    </Text>
-                ) : null}
+                {/* Resposta do assistente renderiza markdown leve (paridade com o web). */}
+                {text ? <MarkdownText>{text}</MarkdownText> : null}
                 {children}
             </View>
         </View>

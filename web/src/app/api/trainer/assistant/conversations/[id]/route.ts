@@ -24,6 +24,7 @@ import {
     type AssistantMessagePart,
 } from '@/lib/assistant/conversations'
 import { redactSensitive } from '@/lib/assistant/redact'
+import { confirmationOutcomeContent } from '@/lib/assistant/confirmation-outcome'
 import { resolveTrainerBearer } from '@/lib/assistant/mobile-auth'
 import { prepareMobileTurn, finishMobileTurn } from '@/lib/assistant/mobile-turn'
 import { stripInternalParts } from '@/lib/assistant/tool-memory'
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                 conversationId: id,
                 trainerId: trainer.id,
                 role: 'assistant',
-                content: confirmed ? '✓ Ação confirmada e executada.' : 'Ação cancelada.',
+                content: confirmationOutcomeContent(confirmation.toolName, confirmed, safeResult),
                 parts,
             })
             await bumpConversation(supabaseAdmin, { conversationId: id })

@@ -229,9 +229,29 @@ export interface UseAssistantChatReturn {
     stop: () => void;
     confirmAction: (part: ConfirmationPart, editedArgs?: Record<string, unknown>) => Promise<void>;
     cancelAction: (part: ConfirmationPart) => Promise<void>;
+    /** Preview-first: salvar rascunho / criar+ativar / descartar a prévia de programa. */
+    previewAction: (part: ConfirmationPart, action: 'save' | 'activate' | 'discard') => Promise<void>;
     loadConversation: (id: string) => Promise<void>;
     reset: () => void;
     clearError: () => void;
+}
+
+/** Payload útil de um resultado MCP ({content:[{text:'<json>'}]}). */
+function parseMcpText(result: unknown): Record<string, unknown> | null {
+    const content = (result as { content?: Array<{ text?: string }> } | null)?.content;
+    if (Array.isArray(content) && typeof content[0]?.text === 'string') {
+        try {
+            return JSON.parse(content[0].text) as Record<string, unknown>;
+        } catch {
+            return null;
+        }
+    }
+    return null;
+}
+
+/** Embrulha um payload de volta no envelope MCP (p/ persistir na part). */
+function wrapMcpText(payload: Record<string, unknown>): unknown {
+    return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
 }
 
 /** Fecha (pending → confirmed/cancelled) a confirmação pendente mais recente do toolName. */
@@ -294,6 +314,8 @@ export function useAssistantChat(opts?: { studentId?: string }): UseAssistantCha
             part: ConfirmationPart,
             decision: 'confirmed' | 'cancelled',
             editedArgs?: Record<string, unknown>,
+            /** Preview-first: após criar o rascunho, ativa em seguida (activate_draft). */
+            activateAfter?: boolean,
         ) => {
             const convId = convIdRef.current;
             if (!convId || sendingRef.current) return;
@@ -321,6 +343,37 @@ export function useAssistantChat(opts?: { studentId?: string }): UseAssistantCha
                         return;
                     }
                     result = exJson.result ?? null;
+
+                    // 1b. "Ativar agora": create → assign activate_draft encadeados,
+                    // com resultado COMBINADO (activated / activation_failed) numa
+                    // part só — o desfecho do servidor escolhe o texto por ele.
+                    if (activateAfter) {
+                        const createdPayload = parseMcpText(result);
+                        const programId = (createdPayload?.program as { id?: string } | undefined)?.id;
+                        if (programId) {
+                            try {
+                                const actRes = await authedFetch('/api/trainer/assistant/execute-tool', {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        toolName: 'kinevo_assign_program',
+                                        args: { program_id: programId, action: 'activate_draft' },
+                                        idempotencyKey: uuidv4(),
+                                    }),
+                                });
+                                const actJson = await actRes.json().catch(() => null);
+                                if (!actRes.ok || actJson?.success !== true) throw new Error('activation_failed');
+                                const actPayload = parseMcpText(actJson.result ?? null);
+                                result = wrapMcpText({
+                                    ...(createdPayload ?? {}),
+                                    activated: true,
+                                    assigned_program: actPayload?.assigned_program ?? null,
+                                    message: (actPayload?.message as string | undefined) ?? 'Programa ativado.',
+                                });
+                            } catch {
+                                result = wrapMcpText({ ...(createdPayload ?? {}), activation_failed: true });
+                            }
+                        }
+                    }
                 }
 
                 // 2. Registra o desfecho na conversa (fecha o card + mensagem de fechamento).
@@ -354,6 +407,14 @@ export function useAssistantChat(opts?: { studentId?: string }): UseAssistantCha
     );
     const cancelAction = useCallback(
         (part: ConfirmationPart) => resolveConfirmation(part, 'cancelled'),
+        [resolveConfirmation],
+    );
+    // Preview-first: ações da prévia de programa (salvar / ativar / descartar).
+    const previewAction = useCallback(
+        (part: ConfirmationPart, action: 'save' | 'activate' | 'discard') => {
+            if (action === 'discard') return resolveConfirmation(part, 'cancelled');
+            return resolveConfirmation(part, 'confirmed', undefined, action === 'activate');
+        },
         [resolveConfirmation],
     );
 
@@ -484,5 +545,5 @@ export function useAssistantChat(opts?: { studentId?: string }): UseAssistantCha
         abortRef.current?.abort();
     }, []);
 
-    return { messages, isSending, progress, streamingText, error, summary, send, stop, confirmAction, cancelAction, loadConversation, reset, clearError };
+    return { messages, isSending, progress, streamingText, error, summary, send, stop, confirmAction, cancelAction, previewAction, loadConversation, reset, clearError };
 }

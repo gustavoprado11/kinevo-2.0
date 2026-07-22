@@ -29,6 +29,7 @@ import {
     type AssistantMessagePart,
 } from '@/lib/assistant/conversations'
 import { redactSensitive } from '@/lib/assistant/redact'
+import { confirmationOutcomeContent } from '@/lib/assistant/confirmation-outcome'
 import { toNativeModelHistory, deriveProgramFocus, stripInternalParts } from '@/lib/assistant/tool-memory'
 
 // Turno de CONSTRUÇÃO de programa (Sonnet, vários passos) pode passar de 60s; 300s
@@ -57,35 +58,6 @@ function streamDoneResponse(done: Record<string, unknown>): Response {
 /** PostgREST unique-violation (corrida de idempotência do turno). */
 function isUniqueViolation(e: unknown): boolean {
     return typeof e === 'object' && e !== null && (e as { code?: string }).code === '23505'
-}
-
-/** Desempacota um resultado MCP ({content:[{text:'<json>'}]}) — best-effort. */
-function mcpPayload(result: unknown): Record<string, unknown> | null {
-    const content = (result as { content?: Array<{ text?: string }> } | null)?.content
-    if (Array.isArray(content) && typeof content[0]?.text === 'string') {
-        try { return JSON.parse(content[0].text) as Record<string, unknown> } catch { return null }
-    }
-    return null
-}
-
-/**
- * Texto do desfecho de uma confirmação HITL na thread. Genérico para a maioria;
- * específico no fluxo de programa (preview-first): salvar rascunho / ativar.
- */
-function confirmationOutcomeContent(toolName: string, confirmed: boolean, result: unknown): string {
-    if (toolName === 'kinevo_create_student_draft_program') {
-        if (!confirmed) return 'Prévia descartada — nada foi criado. Se quiser outra versão, me diga o que ajustar.'
-        const payload = mcpPayload(result)
-        if (payload?.activated === true) return 'Programa ativado para o aluno — já visível no app dele.'
-        if (payload?.activation_failed === true) {
-            return 'Rascunho salvo no perfil do aluno, mas a ativação falhou — você pode ativar pelo card acima ou pelo builder.'
-        }
-        return 'Rascunho salvo no perfil do aluno — revise no builder e ative quando quiser.'
-    }
-    if (toolName === 'kinevo_assign_program' && confirmed) {
-        return 'Programa ativado para o aluno — já visível no app dele.'
-    }
-    return confirmed ? '✓ Ação confirmada e executada.' : 'Ação cancelada.'
 }
 
 async function resolveTrainer(): Promise<{ id: string; name: string | null } | NextResponse> {
