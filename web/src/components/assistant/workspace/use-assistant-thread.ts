@@ -262,6 +262,29 @@ export function useAssistantThread({ initialSummary = null, initialConversations
 
     const recordConfirmation = useCallback(async (toolName: string, confirmed: boolean, result?: unknown) => {
         if (!activeId) return
+        // Espelho local do markConfirmationResolved do servidor: fecha a part
+        // pendente na hora, para as visões DERIVADAS da thread (prévia de
+        // programa no painel de contexto / chip no chat) saírem do pendente sem
+        // esperar reload. O card genérico (estado interno) não depende disto.
+        setMessages((prev) => {
+            for (let i = prev.length - 1; i >= 0; i--) {
+                const idx = prev[i].parts.findIndex(
+                    (p) => p.type === 'confirmation' && p.status === 'pending' && p.request.toolName === toolName,
+                )
+                if (idx < 0) continue
+                const next = [...prev]
+                next[i] = {
+                    ...next[i],
+                    parts: next[i].parts.map((p, j) =>
+                        j === idx && p.type === 'confirmation'
+                            ? { ...p, status: confirmed ? ('confirmed' as const) : ('cancelled' as const), result }
+                            : p,
+                    ),
+                }
+                return next
+            }
+            return prev
+        })
         try {
             const res = await fetch(`/api/assistant/conversations/${activeId}`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },

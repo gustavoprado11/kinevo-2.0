@@ -23,6 +23,10 @@ import { useAssistantThread } from './use-assistant-thread'
 import type { AiUsageSummary } from '@/lib/ai-usage/usage-summary'
 import type { AttentionItem } from '@/lib/assistant/home-data'
 import type { ConversationListItem } from '@/lib/assistant/conversations'
+import type { PreviewPayload } from './program-preview-card'
+import type { ToolConfirmationRequest } from '@/lib/assistant/hitl-types'
+
+const DRAFT_PROGRAM_TOOL = 'kinevo_create_student_draft_program'
 
 interface StudentLite { id: string; name: string; status: string; avatarUrl: string | null }
 
@@ -88,6 +92,29 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
     const panelStudentId = active?.student_id ?? focusedStudentId
     const panelFromConversation = !!active?.student_id
 
+    // ── V2 preview-first: a prévia de programa PENDENTE mais recente da thread
+    // vira o "documento vivo" do painel de contexto; no chat fica só um chip.
+    // Derivação plana (sem useMemo manual — o React Compiler memoiza): a
+    // resolução local do recordConfirmation fecha a part e limpa isto.
+    let activePreview: { messageId: string; request: ToolConfirmationRequest } | null = null
+    for (let i = messages.length - 1; i >= 0 && !activePreview; i--) {
+        for (const p of messages[i].parts) {
+            if (p.type === 'confirmation' && p.status === 'pending' && p.request.toolName === DRAFT_PROGRAM_TOOL) {
+                activePreview = { messageId: messages[i].id, request: p.request }
+                break
+            }
+        }
+    }
+    // v1, v2… = quantas prévias a conversa já emitiu (iterações contam).
+    const previewVersion = messages.reduce(
+        (n, m) => n + m.parts.filter((p) => p.type === 'confirmation' && p.request.toolName === DRAFT_PROGRAM_TOOL).length,
+        0,
+    )
+    // O canvas só assume o painel quando ele mostra O MESMO aluno do payload
+    // (numa conversa Geral o foco do rail pode ser outro aluno).
+    const previewInPanel = !!activePreview &&
+        (activePreview.request.args as PreviewPayload).student_id === panelStudentId
+
     // Colapso persistido; default aberto. Lê o localStorage após a hidratação.
     // setState via microtask: regra react-hooks/set-state-in-effect (padrão do repo).
     const [contextOpen, setContextOpen] = useState(true)
@@ -105,6 +132,24 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
             return next
         })
     }, [])
+
+    // Prévia NOVA (outra mensagem) → reabre o painel: o canvas é o destino da
+    // revisão e não pode nascer atrás de um rail colapsado.
+    const panelPreviewMsgId = previewInPanel && activePreview ? activePreview.messageId : null
+    const prevPreviewMsg = useRef<string | null>(null)
+    useEffect(() => {
+        if (!panelPreviewMsgId || prevPreviewMsg.current === panelPreviewMsgId) {
+            prevPreviewMsg.current = panelPreviewMsgId
+            return
+        }
+        let alive = true
+        Promise.resolve().then(() => {
+            if (!alive) return
+            prevPreviewMsg.current = panelPreviewMsgId
+            setContextOpen(true)
+        })
+        return () => { alive = false }
+    }, [panelPreviewMsgId])
 
     // Focar um aluno (novo/diferente) reabre o painel se estiver colapsado.
     // O ref só avança AO APLICAR (mesmo motivo StrictMode do effect de ?s=/?c=).
@@ -247,6 +292,7 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                     onRename={renameActive}
                     onConfirmResolved={confirmAndRefresh}
                     onVoiceTurn={sendVoice}
+                    previewPanel={previewInPanel ? { version: previewVersion, onOpen: () => setContextOpen(true) } : null}
                 />
             ) : (
                 <AssistantHome
@@ -281,6 +327,12 @@ export function AssistantWorkspace({ initialSummary, initialConversations, stude
                 onToggle={toggleContext}
                 onRemove={() => setFocusedStudentId(null)}
                 onPrefill={prefillComposer}
+                preview={previewInPanel && activePreview ? {
+                    request: activePreview.request,
+                    version: previewVersion,
+                    disabled: sending,
+                    onResolved: (confirmed, result) => confirmAndRefresh(DRAFT_PROGRAM_TOOL, confirmed, result),
+                } : null}
             />
         </div>
     )

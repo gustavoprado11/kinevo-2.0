@@ -20,6 +20,8 @@ import { createClient } from '@/lib/supabase/client'
 import { updateTrainerNotes } from '@/app/students/[id]/actions/update-trainer-notes'
 import type { StudentContextPayload } from '@/lib/assistant/student-panel-data'
 import type { AttentionKind } from '@/lib/assistant/attention'
+import type { ToolConfirmationRequest } from '@/lib/assistant/hitl-types'
+import { ProgramPreviewCanvas } from './program-preview-card'
 import { avatarFor } from './ui-util'
 
 // Cache por id entre montagens — refaz o fetch na troca de aluno e nas revalidações.
@@ -128,7 +130,7 @@ const ALERT_STYLE: Record<AttentionKind, { cls: string; icon: typeof TrendingUp 
     nota: { cls: 'text-[#2563EB] bg-[#EFF6FF] dark:text-blue-400 dark:bg-blue-500/10', icon: FileText },
 }
 
-const EYEBROW = 'text-[10.5px] font-bold uppercase tracking-[0.08em] text-k-text-tertiary dark:text-muted-foreground/60'
+const EYEBROW = 'font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary'
 
 interface Props {
     studentId: string | null
@@ -141,9 +143,17 @@ interface Props {
     onRemove: () => void
     /** Preenche o composer (fillInput) — não envia. */
     onPrefill: (prompt: string) => void
+    /** V2 preview-first: prévia de programa pendente DESTE aluno — vira o
+     *  "documento vivo" no topo do painel (o chat mostra só um chip). */
+    preview?: {
+        request: ToolConfirmationRequest
+        version: number
+        disabled?: boolean
+        onResolved: (confirmed: boolean, result?: unknown) => void
+    } | null
 }
 
-export function StudentContextPanel({ studentId, fromConversation, open, refreshKey, onToggle, onRemove, onPrefill }: Props) {
+export function StudentContextPanel({ studentId, fromConversation, open, refreshKey, onToggle, onRemove, onPrefill, preview }: Props) {
     const { data, loading, error, reload, mutate } = useStudentContext(studentId, refreshKey)
     const hasStudent = !!studentId
 
@@ -172,13 +182,15 @@ export function StudentContextPanel({ studentId, fromConversation, open, refresh
                     <span className="mt-3 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10.5px] font-bold leading-none text-white dark:bg-violet-500">
                         1
                     </span>
+                    {/* Prévia pendente colapsada: sinal âmbar — tem decisão esperando. */}
+                    {preview && <span className="mt-2 h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />}
                     <button
                         onClick={onToggle}
                         className="mt-3 flex-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-k-text-tertiary dark:text-muted-foreground/60"
                         style={{ writingMode: 'vertical-rl' }}
                         aria-label="Expandir contexto do aluno"
                     >
-                        CONTEXTO
+                        {preview ? 'PRÉVIA' : 'CONTEXTO'}
                     </button>
                 </div>
             )}
@@ -202,6 +214,18 @@ export function StudentContextPanel({ studentId, fromConversation, open, refresh
                     </div>
 
                     <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                        {/* V2: o programa em revisão assume o topo do painel — o
+                            contexto do aluno (aderência/histórico) segue abaixo,
+                            útil enquanto o treinador avalia a prévia. */}
+                        {preview && (
+                            <ProgramPreviewCanvas
+                                key={preview.version}
+                                request={preview.request}
+                                version={preview.version}
+                                disabled={preview.disabled}
+                                onResolved={preview.onResolved}
+                            />
+                        )}
                         {loading && !data ? (
                             <CardSkeleton />
                         ) : error && !data ? (
@@ -269,10 +293,8 @@ function StudentCard({ data, fromConversation, onRemove, onPrefill, onNotesSaved
         <div className="rounded-[20px] border border-k-border-subtle bg-white p-4 dark:border-k-border-subtle dark:bg-surface-card">
             {/* Cabeçalho do card */}
             <div className="flex items-start gap-3">
-                <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-[12px] font-bold"
-                    style={{ background: av.bg, color: av.fg }}
-                >
+                {/* Avatar neutro — mesmo idioma do header da conversa/rail. */}
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset text-[12px] font-semibold text-k-text-secondary">
                     {av.initials}
                 </span>
                 <div className="min-w-0 flex-1">
