@@ -24,7 +24,7 @@ export function PreviewField({ question }: PreviewFieldProps) {
                 }}
             >
                 <span style={{ color: colors.textPlaceholder, fontSize: typography.inputText.fontSize }}>
-                    Ex: 80 kg
+                    Resposta do aluno
                 </span>
             </div>
         )

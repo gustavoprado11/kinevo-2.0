@@ -531,6 +531,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                     : step === 2 ? title.trim().length > 0
                     : false
                 }
+                hideAdvance={step === 1}
                 canSave={questions.length > 0 && title.trim().length > 0 && !isSaving && !aiPromptVisible}
                 onSave={handleSave}
                 isDirty={hasUnsavedChanges}
@@ -546,8 +547,8 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                             STEP 1: TIPO — 4 cards explicativos
                         ════════════════════════════════════════════════ */}
                         {step === 1 && (
-                            <div key="step1">
-                                <div className="max-w-3xl mx-auto">
+                            <div key="step1" className="flex min-h-[62vh] items-center justify-center">
+                                <div className="w-full max-w-3xl mx-auto">
                                     <p className="text-center text-lg font-semibold text-k-text-primary mb-2">
                                         Que tipo de formulário você quer criar?
                                     </p>
@@ -558,7 +559,6 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                     <div data-onboarding="form-choose-method" className="grid grid-cols-2 gap-4">
                                         {CATEGORY_CARDS.map(card => {
                                             const Icon = card.icon
-                                            const isSelected = category === card.value
                                             return (
                                                 <button
                                                     key={card.value}
@@ -566,11 +566,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                         setCategory(card.value)
                                                         setStep(2)
                                                     }}
-                                                    className={`group text-left rounded-panel border p-5 cursor-pointer transition-colors ${
-                                                        isSelected
-                                                            ? 'border-k-border-primary bg-surface-inset'
-                                                            : 'border-k-border-subtle bg-surface-card hover:border-k-border-primary hover:bg-surface-inset'
-                                                    }`}
+                                                    className="group text-left rounded-panel border border-k-border-subtle bg-surface-card p-5 cursor-pointer transition-colors hover:border-k-border-primary hover:bg-surface-inset"
                                                 >
                                                     <div className="flex h-10 w-10 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset mb-3">
                                                         <Icon size={20} className="text-k-text-tertiary" strokeWidth={1.5} />
@@ -596,8 +592,8 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                             STEP 2: CONFIGURAR — nome + descrição + toggle IA
                         ════════════════════════════════════════════════ */}
                         {step === 2 && (
-                            <div key="step2">
-                                <div className="max-w-xl mx-auto">
+                            <div key="step2" className="flex min-h-[62vh] items-center justify-center">
+                                <div className="w-full max-w-xl mx-auto">
                                     <div className="rounded-panel border border-k-border-subtle bg-surface-card p-8 space-y-6">
                                         {/* Title */}
                                         <div>
@@ -660,8 +656,8 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                             STEP 3: EDITOR — manual ou prompt IA
                         ════════════════════════════════════════════════ */}
                         {step === 3 && aiPromptVisible && (
-                            <div key="step3-ai-prompt">
-                                <div className="max-w-xl mx-auto">
+                            <div key="step3-ai-prompt" className="flex min-h-[62vh] items-center justify-center">
+                                <div className="w-full max-w-xl mx-auto">
                                     <div className="rounded-panel border border-k-border-subtle bg-surface-card p-8 space-y-6">
                                         <div className="flex items-center gap-3">
                                             <div className="flex h-10 w-10 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset">
@@ -879,7 +875,7 @@ export function BuilderClient({ trainer, existingTemplate }: BuilderClientProps)
                                                                     className="w-full rounded-control border border-k-border-primary bg-surface-inset px-3 py-2 text-sm text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25 transition-all"
                                                                 />
                                                                 <div className="flex items-center gap-3">
-                                                                    <span className="rounded border border-k-border-subtle bg-surface-inset px-2 py-0.5 text-[10px] font-medium text-k-text-tertiary">
+                                                                    <span className="rounded border border-k-border-subtle bg-surface-inset px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-k-text-tertiary">
                                                                         {typeLabel}
                                                                     </span>
                                                                     <label className="flex items-center gap-1.5 cursor-pointer">
