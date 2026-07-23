@@ -19,6 +19,7 @@ import { TourRunner } from '@/components/onboarding/tours/tour-runner'
 import { TOUR_STEPS } from '@/components/onboarding/tours/tour-definitions'
 import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button'
 import { FormsAvaliacoesSegmented } from '@/components/forms/forms-avaliacoes-segmented'
+import { KpiRuler } from '@/components/shared/kpi-ruler'
 
 // --- Helpers ---
 const TIMEZONE = 'America/Sao_Paulo'
@@ -82,19 +83,33 @@ function resolveImageUrl(value: unknown): string | null {
 
 function submissionStatusForSheet(submission: FullSubmission) {
     if (submission.status === 'reviewed' || submission.feedback_sent_at) {
-        return { label: 'Feedback Enviado', className: 'bg-violet-500/10 text-violet-500 ring-1 ring-violet-500/20' }
+        return { label: 'Feedback enviado', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20' }
     }
     if (submission.status === 'submitted' || submission.submitted_at) {
-        return { label: 'Concluído', className: 'bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20' }
+        return { label: 'Aguardando feedback', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20' }
     }
-    return { label: 'Pendente', className: 'bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/20 dark:bg-amber-500/10 dark:text-amber-500' }
+    return { label: 'Pendente', className: 'bg-surface-inset text-k-text-secondary ring-1 ring-k-border-subtle' }
 }
 
-const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string }> = {
-    anamnese: { label: 'Anamnese', icon: ClipboardList, color: 'text-blue-600 dark:text-blue-400' },
-    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400' },
-    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400' },
-    feedback: { label: 'Feedback do programa', icon: MessageSquare, color: 'text-rose-600 dark:text-rose-400' },
+const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText }> = {
+    anamnese: { label: 'Anamnese', icon: ClipboardList },
+    checkin: { label: 'Check-in', icon: CheckCircle2 },
+    survey: { label: 'Pesquisa', icon: MessageSquare },
+    feedback: { label: 'Feedback do programa', icon: MessageSquare },
+}
+
+// Avatar neutro reutilizado nas linhas (tinta sobre inset — sem cor de categoria).
+function RowAvatar({ name, url, size = 32 }: { name: string | null; url: string | null; size?: 28 | 32 }) {
+    const dim = size === 28 ? 'h-7 w-7' : 'h-8 w-8'
+    return (
+        <div className={`flex ${dim} items-center justify-center rounded-full border border-k-border-subtle bg-surface-inset overflow-hidden shrink-0`}>
+            {url ? (
+                <Image src={url} alt="" width={size} height={size} className={`${dim} rounded-full object-cover`} unoptimized />
+            ) : (
+                <span className="text-[10px] font-semibold text-k-text-secondary">{(name || '?').charAt(0).toUpperCase()}</span>
+            )}
+        </div>
+    )
 }
 
 // --- Types ---
@@ -311,18 +326,13 @@ export function FormsDashboardClient({
             onboardingState={onboardingState}
         >
             {/* Header */}
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start justify-between gap-4 mb-6">
                 <div>
                     <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">Formulários</h1>
-                        {submissions.length > 0 && (
-                            <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
-                                {submissions.length}
-                            </span>
-                        )}
+                        <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">Formulários</h1>
                         <TourHelpButton tourId="tour_forms_first_time" />
                     </div>
-                    <p className="mt-1 text-sm text-[#86868B] dark:text-k-text-tertiary">
+                    <p className="mt-1 text-sm text-k-text-tertiary">
                         Anamneses, check-ins e pesquisas que o aluno responde no app
                     </p>
                 </div>
@@ -330,7 +340,7 @@ export function FormsDashboardClient({
                     <button
                         data-onboarding="forms-send-cta"
                         onClick={() => setIsAssignOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground text-sm font-medium rounded-control transition-all dark:bg-violet-600 dark:hover:bg-violet-500"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground text-sm font-semibold rounded-control transition-opacity"
                     >
                         <Send size={14} />
                         Enviar para aluno
@@ -338,15 +348,46 @@ export function FormsDashboardClient({
                     <button
                         data-onboarding="forms-templates-card"
                         onClick={() => router.push('/forms/templates/new')}
-                        className="flex items-center gap-2 rounded-full bg-white border border-[#D2D2D7] text-[#6E6E73] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] px-4 py-2 text-sm transition-all dark:rounded-xl dark:bg-transparent dark:border-k-border-primary dark:text-k-text-tertiary dark:hover:text-k-text-primary dark:hover:bg-transparent"
+                        className="flex items-center gap-2 px-4 py-2 rounded-control border border-k-border-primary bg-surface-card text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset text-sm font-medium transition-colors"
                     >
                         <Plus size={14} />
-                        Novo Template
+                        Novo template
                     </button>
                 </div>
             </div>
 
             <FormsAvaliacoesSegmented active="formularios" />
+
+            {/* Régua de métricas */}
+            <div className="mb-6">
+                <KpiRuler
+                    ariaLabel="Indicadores de formulários"
+                    cells={[
+                        { key: 'total', label: 'Respostas', value: submissions.length, sub: 'recebidas no total' },
+                        {
+                            key: 'pending',
+                            label: 'Aguardando feedback',
+                            value: pending.length,
+                            tone: pending.length > 0 ? 'amber' : 'neutral',
+                            sub: 'a responder',
+                        },
+                        {
+                            key: 'completed',
+                            label: 'Concluídas',
+                            value: completed.length,
+                            sub: submissions.length > 0
+                                ? `${Math.round((completed.length / submissions.length) * 100)}% com feedback`
+                                : 'nenhuma ainda',
+                        },
+                        {
+                            key: 'templates',
+                            label: 'Templates',
+                            value: templates.length,
+                            sub: templates.length === 1 ? 'ativo' : 'ativos',
+                        },
+                    ]}
+                />
+            </div>
 
             {/* Proactive CTA — só aparece quando há pendência */}
             {pending.length > 0 && (
@@ -355,270 +396,242 @@ export function FormsDashboardClient({
                         const first = pending[0]
                         if (first) openSubmission(first.id)
                     }}
-                    className="mb-6 w-full bg-[#FF9500]/5 border border-[#FF9500]/20 rounded-xl px-5 py-3 flex items-center justify-between hover:bg-[#FF9500]/10 transition-all dark:bg-yellow-500/5 dark:border-yellow-500/20 dark:hover:bg-yellow-500/10"
+                    className="mb-6 w-full rounded-panel border border-k-border-subtle bg-surface-card px-5 py-3 flex items-center justify-between hover:bg-surface-inset transition-colors"
                 >
-                    <span className="flex items-center gap-2 text-sm">
-                        <span className="w-2 h-2 rounded-full bg-[#FF9500] dark:bg-yellow-400 animate-pulse" />
-                        <span className="font-medium text-[#1D1D1F] dark:text-k-text-primary">
+                    <span className="flex items-center gap-2.5 text-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        <span className="font-medium text-k-text-primary">
                             {pending.length} {pending.length === 1 ? 'feedback aguardando' : 'feedbacks aguardando'}
                         </span>
-                        <span className="text-[#86868B] dark:text-k-text-tertiary">
-                            — comece pelo mais antigo
-                        </span>
+                        <span className="text-k-text-tertiary">— comece pelo mais antigo</span>
                     </span>
-                    <ChevronRight size={16} className="text-[#86868B] dark:text-k-text-tertiary" />
+                    <ChevronRight size={16} className="text-k-text-tertiary" />
                 </button>
             )}
 
             <div className="space-y-6 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0">
 
-            <div className="space-y-6">
-            {/* Pending Feedback Section */}
-            <div data-onboarding="forms-pending" className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
-                {pending.length > 0 ? (
-                    <>
-                        <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                            <div className="w-2 h-2 bg-[#FF9500] dark:bg-yellow-500 rounded-full animate-pulse" />
-                            <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Aguardando Feedback</h2>
-                            <span className="px-1.5 py-0.5 rounded-full bg-[#FF9500]/10 text-[10px] font-bold text-[#FF9500] dark:text-yellow-400 border border-[#FF9500]/20 dark:border-yellow-500/20">
-                                {pending.length}
-                            </span>
-                        </div>
-                        <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
-                            {pending.map(sub => (
-                                <div
-                                    key={sub.id}
-                                    className="group flex items-center justify-between px-5 py-3 hover:bg-[#F5F5F7] transition-all cursor-pointer dark:hover:bg-glass-bg"
-                                    onClick={() => openSubmission(sub.id)}
-                                >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D2D2D7] bg-[#F5F5F7] overflow-hidden shrink-0 dark:border-k-border-primary dark:bg-glass-bg">
-                                            {sub.student_avatar ? (
-                                                <Image src={sub.student_avatar} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" unoptimized />
-                                            ) : (
-                                                <span className="text-[10px] font-semibold text-[#1D1D1F] dark:text-k-text-primary">
-                                                    {(sub.student_name || '?').charAt(0).toUpperCase()}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary truncate">{sub.student_name || 'Aluno'}</p>
-                                            <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">
-                                                {cleanTemplateName(sub.template_title || 'Template')} · Recebido {timeAgo(sub.submitted_at || sub.created_at)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {loadingSubmissionId === sub.id ? (
-                                            <Loader2 size={14} className="animate-spin text-[#7C3AED] dark:text-yellow-400" />
-                                        ) : (
-                                            <ChevronRight size={14} className="text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
-                                        )}
-                                    </div>
+                <div className="space-y-6">
+                    {/* Aguardando feedback */}
+                    <div data-onboarding="forms-pending" className="rounded-panel border border-k-border-subtle bg-surface-card overflow-hidden">
+                        {pending.length > 0 ? (
+                            <>
+                                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-k-border-subtle">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.09em] text-k-text-secondary">Aguardando feedback</h2>
+                                    <span className="font-mono text-[11px] tabular-nums text-k-text-tertiary">{pending.length}</span>
                                 </div>
-                            ))}
-                        </div>
-                    </>
-                ) : (
-                    <div className="flex items-center gap-2 px-5 py-4">
-                        <Check size={14} className="text-[#34C759] dark:text-emerald-400" />
-                        <span className="text-sm text-[#34C759] dark:text-emerald-400 font-medium">Todos os feedbacks em dia</span>
-                    </div>
-                )}
-            </div>
-
-            {/* Pending Sent — forms assigned but not yet answered */}
-            {pendingSent.length > 0 && (
-                <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
-                    <div className="flex items-center gap-2 px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                        <Send size={14} className="text-[#7C3AED] dark:text-violet-400" />
-                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Enviados pendentes</h2>
-                        <span className="px-1.5 py-0.5 rounded-full bg-[#7C3AED]/10 text-[10px] font-bold text-[#7C3AED] dark:text-violet-400 border border-[#7C3AED]/20 dark:bg-violet-500/10 dark:border-violet-500/20">
-                            {pendingSent.length}
-                        </span>
-                    </div>
-                    <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
-                        {pendingSent.map(item => (
-                            <div
-                                key={item.id}
-                                className="flex items-center justify-between px-5 py-3"
-                            >
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#D2D2D7] bg-[#F5F5F7] overflow-hidden shrink-0 dark:border-k-border-primary dark:bg-glass-bg">
-                                        {item.student_avatar ? (
-                                            <Image src={item.student_avatar} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" unoptimized />
-                                        ) : (
-                                            <span className="text-[10px] font-semibold text-[#1D1D1F] dark:text-k-text-primary">
-                                                {(item.student_name || '?').charAt(0).toUpperCase()}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-medium text-[#1D1D1F] dark:text-k-text-primary truncate">{item.student_name || 'Aluno'}</p>
-                                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">
-                                            {cleanTemplateName(item.template_title || 'Template')} · Enviado {timeAgo(item.created_at)}
-                                        </p>
-                                    </div>
+                                <div className="divide-y divide-k-border-subtle">
+                                    {pending.map(sub => (
+                                        <div
+                                            key={sub.id}
+                                            className="group flex items-center justify-between px-5 py-3 hover:bg-surface-inset transition-colors cursor-pointer"
+                                            onClick={() => openSubmission(sub.id)}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <RowAvatar name={sub.student_name} url={sub.student_avatar} />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium text-k-text-primary truncate">{sub.student_name || 'Aluno'}</p>
+                                                    <p className="text-xs text-k-text-tertiary truncate">
+                                                        {cleanTemplateName(sub.template_title || 'Template')} · <span className="font-mono tabular-nums">recebido {timeAgo(sub.submitted_at || sub.created_at)}</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {loadingSubmissionId === sub.id ? (
+                                                    <Loader2 size={14} className="animate-spin text-k-text-tertiary" />
+                                                ) : (
+                                                    <ChevronRight size={14} className="text-k-text-quaternary group-hover:text-k-text-tertiary transition-colors" />
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#FF9500]/10 text-[#FF9500] font-medium shrink-0 dark:bg-violet-500/10 dark:text-violet-400">
-                                    Aguardando resposta
-                                </span>
+                            </>
+                        ) : (
+                            <div className="flex items-center gap-2 px-5 py-4">
+                                <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-sm font-medium text-k-text-secondary">Todos os feedbacks em dia</span>
                             </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Templates Section */}
-            <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle">
-                    <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Templates de Formulário</h2>
-                        {templates.length > 0 && (
-                            <span className="text-[#86868B] dark:text-k-text-quaternary">
-                                {templates.length}
-                            </span>
                         )}
                     </div>
-                    <button
-                        onClick={() => router.push('/forms/templates')}
-                        className="text-xs text-[#7C3AED] hover:text-[#6D28D9] transition-colors font-medium dark:text-k-text-quaternary dark:hover:text-k-text-secondary"
-                    >
-                        Gerenciar →
-                    </button>
-                </div>
 
-                {templates.length === 0 ? (
-                    <div className="text-center py-8">
-                        <FileText className="w-6 h-6 text-[#AEAEB2] dark:text-k-text-quaternary mx-auto mb-2" />
-                        <p className="text-xs text-[#86868B] dark:text-k-text-quaternary">Nenhum template criado</p>
-                        <button
-                            onClick={() => router.push('/forms/templates/new')}
-                            className="mt-3 text-xs font-medium text-[#7C3AED] hover:text-[#6D28D9] transition-colors dark:text-violet-400 dark:hover:text-violet-300"
-                        >
-                            Criar primeiro template
-                        </button>
-                    </div>
-                ) : (
-                    <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle">
-                        {templates.map(t => {
-                            const config = CATEGORY_CONFIG[t.category] || CATEGORY_CONFIG.survey
-                            const Icon = config.icon
-                            return (
-                                <div
-                                    key={t.id}
-                                    onClick={() => router.push(`/forms/templates/new?edit=${t.id}`)}
-                                    className="w-full flex items-center justify-between py-3 px-5 hover:bg-[#F5F5F7] transition-all text-left group cursor-pointer dark:hover:bg-glass-bg"
-                                >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <Icon size={14} className={config.color} />
-                                        <span className="text-sm text-[#1D1D1F] group-hover:text-[#1D1D1F] transition-colors truncate dark:text-k-text-secondary dark:group-hover:text-k-text-primary">
-                                            {cleanTemplateName(t.title)}
+                    {/* Enviados pendentes — forms atribuídos e ainda não respondidos */}
+                    {pendingSent.length > 0 && (
+                        <div className="rounded-panel border border-k-border-subtle bg-surface-card overflow-hidden">
+                            <div className="flex items-center gap-2 px-5 py-3.5 border-b border-k-border-subtle">
+                                <Send size={13} className="text-k-text-tertiary" />
+                                <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.09em] text-k-text-secondary">Enviados pendentes</h2>
+                                <span className="font-mono text-[11px] tabular-nums text-k-text-tertiary">{pendingSent.length}</span>
+                            </div>
+                            <div className="divide-y divide-k-border-subtle">
+                                {pendingSent.map(item => (
+                                    <div
+                                        key={item.id}
+                                        className="flex items-center justify-between px-5 py-3"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <RowAvatar name={item.student_name} url={item.student_avatar} />
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-k-text-primary truncate">{item.student_name || 'Aluno'}</p>
+                                                <p className="text-xs text-k-text-tertiary truncate">
+                                                    {cleanTemplateName(item.template_title || 'Template')} · <span className="font-mono tabular-nums">enviado {timeAgo(item.created_at)}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className="flex items-center gap-1.5 text-xs text-k-text-tertiary shrink-0">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                            Aguardando resposta
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-3 text-xs text-[#86868B] dark:text-k-text-quaternary shrink-0">
-                                        {t.questionCount > 0 && (
-                                            <span>{t.questionCount} {t.questionCount === 1 ? 'pergunta' : 'perguntas'}</span>
-                                        )}
-                                        <span className="text-[#AEAEB2] dark:text-k-text-quaternary">·</span>
-                                        <span>{t.responseCount} {t.responseCount === 1 ? 'resposta' : 'respostas'}</span>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setPreselectedTemplateId(t.id); setIsAssignOpen(true) }}
-                                            className="text-[#7C3AED] hover:text-[#6D28D9] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
-                                        >
-                                            Enviar →
-                                        </button>
-                                        <ChevronRight size={14} className="text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                )}
-            </div>
-            </div>
-
-            <div className="space-y-6 lg:flex lg:flex-col lg:min-h-0">
-            {/* All Submissions */}
-            {submissions.length > 0 && (
-                <div className="bg-white rounded-xl border border-[#D2D2D7] shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden dark:bg-transparent dark:border-k-border-subtle dark:shadow-none dark:rounded-none lg:flex lg:flex-col lg:max-h-[calc(100vh-220px)]">
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E8ED] dark:border-k-border-subtle lg:flex-shrink-0">
-                        <h2 className="text-sm font-semibold text-[#1D1D1F] dark:text-k-text-primary">Todas as Respostas</h2>
-                        <div className="flex items-center gap-2">
-                            {([
-                                { key: 'all' as const, label: 'Todas', count: submissions.length },
-                                { key: 'pending' as const, label: 'Pendentes', count: pending.length },
-                                { key: 'completed' as const, label: 'Concluídas', count: completed.length },
-                            ]).map(f => (
-                                <button
-                                    key={f.key}
-                                    onClick={() => setFilter(f.key)}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
-                                        filter === f.key
-                                            ? 'bg-[#7C3AED] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
-                                            : 'bg-[#F5F5F7] text-[#6E6E73] hover:bg-[#E8E8ED] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
-                                    }`}
-                                >
-                                    {f.label} ({f.count})
-                                </button>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    <div className="divide-y divide-[#E8E8ED] dark:divide-k-border-subtle lg:flex-1 lg:overflow-y-auto">
-                        {filteredSubmissions.map(sub => {
-                            const isPending = sub.status === 'submitted'
-                            const isLoading = loadingSubmissionId === sub.id
-                            return (
+                    {/* Templates */}
+                    <div className="rounded-panel border border-k-border-subtle bg-surface-card overflow-hidden">
+                        <div className="flex items-center justify-between px-5 py-3.5 border-b border-k-border-subtle">
+                            <div className="flex items-center gap-2">
+                                <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.09em] text-k-text-secondary">Templates de formulário</h2>
+                                {templates.length > 0 && (
+                                    <span className="font-mono text-[11px] tabular-nums text-k-text-tertiary">{templates.length}</span>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => router.push('/forms/templates')}
+                                className="flex items-center gap-1 text-xs font-medium text-k-text-secondary hover:text-k-text-primary transition-colors"
+                            >
+                                Gerenciar
+                                <ChevronRight size={13} />
+                            </button>
+                        </div>
+
+                        {templates.length === 0 ? (
+                            <div className="text-center py-8">
+                                <FileText className="w-6 h-6 text-k-text-quaternary mx-auto mb-2" strokeWidth={1.5} />
+                                <p className="text-xs text-k-text-tertiary">Nenhum template criado</p>
                                 <button
-                                    key={sub.id}
-                                    onClick={() => openSubmission(sub.id)}
-                                    className="w-full group flex items-center justify-between py-2.5 px-5 hover:bg-[#F5F5F7] transition-all text-left dark:hover:bg-glass-bg"
+                                    onClick={() => router.push('/forms/templates/new')}
+                                    className="mt-3 inline-flex items-center gap-1.5 rounded-control bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
                                 >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[#D2D2D7] bg-[#F5F5F7] overflow-hidden shrink-0 dark:border-k-border-primary dark:bg-glass-bg">
-                                            {sub.student_avatar ? (
-                                                <Image src={sub.student_avatar} alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" unoptimized />
-                                            ) : (
-                                                <span className="text-[10px] font-semibold text-[#1D1D1F] dark:text-k-text-primary">
-                                                    {(sub.student_name || '?').charAt(0).toUpperCase()}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-[#1D1D1F] group-hover:text-[#1D1D1F] transition-colors truncate dark:text-k-text-secondary dark:group-hover:text-k-text-primary">
-                                                    {sub.student_name || 'Aluno'}
-                                                </span>
-                                                <span className="text-xs text-[#86868B] truncate hidden sm:inline dark:text-k-text-quaternary">
-                                                    {cleanTemplateName(sub.template_title || '') || 'Formulário removido'}
+                                    <Plus size={13} />
+                                    Criar primeiro template
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-k-border-subtle">
+                                {templates.map(t => {
+                                    const config = CATEGORY_CONFIG[t.category] || CATEGORY_CONFIG.survey
+                                    const Icon = config.icon
+                                    return (
+                                        <div
+                                            key={t.id}
+                                            onClick={() => router.push(`/forms/templates/new?edit=${t.id}`)}
+                                            className="w-full flex items-center justify-between py-3 px-5 hover:bg-surface-inset transition-colors text-left group cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <Icon size={14} className="text-k-text-tertiary shrink-0" />
+                                                <span className="text-sm text-k-text-primary truncate">
+                                                    {cleanTemplateName(t.title)}
                                                 </span>
                                             </div>
-                                            <span className={`text-xs ${isPending ? 'text-[#FF9500] dark:text-yellow-400 font-medium' : 'text-[#AEAEB2] dark:text-k-text-quaternary'}`}>
-                                                {timeAgo(sub.submitted_at || sub.created_at)}
-                                            </span>
+                                            <div className="flex items-center gap-3 text-xs text-k-text-tertiary shrink-0">
+                                                {t.questionCount > 0 && (
+                                                    <span className="font-mono tabular-nums">{t.questionCount} {t.questionCount === 1 ? 'pergunta' : 'perguntas'}</span>
+                                                )}
+                                                <span className="text-k-text-quaternary">·</span>
+                                                <span className="font-mono tabular-nums">{t.responseCount} {t.responseCount === 1 ? 'resposta' : 'respostas'}</span>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setPreselectedTemplateId(t.id); setIsAssignOpen(true) }}
+                                                    className="flex items-center gap-0.5 text-k-text-secondary hover:text-k-text-primary opacity-0 group-hover:opacity-100 transition-all font-medium"
+                                                >
+                                                    Enviar
+                                                    <ChevronRight size={12} />
+                                                </button>
+                                                <ChevronRight size={14} className="text-k-text-quaternary group-hover:text-k-text-tertiary transition-colors" />
+                                            </div>
                                         </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {isLoading ? (
-                                            <Loader2 size={14} className="animate-spin text-k-text-quaternary" />
-                                        ) : isPending ? null : (
-                                            <span className="flex items-center gap-1.5 text-xs font-medium text-[#34C759] dark:text-emerald-400">
-                                                <span className="w-2 h-2 rounded-full bg-[#34C759] dark:bg-emerald-400 inline-block" />
-                                                Concluído
-                                            </span>
-                                        )}
-                                        <ChevronRight size={14} className="text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
-                                    </div>
-                                </button>
-                            )
-                        })}
+                                    )
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
-            )}
 
-            </div>
+                <div className="space-y-6 lg:flex lg:flex-col lg:min-h-0">
+                    {/* Todas as respostas */}
+                    {submissions.length > 0 && (
+                        <div className="rounded-panel border border-k-border-subtle bg-surface-card overflow-hidden lg:flex lg:flex-col lg:max-h-[calc(100vh-220px)]">
+                            <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-k-border-subtle lg:flex-shrink-0">
+                                <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.09em] text-k-text-secondary">Todas as respostas</h2>
+                                <div className="inline-flex rounded-control border border-k-border-primary bg-surface-card overflow-hidden">
+                                    {([
+                                        { key: 'all' as const, label: 'Todas', count: submissions.length },
+                                        { key: 'pending' as const, label: 'Pendentes', count: pending.length },
+                                        { key: 'completed' as const, label: 'Concluídas', count: completed.length },
+                                    ]).map(f => (
+                                        <button
+                                            key={f.key}
+                                            onClick={() => setFilter(f.key)}
+                                            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                                                filter === f.key
+                                                    ? 'bg-surface-inset text-k-text-primary font-semibold'
+                                                    : 'text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset/60'
+                                            }`}
+                                        >
+                                            {f.label} <span className="font-mono tabular-nums text-k-text-tertiary">{f.count}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="divide-y divide-k-border-subtle lg:flex-1 lg:overflow-y-auto">
+                                {filteredSubmissions.map(sub => {
+                                    const isPending = sub.status === 'submitted'
+                                    const isLoading = loadingSubmissionId === sub.id
+                                    return (
+                                        <button
+                                            key={sub.id}
+                                            onClick={() => openSubmission(sub.id)}
+                                            className="w-full group flex items-center justify-between gap-3 py-2.5 px-5 hover:bg-surface-inset transition-colors text-left"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <RowAvatar name={sub.student_name} url={sub.student_avatar} size={28} />
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-medium text-k-text-primary truncate">
+                                                            {sub.student_name || 'Aluno'}
+                                                        </span>
+                                                        <span className="text-xs text-k-text-tertiary truncate hidden sm:inline">
+                                                            {cleanTemplateName(sub.template_title || '') || 'Formulário removido'}
+                                                        </span>
+                                                    </div>
+                                                    <span className="font-mono text-[11.5px] tabular-nums text-k-text-quaternary">
+                                                        {timeAgo(sub.submitted_at || sub.created_at)}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2.5 shrink-0">
+                                                {isLoading ? (
+                                                    <Loader2 size={14} className="animate-spin text-k-text-quaternary" />
+                                                ) : (
+                                                    <span className="flex items-center gap-1.5 text-xs text-k-text-secondary">
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${isPending ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                                                        {isPending ? 'Aguardando' : 'Feedback enviado'}
+                                                    </span>
+                                                )}
+                                                <ChevronRight size={14} className="text-k-text-quaternary group-hover:text-k-text-tertiary transition-colors" />
+                                            </div>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                </div>
 
             </div>
 
@@ -631,8 +644,9 @@ export function FormsDashboardClient({
                     </p>
                     <button
                         onClick={() => router.push('/forms/templates/new')}
-                        className="mt-5 text-xs font-medium text-[#7C3AED] hover:text-[#6D28D9] transition-colors dark:text-violet-400 dark:hover:text-violet-300"
+                        className="mt-5 inline-flex items-center gap-1.5 rounded-control bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
                     >
+                        <Plus size={13} />
                         Criar primeiro template
                     </button>
                 </div>
@@ -669,7 +683,7 @@ export function FormsDashboardClient({
                     <img
                         src={zoomImageUrl}
                         alt="Zoom"
-                        className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain"
+                        className="max-h-[90vh] max-w-[90vw] rounded-panel object-contain"
                     />
                 </div>
             )}
