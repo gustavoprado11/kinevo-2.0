@@ -52,16 +52,17 @@ export async function GET(request: NextRequest) {
             const insights: InsightRow[] = []
 
             // Run all detections in parallel for this trainer
-            const [gapResults, stagnationResults, programResults, painResults, progressionResults, formResults] = await Promise.all([
+            const [gapResults, stagnationResults, programResults, planResults, painResults, progressionResults, formResults] = await Promise.all([
                 detectTrainingGaps(trainerId, today),
                 detectLoadStagnation(trainerId, today),
                 detectExpiringPrograms(trainerId, today),
+                detectExpiringPlans(trainerId, today),
                 detectPainReports(trainerId, today),
                 detectReadyToProgress(trainerId, today),
                 detectFormInsights(trainerId, today),
             ])
 
-            insights.push(...gapResults, ...stagnationResults, ...programResults, ...painResults, ...progressionResults, ...formResults)
+            insights.push(...gapResults, ...stagnationResults, ...programResults, ...planResults, ...painResults, ...progressionResults, ...formResults)
 
             if (insights.length > 0) {
                 // Onda 3 — antes era um único `upsert(insights, { onConflict, ignoreDuplicates })`
@@ -456,6 +457,72 @@ async function detectExpiringPrograms(trainerId: string, today: string): Promise
             status: 'new' as const,
             insight_key: `program_expiring:${row.id}:${today}`,
             insight_key_prefix: `program_expiring:${row.id}`,
+            source: 'rules' as const,
+            expires_at: expiresIn(14),
+        }
+    })
+}
+
+// ── Detection 3b: Expiring plans (vigência do plano próxima do vencimento) ──
+// Espelha o aviso de programa, mas para o lado COMERCIAL: o "heads-up" ANTES do
+// vencimento do plano — a copy do billing ("o Kinevo avisa quando o vencimento
+// estiver próximo") não tinha cron por trás. Só os tipos que exigem AÇÃO do
+// treinador: manual (recorrente/avulso) e asaas_auto (prazo fixo). Débito
+// automático (asaas_auto_recurring/stripe) renova sozinho e cortesia não vence.
+// O PÓS-vencimento continua no check-manual-overdue; aqui é só a janela [hoje, +3d].
+type ExpiringPlanRow = {
+    id: string
+    student_id: string | null
+    current_period_end: string
+    billing_type: string
+    trainer_plans: { title: string | null } | null
+    students: { name: string | null } | null
+}
+
+async function detectExpiringPlans(trainerId: string, today: string): Promise<InsightRow[]> {
+    const now = new Date()
+    const threeDaysFromNow = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+
+    const { data, error } = await supabaseAdmin
+        .from('student_contracts')
+        .select('id, student_id, current_period_end, billing_type, trainer_plans:plan_id(title), students!inner(name)')
+        .eq('trainer_id', trainerId)
+        .eq('status', 'active')
+        .in('billing_type', ['manual_recurring', 'manual_one_off', 'asaas_auto'])
+        .not('current_period_end', 'is', null)
+        .gte('current_period_end', now.toISOString())
+        .lte('current_period_end', threeDaysFromNow)
+
+    if (error || !data) return []
+
+    return (data as unknown as ExpiringPlanRow[]).map(row => {
+        const periodEnd = new Date(row.current_period_end)
+        const daysUntil = Math.max(0, Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+        const studentName = row.students?.name || 'Aluno'
+        const planTitle = row.trainer_plans?.title || 'plano'
+        // Prazo fixo (avulso/Asaas) → renovação; recorrente manual → cobrança.
+        const isFixedTerm = row.billing_type === 'manual_one_off' || row.billing_type === 'asaas_auto'
+
+        return {
+            trainer_id: trainerId,
+            student_id: row.student_id,
+            category: 'alert' as const,
+            priority: 'high' as const,
+            title: daysUntil === 0
+                ? `Plano de ${studentName} vence hoje`
+                : `Plano de ${studentName} vence em ${daysUntil} dia${daysUntil !== 1 ? 's' : ''}`,
+            body: isFixedTerm
+                ? `O plano "${planTitle}" vence em ${formatDate(row.current_period_end)}. Combine a renovação com ${studentName} para manter a continuidade.`
+                : `A cobrança do plano "${planTitle}" vence em ${formatDate(row.current_period_end)}. Registre o pagamento ou fale com ${studentName} para manter o acesso.`,
+            action_type: 'contact_student',
+            action_metadata: {
+                student_id: row.student_id,
+                contract_id: row.id,
+                plan_title: planTitle,
+            },
+            status: 'new' as const,
+            insight_key: `plan_expiring:${row.id}:${today}`,
+            insight_key_prefix: `plan_expiring:${row.id}`,
             source: 'rules' as const,
             expires_at: expiresIn(14),
         }
