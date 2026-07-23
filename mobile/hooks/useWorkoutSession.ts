@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
+import { hasProgression, maxProgressionWeek, programWeekNumber, resolveCardioForWeek } from '@kinevo/shared/lib/cardio/progression';
+import type { CardioConfig } from '@kinevo/shared/types/workout-items';
 import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription';
 import { sortExerciseItems } from '../utils/sortExerciseItems';
 import { hydrateSetPrescriptions, type SetPrescription } from '../lib/hydrateWorkoutSets';
@@ -125,6 +127,10 @@ export interface ExerciseData {
     /** Rodadas (Fase 4.3). 1 para métodos lineares (default). > 1 para
      *  compostos — UI agrupa o setScheme em N rodadas via `round_number`. */
     rounds: number;
+    /** Progressão semanal do bloco aeróbio: rótulo da semana corrente
+     *  ("Semana 5 de 12 · Regenerativa"). O item_config já vem RESOLVIDO
+     *  para a semana; este campo só informa a UI. */
+    progressionWeekLabel?: string | null;
 }
 
 export interface WorkoutNote {
@@ -878,6 +884,24 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
 
                 // Add warmup/cardio items — no set tracking
                 for (const item of warmupCardioItems) {
+                    // Progressão semanal do bloco aeróbio: o aluno executa o alvo
+                    // da semana CORRENTE do programa (config já resolvido aqui —
+                    // timer, Live Activity e set_log herdam sem mudança).
+                    let itemConfig = (item.item_config || {}) as Record<string, any>;
+                    let progressionWeekLabel: string | null = null;
+                    const cardioCfg = itemConfig as unknown as CardioConfig;
+                    if (item.item_type === 'cardio' && hasProgression(cardioCfg)) {
+                        const week = programWeekNumber(programStartedAt);
+                        const resolved = resolveCardioForWeek(cardioCfg, week);
+                        itemConfig = resolved.config as unknown as Record<string, any>;
+                        if (week != null) {
+                            const totalWeeks = programDurationWeeks ?? maxProgressionWeek(cardioCfg);
+                            progressionWeekLabel = [
+                                totalWeeks ? `Semana ${Math.min(week, totalWeeks)} de ${totalWeeks}` : `Semana ${week}`,
+                                resolved.label,
+                            ].filter(Boolean).join(' · ');
+                        }
+                    }
                     exercisesData.push({
                         id: item.id,
                         item_type: item.item_type as 'warmup' | 'cardio',
@@ -892,10 +916,11 @@ export function useWorkoutSession(workoutId: string, options?: UseWorkoutSession
                         setsData: [],
                         order_index: item.order_index,
                         exerciseFunction: item.exercise_function || null,
-                        item_config: item.item_config || {},
+                        item_config: itemConfig,
                         setScheme: [],
                         methodKey: null,
                         rounds: 1,
+                        progressionWeekLabel,
                     });
                 }
 

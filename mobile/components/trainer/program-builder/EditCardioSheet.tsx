@@ -39,7 +39,7 @@ import {
 } from "@kinevo/shared/types/workout-items";
 import { HR_ZONES, resolveZoneBpm, zonePctLabel } from "@kinevo/shared/lib/cardio/zones";
 import { CARDIO_PROTOCOLS, protocolMatchesIntervals } from "@kinevo/shared/lib/cardio/interval-protocols";
-import { buildCardioConfig, parseCardioConfig, type CardioSheetMode } from "./cardio-config";
+import { buildCardioConfig, hasWeeklyProgression, parseCardioConfig, type CardioSheetMode } from "./cardio-config";
 
 const ACCENT = "#22C55E";
 
@@ -406,6 +406,37 @@ export function EditCardioSheet({
                                         </View>
                                     </ScrollView>
                                 </View>
+
+                                {hasWeeklyProgression(initialConfig) ? (
+                                    /* Progressão semanal (web/IA): preservada — aqui edita-se a base */
+                                    <View
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            gap: 8,
+                                            backgroundColor: colors.surface.card,
+                                            borderRadius: 12,
+                                            borderWidth: 1,
+                                            borderColor: colors.border.default,
+                                            padding: 12,
+                                            marginBottom: 14,
+                                        }}
+                                    >
+                                        <Zap size={16} color={ACCENT} strokeWidth={2.2} />
+                                        <Text
+                                            style={{
+                                                flex: 1,
+                                                fontSize: 13,
+                                                lineHeight: 18,
+                                                color: colors.text.secondary,
+                                            }}
+                                        >
+                                            Este bloco tem progressão semanal definida no painel
+                                            web — as semanas personalizadas são preservadas. Aqui
+                                            você edita a base (semana 1).
+                                        </Text>
+                                    </View>
+                                ) : null}
 
                                 {isPhased ? (
                                     /* Estrutura por fases (web): preservada, não editável aqui */

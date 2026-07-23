@@ -7,6 +7,7 @@ import type {
     SessionSetupData,
 } from '../stores/training-room-store';
 import type { MethodKey, WorkoutSet } from '@kinevo/shared/types/prescription';
+import { hasProgression, programWeekNumber, resolveCardioForWeek } from '@kinevo/shared/lib/cardio/progression';
 import { hydrateSetPrescriptions } from '../lib/hydrateWorkoutSets';
 
 // Re-export types used by components
@@ -188,12 +189,32 @@ export function useFetchStudentWorkout() {
                     }
                 }
 
+                // Progressão semanal dos blocos aeróbios: o treino é HOJE — resolve
+                // para a semana corrente do programa (started_at buscado só quando
+                // algum bloco tem progressão).
+                let cardioWeek: number | null = null;
+                const hasAnyProgression = rawExercises.some(
+                    (ex: any) => ex.item_type === 'cardio' && hasProgression(ex.item_config),
+                );
+                if (hasAnyProgression && data.assignedProgramId) {
+                    const { data: prog }: { data: any } = await (supabase as any)
+                        .from('assigned_programs')
+                        .select('started_at')
+                        .eq('id', data.assignedProgramId)
+                        .single();
+                    cardioWeek = programWeekNumber(prog?.started_at ?? null);
+                }
+
                 // The RPC returns exercises with setsData as empty — we need to init them
                 const exercises: ExerciseData[] = rawExercises.map((ex: any) => {
                     // Warmup/cardio items: no set tracking, no swaps, no video
                     if (ex.item_type === 'warmup' || ex.item_type === 'cardio') {
+                        const itemConfig = ex.item_type === 'cardio' && hasProgression(ex.item_config)
+                            ? resolveCardioForWeek(ex.item_config, cardioWeek).config
+                            : ex.item_config;
                         return {
                             ...ex,
+                            item_config: itemConfig,
                             substitute_exercise_ids: [],
                             swap_source: 'none',
                             setsData: [],

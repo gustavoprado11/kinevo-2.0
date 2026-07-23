@@ -231,6 +231,7 @@ export function formatCardioPreview(raw: Record<string, unknown> | null | undefi
         parts.push(`${segments.length} fases`);
         const total = asFiniteNumber(cfg.duration_minutes);
         if (total !== null) parts.push(`${total}min`);
+        if (hasWeeklyProgression(cfg)) parts.push("Progressão semanal");
         return parts.join(" · ");
     }
 
@@ -246,6 +247,13 @@ export function formatCardioPreview(raw: Record<string, unknown> | null | undefi
     }
 
     if (parsed.intensity) parts.push(parsed.intensity);
+    if (hasWeeklyProgression(cfg)) parts.push("Progressão semanal");
 
     return parts.length > 0 ? parts.join(" · ") : "Cardio livre";
+}
+
+/** Progressão semanal (autorada no web/IA) presente no config? O sheet mobile
+ *  PRESERVA a progressão intacta — edita só a base (semana 1). */
+export function hasWeeklyProgression(raw: Record<string, unknown> | null | undefined): boolean {
+    return Array.isArray(raw?.progression) && (raw!.progression as unknown[]).length > 0;
 }

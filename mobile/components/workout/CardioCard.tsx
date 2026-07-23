@@ -1034,6 +1034,10 @@ export function CardioCard({ exercise, disabled, onCardioToggle, onTimerUpdate, 
                 </TouchableOpacity>
             </View>
 
+            {exercise.progressionWeekLabel ? (
+                <Text style={styles.weekLabel}>{exercise.progressionWeekLabel}</Text>
+            ) : null}
+
             {equipmentLabel && EquipmentIcon ? (
                 <View style={[styles.equipmentInline, { marginTop: 4 }]}>
                     <EquipmentIcon size={16} color="#57534E" />
@@ -1136,6 +1140,15 @@ function makeStyles(colors: V2Palette) {
             fontSize: 14,
             color: colors.text.tertiary,
             marginTop: 4,
+        },
+        // Progressão semanal: "Semana 5 de 12 · Regenerativa"
+        weekLabel: {
+            fontSize: 12,
+            fontWeight: '600',
+            color: colors.text.tertiary,
+            marginTop: 6,
+            textTransform: 'uppercase',
+            letterSpacing: 0.6,
         },
         estimatedDuration: {
             fontSize: 13,

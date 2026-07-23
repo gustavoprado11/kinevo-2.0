@@ -8,6 +8,7 @@
 
 import { supabase } from './supabase';
 import { getProgramWeek } from '@kinevo/shared/utils/schedule-projection';
+import { hasProgression, programWeekNumber, resolveCardioForWeek } from '@kinevo/shared/lib/cardio/progression';
 import { sortExerciseItems } from '../utils/sortExerciseItems';
 import { hydrateSetPrescriptions } from './hydrateWorkoutSets';
 import { SET_TYPE_BADGE_LABELS } from '@kinevo/shared/lib/prescription/set-type-labels';
@@ -262,7 +263,13 @@ export async function getProgramSnapshotForWatch(
 
     // Build cardio items for Watch
     const cardioItems: WatchCardioItem[] = cardioRawItems.map((item: any) => {
-      const cfg = item.item_config || {};
+      let cfg = item.item_config || {};
+      // Progressão semanal: o snapshot resolve a semana CORRENTE do programa
+      // (o Watch recebe o alvo desta semana; a resolução usa a mesma convenção
+      // de getProgramWeek).
+      if (hasProgression(cfg)) {
+        cfg = resolveCardioForWeek(cfg, programWeekNumber(program.started_at)).config;
+      }
       return {
         id: item.id,
         itemType: 'cardio' as const,
