@@ -8,11 +8,31 @@ import {
   buildSetScheme,
   materializeScheme,
   validateRoundsForMethod,
+  progressionDurationError,
 } from './workouts-write'
 import { activateAssignedProgram } from '@/lib/programs/activate-assigned-program'
 import { insertStudentNotification } from '@/lib/student-notifications'
 import { sendStudentPush } from '@/lib/push-notifications'
 import { cardioConfigSchema, deriveCardioDisplayFields } from '@/lib/programs/cardio-config-schema'
+
+/** Progressão semanal de blocos cardio precisa caber na duração do programa
+ *  (mesma regra do add_cardio/update — aqui contra o duration_weeks da chamada). */
+function validateCardioProgressionWeeks(
+  sessions: Array<{ name: string; items: Array<{ cardio?: { progression?: Array<{ week: number }> } }> }>,
+  durationWeeks: number | null,
+): string | null {
+  for (const s of sessions) {
+    for (const it of s.items) {
+      const prog = it.cardio?.progression
+      if (prog && prog.length > 0) {
+        const maxWeek = prog.reduce((m, o) => Math.max(m, o.week), 0)
+        const err = progressionDurationError(maxWeek, durationWeeks)
+        if (err) return `Sessão "${s.name}": ${err}`
+      }
+    }
+  }
+  return null
+}
 
 export function registerProgramWriteTools(server: McpServer, trainerId: string) {
   server.tool(
@@ -118,7 +138,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional(),
             notes: z.string().optional(),
           })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds is the rest after each round (carried by the LAST exercise — execution uses per-exercise rest).'),
-          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval'|'phased', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intensity_target?, intervals?: { work_seconds, rest_seconds, rounds }, segments? (phased: ordered phases, each { kind: 'steady'|'interval', label?, duration_minutes?, intervals?, intensity_target?, intensity? }), notes? }. Prefer intensity_target over free-text intensity; for 'phased', set intensity PER SEGMENT and omit block-level duration/intensity (derived)."),
+          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval'|'phased', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intensity_target?, intervals?: { work_seconds, rest_seconds, rounds }, segments? (phased: ordered phases, each { kind: 'steady'|'interval', label?, duration_minutes?, intervals?, intensity_target?, intensity? }), progression? (WEEKLY periodization: array of { week, label?, mode?, distance_km?, duration_minutes?, intensity_target?, intervals?, segments?, notes? } — each entry applies FROM that week ON; base fields = week 1; without mode it shallow-merges, with mode it replaces the structure; duration_weeks must cover the highest week; NEVER describe week-by-week plans in notes), notes? }. Prefer intensity_target over free-text intensity; for 'phased', set intensity PER SEGMENT and omit block-level duration/intensity (derived)."),
         })).describe('Ordered list of exercises/supersets/cardio blocks in this session.'),
       })).min(1).describe('Ordered list of workout sessions in the template.'),
     },
@@ -132,6 +152,9 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           return mcpError(`Sessão "${s.name}" é aeróbia (session_type='cardio') — todos os itens devem ser blocos cardio (campo 'cardio').`)
         }
       }
+
+      const progressionError = validateCardioProgressionWeeks(sessions, duration_weeks ?? null)
+      if (progressionError) return mcpError(progressionError)
 
       // Gather every referenced exercise id and validate against the catalog up front.
       const exerciseIds = new Set<string>()
@@ -326,7 +349,7 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
             exercise_function: z.enum(['warmup', 'activation', 'main', 'accessory', 'conditioning']).optional(),
             notes: z.string().optional(),
           })).min(2).optional().describe('When present, this item is a superset (≥2 exercises performed back-to-back). exercise_id and set_scheme are ignored for this item; rest_seconds is the rest after each round (carried by the LAST exercise — execution uses per-exercise rest).'),
-          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval'|'phased', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intensity_target?, intervals?: { work_seconds, rest_seconds, rounds }, segments? (phased: ordered phases, each { kind: 'steady'|'interval', label?, duration_minutes?, intervals?, intensity_target?, intensity? }), notes? }. Prefer intensity_target over free-text intensity; for 'phased', set intensity PER SEGMENT and omit block-level duration/intensity (derived)."),
+          cardio: cardioConfigSchema.optional().describe("When present, this item is an AEROBIC block (item_type 'cardio') — exercise_id/sets/reps/set_scheme/superset are ignored. Shape: { mode: 'continuous'|'interval'|'phased', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intensity_target?, intervals?: { work_seconds, rest_seconds, rounds }, segments? (phased: ordered phases, each { kind: 'steady'|'interval', label?, duration_minutes?, intervals?, intensity_target?, intensity? }), progression? (WEEKLY periodization: array of { week, label?, mode?, distance_km?, duration_minutes?, intensity_target?, intervals?, segments?, notes? } — each entry applies FROM that week ON; base fields = week 1; without mode it shallow-merges, with mode it replaces the structure; duration_weeks must cover the highest week; NEVER describe week-by-week plans in notes), notes? }. Prefer intensity_target over free-text intensity; for 'phased', set intensity PER SEGMENT and omit block-level duration/intensity (derived)."),
         })).describe('Ordered list of exercises/supersets/cardio blocks in this session.'),
       })).min(1).describe('Ordered list of workout sessions in the program.'),
     },
@@ -353,6 +376,9 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
           return mcpError(`Sessão "${s.name}" é aeróbia (session_type='cardio') — todos os itens devem ser blocos cardio (campo 'cardio').`)
         }
       }
+
+      const progressionError = validateCardioProgressionWeeks(sessions, duration_weeks ?? null)
+      if (progressionError) return mcpError(progressionError)
 
       // Reúne os exercícios referenciados; valida no catálogo E resolve o snapshot
       // denormalizado (nome, grupo muscular, equipamento) — mesma origem que o
@@ -691,6 +717,49 @@ export function registerProgramWriteTools(server: McpServer, trainerId: string) 
         message: result.activated
           ? `Programa "${result.programName}" ativado — aluno notificado; programa vigente anterior (se havia) foi concluído.`
           : `Programa "${result.programName}" já estava ativo.`,
+      })
+    }
+  )
+
+  server.tool(
+    'kinevo_update_program',
+    "Update a program's metadata in-place: name, description or duration_weeks. Works for assigned programs (any status) and library templates — use it instead of recreating the program. Typical use: extending duration_weeks so a cardio block's weekly progression fits (the progression's highest week must be ≤ duration_weeks).",
+    {
+      program_id: z.string().uuid().describe('The program ID to update'),
+      program_type: z.enum(['template', 'assigned']).default('assigned').describe('Whether program_id is an assigned program or a library template'),
+      name: z.string().min(2).optional().describe('New program name'),
+      description: z.string().nullable().optional().describe('New description. Pass null to clear.'),
+      duration_weeks: z.number().min(1).max(52).nullable().optional().describe('New duration in weeks. Pass null to clear.'),
+    },
+    { title: 'Atualizar programa', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    async ({ program_id, program_type, name, description, duration_weeks }) => {
+      const supabaseAdmin = createAdminClient()
+
+      if (name === undefined && description === undefined && duration_weeks === undefined) {
+        return mcpError('Informe ao menos um campo para atualizar (name, description ou duration_weeks).')
+      }
+
+      const updateData: Record<string, unknown> = {}
+      if (name !== undefined) updateData.name = name
+      if (description !== undefined) updateData.description = description
+      if (duration_weeks !== undefined) updateData.duration_weeks = duration_weeks
+
+      const table = program_type === 'template' ? 'program_templates' : 'assigned_programs'
+      const { data, error } = await supabaseAdmin
+        .from(table)
+        .update(updateData)
+        .eq('id', program_id)
+        .eq('trainer_id', trainerId)
+        .select('id, name, duration_weeks')
+        .single()
+
+      if (error || !data) {
+        return mcpError('Programa não encontrado ou não pertence a este treinador.')
+      }
+
+      return mcpSuccess({
+        program: { id: data.id, name: data.name, type: program_type, duration_weeks: data.duration_weeks },
+        message: `Programa "${data.name}" atualizado${duration_weeks !== undefined ? ` (duração: ${data.duration_weeks ?? 'sem definição'} semanas)` : ''}.`,
       })
     }
   )

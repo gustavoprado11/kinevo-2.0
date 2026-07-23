@@ -5,13 +5,13 @@
  * do AI SDK DESCARTA as annotations do MCP (readOnlyHint/destructiveHint) — então
  * este arquivo, não as hints, decide o que pausa para HITL. Ver chat-first SPEC §1.
  *
- * Cobre as 62 tools do servidor MCP (`lib/mcp/tools/*`) + a action `generateProgram`
+ * Cobre as 64 tools do servidor MCP (`lib/mcp/tools/*`) + a action `generateProgram`
  * (roteamento de prescrição). Define também os pesos de crédito (§3.2 da SPEC) e os
  * subconjuntos de subsetting por intenção (corta 60–70% do input — §7.2).
  */
 
 // ----------------------------------------------------------------------------
-// Catálogo das 62 tools MCP
+// Catálogo das 64 tools MCP
 // ----------------------------------------------------------------------------
 export const ALL_MCP_TOOLS = [
     'kinevo_ping',
@@ -23,6 +23,7 @@ export const ALL_MCP_TOOLS = [
     'kinevo_list_programs',
     'kinevo_get_program',
     'kinevo_create_program',
+    'kinevo_update_program',
     'kinevo_create_program_template',
     'kinevo_create_student_draft_program',
     'kinevo_assign_program',
@@ -292,6 +293,7 @@ export const TOOL_SUBSETS: Record<ToolIntent, readonly McpToolName[]> = {
         'kinevo_list_programs',
         'kinevo_get_program',
         'kinevo_create_program',
+        'kinevo_update_program',
         'kinevo_create_program_template',
         'kinevo_create_student_draft_program',
         'kinevo_assign_program',

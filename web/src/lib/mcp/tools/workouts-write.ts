@@ -15,7 +15,7 @@ import { cardioConfigSchema, deriveCardioDisplayFields } from '@/lib/programs/ca
 import { formatIntensityTarget } from '@kinevo/shared/lib/cardio/zones'
 import { CARDIO_PROTOCOLS, cardioProtocol } from '@kinevo/shared/lib/cardio/interval-protocols'
 import { cardioTotalSeconds, summarizeSegments } from '@kinevo/shared/lib/cardio/segments'
-import type { CardioConfig, CardioIntensityTarget, CardioSegment } from '@kinevo/shared/types/workout-items'
+import type { CardioConfig, CardioIntensityTarget, CardioSegment, CardioWeekOverride } from '@kinevo/shared/types/workout-items'
 
 type WorkoutType = 'template' | 'assigned'
 
@@ -90,6 +90,176 @@ const cardioSegmentZod = z.object({
   pace_min_per_km: z.string().max(20).optional().describe("Intensidade da fase: pace min/km (ex.: '5:30')"),
   intensity: z.string().max(200).optional().describe('Texto livre de intensidade da fase (fallback quando não há alvo estruturado)'),
 })
+
+/** Constrói e valida a lista de fases (modo 'phased') a partir da gramática
+ *  flat do MCP — usada pelo bloco base E pelos overrides da progressão. */
+function buildCardioSegments(
+  segments: Array<z.infer<typeof cardioSegmentZod>>,
+  maxHr: number | null,
+): { built: CardioSegment[] } | { error: string } {
+  const built: CardioSegment[] = []
+  for (const [i, seg] of segments.entries()) {
+    const segResolved = resolveIntensityTarget(seg)
+    if (segResolved.error) return { error: `Fase ${i + 1}: ${segResolved.error}` }
+    const segProtocolDef = seg.kind === 'interval' ? cardioProtocol(seg.protocol) : null
+    const target = segResolved.target ?? segProtocolDef?.suggested_target ?? null
+    const out: CardioSegment = { kind: seg.kind }
+    if (seg.label) out.label = seg.label
+    if (seg.kind === 'steady') {
+      if (seg.duration_minutes == null) {
+        return { error: `Fase ${i + 1}: fase contínua ('steady') exige duration_minutes.` }
+      }
+      out.duration_minutes = seg.duration_minutes
+    } else {
+      const w = seg.work_seconds ?? segProtocolDef?.intervals.work_seconds
+      const r = seg.rest_seconds ?? segProtocolDef?.intervals.rest_seconds
+      const n = seg.rounds ?? segProtocolDef?.intervals.rounds
+      if (w === undefined || r === undefined || n === undefined) {
+        return { error: `Fase ${i + 1}: bloco intervalado exige work_seconds, rest_seconds e rounds — ou um protocol nomeado.` }
+      }
+      out.intervals = { work_seconds: w, rest_seconds: r, rounds: n }
+    }
+    if (target) {
+      out.intensity_target = target
+      const derived = formatIntensityTarget(target, maxHr)
+      if (derived) out.intensity = derived
+    } else if (seg.intensity) {
+      out.intensity = seg.intensity
+    }
+    built.push(out)
+  }
+  return { built }
+}
+
+// ----------------------------------------------------------------------------
+// Progressão semanal do bloco aeróbio (periodização)
+// ----------------------------------------------------------------------------
+// Cada entrada vale A PARTIR da semana `week` até o próximo override; os campos
+// base do bloco são a "semana 1". Semântica canônica de resolução em
+// shared/lib/cardio/progression.ts (merge raso sem `mode`; substituição
+// estrutural com `mode` — protocol/segments implicam mode, como no bloco).
+
+const cardioWeekOverrideZod = z.object({
+  week: z.number().int().min(1).max(52).describe('Program week (1-based) FROM WHICH this override applies. It stays in effect until the next override week.'),
+  label: z.string().max(60).optional().describe("Week label shown to the student (e.g., 'Regenerativa', 'Semana da prova')"),
+  mode: z.enum(['continuous', 'interval', 'phased']).optional().describe("Set ONLY when this week's STRUCTURE differs from the base block (e.g., fartlek weeks → tempo-run weeks). With mode (or protocol/segments, which imply it) the override REPLACES the whole structure for those weeks; without it, the listed fields shallow-merge over the base block (e.g., just a new distance_km)."),
+  objective: z.enum(['time', 'distance']).optional().describe("Continuous target type for this week: 'time' or 'distance'"),
+  duration_minutes: z.number().min(1).max(600).optional().describe('Target duration in minutes for this week'),
+  distance_km: z.number().min(0.1).max(500).optional().describe('Target distance in km for this week'),
+  protocol: z.enum(CARDIO_PROTOCOLS.map(p => p.key) as [string, ...string[]]).optional().describe('Named interval protocol for this week (implies interval structure)'),
+  work_seconds: z.number().int().min(5).max(3600).optional().describe('Interval structure for this week: work in seconds'),
+  rest_seconds: z.number().int().min(0).max(3600).optional().describe('Interval structure for this week: rest in seconds'),
+  rounds: z.number().int().min(1).max(100).optional().describe('Interval structure for this week: rounds'),
+  segments: z.array(cardioSegmentZod).min(1).max(12).optional().describe('Phased structure for this week (implies phased mode) — same shape as the block-level segments'),
+  zone: z.number().int().min(1).max(5).optional().describe('STRUCTURED intensity for this week: HR zone Z1–Z5'),
+  hr_min_bpm: z.number().int().min(60).max(230).optional(),
+  hr_max_bpm: z.number().int().min(60).max(230).optional(),
+  target_rpe: z.number().int().min(1).max(10).optional().describe('STRUCTURED intensity for this week: RPE 1–10'),
+  pace_min_per_km: z.string().max(20).optional().describe("STRUCTURED intensity for this week: pace min/km (e.g., '5:30')"),
+  intensity: z.string().max(200).optional().describe('Free-text intensity fallback for this week'),
+  notes: z.string().max(2000).optional().describe('Note specific to this week'),
+})
+
+/** Monta UM CardioWeekOverride canônico a partir da gramática flat do MCP,
+ *  derivando as strings de exibição (zonas resolvem na FCmáx do aluno). */
+function buildWeekOverride(
+  raw: z.infer<typeof cardioWeekOverrideZod>,
+  maxHr: number | null,
+): { override: CardioWeekOverride } | { error: string } {
+  const prefix = `Semana ${raw.week}`
+  const resolved = resolveIntensityTarget(raw)
+  if (resolved.error) return { error: `${prefix}: ${resolved.error}` }
+  let target = resolved.target
+
+  const protocolDef = cardioProtocol(raw.protocol)
+  // protocol implica interval; segments implica phased — espelho do bloco base.
+  const mode = raw.segments && raw.segments.length > 0 ? 'phased' : protocolDef ? 'interval' : raw.mode
+  if (protocolDef && !target) target = protocolDef.suggested_target
+
+  const o: CardioWeekOverride = { week: raw.week }
+  if (raw.label) o.label = raw.label
+  if (raw.notes !== undefined) o.notes = raw.notes
+
+  if (mode === 'phased') {
+    if (target || raw.intensity) {
+      return { error: `${prefix}: com segments a intensidade é POR FASE — defina zone/hr/rpe/pace dentro de cada segmento, não no override.` }
+    }
+    const res = buildCardioSegments(raw.segments!, maxHr)
+    if ('error' in res) return { error: `${prefix}: ${res.error}` }
+    o.mode = 'phased'
+    o.segments = res.built
+    const totalSeconds = cardioTotalSeconds({ mode: 'phased', segments: res.built } as CardioConfig)
+    if (totalSeconds > 0) o.duration_minutes = Math.max(1, Math.round(totalSeconds / 60))
+    const summary = summarizeSegments(res.built)
+    if (summary) o.intensity = summary
+    return { override: o }
+  }
+
+  if (mode === 'interval') {
+    const w = raw.work_seconds ?? protocolDef?.intervals.work_seconds
+    const r = raw.rest_seconds ?? protocolDef?.intervals.rest_seconds
+    const n = raw.rounds ?? protocolDef?.intervals.rounds
+    if (w === undefined || r === undefined || n === undefined) {
+      return { error: `${prefix}: estrutura intervalada exige work_seconds, rest_seconds e rounds — ou um protocol nomeado.` }
+    }
+    o.mode = 'interval'
+    o.intervals = { work_seconds: w, rest_seconds: r, rounds: n }
+    if (protocolDef && w === protocolDef.intervals.work_seconds && r === protocolDef.intervals.rest_seconds && n === protocolDef.intervals.rounds) {
+      o.protocol_key = protocolDef.key
+    }
+  } else if (mode === 'continuous') {
+    o.mode = 'continuous'
+    o.objective = raw.objective ?? (raw.distance_km != null && raw.duration_minutes == null ? 'distance' : 'time')
+    if (raw.duration_minutes != null) o.duration_minutes = raw.duration_minutes
+    if (raw.distance_km != null) o.distance_km = raw.distance_km
+    if (o.objective === 'distance' && o.distance_km == null) {
+      return { error: `${prefix}: objetivo de distância exige distance_km.` }
+    }
+    if (o.objective === 'time' && o.duration_minutes == null) {
+      return { error: `${prefix}: objetivo de tempo exige duration_minutes.` }
+    }
+  } else {
+    // SEM mode → merge raso: só o que veio muda a semana.
+    if (raw.objective != null) o.objective = raw.objective
+    if (raw.duration_minutes != null) o.duration_minutes = raw.duration_minutes
+    if (raw.distance_km != null) o.distance_km = raw.distance_km
+    if (raw.work_seconds != null || raw.rest_seconds != null || raw.rounds != null) {
+      if (raw.work_seconds == null || raw.rest_seconds == null || raw.rounds == null) {
+        return { error: `${prefix}: para mudar a estrutura intervalada envie work_seconds, rest_seconds e rounds completos (ou um protocol).` }
+      }
+      o.intervals = { work_seconds: raw.work_seconds, rest_seconds: raw.rest_seconds, rounds: raw.rounds }
+    }
+  }
+
+  if (target) {
+    o.intensity_target = target
+    const derived = formatIntensityTarget(target, maxHr)
+    if (derived) o.intensity = derived
+  } else if (raw.intensity) {
+    o.intensity = raw.intensity
+  }
+  return { override: o }
+}
+
+/** Constrói a lista de overrides da progressão (ordenada, semanas únicas). */
+function buildProgression(
+  rawList: Array<z.infer<typeof cardioWeekOverrideZod>>,
+  maxHr: number | null,
+): { progression: CardioWeekOverride[] } | { error: string } {
+  const overrides: CardioWeekOverride[] = []
+  const seen = new Set<number>()
+  for (const raw of rawList) {
+    if (seen.has(raw.week)) {
+      return { error: `Progressão com semana ${raw.week} duplicada — uma entrada por semana.` }
+    }
+    seen.add(raw.week)
+    const res = buildWeekOverride(raw, maxHr)
+    if ('error' in res) return res
+    overrides.push(res.override)
+  }
+  overrides.sort((a, b) => a.week - b.week)
+  return { progression: overrides }
+}
 
 // ----------------------------------------------------------------------------
 // Per-set prescription (advanced methods: pyramid, drop-set, cluster, 5x5, …)
@@ -241,6 +411,39 @@ async function maxHrForWorkout(
     .single()
   const program = data?.assigned_programs as unknown as { students: { max_heart_rate_bpm: number | null } | null } | null
   return program?.students?.max_heart_rate_bpm ?? null
+}
+
+/** duration_weeks do programa dono da sessão — valida a progressão semanal
+ *  (a maior semana da progressão precisa caber na duração do programa). */
+async function programDurationForWorkout(
+  supabaseAdmin: SupabaseClient,
+  workoutId: string,
+  workoutType: WorkoutType,
+): Promise<number | null> {
+  if (workoutType === 'assigned') {
+    const { data } = await supabaseAdmin
+      .from('assigned_workouts')
+      .select('assigned_programs(duration_weeks)')
+      .eq('id', workoutId)
+      .single()
+    const program = data?.assigned_programs as unknown as { duration_weeks: number | null } | null
+    return program?.duration_weeks ?? null
+  }
+  const { data } = await supabaseAdmin
+    .from('workout_templates')
+    .select('program_templates(duration_weeks)')
+    .eq('id', workoutId)
+    .single()
+  const program = data?.program_templates as unknown as { duration_weeks: number | null } | null
+  return program?.duration_weeks ?? null
+}
+
+/** Erro didático quando a progressão estoura a duração do programa. */
+export function progressionDurationError(maxWeek: number, durationWeeks: number | null): string | null {
+  if (durationWeeks != null && maxWeek > durationWeeks) {
+    return `A progressão vai até a semana ${maxWeek}, mas o programa tem duration_weeks=${durationWeeks}. Defina duration_weeks=${maxWeek} (em programas existentes, kinevo_update_program) ou encurte a progressão.`
+  }
+  return null
 }
 
 /** Sessões aeróbias (workout_type='cardio', migration 268) não aceitam
@@ -529,7 +732,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
 
   server.tool(
     'kinevo_add_cardio_to_session',
-    "Add an aerobic (cardio) block to a workout session — continuous (time or distance target: treadmill, bike, outdoor run…), interval (work/rest × rounds), or phased (a SEQUENCE of phases executed in order — e.g., 10min Z1 warmup → Tabata → 5min Z1 cooldown; also different interval blocks back-to-back, or a continuous session with varying intensities). Use inside standalone aerobic sessions (session_type='cardio') or at the end of a strength session. Prefer STRUCTURED intensity over free text: zone (Z1–Z5, resolved to the student's bpm range via max heart rate), hr_min_bpm/hr_max_bpm, target_rpe, or pace_min_per_km. For intervals, prefer a named protocol (tabata, hiit_15_15, hiit_30_30, hiit_40_20, norwegian_4x4 — see kinevo_list_training_methods) which fills work/rest/rounds + suggested intensity in one shot. The student executes it with a guided timer in the app (phased runs each phase in sequence).",
+    "Add an aerobic (cardio) block to a workout session — continuous (time or distance target: treadmill, bike, outdoor run…), interval (work/rest × rounds), or phased (a SEQUENCE of phases executed in order — e.g., 10min Z1 warmup → Tabata → 5min Z1 cooldown; also different interval blocks back-to-back, or a continuous session with varying intensities). Use inside standalone aerobic sessions (session_type='cardio') or at the end of a strength session. Prefer STRUCTURED intensity over free text: zone (Z1–Z5, resolved to the student's bpm range via max heart rate), hr_min_bpm/hr_max_bpm, target_rpe, or pace_min_per_km. For intervals, prefer a named protocol (tabata, hiit_15_15, hiit_30_30, hiit_40_20, norwegian_4x4 — see kinevo_list_training_methods) which fills work/rest/rounds + suggested intensity in one shot. PERIODIZATION: when the plan changes week by week (e.g., long-run distance building 6→15 km, or fartlek weeks then tempo weeks), pass `progression` — NEVER describe week-by-week targets in notes; the app resolves the current program week and shows the student that week's target automatically. The student executes with a guided timer in the app (phased runs each phase in sequence).",
     {
       workout_id: z.string().uuid().describe('The workout session ID to add the cardio block to'),
       program_type: z.enum(['template', 'assigned']).default('assigned').describe('Whether the session belongs to a template or an assigned program'),
@@ -549,11 +752,12 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       interval_rest_seconds: z.number().int().min(0).max(3600).optional().describe('Interval mode: rest phase in seconds'),
       rounds: z.number().int().min(1).max(100).optional().describe('Interval mode: number of work/rest rounds'),
       segments: z.array(cardioSegmentZod).min(1).max(12).optional().describe("Phased mode: the ordered sequence of phases. Each phase is 'steady' (duration_minutes + intensity) or 'interval' (protocol OR work/rest/rounds + intensity). Ex.: [{kind:'steady',duration_minutes:10,zone:1,label:'Aquecimento'},{kind:'interval',protocol:'tabata'},{kind:'steady',duration_minutes:5,zone:1,label:'Volta à calma'}]. Intensity is defined PER PHASE — not at the block level."),
+      progression: z.array(cardioWeekOverrideZod).min(1).max(52).optional().describe("WEEKLY PROGRESSION (periodization) of this block across the program. Each entry applies FROM its `week` ON, until the next entry; the base block fields are week 1. Without `mode` an entry shallow-merges over the base (e.g., [{week:2,distance_km:7},{week:3,distance_km:8},{week:4,distance_km:6,label:'Regenerativa'}…] for a long run building up); with `mode` — or protocol/segments, which imply it — the entry REPLACES the structure from that week on (e.g., {week:5,mode:'interval',work_seconds:180,rest_seconds:120,rounds:5,target_rpe:8} turning fartlek weeks into interval weeks). The app resolves the current program week automatically and the student sees that week's target. The program's duration_weeks must cover the highest week."),
       notes: z.string().max(2000).optional().describe('Technical note shown to the student on the cardio card'),
       order_index: z.number().min(0).optional().describe('Position in the session. If omitted, appends at the end.'),
     },
     { title: 'Adicionar bloco aeróbio', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    async ({ workout_id, program_type, mode, equipment, objective, duration_minutes, distance_km, zone, hr_min_bpm, hr_max_bpm, target_rpe, pace_min_per_km, intensity, protocol, work_seconds, interval_rest_seconds, rounds, segments, notes, order_index }) => {
+    async ({ workout_id, program_type, mode, equipment, objective, duration_minutes, distance_km, zone, hr_min_bpm, hr_max_bpm, target_rpe, pace_min_per_km, intensity, protocol, work_seconds, interval_rest_seconds, rounds, segments, progression, notes, order_index }) => {
       const supabaseAdmin = createAdminClient()
 
       const owns = await verifyWorkoutOwnership(supabaseAdmin, workout_id, program_type, trainerId)
@@ -565,6 +769,10 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       const resolved = resolveIntensityTarget({ zone, hr_min_bpm, hr_max_bpm, target_rpe, pace_min_per_km })
       if (resolved.error) return mcpError(resolved.error)
       let intensityTarget = resolved.target
+
+      // FCmáx do aluno: resolve "Zona N" em bpm no bloco, nas fases e na
+      // progressão semanal (templates → null → formato %FCmáx).
+      const maxHr = await maxHrForWorkout(supabaseAdmin, workout_id, program_type)
 
       // Protocolo nomeado: implica interval e preenche números + alvo sugerido
       // (params explícitos vencem os números; alvo explícito vence o sugerido).
@@ -585,44 +793,14 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         if (intensityTarget) {
           return mcpError("No modo 'phased' a intensidade é POR FASE: defina zone/hr/rpe/pace dentro de cada segmento, não no bloco.")
         }
-        const maxHr = await maxHrForWorkout(supabaseAdmin, workout_id, program_type)
-        const built: CardioSegment[] = []
-        for (const [i, seg] of segments.entries()) {
-          const segResolved = resolveIntensityTarget(seg)
-          if (segResolved.error) return mcpError(`Fase ${i + 1}: ${segResolved.error}`)
-          const segProtocolDef = seg.kind === 'interval' ? cardioProtocol(seg.protocol) : null
-          const target = segResolved.target ?? segProtocolDef?.suggested_target ?? null
-          const out: CardioSegment = { kind: seg.kind }
-          if (seg.label) out.label = seg.label
-          if (seg.kind === 'steady') {
-            if (seg.duration_minutes == null) {
-              return mcpError(`Fase ${i + 1}: fase contínua ('steady') exige duration_minutes.`)
-            }
-            out.duration_minutes = seg.duration_minutes
-          } else {
-            const w = seg.work_seconds ?? segProtocolDef?.intervals.work_seconds
-            const r = seg.rest_seconds ?? segProtocolDef?.intervals.rest_seconds
-            const n = seg.rounds ?? segProtocolDef?.intervals.rounds
-            if (w === undefined || r === undefined || n === undefined) {
-              return mcpError(`Fase ${i + 1}: bloco intervalado exige work_seconds, rest_seconds e rounds — ou um protocol nomeado.`)
-            }
-            out.intervals = { work_seconds: w, rest_seconds: r, rounds: n }
-          }
-          if (target) {
-            out.intensity_target = target
-            const derived = formatIntensityTarget(target, maxHr)
-            if (derived) out.intensity = derived
-          } else if (seg.intensity) {
-            out.intensity = seg.intensity
-          }
-          built.push(out)
-        }
-        config.segments = built
+        const res = buildCardioSegments(segments, maxHr)
+        if ('error' in res) return mcpError(res.error)
+        config.segments = res.built
         // Derivados — a espinha da retrocompat: superfícies antigas e o Watch
         // leem duration_minutes (total) e intensity (resumo), não segments.
-        const totalSeconds = cardioTotalSeconds({ mode: 'phased', segments: built } as CardioConfig)
+        const totalSeconds = cardioTotalSeconds({ mode: 'phased', segments: res.built } as CardioConfig)
         if (totalSeconds > 0) config.duration_minutes = Math.max(1, Math.round(totalSeconds / 60))
-        const summary = summarizeSegments(built)
+        const summary = summarizeSegments(res.built)
         if (summary) config.intensity = summary
       } else if (effectiveMode === 'continuous') {
         config.objective = objective ?? 'time'
@@ -647,7 +825,6 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       if (effectiveMode !== 'phased') {
         if (intensityTarget) {
           config.intensity_target = intensityTarget
-          const maxHr = await maxHrForWorkout(supabaseAdmin, workout_id, program_type)
           const derived = formatIntensityTarget(intensityTarget, maxHr)
           if (derived) config.intensity = derived
         } else if (intensity !== undefined) {
@@ -655,6 +832,18 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
         }
       }
       if (notes !== undefined) config.notes = notes
+
+      // Progressão semanal (periodização): monta os overrides canônicos e
+      // valida que a última semana cabe na duração do programa.
+      if (progression && progression.length > 0) {
+        const res = buildProgression(progression, maxHr)
+        if ('error' in res) return mcpError(res.error)
+        config.progression = res.progression
+        const maxWeek = res.progression[res.progression.length - 1].week
+        const durationWeeks = await programDurationForWorkout(supabaseAdmin, workout_id, program_type)
+        const durationError = progressionDurationError(maxWeek, durationWeeks)
+        if (durationError) return mcpError(durationError)
+      }
 
       const parsedConfig = cardioConfigSchema.safeParse(config)
       if (!parsedConfig.success) {
@@ -714,9 +903,12 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
             : `contínuo ${duration_minutes ?? '?'} min`
       // Phased: o resumo já embute as intensidades por fase — não repete.
       const intensityStr = effectiveMode !== 'phased' && typeof config.intensity === 'string' ? config.intensity : null
+      const progressionNote = Array.isArray(config.progression) && config.progression.length > 0
+        ? `; progressão semanal até a semana ${(config.progression as CardioWeekOverride[])[config.progression.length - 1].week}`
+        : ''
       return mcpSuccess({
         workout_item: { id: data.id, item_type: 'cardio', order_index: data.order_index, config: parsedConfig.data },
-        message: `Bloco aeróbio adicionado (${summary}${intensityStr ? `, ${intensityStr}` : ''}).`,
+        message: `Bloco aeróbio adicionado (${summary}${intensityStr ? `, ${intensityStr}` : ''}${progressionNote}).`,
       })
     }
   )
@@ -845,7 +1037,7 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
       order_index: z.number().min(0).optional().describe('New position in the session'),
       set_scheme: z.array(setSchemaZod).optional().describe('Advanced per-set prescription. Replaces the entire existing scheme. Pass an empty array [] to remove the scheme and revert to simple mode (also clears method_key). When non-empty, sets/reps/rest_seconds are derived from it.'),
       rounds: z.number().min(1).max(20).optional().describe('Rounds the set_scheme repeats (compound methods). Defaults to 1.'),
-      cardio_config: cardioConfigSchema.optional().describe("Cardio blocks only (item_type='cardio'): replaces the ENTIRE aerobic config. Shape: { mode: 'continuous'|'interval'|'phased', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intensity_target?, intervals?: { work_seconds, rest_seconds, rounds }, segments? (phased: array of { kind: 'steady'|'interval', label?, duration_minutes?, intervals?, intensity_target?, intensity? }), notes? }. For 'phased', duration_minutes/intensity are derived from segments automatically when omitted."),
+      cardio_config: cardioConfigSchema.optional().describe("Cardio blocks only (item_type='cardio'): replaces the ENTIRE aerobic config. Shape: { mode: 'continuous'|'interval'|'phased', equipment?, objective?: 'time'|'distance', duration_minutes?, distance_km?, intensity?, intensity_target?, intervals?: { work_seconds, rest_seconds, rounds }, segments? (phased: array of { kind: 'steady'|'interval', label?, duration_minutes?, intervals?, intensity_target?, intensity? }), progression? (WEEKLY periodization: array of { week, label?, mode?, distance_km?, duration_minutes?, intensity_target?, intervals?, segments?, notes? } — each entry applies FROM that week ON; base fields = week 1; without mode it shallow-merges, with mode it replaces the structure; NEVER describe week-by-week plans in notes), notes? }. For 'phased', duration_minutes/intensity are derived from segments automatically when omitted."),
     },
     { title: 'Atualizar exercício', readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     async ({ item_id, workout_type, exercise_id, sets, reps, rest_seconds, notes, exercise_function, method_key, order_index, set_scheme, rounds, cardio_config }) => {
@@ -896,6 +1088,13 @@ export function registerWorkoutWriteTools(server: McpServer, trainerId: string) 
 
       const updateData: Record<string, unknown> = {}
       if (cardio_config !== undefined) {
+        // Progressão semanal precisa caber na duração do programa.
+        if (cardio_config.progression && cardio_config.progression.length > 0) {
+          const maxWeek = cardio_config.progression.reduce((m, o) => Math.max(m, o.week), 0)
+          const durationWeeks = await programDurationForWorkout(supabaseAdmin, itemCtx[itemFkColumn], workout_type)
+          const durationError = progressionDurationError(maxWeek, durationWeeks)
+          if (durationError) return mcpError(durationError)
+        }
         // Deriva os campos legados de exibição (zonas resolvem na FCmáx do
         // aluno em programas atribuídos; phased deriva por fase + totais).
         const maxHr = await maxHrForWorkout(supabaseAdmin, itemCtx[itemFkColumn], workout_type)
