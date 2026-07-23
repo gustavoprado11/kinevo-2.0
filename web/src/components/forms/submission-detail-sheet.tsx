@@ -183,13 +183,13 @@ function AnswerRenderer({
     if (imageUrl || type === 'photo') {
         if (imageUrl) {
             return (
-                <div className="group relative overflow-hidden rounded-xl">
+                <div className="group relative overflow-hidden rounded-control">
                     <img
                         src={imageUrl}
                         alt="Resposta visual"
-                        className="max-h-64 w-full object-cover rounded-xl transition duration-300 group-hover:scale-105"
+                        className="max-h-64 w-full object-cover rounded-control transition duration-300 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100 rounded-xl">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100 rounded-control">
                         <Button
                             variant="outline"
                             size="sm"
@@ -225,10 +225,10 @@ function AnswerRenderer({
                     {range.map((n) => (
                         <div
                             key={n}
-                            className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold transition-all ${
+                            className={`flex h-9 w-9 items-center justify-center rounded-control border text-sm font-bold font-mono tabular-nums transition-colors ${
                                 n === numValue
-                                    ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30 ring-2 ring-violet-400/30 scale-110'
-                                    : 'bg-surface-elevated text-k-text-quaternary'
+                                    ? 'bg-surface-inset text-k-text-primary border-k-border-primary'
+                                    : 'bg-surface-elevated text-k-text-quaternary border-transparent'
                             }`}
                         >
                             {n}
@@ -262,19 +262,19 @@ function AnswerRenderer({
                         return (
                             <div
                                 key={opt.value}
-                                className={`flex items-center gap-3 rounded-xl px-4 py-2.5 transition-all ${
+                                className={`flex items-center gap-3 rounded-control px-4 py-2.5 transition-colors ${
                                     isSelected
-                                        ? 'bg-violet-500/10 border border-violet-500/30'
+                                        ? 'bg-surface-inset border border-k-border-primary'
                                         : 'bg-surface-elevated/30 border border-transparent opacity-50'
                                 }`}
                             >
                                 <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 shrink-0 ${
                                     isSelected
-                                        ? 'border-violet-500 bg-violet-500'
+                                        ? 'border-k-text-primary bg-surface-card'
                                         : 'border-k-border-subtle'
                                 }`}>
                                     {isSelected && (
-                                        <div className="h-2 w-2 rounded-full bg-white" />
+                                        <div className="h-2 w-2 rounded-full bg-k-text-primary" />
                                     )}
                                 </div>
                                 <span className={`text-sm ${
@@ -293,7 +293,7 @@ function AnswerRenderer({
         const label = resolveOptionLabel(displayValue, question)
         return (
             <div className="flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-violet-600 dark:text-violet-400 shrink-0" />
+                <CheckCircle2 size={16} className="text-k-text-primary shrink-0" />
                 <span className="text-sm text-k-text-primary font-medium">{label}</span>
             </div>
         )
@@ -343,7 +343,7 @@ export function SubmissionDetailSheet({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-dropdown bg-black/20 backdrop-blur-sm"
+                className="fixed inset-0 z-dropdown bg-black/50"
                 onClick={onClose}
             />
 
@@ -352,12 +352,12 @@ export function SubmissionDetailSheet({
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed right-0 top-0 z-modal flex h-full w-full max-w-2xl flex-col border-l border-k-border-subtle bg-surface-card shadow-2xl"
+                className="fixed right-0 top-0 z-modal flex h-full w-full max-w-2xl flex-col border-l border-k-border-subtle bg-surface-card"
             >
                 {/* Header — simplified with avatar */}
                 <header className="flex items-center justify-between border-b border-k-border-subtle px-6 py-4">
                     <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-k-border-primary bg-glass-bg overflow-hidden shrink-0">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full border border-k-border-primary bg-surface-inset overflow-hidden shrink-0">
                             {student?.avatar_url ? (
                                 <Image src={student.avatar_url} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" unoptimized />
                             ) : (
@@ -370,20 +370,28 @@ export function SubmissionDetailSheet({
                             <p className="text-sm font-semibold text-k-text-primary truncate">
                                 {student?.name || 'Aluno'}
                             </p>
-                            <p className="text-xs text-k-text-quaternary truncate">
+                            <p className="text-xs text-k-text-quaternary truncate" title={formatDateTime(submission.submitted_at || submission.created_at)}>
                                 {cleanTemplateName(template?.title || 'Template')} · {timeAgo(submission.submitted_at || submission.created_at)}
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                        {feedbackAlreadySent && (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                Feedback enviado
-                            </span>
-                        )}
+                        {(() => {
+                            const isSubmitted = !feedbackAlreadySent && (submission.status === 'submitted' || !!submission.submitted_at)
+                            const dot = feedbackAlreadySent ? 'bg-emerald-500' : isSubmitted ? 'bg-amber-500' : 'bg-k-text-tertiary'
+                            const text = feedbackAlreadySent
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : isSubmitted ? 'text-amber-600 dark:text-amber-400' : 'text-k-text-tertiary'
+                            return (
+                                <span className={`inline-flex items-center gap-1.5 text-xs ${text}`}>
+                                    <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+                                    {submissionStatus(submission).label}
+                                </span>
+                            )
+                        })()}
                         <button
                             onClick={onClose}
-                            className="rounded-full bg-surface-inset p-2 text-k-text-secondary transition hover:bg-k-border-subtle hover:text-k-text-primary"
+                            className="rounded-control bg-surface-inset p-2 text-k-text-secondary transition hover:bg-k-border-subtle hover:text-k-text-primary"
                         >
                             <X size={18} />
                         </button>
@@ -394,7 +402,7 @@ export function SubmissionDetailSheet({
                 <div className="flex-1 overflow-y-auto px-6 py-6">
                     {/* Quick summary */}
                     {quickSummary.length > 0 && (
-                        <div className="mb-6 px-4 py-3 bg-surface-elevated/50 rounded-xl border border-k-border-subtle">
+                        <div className="mb-6 px-4 py-3 bg-surface-inset rounded-control border border-k-border-subtle">
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
                                 {quickSummary.map(({ label, value }) => (
                                     <span key={label} className="text-k-text-tertiary">
@@ -409,7 +417,7 @@ export function SubmissionDetailSheet({
                     {/* Answers */}
                     <div className="space-y-5">
                         {questions.length === 0 && Object.keys(answers).length === 0 ? (
-                            <div className="rounded-xl border border-dashed border-k-border-subtle p-8 text-center text-sm text-k-text-secondary">
+                            <div className="rounded-control border border-dashed border-k-border-subtle p-8 text-center text-sm text-k-text-secondary">
                                 Nenhuma resposta disponível.
                             </div>
                         ) : (
@@ -419,18 +427,18 @@ export function SubmissionDetailSheet({
                                 const TypeIcon = getTypeIcon(type)
 
                                 return (
-                                    <div key={question.id} className="rounded-2xl border border-k-border-subtle bg-surface-elevated/30 overflow-hidden">
+                                    <div key={question.id} className="rounded-panel border border-k-border-subtle bg-surface-elevated/30 overflow-hidden">
                                         {/* Question header */}
                                         <div className="px-5 pt-4 pb-3 flex items-start gap-3">
-                                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 shrink-0 mt-0.5">
-                                                <TypeIcon size={14} className="text-violet-600 dark:text-violet-400" />
+                                            <div className="flex h-7 w-7 items-center justify-center rounded-control bg-surface-inset text-k-text-tertiary shrink-0 mt-0.5">
+                                                <TypeIcon size={14} />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-semibold text-k-text-primary leading-snug">
                                                     {question.label}
                                                 </p>
-                                                <p className="text-[10px] text-k-text-quaternary mt-0.5 font-bold">
-                                                    Pergunta {index + 1} &middot; {getTypeLabel(type)}
+                                                <p className="text-[10px] text-k-text-quaternary mt-0.5">
+                                                    <span className="font-mono tabular-nums">Pergunta {index + 1}</span> &middot; {getTypeLabel(type)}
                                                 </p>
                                             </div>
                                         </div>
@@ -462,7 +470,7 @@ export function SubmissionDetailSheet({
                                     Seu feedback · {submission.feedback_sent_at ? timeAgo(submission.feedback_sent_at) : ''}
                                 </span>
                             </div>
-                            <div className="bg-surface-elevated/50 rounded-xl p-3 text-sm text-k-text-secondary border-l-2 border-emerald-500/40 italic">
+                            <div className="bg-surface-inset rounded-control p-3 text-sm text-k-text-secondary border-l-2 border-emerald-500/40 italic">
                                 {existingFeedback}
                             </div>
                             <button
@@ -484,13 +492,13 @@ export function SubmissionDetailSheet({
                                     value={feedbackMessage}
                                     onChange={(e) => setFeedbackMessage(e.target.value)}
                                     placeholder="Escreva orientações, correções ou parabéns..."
-                                    className="min-h-[100px] w-full rounded-xl border border-k-border-subtle bg-surface-elevated p-4 pr-36 text-sm text-k-text-primary outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 resize-none transition-all"
+                                    className="min-h-[100px] w-full rounded-control border border-k-border-subtle bg-surface-inset p-4 pr-36 text-sm text-k-text-primary resize-none focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                                 />
                                 <div className="absolute bottom-3 right-3">
                                     <Button
                                         onClick={onSendFeedback}
                                         disabled={isSendingFeedback || !feedbackMessage.trim()}
-                                        className="bg-violet-600 text-white hover:bg-violet-700 shadow-lg shadow-violet-600/20"
+                                        className="bg-primary text-primary-foreground hover:opacity-90"
                                         size="sm"
                                     >
                                         {isSendingFeedback ? 'Enviando...' : 'Enviar Feedback'}

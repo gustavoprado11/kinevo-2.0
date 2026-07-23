@@ -134,10 +134,10 @@ export function AssignFormModal({
         <button
             onClick={handleAssign}
             disabled={isAssigning || !canSubmit}
-            className={`w-full h-11 font-bold rounded-full transition-all flex items-center justify-center gap-2 dark:rounded-xl ${
+            className={`w-full h-11 font-semibold rounded-control transition-opacity flex items-center justify-center gap-2 ${
                 canSubmit
-                    ? 'bg-primary hover:opacity-90 text-primary-foreground dark:bg-violet-600 dark:hover:bg-violet-500 dark:shadow-lg dark:shadow-violet-600/20'
-                    : 'text-[#AEAEB2] cursor-not-allowed dark:bg-surface-elevated dark:text-k-text-quaternary'
+                    ? 'bg-primary hover:opacity-90 text-primary-foreground'
+                    : 'bg-surface-inset text-k-text-quaternary cursor-not-allowed'
             }`}
         >
             {isAssigning ? (
@@ -167,7 +167,7 @@ export function AssignFormModal({
             <div className="px-5 py-5 space-y-5">
                 {/* Template */}
                 <div>
-                    <label className="block text-sm font-medium text-[#1D1D1F] mb-1.5 dark:text-k-text-tertiary">
+                    <label className="block text-sm font-medium text-k-text-primary mb-1.5">
                         Template
                     </label>
                     <TemplatePicker
@@ -180,8 +180,8 @@ export function AssignFormModal({
 
                 {/* Deadline Chips */}
                 <div>
-                    <label className="block text-sm font-medium text-[#1D1D1F] mb-1.5 dark:text-k-text-tertiary">
-                        Prazo <span className="text-[#86868B] font-normal dark:text-k-text-quaternary">(opcional)</span>
+                    <label className="block text-sm font-medium text-k-text-primary mb-1.5">
+                        Prazo <span className="text-k-text-tertiary font-normal">(opcional)</span>
                     </label>
                     <div className="flex items-center gap-2 flex-wrap">
                         {[
@@ -193,10 +193,10 @@ export function AssignFormModal({
                                 key={opt.value}
                                 type="button"
                                 onClick={() => selectDeadline(opt.value)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                                className={`px-3 py-1.5 rounded-control border text-xs font-medium transition-colors ${
                                     deadlineDays === opt.value && !showDatePicker
-                                        ? 'bg-[#7C3AED] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
-                                        : 'bg-white text-[#6E6E73] border border-[#D2D2D7] hover:bg-[#F5F5F7] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
+                                        ? 'bg-surface-inset text-k-text-primary border-k-border-primary font-semibold'
+                                        : 'bg-surface-card text-k-text-secondary border-k-border-primary hover:text-k-text-primary hover:bg-surface-inset'
                                 }`}
                             >
                                 {opt.label}
@@ -205,10 +205,10 @@ export function AssignFormModal({
                         <button
                             type="button"
                             onClick={selectCustomDate}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            className={`px-3 py-1.5 rounded-control border text-xs font-medium transition-colors ${
                                 showDatePicker
-                                    ? 'bg-[#7C3AED] text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
-                                    : 'bg-white text-[#6E6E73] border border-[#D2D2D7] hover:bg-[#F5F5F7] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
+                                    ? 'bg-surface-inset text-k-text-primary border-k-border-primary font-semibold'
+                                    : 'bg-surface-card text-k-text-secondary border-k-border-primary hover:text-k-text-primary hover:bg-surface-inset'
                             }`}
                         >
                             Personalizar
@@ -219,7 +219,7 @@ export function AssignFormModal({
                             type="date"
                             value={customDate}
                             onChange={(e) => setCustomDate(e.target.value)}
-                            className="mt-2 w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-2.5 text-sm text-[#1D1D1F] outline-none transition-all focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                            className="mt-2 w-full rounded-control border border-k-border-primary bg-surface-card px-4 py-2.5 text-sm text-k-text-primary font-mono tabular-nums focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                         />
                     )}
                 </div>
@@ -227,8 +227,8 @@ export function AssignFormModal({
                 {/* Recurring */}
                 <div>
                     <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 text-sm font-medium text-[#1D1D1F] dark:text-k-text-tertiary cursor-pointer">
-                            <RefreshCw size={14} className={isRecurring ? 'text-violet-500' : 'text-[#86868B] dark:text-k-text-quaternary'} />
+                        <label className="flex items-center gap-2 text-sm font-medium text-k-text-primary cursor-pointer">
+                            <RefreshCw size={14} className={isRecurring ? 'text-k-text-secondary' : 'text-k-text-tertiary'} />
                             Envio recorrente
                         </label>
                         <button
@@ -238,8 +238,8 @@ export function AssignFormModal({
                             onClick={() => setIsRecurring(!isRecurring)}
                             className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                 isRecurring
-                                    ? 'bg-violet-600'
-                                    : 'bg-[#D2D2D7] dark:bg-k-border-subtle'
+                                    ? 'bg-primary'
+                                    : 'bg-k-border-primary'
                             }`}
                         >
                             <span
@@ -256,10 +256,10 @@ export function AssignFormModal({
                                     key={key}
                                     type="button"
                                     onClick={() => setFrequency(key)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all capitalize ${
+                                    className={`px-3 py-1.5 rounded-control border text-xs font-medium transition-colors capitalize ${
                                         frequency === key
-                                            ? 'bg-violet-600 text-white dark:bg-violet-500/10 dark:text-violet-400 dark:border dark:border-violet-500/30'
-                                            : 'bg-white text-[#6E6E73] border border-[#D2D2D7] hover:bg-[#F5F5F7] dark:bg-glass-bg dark:text-k-text-quaternary dark:border-k-border-subtle dark:hover:text-k-text-secondary'
+                                            ? 'bg-surface-inset text-k-text-primary border-k-border-primary font-semibold'
+                                            : 'bg-surface-card text-k-text-secondary border-k-border-primary hover:text-k-text-primary hover:bg-surface-inset'
                                     }`}
                                 >
                                     {label}
@@ -271,20 +271,20 @@ export function AssignFormModal({
 
                 {/* Message */}
                 <div>
-                    <label className="block text-sm font-medium text-[#1D1D1F] mb-1.5 dark:text-k-text-tertiary">
-                        Mensagem pessoal <span className="text-[#86868B] font-normal dark:text-k-text-quaternary">(opcional)</span>
+                    <label className="block text-sm font-medium text-k-text-primary mb-1.5">
+                        Mensagem pessoal <span className="text-k-text-tertiary font-normal">(opcional)</span>
                     </label>
                     <textarea
                         placeholder="Adicione uma nota pessoal para os alunos..."
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        className="min-h-[80px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none transition-all focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 resize-none dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                        className="min-h-[80px] w-full rounded-control border border-k-border-primary bg-surface-card px-4 py-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary resize-none focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                     />
                 </div>
 
                 {/* Students */}
                 <div>
-                    <label className="mb-1.5 block text-sm font-medium text-[#1D1D1F] dark:text-k-text-tertiary">
+                    <label className="mb-1.5 block text-sm font-medium text-k-text-primary">
                         Alunos
                     </label>
                     <StudentPicker
@@ -297,7 +297,7 @@ export function AssignFormModal({
 
                 {/* Result */}
                 {result && (
-                    <div className={`flex items-start gap-2 rounded-xl p-3 text-xs font-medium border ${
+                    <div className={`flex items-start gap-2 rounded-control p-3 text-xs font-medium border ${
                         result.isError
                             ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
                             : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'

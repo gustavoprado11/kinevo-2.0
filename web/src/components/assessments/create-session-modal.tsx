@@ -107,7 +107,7 @@ export function CreateSessionModal({
             <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium text-k-text-secondary hover:bg-surface-inset"
+                className="rounded-control px-3 py-1.5 text-sm font-medium text-k-text-secondary hover:bg-surface-inset"
             >
                 Cancelar
             </button>
@@ -115,7 +115,7 @@ export function CreateSessionModal({
                 type="submit"
                 form="create-session-form"
                 disabled={!canSubmit}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold text-white transition-opacity hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-control bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Criar avaliação
@@ -157,7 +157,7 @@ export function CreateSessionModal({
                             type="datetime-local"
                             value={scheduledAt}
                             onChange={e => setScheduledAt(e.target.value)}
-                            className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-2 pr-9 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+                            className="w-full rounded-control border border-k-border-subtle bg-surface-inset px-2.5 py-2 pr-9 text-sm text-k-text-primary font-mono tabular-nums focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                         />
                         <Calendar className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-k-text-quaternary" />
                     </div>
@@ -186,7 +186,7 @@ export function CreateSessionModal({
                             value={age}
                             onChange={e => setAge(e.target.value)}
                             placeholder="ex: 32"
-                            className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-2 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+                            className="w-full rounded-control border border-k-border-subtle bg-surface-inset px-2.5 py-2 text-sm text-k-text-primary font-mono tabular-nums focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                             required
                         />
                     </Field>
@@ -198,7 +198,7 @@ export function CreateSessionModal({
                         onChange={e => setNotes(e.target.value)}
                         rows={2}
                         placeholder="Notas sobre a avaliação..."
-                        className="w-full resize-none rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-2 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+                        className="w-full resize-none rounded-control border border-k-border-subtle bg-surface-inset px-2.5 py-2 text-sm text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                     />
                 </Field>
 
@@ -227,8 +227,8 @@ function Field({
 }) {
     return (
         <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary">
-                {label} {required && <span className="text-violet-500 dark:text-violet-400">*</span>}
+            <label className="mb-1 block font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
+                {label} {required && <span className="text-k-text-tertiary">*</span>}
             </label>
             {children}
             {hint && !error && (
@@ -254,10 +254,10 @@ function SexButton({
         <button
             type="button"
             onClick={onClick}
-            className={`rounded-md border px-2 py-2 text-xs font-medium transition-colors ${
+            className={`rounded-control border px-2 py-2 text-xs font-medium transition-colors ${
                 active
-                    ? 'border-violet-500 bg-violet-500/10 text-violet-500 dark:text-violet-400'
-                    : 'border-k-border-subtle bg-surface-inset text-k-text-secondary hover:border-violet-500/40'
+                    ? 'border-k-border-primary bg-surface-inset text-k-text-primary font-semibold'
+                    : 'border-k-border-primary bg-surface-card text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset'
             }`}
         >
             {children}
