@@ -1,7 +1,7 @@
 'use client'
 
 import { useDraggable } from '@dnd-kit/core'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, Plus } from 'lucide-react'
 import type { CatalogEntry } from './test-catalog'
 
 interface DraggableTestItemProps {
@@ -28,7 +28,7 @@ export function DraggableTestItem({ entry, onAdd }: DraggableTestItemProps) {
     return (
         <div
             ref={setNodeRef}
-            className={`group flex items-center gap-3 rounded-xl border border-k-border-subtle bg-surface-elevated px-3 py-2.5 transition-colors hover:border-violet-500/40 hover:bg-violet-500/5 ${
+            className={`group flex items-center gap-3 rounded-control border border-k-border-subtle bg-surface-elevated px-3 py-2.5 transition-colors hover:border-k-border-primary hover:bg-surface-inset ${
                 isDragging ? 'opacity-40' : ''
             }`}
         >
@@ -37,11 +37,11 @@ export function DraggableTestItem({ entry, onAdd }: DraggableTestItemProps) {
                 {...listeners}
                 {...attributes}
                 aria-label={`Arrastar ${entry.label}`}
-                className="cursor-grab text-k-text-quaternary hover:text-violet-500 active:cursor-grabbing"
+                className="cursor-grab text-k-text-quaternary hover:text-k-text-secondary active:cursor-grabbing"
             >
                 <GripVertical className="h-4 w-4" />
             </button>
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500 dark:bg-violet-500/15 dark:text-violet-400">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset text-k-text-tertiary">
                 <Icon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
@@ -52,9 +52,10 @@ export function DraggableTestItem({ entry, onAdd }: DraggableTestItemProps) {
                 type="button"
                 onClick={() => onAdd(entry)}
                 aria-label={`Adicionar ${entry.label}`}
-                className="rounded-md px-2 py-1 text-[11px] font-medium text-violet-500 opacity-0 transition-opacity hover:bg-violet-500/10 group-hover:opacity-100 dark:text-violet-400"
+                className="flex items-center gap-1 rounded-control px-2 py-1 text-[11px] font-medium text-k-text-secondary opacity-0 transition-opacity hover:bg-surface-inset hover:text-k-text-primary group-hover:opacity-100"
             >
-                + Adicionar
+                <Plus size={14} />
+                Adicionar
             </button>
         </div>
     )

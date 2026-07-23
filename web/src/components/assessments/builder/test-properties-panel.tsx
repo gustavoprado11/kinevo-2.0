@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, BookOpen, X } from 'lucide-react'
+import { AlertCircle, BookOpen, Check, X } from 'lucide-react'
 import type {
     AssessmentTest,
     BilateralNumericTest,
@@ -10,7 +10,6 @@ import type {
     ProtocolTest,
 } from '@kinevo/shared/types/assessments'
 import { PROTOCOLS } from '@kinevo/shared/lib/assessment-protocols'
-import { AssistantMark } from '@/components/assistant/assistant-mark'
 
 interface TestPropertiesPanelProps {
     test: AssessmentTest | null
@@ -41,9 +40,9 @@ export function TestPropertiesPanel({
     onClose,
 }: TestPropertiesPanelProps) {
     return (
-        <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-k-border-subtle bg-surface-card">
+        <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-panel border border-k-border-subtle bg-surface-card">
             <header className="flex flex-shrink-0 items-center justify-between border-b border-k-border-subtle px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary">
+                <div className="font-mono text-[11px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
                     Propriedades
                 </div>
                 {onClose && (
@@ -61,8 +60,8 @@ export function TestPropertiesPanel({
             <div className="flex-1 overflow-y-auto p-4">
                 {!test ? (
                     <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-                        <div className="rounded-full bg-violet-500/10 p-3">
-                            <AlertCircle className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+                        <div className="rounded-full border border-k-border-subtle bg-surface-inset p-3">
+                            <AlertCircle className="h-5 w-5 text-k-text-tertiary" />
                         </div>
                         <div className="text-sm font-medium text-k-text-primary">Nenhum teste selecionado</div>
                         <p className="max-w-[220px] text-xs text-k-text-tertiary">
@@ -80,7 +79,7 @@ export function TestPropertiesPanel({
                                 type="text"
                                 value={test.label}
                                 onChange={e => onChange({ ...test, label: e.target.value })}
-                                className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+                                className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                             />
                         </Field>
 
@@ -104,7 +103,7 @@ export function TestPropertiesPanel({
                                     className={`w-full rounded-md border bg-surface-inset px-2.5 py-1.5 font-mono text-sm focus:outline-none ${
                                         duplicateKey
                                             ? 'border-red-500 focus:border-red-500'
-                                            : 'border-k-border-subtle focus:border-violet-500'
+                                            : 'border-k-border-subtle focus:border-ring focus:ring-1 focus:ring-ring/25'
                                     }`}
                                 />
                             </Field>
@@ -181,7 +180,7 @@ function UnitSelect<T extends { unit: NumericUnitTest['unit'] }>({
         <select
             value={value}
             onChange={e => onChange(e.target.value as T['unit'])}
-            className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+            className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
         >
             {UNIT_OPTIONS.map(u => (
                 <option key={u} value={u}>{u}</option>
@@ -203,7 +202,7 @@ function RequiredToggle({
                 type="checkbox"
                 checked={value}
                 onChange={e => onChange(e.target.checked)}
-                className="h-4 w-4 rounded border-k-border-primary text-violet-500 focus:ring-violet-500"
+                className="h-4 w-4 rounded border-k-border-primary text-k-text-primary focus:ring-ring"
             />
             Obrigatório
         </label>
@@ -233,7 +232,7 @@ function NumericUnitFields({
                         type="number"
                         value={test.min ?? ''}
                         onChange={e => onChange({ ...test, min: numberOrUndef(e.target.value) })}
-                        className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+                        className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                     />
                 </Field>
                 <Field label="Máximo">
@@ -241,7 +240,7 @@ function NumericUnitFields({
                         type="number"
                         value={test.max ?? ''}
                         onChange={e => onChange({ ...test, max: numberOrUndef(e.target.value) })}
-                        className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+                        className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                     />
                 </Field>
             </div>
@@ -250,7 +249,7 @@ function NumericUnitFields({
                     type="text"
                     value={test.hint ?? ''}
                     onChange={e => onChange({ ...test, hint: e.target.value || undefined })}
-                    className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+                    className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                 />
             </Field>
             <RequiredToggle value={test.required === true} onChange={v => onChange({ ...test, required: v })} />
@@ -299,7 +298,7 @@ function MultiAttemptFields({
                             onChange({ ...test, attempts: n })
                         }
                     }}
-                    className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+                    className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                 />
             </Field>
             <Field label="Estratégia de seleção">
@@ -311,7 +310,7 @@ function MultiAttemptFields({
                             selection_strategy: e.target.value as MultiAttemptNumericTest['selection_strategy'],
                         })
                     }
-                    className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:border-violet-500 focus:outline-none"
+                    className="w-full rounded-md border border-k-border-subtle bg-surface-inset px-2.5 py-1.5 text-sm text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                 >
                     {SELECTION_STRATEGIES.map(s => (
                         <option key={s} value={s}>{STRATEGY_LABELS[s]}</option>
@@ -335,7 +334,7 @@ function ComputedFields({ test }: { test: ComputedTest }) {
                     {test.inputs.map(i => (
                         <code
                             key={i}
-                            className="rounded-md bg-violet-500/10 px-2 py-0.5 font-mono text-xs text-violet-500 dark:text-violet-400"
+                            className="rounded-md bg-surface-inset px-2 py-0.5 font-mono text-xs text-k-text-secondary"
                         >
                             {i}
                         </code>
@@ -386,7 +385,7 @@ function ProtocolFields({ test }: { test: ProtocolTest }) {
     return (
         <div className="space-y-4">
             <Field label="Protocolo">
-                <div className="rounded-md border border-violet-500/20 bg-violet-500/5 px-3 py-2.5">
+                <div className="rounded-md border border-k-border-subtle bg-surface-inset px-3 py-2.5">
                     <div className="text-sm font-semibold text-k-text-primary">{def.name_pt}</div>
                     <p className="mt-1 text-xs leading-relaxed text-k-text-secondary">
                         {def.description_pt}
@@ -412,7 +411,7 @@ function ProtocolFields({ test }: { test: ProtocolTest }) {
                             key={o}
                             className="flex items-center gap-2 text-sm text-k-text-secondary"
                         >
-                            <AssistantMark className="h-3 w-3 flex-shrink-0 text-violet-500 dark:text-violet-400" />
+                            <Check size={14} className="flex-shrink-0 text-k-text-tertiary" />
                             {o}
                         </li>
                     ))}
@@ -442,7 +441,7 @@ function SiteList({ sites }: { sites: string[] }) {
             {sites.map(s => (
                 <span
                     key={s}
-                    className="rounded-md bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-500 dark:text-violet-400"
+                    className="rounded-md bg-surface-inset px-2 py-0.5 text-xs font-medium text-k-text-secondary"
                 >
                     {SITE_LABELS_PT[s] ?? s}
                 </span>

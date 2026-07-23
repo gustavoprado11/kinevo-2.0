@@ -414,7 +414,7 @@ export function AssessmentBuilderCanvas({
             <div className="flex h-full min-h-0 w-full flex-col gap-3">
                 {/* Topbar (interno) — desabilitado quando renderTopbar=false (M8 shell). */}
                 {renderTopbar && (
-                    <div className="flex flex-shrink-0 items-center gap-3 rounded-2xl border border-k-border-subtle bg-surface-card px-4 py-3">
+                    <div className="flex flex-shrink-0 items-center gap-3 rounded-panel border border-k-border-subtle bg-surface-card px-4 py-3">
                         {onCancel && (
                             <button
                                 type="button"
@@ -448,7 +448,7 @@ export function AssessmentBuilderCanvas({
                             type="button"
                             onClick={handleSave}
                             disabled={!canSave}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold text-white transition-opacity hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="inline-flex items-center gap-1.5 rounded-control bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             {saving ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -463,7 +463,7 @@ export function AssessmentBuilderCanvas({
                 {/* Quando o topbar interno está oculto, renderiza um par de inputs
                     para nome/descrição no topo do canvas (não há outro lugar para editá-los). */}
                 {!renderTopbar && (
-                    <div className="flex flex-shrink-0 flex-col gap-1 rounded-2xl border border-k-border-subtle bg-surface-card px-4 py-3">
+                    <div className="flex flex-shrink-0 flex-col gap-1 rounded-panel border border-k-border-subtle bg-surface-card px-4 py-3">
                         <input
                             type="text"
                             value={title}
@@ -482,12 +482,12 @@ export function AssessmentBuilderCanvas({
                 )}
 
                 {restoredFromDraft && (
-                    <div className="flex-shrink-0 rounded-xl border border-violet-500/30 bg-violet-500/5 px-3 py-2 text-xs text-violet-500 dark:text-violet-400">
+                    <div className="flex-shrink-0 rounded-control border border-k-border-subtle bg-surface-inset px-3 py-2 text-xs text-k-text-secondary">
                         Rascunho restaurado da última edição local. Salve para confirmar.
                     </div>
                 )}
                 {errorMsg && (
-                    <div className="flex-shrink-0 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-500">
+                    <div className="flex-shrink-0 rounded-control border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-500">
                         {errorMsg}
                     </div>
                 )}
@@ -503,13 +503,13 @@ export function AssessmentBuilderCanvas({
                     <TestLibraryColumn onAdd={entry => addTestFromCatalog(entry)} />
 
                     {/* Canvas */}
-                    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-k-border-subtle bg-surface-card">
+                    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-panel border border-k-border-subtle bg-surface-card">
                         <div className="flex flex-shrink-0 items-center justify-between border-b border-k-border-subtle px-4 py-3">
                             <div>
-                                <div className="text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary">
+                                <div className="font-mono text-[11px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
                                     Estrutura
                                 </div>
-                                <div className="mt-0.5 text-xs text-k-text-tertiary">
+                                <div className="mt-0.5 font-mono text-xs tabular-nums text-k-text-tertiary">
                                     {schema.sections.length} {schema.sections.length === 1 ? 'seção' : 'seções'} ·{' '}
                                     {allTests.length} {allTests.length === 1 ? 'teste' : 'testes'}
                                 </div>
@@ -517,7 +517,7 @@ export function AssessmentBuilderCanvas({
                             <button
                                 type="button"
                                 onClick={addSection}
-                                className="inline-flex items-center gap-1 rounded-lg border border-violet-500/30 bg-violet-500/5 px-2.5 py-1 text-xs font-medium text-violet-500 hover:bg-violet-500/10 dark:text-violet-400"
+                                className="inline-flex items-center gap-1 rounded-control border border-k-border-primary bg-surface-card px-2.5 py-1 text-xs font-medium text-k-text-secondary transition-colors hover:bg-surface-inset hover:text-k-text-primary"
                             >
                                 <Plus className="h-3.5 w-3.5" />
                                 Nova seção
@@ -596,8 +596,8 @@ export function AssessmentBuilderCanvas({
             {/* Drag overlay — feedback while dragging from library */}
             <DragOverlay dropAnimation={null}>
                 {draggingEntry ? (
-                    <div className="flex items-center gap-2 rounded-xl border border-violet-500/40 bg-surface-card px-3 py-2 shadow-lg">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15 text-violet-500 dark:text-violet-400">
+                    <div className="flex items-center gap-2 rounded-control border border-k-border-primary bg-surface-card px-3 py-2 shadow-lg">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset text-k-text-tertiary">
                             <draggingEntry.icon className="h-4 w-4" />
                         </div>
                         <div className="text-sm font-medium text-k-text-primary">{draggingEntry.label}</div>
@@ -610,9 +610,9 @@ export function AssessmentBuilderCanvas({
 
 function CanvasEmptyState({ onAddSection }: { onAddSection: () => void }) {
     return (
-        <div className="flex h-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-k-border-subtle py-16 text-center">
-            <div className="mb-3 rounded-full bg-violet-500/10 p-3">
-                <Plus className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+        <div className="flex h-full flex-col items-center justify-center rounded-panel border-2 border-dashed border-k-border-subtle py-16 text-center">
+            <div className="mb-3 rounded-full border border-k-border-subtle bg-surface-inset p-3">
+                <Plus className="h-5 w-5 text-k-text-tertiary" />
             </div>
             <div className="text-sm font-medium text-k-text-primary">Comece criando uma seção</div>
             <p className="mt-1 max-w-[280px] text-xs text-k-text-tertiary">
@@ -622,7 +622,7 @@ function CanvasEmptyState({ onAddSection }: { onAddSection: () => void }) {
             <button
                 type="button"
                 onClick={onAddSection}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-control bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
             >
                 <Plus className="h-3.5 w-3.5" />
                 Nova seção

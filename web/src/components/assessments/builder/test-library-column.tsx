@@ -26,9 +26,9 @@ export function TestLibraryColumn({ onAdd }: TestLibraryColumnProps) {
     }, [query])
 
     return (
-        <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-k-border-subtle bg-surface-card">
+        <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-panel border border-k-border-subtle bg-surface-card">
             <div className="flex-shrink-0 border-b border-k-border-subtle px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary">
+                <div className="font-mono text-[11px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
                     Biblioteca de testes
                 </div>
                 <div className="mt-2 flex items-center gap-2 rounded-lg border border-k-border-subtle bg-surface-inset px-2.5 py-1.5">
@@ -51,7 +51,7 @@ export function TestLibraryColumn({ onAdd }: TestLibraryColumnProps) {
                 ) : (
                     grouped.map(group => (
                         <div key={group.id} className="mb-4 last:mb-0">
-                            <div className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-k-text-quaternary">
+                            <div className="px-1 pb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-k-text-quaternary">
                                 {group.label}
                             </div>
                             <div className="space-y-1.5">

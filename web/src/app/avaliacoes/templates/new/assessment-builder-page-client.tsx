@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Activity, FileText, X } from 'lucide-react'
+import { Activity, FileText } from 'lucide-react'
 import type { AssessmentTemplateSchema } from '@kinevo/shared/types/assessments'
 import {
     createAssessmentTemplate,
@@ -11,7 +11,7 @@ import {
 import { useToast } from '@/components/ui/toast'
 import { AssessmentBuilderCanvas } from '@/components/assessments/builder/assessment-builder-canvas'
 import { BuilderWizardShell } from '@/components/shared/builder-wizard-shell'
-import { Z } from '@/lib/z-index'
+import { ModalShell } from '@/components/shared/modal-shell'
 
 interface KinevoTemplateOption {
     id: string
@@ -129,10 +129,10 @@ export function AssessmentBuilderPageClient({
             {step === 1 && (
                 <div className="bg-surface-primary p-4 font-sans">
                     <div className="max-w-3xl mx-auto">
-                        <p className="text-center text-lg font-semibold text-[#1D1D1F] mb-2 dark:text-k-text-primary">
+                        <p className="text-center text-lg font-semibold text-k-text-primary mb-2">
                             Como deseja começar sua avaliação?
                         </p>
-                        <p className="text-center text-sm text-[#86868B] mb-6 dark:text-k-text-tertiary">
+                        <p className="text-center text-sm text-k-text-tertiary mb-6">
                             Crie do zero ou parta de um template Kinevo pronto.
                         </p>
 
@@ -140,15 +140,15 @@ export function AssessmentBuilderPageClient({
                             {/* Card: Em branco */}
                             <button
                                 onClick={startBlank}
-                                className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#7C3AED] cursor-pointer transition-all duration-200 dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
+                                className="group text-left rounded-panel border border-k-border-subtle bg-surface-card p-5 hover:bg-surface-inset hover:border-k-border-primary cursor-pointer transition-colors"
                             >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#7C3AED]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
-                                    <FileText size={20} className="text-[#AEAEB2] group-hover:text-[#7C3AED] dark:text-violet-400" strokeWidth={1.5} />
+                                <div className="flex h-10 w-10 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset mb-3">
+                                    <FileText size={20} className="text-k-text-tertiary" strokeWidth={1.5} />
                                 </div>
-                                <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-violet-300 transition-colors">
+                                <h3 className="text-sm font-semibold text-k-text-primary mb-1">
                                     Em branco
                                 </h3>
-                                <p className="text-xs text-[#86868B] leading-relaxed dark:text-k-text-quaternary">
+                                <p className="text-xs text-k-text-tertiary leading-relaxed">
                                     Comece do zero — você escolhe seções e testes.
                                 </p>
                             </button>
@@ -157,15 +157,15 @@ export function AssessmentBuilderPageClient({
                             <button
                                 onClick={() => setKinevoModalOpen(true)}
                                 disabled={kinevoTemplates.length === 0}
-                                className="group text-left rounded-xl border border-[#D2D2D7] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:border-[#7C3AED] cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed dark:border-k-border-primary dark:bg-surface-card dark:shadow-none dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
+                                className="group text-left rounded-panel border border-k-border-subtle bg-surface-card p-5 hover:bg-surface-inset hover:border-k-border-primary cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F5F7] group-hover:bg-[#7C3AED]/10 mb-3 transition-colors dark:bg-surface-elevated dark:group-hover:bg-violet-500/10">
-                                    <Activity size={20} className="text-[#AEAEB2] group-hover:text-[#7C3AED] dark:text-violet-400" strokeWidth={1.5} />
+                                <div className="flex h-10 w-10 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset mb-3">
+                                    <Activity size={20} className="text-k-text-tertiary" strokeWidth={1.5} />
                                 </div>
-                                <h3 className="text-sm font-semibold text-[#1D1D1F] mb-1 dark:text-k-text-primary dark:group-hover:text-violet-300 transition-colors">
+                                <h3 className="text-sm font-semibold text-k-text-primary mb-1">
                                     Partir de template Kinevo
                                 </h3>
-                                <p className="text-xs text-[#86868B] leading-relaxed dark:text-k-text-quaternary">
+                                <p className="text-xs text-k-text-tertiary leading-relaxed">
                                     Antropometria, J&amp;P, Petroski, Avaliação Inicial — clone e adapte.
                                 </p>
                             </button>
@@ -180,34 +180,34 @@ export function AssessmentBuilderPageClient({
             {step === 2 && (
                 <div className="bg-surface-primary p-4 font-sans">
                     <div className="max-w-xl mx-auto">
-                        <div className="rounded-2xl border border-[#D2D2D7] bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08)] space-y-6 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
+                        <div className="rounded-panel border border-k-border-subtle bg-surface-card p-8 space-y-6">
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
-                                    Nome do template <span className="text-[#FF3B30] dark:text-red-400">*</span>
+                                <label className="mb-1.5 block text-sm font-medium text-k-text-primary">
+                                    Nome do template <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     placeholder="Ex: Avaliação inicial completa"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                    className="w-full rounded-control border border-k-border-primary bg-surface-card px-4 py-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25 transition-colors"
                                 />
                             </div>
 
                             <div>
-                                <label className="mb-1.5 block text-sm font-medium text-[#1D1D1F] dark:text-xs dark:text-k-text-tertiary">
-                                    Descrição <span className="font-normal text-[#86868B] dark:text-k-text-quaternary">(opcional)</span>
+                                <label className="mb-1.5 block text-sm font-medium text-k-text-primary">
+                                    Descrição <span className="font-normal text-k-text-tertiary">(opcional)</span>
                                 </label>
                                 <textarea
                                     placeholder="Descrição breve do propósito desta avaliação"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    className="min-h-[80px] w-full rounded-lg border border-[#D2D2D7] bg-white px-4 py-3 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 resize-none transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-2 dark:focus:ring-violet-500/10"
+                                    className="min-h-[80px] w-full rounded-control border border-k-border-primary bg-surface-card px-4 py-3 text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25 resize-none transition-colors"
                                 />
                             </div>
 
                             {schemaSeed.sections.length > 0 && (
-                                <div className="rounded-lg bg-[#7C3AED]/5 border border-[#7C3AED]/15 px-3 py-2 text-xs text-[#7C3AED] dark:bg-violet-500/5 dark:border-violet-500/20 dark:text-violet-400">
+                                <div className="rounded-control border border-k-border-subtle bg-surface-inset px-3 py-2 text-xs text-k-text-secondary">
                                     Schema pré-preenchido com {schemaSeed.sections.length} {schemaSeed.sections.length === 1 ? 'seção' : 'seções'} do template Kinevo. Você poderá ajustar no próximo passo.
                                 </div>
                             )}
@@ -263,65 +263,43 @@ export function AssessmentBuilderPageClient({
             )}
 
             {/* Modal Kinevo templates */}
-            {kinevoModalOpen && (
-                <div
-                    className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                    style={{ zIndex: Z.MODAL }}
-                    onClick={() => setKinevoModalOpen(false)}
-                >
-                    <div
-                        className="w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl border border-k-border-subtle bg-surface-card p-6 shadow-2xl"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex items-start justify-between mb-5">
-                            <div>
-                                <h3 className="text-lg font-semibold text-k-text-primary">Templates Kinevo</h3>
-                                <p className="mt-1 text-xs text-k-text-tertiary">
-                                    Escolha um template pré-configurado. Você poderá ajustar tudo depois.
-                                </p>
+            <ModalShell
+                open={kinevoModalOpen}
+                onClose={() => setKinevoModalOpen(false)}
+                title="Templates Kinevo"
+                description="Escolha um template pré-configurado. Você poderá ajustar tudo depois."
+                size="lg"
+            >
+                <div className="space-y-2 p-5">
+                    {kinevoTemplates.map(t => (
+                        <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => startFromKinevo(t)}
+                            className="group w-full text-left rounded-control border border-k-border-subtle bg-surface-card p-4 hover:bg-surface-inset hover:border-k-border-primary transition-colors"
+                        >
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset">
+                                    <Activity size={14} className="text-k-text-tertiary" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-semibold text-k-text-primary">
+                                        {t.title}
+                                    </p>
+                                    {t.description && (
+                                        <p className="mt-0.5 text-xs text-k-text-tertiary line-clamp-2">
+                                            {t.description}
+                                        </p>
+                                    )}
+                                    <p className="mt-1 font-mono text-[11px] tabular-nums text-k-text-quaternary">
+                                        {t.schema.sections.length} {t.schema.sections.length === 1 ? 'seção' : 'seções'}
+                                    </p>
+                                </div>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setKinevoModalOpen(false)}
-                                aria-label="Fechar"
-                                className="flex h-8 w-8 items-center justify-center rounded-full text-k-text-tertiary hover:bg-surface-inset"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        <div className="space-y-2">
-                            {kinevoTemplates.map(t => (
-                                <button
-                                    key={t.id}
-                                    type="button"
-                                    onClick={() => startFromKinevo(t)}
-                                    className="group w-full text-left rounded-xl border border-k-border-subtle bg-surface-card p-4 hover:border-[#7C3AED] hover:bg-[#F5F5F7] transition-all dark:hover:border-violet-500/30 dark:hover:bg-glass-bg"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#7C3AED]/10 dark:bg-violet-500/10">
-                                            <Activity size={14} className="text-[#7C3AED] dark:text-violet-400" />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-semibold text-k-text-primary group-hover:text-[#7C3AED] dark:group-hover:text-violet-300 transition-colors">
-                                                {t.title}
-                                            </p>
-                                            {t.description && (
-                                                <p className="mt-0.5 text-xs text-k-text-tertiary line-clamp-2">
-                                                    {t.description}
-                                                </p>
-                                            )}
-                                            <p className="mt-1 text-[11px] text-k-text-quaternary">
-                                                {t.schema.sections.length} {t.schema.sections.length === 1 ? 'seção' : 'seções'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                        </button>
+                    ))}
                 </div>
-            )}
+            </ModalShell>
         </BuilderWizardShell>
     )
 }

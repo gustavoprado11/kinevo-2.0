@@ -59,7 +59,7 @@ export function SectionEditor({
     }
 
     return (
-        <section className="rounded-2xl border border-k-border-subtle bg-surface-card">
+        <section className="rounded-panel border border-k-border-subtle bg-surface-card">
             {/* Section header */}
             <header className="flex items-center gap-2 px-4 py-3">
                 <button
@@ -84,7 +84,7 @@ export function SectionEditor({
                                 setEditingTitle(false)
                             }
                         }}
-                        className="flex-1 rounded-md border border-violet-500/40 bg-transparent px-2 py-1 text-sm font-semibold text-k-text-primary focus:outline-none"
+                        className="flex-1 rounded-control border border-k-border-primary bg-transparent px-2 py-1 text-sm font-semibold text-k-text-primary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25"
                     />
                 ) : (
                     <button
@@ -113,9 +113,9 @@ export function SectionEditor({
             {!collapsed && (
                 <div
                     ref={setDropRef}
-                    className={`mx-3 mb-3 rounded-xl border-2 border-dashed transition-colors ${
+                    className={`mx-3 mb-3 rounded-control border-2 border-dashed transition-colors ${
                         isOver
-                            ? 'border-violet-500 bg-violet-500/5'
+                            ? 'border-k-border-primary bg-surface-inset'
                             : section.tests.length === 0
                                 ? 'border-k-border-subtle'
                                 : 'border-transparent'
@@ -191,7 +191,7 @@ function SortableTestRow({
             style={style}
             className={`group flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors ${
                 selected
-                    ? 'border-violet-500/60 bg-violet-500/10 dark:bg-violet-500/15'
+                    ? 'border-k-border-primary bg-surface-inset'
                     : 'border-transparent hover:bg-surface-inset'
             }`}
         >
@@ -200,7 +200,7 @@ function SortableTestRow({
                 {...listeners}
                 {...attributes}
                 aria-label="Reordenar teste"
-                className="cursor-grab text-k-text-quaternary hover:text-violet-500 active:cursor-grabbing"
+                className="cursor-grab text-k-text-quaternary hover:text-k-text-secondary active:cursor-grabbing"
             >
                 <GripVertical className="h-4 w-4" />
             </button>
@@ -212,7 +212,7 @@ function SortableTestRow({
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-medium leading-snug text-k-text-primary line-clamp-2">{test.label}</span>
                     {required && (
-                        <span className="rounded-full bg-violet-500/10 px-1.5 text-[10px] font-semibold text-violet-500 dark:text-violet-400">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-k-text-tertiary">
                             obrigatório
                         </span>
                     )}
@@ -234,7 +234,7 @@ function SortableTestRow({
                 </div>
             </button>
             {selected && (
-                <Check className="h-4 w-4 flex-shrink-0 text-violet-500 dark:text-violet-400" />
+                <Check className="h-4 w-4 flex-shrink-0 text-k-text-tertiary" />
             )}
             <button
                 type="button"

@@ -6,6 +6,7 @@ import type { Json } from '@kinevo/shared/types/database'
 import { AppLayout } from '@/components/layout'
 import { deleteFormTemplate } from '@/actions/forms/delete-form-template'
 import { useToast } from '@/components/ui/toast'
+import { ModalShell } from '@/components/shared/modal-shell'
 import {
     Plus,
     Search,
@@ -13,9 +14,9 @@ import {
     Loader2,
     Pencil,
     Send,
-    Copy,
     MoreVertical,
     ArrowLeft,
+    ChevronRight,
     ClipboardCheck,
     CheckCircle2,
     MessageSquare,
@@ -107,12 +108,12 @@ interface TemplatesClientProps {
     mode?: 'forms' | 'assessments'
 }
 
-const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string; bgColor: string }> = {
-    anamnese: { label: 'Anamnese', icon: ClipboardCheck, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-500/10' },
-    checkin: { label: 'Check-in', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-500/10' },
-    survey: { label: 'Pesquisa', icon: MessageSquare, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-500/10' },
-    assessment: { label: 'Avaliação Presencial', icon: Activity, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-500/10' },
-    feedback: { label: 'Feedback do programa', icon: MessageSquare, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-500/10' },
+const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof FileText }> = {
+    anamnese: { label: 'Anamnese', icon: ClipboardCheck },
+    checkin: { label: 'Check-in', icon: CheckCircle2 },
+    survey: { label: 'Pesquisa', icon: MessageSquare },
+    assessment: { label: 'Avaliação Presencial', icon: Activity },
+    feedback: { label: 'Feedback do programa', icon: MessageSquare },
 }
 
 // --- Actions Menu ---
@@ -137,16 +138,16 @@ function ActionsMenu({ template, onDelete, mode = 'forms' }: { template: FormTem
         <div ref={ref} className="relative">
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open) }}
-                className="p-1.5 rounded-lg text-[#AEAEB2] hover:text-[#6E6E73] hover:bg-[#F5F5F7] transition-all opacity-0 group-hover:opacity-100 dark:text-k-text-quaternary dark:hover:text-k-text-secondary dark:hover:bg-glass-bg"
+                className="p-1.5 rounded-control text-k-text-quaternary hover:text-k-text-secondary hover:bg-surface-inset transition-colors opacity-0 group-hover:opacity-100"
             >
                 <MoreVertical size={16} />
             </button>
             {open && (
-                <div className="absolute right-0 top-8 z-header w-44 rounded-xl border border-[#D2D2D7] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.12)] py-1 dark:border-k-border-primary dark:bg-surface-card dark:shadow-xl">
+                <div className="absolute right-0 top-8 z-header w-44 rounded-control border border-k-border-subtle bg-surface-card shadow-lg py-1">
                     {!isSystem && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`${editBase}?edit=${template.id}`) }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-k-text-secondary hover:bg-surface-inset transition-colors"
                         >
                             <Pencil size={14} /> Editar
                         </button>
@@ -154,17 +155,17 @@ function ActionsMenu({ template, onDelete, mode = 'forms' }: { template: FormTem
                     {!isAssessment && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setOpen(false); router.push(`/forms?assign=${template.id}`) }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors dark:text-k-text-secondary dark:hover:bg-glass-bg"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-k-text-secondary hover:bg-surface-inset transition-colors"
                         >
                             <Send size={14} /> Enviar para aluno
                         </button>
                     )}
                     {!isSystem && (
                         <>
-                            <div className="my-1 border-t border-[#E8E8ED] dark:border-k-border-subtle" />
+                            <div className="my-1 border-t border-k-border-subtle" />
                             <button
                                 onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(template.id) }}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#FF3B30] hover:bg-[#F5F5F7] transition-colors dark:text-red-400 dark:hover:bg-glass-bg"
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-surface-inset transition-colors dark:text-red-400"
                             >
                                 <Trash2 size={14} /> Excluir
                             </button>
@@ -184,13 +185,16 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
     const [templates, setTemplates] = useState(initialTemplates)
     const [searchQuery, setSearchQuery] = useState('')
     const [deleting, setDeleting] = useState<string | null>(null)
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
     const isAssessmentsMode = mode === 'assessments'
     const backHref = isAssessmentsMode ? '/avaliacoes' : '/forms'
     const builderHref = isAssessmentsMode ? '/avaliacoes/templates/new' : '/forms/templates/new'
     const headerLabel = isAssessmentsMode ? 'Templates de avaliação' : 'Templates'
 
-    const handleDelete = async (templateId: string) => {
-        if (!confirm('Tem certeza que deseja excluir este template?')) return
+    const handleConfirmDelete = async () => {
+        const templateId = confirmDeleteId
+        if (!templateId) return
+        setConfirmDeleteId(null)
 
         setDeleting(templateId)
         const result = await deleteFormTemplate({ templateId })
@@ -224,20 +228,20 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => router.push(backHref)}
-                        className="p-1.5 rounded-lg text-[#7C3AED] hover:text-[#6D28D9] hover:bg-[#F5F5F7] transition-all dark:text-k-text-quaternary dark:hover:text-k-text-secondary dark:hover:bg-glass-bg"
+                        className="p-1.5 rounded-control text-k-text-tertiary hover:text-k-text-primary hover:bg-surface-inset transition-colors"
                     >
                         <ArrowLeft size={18} />
                     </button>
-                    <h1 className="text-2xl font-bold tracking-tight text-[#1D1D1F] dark:text-k-text-primary">{headerLabel}</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-k-text-primary">{headerLabel}</h1>
                     {templates.length > 0 && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-[#F5F5F7] text-sm text-[#6E6E73] dark:bg-glass-bg dark:text-k-text-tertiary dark:border dark:border-k-border-subtle">
+                        <span className="font-mono text-sm tabular-nums text-k-text-tertiary">
                             {templates.length}
                         </span>
                     )}
                 </div>
                 <button
                     onClick={() => router.push(builderHref)}
-                    className="flex items-center gap-2 rounded-full border border-[#D2D2D7] bg-white hover:bg-[#F5F5F7] text-[#6E6E73] hover:text-[#1D1D1F] px-4 py-2 text-sm font-medium transition-all dark:border-k-border-primary dark:bg-glass-bg dark:hover:bg-glass-bg-active dark:text-k-text-secondary"
+                    className="flex items-center gap-2 rounded-control border border-k-border-primary bg-surface-card hover:bg-surface-inset text-k-text-secondary hover:text-k-text-primary px-4 py-2 text-sm font-medium transition-colors"
                 >
                     <Plus size={14} />
                     {isAssessmentsMode ? 'Criar Template de avaliação' : 'Criar Template'}
@@ -247,13 +251,13 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
             {/* Search */}
             {templates.length > 0 && (
                 <div className="relative mb-6">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AEAEB2] dark:text-k-text-quaternary" />
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-k-text-quaternary" />
                     <input
                         type="text"
                         placeholder="Buscar templates..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-lg border border-[#D2D2D7] bg-white pl-10 pr-4 py-2.5 text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all dark:rounded-xl dark:border-k-border-subtle dark:bg-glass-bg dark:text-k-text-primary dark:placeholder:text-k-text-quaternary dark:focus:border-violet-500/50 dark:focus:ring-0"
+                        className="w-full rounded-control border border-k-border-primary bg-surface-card pl-10 pr-4 py-2.5 text-sm text-k-text-primary placeholder:text-k-text-quaternary focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/25 transition-all"
                     />
                 </div>
             )}
@@ -275,8 +279,9 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                         </p>
                         <button
                             onClick={() => router.push(builderHref)}
-                            className="text-xs font-medium text-[#7C3AED] hover:text-[#6D28D9] dark:text-violet-400 dark:hover:text-violet-300 transition-colors"
+                            className="inline-flex items-center gap-1.5 rounded-control bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
                         >
+                            <Plus size={13} />
                             Criar primeiro template
                         </button>
                     </div>
@@ -298,10 +303,10 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                             <div
                                 key={template.id}
                                 onClick={() => router.push(`${builderHref}?edit=${template.id}`)}
-                                className="group relative bg-white border border-[#D2D2D7] rounded-xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:bg-[#F5F5F7] transition-all cursor-pointer dark:bg-surface-card dark:border-k-border-subtle dark:shadow-none dark:hover:border-k-border-primary dark:hover:bg-glass-bg"
+                                className="group relative rounded-panel border border-k-border-subtle bg-surface-card p-4 hover:bg-surface-inset transition-colors cursor-pointer"
                             >
                                 {deleting === template.id && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-surface-card/80 rounded-xl z-sticky">
+                                    <div className="absolute inset-0 flex items-center justify-center bg-surface-card/80 rounded-panel z-sticky">
                                         <Loader2 size={20} className="animate-spin text-k-text-quaternary" />
                                     </div>
                                 )}
@@ -309,41 +314,45 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                 {/* Top row: icon + title + badges + menu */}
                                 <div className="flex items-start justify-between gap-3 mb-2">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${config.bgColor}`}>
-                                            <Icon size={16} className={config.color} />
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control border border-k-border-subtle bg-surface-inset">
+                                            <Icon size={16} className="text-k-text-tertiary" />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-sm font-semibold text-[#1D1D1F] group-hover:text-[#7C3AED] dark:text-k-text-primary dark:group-hover:text-violet-400 transition-colors truncate">
+                                            <h3 className="text-sm font-semibold text-k-text-primary truncate">
                                                 {cleanTemplateName(template.title)}
                                             </h3>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-xs text-[#86868B] dark:text-k-text-quaternary">
+                                                <span className="text-xs text-k-text-tertiary">
+                                                    <span className="font-mono tabular-nums">
+                                                        {isAssessment ? sectionsCount : questionsCount}
+                                                    </span>
+                                                    {' '}
                                                     {isAssessment
-                                                        ? `${sectionsCount} ${sectionsCount === 1 ? 'seção' : 'seções'}`
-                                                        : `${questionsCount} ${questionsCount === 1 ? 'pergunta' : 'perguntas'}`} · {config.label}
+                                                        ? (sectionsCount === 1 ? 'seção' : 'seções')
+                                                        : (questionsCount === 1 ? 'pergunta' : 'perguntas')} · {config.label}
                                                 </span>
                                                 {isSystem && (
-                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#5856D6]/10 text-[#5856D6] border border-[#5856D6]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
+                                                    <span className="rounded border border-k-border-subtle bg-surface-inset px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-k-text-tertiary">
                                                         Kinevo
                                                     </span>
                                                 )}
                                                 {template.created_source === 'ai_assisted' && (
-                                                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[#7C3AED]/10 text-[#7C3AED] border border-[#7C3AED]/20 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20">
+                                                    <span className="rounded border border-k-border-subtle bg-surface-inset px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-k-text-tertiary">
                                                         IA
                                                     </span>
                                                 )}
                                                 <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded ${
                                                     template.is_active
-                                                        ? 'text-[#34C759] dark:text-emerald-400'
-                                                        : 'bg-surface-elevated text-k-text-quaternary border border-k-border-subtle'
+                                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                                        : 'bg-surface-inset text-k-text-quaternary border border-k-border-subtle'
                                                 }`}>
-                                                    {template.is_active && <span className="w-1.5 h-1.5 rounded-full bg-[#34C759] dark:bg-emerald-400 inline-block" />}
+                                                    {template.is_active && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />}
                                                     {template.is_active ? 'Ativo' : 'Inativo'}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
-                                    <ActionsMenu template={template} onDelete={handleDelete} mode={mode} />
+                                    <ActionsMenu template={template} onDelete={setConfirmDeleteId} mode={mode} />
                                 </div>
 
                                 {/* Preview: questions for forms, sections for assessments */}
@@ -352,13 +361,13 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                         <div className="ml-11 space-y-1 mb-3">
                                             {sections.slice(0, 3).map((sec: any, i: number) => (
                                                 <div key={sec.id || i} className="flex items-center gap-2 text-xs">
-                                                    <span className="text-[#AEAEB2] dark:text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
-                                                    <span className="text-[#6E6E73] dark:text-k-text-tertiary truncate">{sec.title || sec.label || sec.id}</span>
+                                                    <span className="font-mono tabular-nums text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
+                                                    <span className="text-k-text-secondary truncate">{sec.title || sec.label || sec.id}</span>
                                                 </div>
                                             ))}
                                             {sections.length > 3 && (
-                                                <span className="text-[10px] text-[#7C3AED] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
-                                                    +{sections.length - 3} mais...
+                                                <span className="block pl-6 text-[10px] text-k-text-quaternary">
+                                                    +<span className="font-mono tabular-nums">{sections.length - 3}</span> mais...
                                                 </span>
                                             )}
                                         </div>
@@ -368,14 +377,14 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                         <div className="ml-11 space-y-1 mb-3">
                                             {questions.slice(0, 3).map((q: any, i: number) => (
                                                 <div key={q.id || i} className="flex items-center gap-2 text-xs">
-                                                    <span className="text-[#AEAEB2] dark:text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
-                                                    <span className="text-[#6E6E73] dark:text-k-text-tertiary truncate">{q.label || q.title}</span>
-                                                    <span className="text-[#AEAEB2] dark:text-k-text-quaternary shrink-0 text-[10px]">({getTypeLabel(q.type)})</span>
+                                                    <span className="font-mono tabular-nums text-k-text-quaternary w-4 shrink-0">{i + 1}.</span>
+                                                    <span className="text-k-text-secondary truncate">{q.label || q.title}</span>
+                                                    <span className="text-k-text-quaternary shrink-0 text-[10px]">({getTypeLabel(q.type)})</span>
                                                 </div>
                                             ))}
                                             {questions.length > 3 && (
-                                                <span className="text-[10px] text-[#7C3AED] font-medium pl-6 dark:text-k-text-quaternary dark:font-normal">
-                                                    +{questions.length - 3} mais...
+                                                <span className="block pl-6 text-[10px] text-k-text-quaternary">
+                                                    +<span className="font-mono tabular-nums">{questions.length - 3}</span> mais...
                                                 </span>
                                             )}
                                         </div>
@@ -383,8 +392,8 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                 )}
 
                                 {/* Footer */}
-                                <div className="ml-11 flex items-center justify-between pt-2 border-t border-[#E8E8ED] dark:border-k-border-subtle/50 text-[11px]">
-                                    <span className="text-[#AEAEB2] dark:text-k-text-quaternary">
+                                <div className="ml-11 flex items-center justify-between pt-2 border-t border-k-border-subtle text-[11px]">
+                                    <span className="font-mono tabular-nums text-k-text-tertiary">
                                         {isAssessment
                                             ? `${sessionsCount} ${sessionsCount === 1 ? 'sessão' : 'sessões'}`
                                             : `${template.responseCount} ${template.responseCount === 1 ? 'resposta' : 'respostas'}`}
@@ -397,9 +406,10 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                                                 e.stopPropagation()
                                                 router.push(`/forms?assign=${template.id}`)
                                             }}
-                                            className="text-[#7C3AED] hover:text-[#6D28D9] dark:text-violet-400 dark:hover:text-violet-300 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                                            className="flex items-center gap-0.5 text-k-text-secondary hover:text-k-text-primary opacity-0 group-hover:opacity-100 transition-all font-medium"
                                         >
-                                            Enviar para aluno →
+                                            Enviar para aluno
+                                            <ChevronRight size={13} />
                                         </button>
                                     )}
                                 </div>
@@ -408,6 +418,36 @@ export function TemplatesClient({ trainer, templates: initialTemplates, mode = '
                     })}
                 </div>
             )}
+
+            {/* Confirmação de exclusão */}
+            <ModalShell
+                open={confirmDeleteId !== null}
+                onClose={() => setConfirmDeleteId(null)}
+                title="Excluir template?"
+                size="sm"
+                footer={
+                    <div className="flex items-center justify-end gap-2">
+                        <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-4 py-2 rounded-control text-sm font-medium text-k-text-secondary hover:text-k-text-primary hover:bg-surface-inset transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleConfirmDelete}
+                            className="px-4 py-2 rounded-control bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors"
+                        >
+                            Excluir
+                        </button>
+                    </div>
+                }
+            >
+                <div className="px-5 py-4">
+                    <p className="text-sm text-k-text-secondary">
+                        Tem certeza que deseja excluir este template? Essa ação não pode ser desfeita.
+                    </p>
+                </div>
+            </ModalShell>
         </AppLayout>
     )
 }
