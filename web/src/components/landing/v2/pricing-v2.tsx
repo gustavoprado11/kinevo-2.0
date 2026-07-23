@@ -1,12 +1,15 @@
+'use client'
+
 /**
- * PricingV2 — bloco de cards de preço da nova landing, renderizado a partir de
- * TIER_DISPLAY (fonte única — promessa nunca desalinha do produto). Visual fiel
- * ao Claude Design. Substitui o markup estático que vinha no .dc.html.
+ * PricingV2 — bloco de planos da nova landing (Kinevo.dc.html), com o segmentado
+ * Individual / Estúdios. Renderizado a partir das FONTES ÚNICAS (TIER_DISPLAY e
+ * STUDIO_TIERS) para a promessa nunca desalinhar do produto. Vai num slot
+ * (#kvlp-pricing-slot) via portal — o cabeçalho da seção fica no SSR (SEO).
  */
-import type { CSSProperties } from 'react'
-import { Check, Sparkles, Lock, Building2 } from 'lucide-react'
+import { useState, type CSSProperties } from 'react'
+import { Check, Sparkles, Lock, Building2, User, Star } from 'lucide-react'
 import { TIER_DISPLAY, type TierDisplay } from '@/lib/billing/tiers'
-import { PURCHASABLE_STUDIO_TIERS } from '@/lib/studio/studio-tiers'
+import { STUDIO_TIERS, type StudioTierDisplay } from '@/lib/studio/studio-tiers'
 
 const SIGNUP = 'https://www.kinevoapp.com/signup'
 
@@ -16,132 +19,176 @@ function splitPrice(price: string): { main: string; dec: string } {
     return m ? { main: m[1], dec: m[2] } : { main: price, dec: '' }
 }
 
-function PriceCard({ t }: { t: TierDisplay }) {
+const cardBase: CSSProperties = {
+    height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 22, padding: 26,
+    boxShadow: 'var(--kv-shadow-sm)',
+}
+const neutralCard: CSSProperties = { ...cardBase, background: 'var(--kv-neutral-50)', border: '1px solid var(--kv-border-subtle)' }
+const featuredCard: CSSProperties = { ...cardBase, background: 'linear-gradient(180deg,#ffffff,#FAF7FF)', border: '1.5px solid var(--kv-brand-600)', boxShadow: 'var(--kv-shadow-brand)' }
+const ctaBase: CSSProperties = { textAlign: 'center', fontSize: 13.5, padding: 12, borderRadius: 11, marginBottom: 18 }
+const ctaGhost: CSSProperties = { ...ctaBase, color: 'var(--kv-text-primary)', background: '#fff', border: '1px solid var(--kv-border-default)', fontWeight: 600 }
+const ctaBrand: CSSProperties = { ...ctaBase, color: '#fff', background: 'var(--kv-brand-600)', boxShadow: 'var(--kv-shadow-brand-sm)', fontWeight: 700 }
+const featItem: CSSProperties = { display: 'flex', gap: 8, fontSize: 13, color: 'var(--kv-text-secondary)' }
+
+/* ───────────────────────────── Individual ───────────────────────────── */
+
+function IndividualCard({ t }: { t: TierDisplay }) {
     const featured = !!t.featured
     const { main, dec } = splitPrice(t.price)
     const href = t.free ? SIGNUP : `${SIGNUP}?tier=${t.tier}`
 
-    const card: CSSProperties = {
-        display: 'flex',
-        flexDirection: 'column',
-        background: featured ? '#fff' : 'var(--kv-neutral-50)',
-        border: featured ? '2px solid var(--kv-brand-600)' : '1px solid var(--kv-border-subtle)',
-        borderRadius: 20,
-        padding: 24,
-        position: 'relative',
-        ...(featured ? { boxShadow: 'var(--kv-shadow-brand)' } : {}),
-    }
-
-    // Chip de créditos: pro = preenchido violeta; pago = tint brand-50; free = branco.
+    // Chip de créditos: featured = brand cheio; free = branco; pago = tint brand-50.
     const chip: CSSProperties = featured
         ? { background: 'var(--kv-brand-600)', boxShadow: 'var(--kv-shadow-brand-sm)' }
         : t.free
           ? { background: '#fff', border: '1px solid var(--kv-border-subtle)' }
           : { background: 'var(--kv-brand-50)', border: '1px solid var(--kv-brand-200)' }
-    const chipText = featured ? '#fff' : t.free ? 'var(--kv-text-secondary)' : 'var(--kv-brand-800)'
-    const chipIcon = featured ? '#fff' : t.free ? 'var(--kv-text-tertiary)' : 'var(--kv-brand-600)'
-
-    const ctaStyle: CSSProperties = featured
-        ? { color: '#fff', background: 'var(--kv-brand-600)', boxShadow: 'var(--kv-shadow-brand-sm)', fontWeight: 700 }
-        : { color: 'var(--kv-text-primary)', background: '#fff', border: '1px solid var(--kv-border-default)', fontWeight: 600 }
 
     return (
-        <div style={card}>
+        <div className="kv-feat" style={featured ? featuredCard : neutralCard}>
             {featured && (
-                <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--kv-brand-600)', padding: '5px 14px', borderRadius: 10, whiteSpace: 'nowrap' }}>
-                    ★ Recomendado
-                </span>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, alignSelf: 'flex-start', background: 'var(--kv-brand-600)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 9999, marginBottom: 14 }}>
+                    <Star size={12} fill="#fff" /> Recomendado
+                </div>
             )}
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, ...(featured ? { color: 'var(--kv-brand-700)' } : {}) }}>{t.name}</div>
-            <div style={{ fontSize: 13, color: 'var(--kv-text-tertiary)', marginBottom: 14 }}>{t.tagline}</div>
-            <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em' }}>
-                {main}
-                {dec && <span style={{ fontSize: 16, fontWeight: 600 }}>{dec}</span>}
+            <div style={{ fontSize: 17, fontWeight: 700, ...(featured ? { color: 'var(--kv-brand-700)' } : {}) }}>{t.name}</div>
+            <div style={{ fontSize: 13, color: 'var(--kv-text-tertiary)', marginTop: 3 }}>{t.tagline}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em' }}>{main}</span>
+                {dec && <span style={{ fontSize: 17, fontWeight: 600 }}>{dec}</span>}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--kv-text-tertiary)' }}>{t.priceNote ?? 'por mês'}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--kv-text-tertiary)', marginTop: 2 }}>{t.priceNote ?? 'por mês'}</div>
 
-            {/* Chip de créditos */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: t.free ? 7 : 8, borderRadius: 11, padding: t.free ? '9px 11px' : '10px 12px', margin: t.free ? '14px 0 18px' : '14px 0 6px', ...chip }}>
-                <Sparkles size={t.free ? 15 : 16} color={chipIcon} style={{ flexShrink: 0 }} strokeWidth={1.6} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 11, padding: '10px 12px', margin: t.creditsHint ? '16px 0 6px' : '16px 0 18px', ...chip }}>
+                <Sparkles size={16} color={featured ? '#fff' : t.free ? 'var(--kv-text-tertiary)' : 'var(--kv-brand-600)'} style={{ flexShrink: 0 }} strokeWidth={1.8} />
                 {t.creditsPerMonth != null ? (
-                    <span style={{ fontSize: 13, color: chipText }}>
-                        <strong style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>
-                            {t.creditsPerMonth.toLocaleString('pt-BR')}
-                        </strong>{' '}
-                        créditos de IA/mês
+                    <span style={{ fontSize: 13, color: featured ? '#fff' : 'var(--kv-brand-800)' }}>
+                        <strong style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{t.creditsPerMonth.toLocaleString('pt-BR')}</strong> créditos de IA/mês
                     </span>
                 ) : (
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: chipText }}>{t.credits}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--kv-text-secondary)' }}>{t.credits}</span>
                 )}
             </div>
-            {t.creditsHint && (
-                <div style={{ fontSize: 11.5, color: 'var(--kv-text-tertiary)', margin: '0 0 18px', paddingLeft: 2 }}>{t.creditsHint}</div>
-            )}
+            {t.creditsHint && <div style={{ fontSize: 11.5, color: 'var(--kv-text-tertiary)', margin: '0 0 18px', paddingLeft: 2 }}>{t.creditsHint}</div>}
 
-            <a href={href} style={{ textAlign: 'center', fontSize: 13.5, padding: 11, borderRadius: 11, marginBottom: 18, ...ctaStyle }}>
-                {t.cta}
-            </a>
+            <a href={href} className="kv-arrow" style={featured ? ctaBrand : ctaGhost}>{t.cta}</a>
 
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
                 {t.features.map((f) => (
-                    <li key={f.label} style={{ display: 'flex', gap: 8, fontSize: 13, color: 'var(--kv-text-secondary)' }}>
-                        <Check size={15} color="var(--kv-success)" style={{ flexShrink: 0, marginTop: 1 }} strokeWidth={1.6} />
+                    <li key={f.label} style={featItem}>
+                        {f.state === 'star'
+                            ? <Star size={15} color="var(--kv-warning)" style={{ flexShrink: 0, marginTop: 1 }} strokeWidth={1.8} />
+                            : <Check size={15} color="var(--kv-success)" style={{ flexShrink: 0, marginTop: 1 }} strokeWidth={1.8} />}
                         <span>{f.label}</span>
                     </li>
                 ))}
             </ul>
 
             {t.footnote && (
-                <div style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 11.5, color: 'var(--kv-text-tertiary)', marginTop: 13, lineHeight: 1.45 }}>
-                    <Lock size={13} style={{ flexShrink: 0, marginTop: 1 }} strokeWidth={1.6} />
-                    {t.footnote}
+                <div style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 11.5, color: 'var(--kv-text-tertiary)', marginTop: 'auto', paddingTop: 14, lineHeight: 1.45 }}>
+                    <Lock size={13} style={{ flexShrink: 0, marginTop: 1 }} strokeWidth={1.8} /> <span>{t.footnote}</span>
                 </div>
             )}
         </div>
     )
 }
 
-/** Faixa "Estúdios" — produto por organização (não por treinador). Abaixo do
- *  grid solo, resume as faixas por nº de alunos e leva ao signup. */
-function StudioBanner() {
-    const faixas = PURCHASABLE_STUDIO_TIERS.map(t => `${t.name} ${t.price}`).join(' · ')
+function IndividualPane() {
     return (
-        <div
-            className="studio-banner"
-            style={{
-                marginTop: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between',
-                gap: 16, padding: '20px 24px', borderRadius: 16,
-                border: '1px solid rgba(139,92,246,0.25)', background: 'rgba(139,92,246,0.06)',
-            }}
-        >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', flexShrink: 0 }}>
-                    <Building2 size={22} />
-                </div>
-                <div>
-                    <p style={{ fontSize: 15, fontWeight: 700 }}>Tem uma equipe? Kinevo Estúdios</p>
-                    <p style={{ fontSize: 13, opacity: 0.7 }}>
-                        Vários treinadores, alunos compartilhados e painel do gestor — a partir de R$ 219,90/mês. {faixas}.{' '}
-                        <a href="/estudios" style={{ color: '#8b5cf6', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>Saiba mais</a>
-                    </p>
-                </div>
+        <div className="kvp-pane">
+            <div className="kv-plangrid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, alignItems: 'stretch' }}>
+                {TIER_DISPLAY.map((t) => (
+                    <IndividualCard key={t.tier} t={t} />
+                ))}
             </div>
-            <a href={`${SIGNUP}?intent=studio`} style={{ flexShrink: 0, fontSize: 13.5, fontWeight: 700, padding: '11px 20px', borderRadius: 11, background: '#8b5cf6', color: '#fff', textAlign: 'center' }}>
-                Criar estúdio
-            </a>
+            <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--kv-text-tertiary)', margin: '26px 0 0' }}>
+                Sem cartão pra testar · alunos ilimitados a partir do Essencial · troque de plano quando quiser.
+            </p>
         </div>
     )
 }
 
-export function PricingV2() {
+/* ────────────────────────────── Estúdios ────────────────────────────── */
+
+const STUDIO_FEATURES = ['Treinadores ilimitados', 'Alunos compartilhados na equipe', 'Painel do gestor', 'Cobrança única por estúdio']
+
+function StudioCard({ t }: { t: StudioTierDisplay }) {
+    const featured = t.tier === 'studio_100'
+    const { main, dec } = splitPrice(t.price)
+    const href = t.custom ? '/estudios' : `${SIGNUP}?intent=studio&tier=${t.tier}`
+    const cta = t.custom ? 'Falar com a gente' : 'Criar estúdio'
+    const ctaStyle: CSSProperties = t.custom
+        ? { ...ctaBase, color: 'var(--kv-brand-700)', background: 'var(--kv-brand-50)', border: '1px solid var(--kv-brand-200)', fontWeight: 700 }
+        : featured ? ctaBrand : ctaGhost
+    // "Até 50 alunos" / "Mais de 200 alunos"
+    const cap = t.custom ? 'Mais de 200 alunos' : `Até ${t.studentLimit} alunos`
+    const priceNote = t.custom ? 'plano negociado' : 'por mês'
+
     return (
-        <>
-            <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, alignItems: 'stretch' }}>
-                {TIER_DISPLAY.map((t) => (
-                    <PriceCard key={t.tier} t={t} />
+        <div className="kv-feat" style={featured ? featuredCard : neutralCard}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div className="kv-tile" style={{ width: 44, height: 44, borderRadius: 13, background: 'linear-gradient(135deg,#F5F3FF,#EDE9FE)', color: 'var(--kv-brand-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(124,58,237,.14)' }}>
+                    <Building2 size={21} strokeWidth={1.8} />
+                </div>
+                {featured && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--kv-brand-600)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 9999 }}>
+                        <Star size={12} fill="#fff" /> Popular
+                    </span>
+                )}
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, ...(featured ? { color: 'var(--kv-brand-700)' } : {}) }}>{t.name}</div>
+            <div style={{ fontSize: 13, color: 'var(--kv-text-tertiary)', marginTop: 3 }}>{cap}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontSize: t.custom ? 22 : 34, fontWeight: 800, letterSpacing: '-0.02em' }}>{main}</span>
+                {dec && <span style={{ fontSize: 17, fontWeight: 600 }}>{dec}</span>}
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--kv-text-tertiary)', marginTop: 2 }}>{priceNote}</div>
+            <div style={{ height: 1, background: 'var(--kv-border-subtle)', margin: '18px 0' }} />
+            <a href={href} className="kv-arrow" style={ctaStyle}>{cta}</a>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                {STUDIO_FEATURES.map((f) => (
+                    <li key={f} style={featItem}>
+                        <Check size={15} color="var(--kv-success)" style={{ flexShrink: 0, marginTop: 1 }} strokeWidth={1.8} /> <span>{f}</span>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    )
+}
+
+function StudioPane() {
+    return (
+        <div className="kvp-pane">
+            <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--kv-text-secondary)', maxWidth: 600, margin: '0 auto 28px' }}>
+                Cobrança por organização, não por treinador. Treinadores ilimitados em todas as faixas — o que muda é o teto de alunos.
+            </p>
+            <div className="kv-plangrid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, alignItems: 'stretch' }}>
+                {STUDIO_TIERS.map((t) => (
+                    <StudioCard key={t.tier} t={t} />
                 ))}
             </div>
-            <StudioBanner />
+            <p style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--kv-text-tertiary)', margin: '26px 0 0' }}>
+                Créditos de IA são contratados por treinador, à parte do acesso do estúdio.
+            </p>
+        </div>
+    )
+}
+
+/* ─────────────────────────────── Tabs ─────────────────────────────── */
+
+export function PricingV2() {
+    const [tab, setTab] = useState<'ind' | 'est'>('ind')
+    return (
+        <>
+            <div className="kvp-seg" role="tablist" aria-label="Tipo de plano">
+                <button type="button" role="tab" aria-selected={tab === 'ind'} className="kvp-tab" onClick={() => setTab('ind')}>
+                    <User size={15} strokeWidth={1.8} /> Individual
+                </button>
+                <button type="button" role="tab" aria-selected={tab === 'est'} className="kvp-tab" onClick={() => setTab('est')}>
+                    <Building2 size={15} strokeWidth={1.8} /> Estúdios
+                </button>
+            </div>
+            {tab === 'ind' ? <IndividualPane /> : <StudioPane />}
         </>
     )
 }
