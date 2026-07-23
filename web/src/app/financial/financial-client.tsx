@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Users, TrendingUp, Receipt, ArrowRight, Wallet, AlertTriangle, Heart, Plus, Check, DollarSign, ArrowDownToLine, ChevronDown, Send, Repeat, KeyRound, Settings as SettingsIcon, Link2, Lock, Unlock, Loader2, Copy, MessageCircle, Clock, X, RefreshCw, AlertCircle } from 'lucide-react'
+import { Users, TrendingUp, Receipt, ArrowRight, Wallet, AlertTriangle, Heart, Plus, Check, DollarSign, ArrowDownToLine, ChevronDown, Send, Repeat, KeyRound, Settings as SettingsIcon, Link2, Lock, Unlock, Loader2, Copy, MessageCircle, Clock, X, RefreshCw, AlertCircle, CalendarClock } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { AppLayout } from '@/components/layout'
 import { ConnectStatusCard } from '@/components/financial/connect-status-card'
@@ -964,6 +964,12 @@ export function FinancialDashboardClient({
                                 icon={<Repeat size={16} />}
                                 title="Assinaturas"
                                 detail={payingCount === 0 ? 'Nenhuma ativa' : `${payingCount} ${payingCount === 1 ? 'ativa' : 'ativas'}`}
+                            />
+                            <QuickLink
+                                href="/financial/vencimentos"
+                                icon={<CalendarClock size={16} />}
+                                title="Vencimentos"
+                                detail="Plano e treino"
                             />
                             <QuickLink
                                 href="/financial/pix-keys"
