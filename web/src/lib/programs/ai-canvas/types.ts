@@ -28,6 +28,9 @@ export interface CanvasCardioDTO {
     /** Modo 'phased': sequência de fases (CardioSegment do shared), já com
      *  intensidades derivadas — duration_minutes/intensity do bloco viram totais. */
     segments?: import('@kinevo/shared/types/workout-items').CardioSegment[] | null
+    /** Progressão semanal (CardioWeekOverride do shared), já com strings
+     *  derivadas — cada entrada vale a partir da sua semana; base = semana 1. */
+    progression?: import('@kinevo/shared/types/workout-items').CardioWeekOverride[] | null
     notes?: string | null
 }
 

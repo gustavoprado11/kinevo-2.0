@@ -177,6 +177,18 @@ const HITL_BUILD = `
        {"kind":"interval","label":"Tiros","intervals":{"work_seconds":20,"rest_seconds":10,"rounds":8},"intensity_target":{"type":"rpe","rpe":9}},
        {"kind":"steady","label":"Volta à calma","duration_minutes":5,"intensity_target":{"type":"zone","zone":1}}]}
      — o app deriva o total e o resumo do bloco a partir das fases.
+     PROGRESSÃO SEMANAL: quando o plano aeróbio muda semana a semana (longão subindo de km, semanas
+     regenerativas, fases fartlek → intervalado → tempo), use o campo progression do bloco — entradas
+     por semana; cada uma vale A PARTIR da sua semana até a próxima, e a base do bloco é a semana 1.
+     Sem 'mode' a entrada só muda os campos passados; com 'mode' (ou segments) ela troca a ESTRUTURA
+     da semana. Exemplo literal (longão 6→15 km com regenerativa na S4):
+     "cardio": {"mode":"continuous","objective":"distance","distance_km":6,
+       "intensity_target":{"type":"rpe","rpe":4},"progression":[
+       {"week":2,"distance_km":7},{"week":3,"distance_km":8},
+       {"week":4,"distance_km":6,"label":"Regenerativa"},{"week":5,"distance_km":9}]}
+     — o app resolve a semana corrente do programa e mostra ao aluno o alvo da semana ("Semana 5 de
+     12 · 9 km"). NUNCA descreva plano semanal em notes ("S1 6km · S2 7km…") — texto não executa; e
+     garanta duration_weeks do programa ≥ última semana da progressão.
      Sessão aeróbia NÃO leva exercício de força. Cardio no FIM de uma sessão de força continua
      sendo um item 'cardio' dentro dela (não muda o session_type).
   5b) CONTROLE DE QUALIDADE (automático): o app valida as regras do passo 4 em código na hora da chamada.

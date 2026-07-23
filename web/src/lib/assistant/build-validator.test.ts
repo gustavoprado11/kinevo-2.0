@@ -194,6 +194,90 @@ describe('cardio por fases — intensidade POR FASE obrigatória', () => {
     })
 })
 
+describe('progressão semanal do bloco aeróbio', () => {
+    const cardioSession = (cardio: Record<string, unknown>) => ({
+        name: 'Corrida Longão',
+        session_type: 'cardio' as const,
+        scheduled_days: [6],
+        items: [{ cardio }],
+    })
+
+    it('fase de uma SEMANA da progressão sem intensidade → erro nomeando a semana', () => {
+        const v = validateBuildArgs({
+            duration_weeks: 12,
+            sessions: [cardioSession({
+                mode: 'continuous',
+                objective: 'distance',
+                distance_km: 6,
+                intensity_target: { type: 'rpe', rpe: 4 },
+                progression: [
+                    { week: 5, mode: 'phased', segments: [{ kind: 'steady', duration_minutes: 20 }] },
+                ],
+            })],
+        }, CATALOG)
+        const err = v.errors.find((e) => e.includes('semana 5 da progressão'))
+        expect(err).toBeTruthy()
+        expect(err).toContain('fase 1')
+    })
+
+    it('progressão além da duration_weeks → erro corretivo com o conserto', () => {
+        const v = validateBuildArgs({
+            duration_weeks: 4,
+            sessions: [cardioSession({
+                mode: 'continuous',
+                objective: 'distance',
+                distance_km: 6,
+                progression: [{ week: 2, distance_km: 7 }, { week: 12, distance_km: 15 }],
+            })],
+        }, CATALOG)
+        const err = v.errors.find((e) => e.includes('semana 12'))
+        expect(err).toBeTruthy()
+        expect(err).toContain('duration_weeks=12')
+    })
+
+    it('progressão coerente → sem erro', () => {
+        const v = validateBuildArgs({
+            duration_weeks: 12,
+            sessions: [cardioSession({
+                mode: 'continuous',
+                objective: 'distance',
+                distance_km: 6,
+                intensity_target: { type: 'rpe', rpe: 4 },
+                progression: [{ week: 2, distance_km: 7 }, { week: 12, distance_km: 15, label: 'Semana da prova' }],
+            })],
+        }, CATALOG)
+        expect(v.errors).toEqual([])
+    })
+
+    it('periodização espremida em NOTES sem progression → aviso apontando o campo', () => {
+        // O caso REAL de prod: "S1 6km · S2 7km · … · S12 15km (PROVA)" em notes.
+        const v = validateBuildArgs({
+            sessions: [cardioSession({
+                mode: 'continuous',
+                objective: 'distance',
+                distance_km: 6,
+                notes: 'Progressão: S1 6km · S2 7km · S3 8km · S12 15km (PROVA).',
+            })],
+        }, CATALOG)
+        expect(v.errors).toEqual([])
+        expect(v.warnings.some((w) => w.includes('progression'))).toBe(true)
+    })
+
+    it('com progression preenchida, notes mencionando semanas NÃO gera aviso', () => {
+        const v = validateBuildArgs({
+            duration_weeks: 12,
+            sessions: [cardioSession({
+                mode: 'continuous',
+                objective: 'distance',
+                distance_km: 6,
+                notes: 'Semana 4 e semana 8 são regenerativas.',
+                progression: [{ week: 2, distance_km: 7 }],
+            })],
+        }, CATALOG)
+        expect(v.warnings.some((w) => w.includes('o aluno não'))).toBe(false)
+    })
+})
+
 describe('warnings (não bloqueiam)', () => {
     it('W1: exercício em 3+ sessões vira aviso (2 sessões é legítimo)', () => {
         const p: BuildProgramArgs = {

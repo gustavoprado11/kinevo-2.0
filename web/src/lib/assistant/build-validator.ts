@@ -55,6 +55,7 @@ interface BuildSession {
 
 export interface BuildProgramArgs {
     name?: string
+    duration_weeks?: number
     sessions?: BuildSession[]
 }
 
@@ -153,20 +154,62 @@ export function validateBuildArgs(
         // Cardio POR FASES sem intensidade em alguma fase: o ponto do modo é
         // variar a intensidade — sem alvo a fase executa às cegas e nada
         // deriva. Erro corretivo (o modelo reenvia com intensity_target).
+        // Vale para as fases do BLOCO e para as fases de cada semana da progressão.
         for (const it of s.items ?? []) {
             const cardio = it.cardio as {
                 mode?: string
+                notes?: string
                 segments?: Array<{ label?: string; intensity_target?: unknown; intensity?: string }>
+                progression?: Array<{
+                    week?: number
+                    segments?: Array<{ label?: string; intensity_target?: unknown; intensity?: string }>
+                }>
             } | null | undefined
-            if (!cardio || cardio.mode !== 'phased' || !Array.isArray(cardio.segments)) continue
-            const missing = cardio.segments
-                .map((seg, i) => (!seg.intensity_target && !seg.intensity ? (seg.label || `fase ${i + 1}`) : null))
-                .filter((x): x is string => x !== null)
-            if (missing.length > 0) {
-                errors.push(
-                    `Bloco aeróbio por fases na sessão "${s.name}": defina intensity_target em CADA fase ` +
-                        `(faltou em: ${missing.join(', ')}). Ex. de fase: {"kind":"steady","duration_minutes":10,` +
-                        `"intensity_target":{"type":"zone","zone":1},"label":"Aquecimento"}.`,
+            if (!cardio) continue
+            const segmentLists: Array<{ where: string; segments: Array<{ label?: string; intensity_target?: unknown; intensity?: string }> }> = []
+            if (cardio.mode === 'phased' && Array.isArray(cardio.segments)) {
+                segmentLists.push({ where: '', segments: cardio.segments })
+            }
+            for (const o of cardio.progression ?? []) {
+                if (Array.isArray(o.segments)) {
+                    segmentLists.push({ where: ` (semana ${o.week ?? '?'} da progressão)`, segments: o.segments })
+                }
+            }
+            for (const { where, segments } of segmentLists) {
+                const missing = segments
+                    .map((seg, i) => (!seg.intensity_target && !seg.intensity ? (seg.label || `fase ${i + 1}`) : null))
+                    .filter((x): x is string => x !== null)
+                if (missing.length > 0) {
+                    errors.push(
+                        `Bloco aeróbio por fases na sessão "${s.name}"${where}: defina intensity_target em CADA fase ` +
+                            `(faltou em: ${missing.join(', ')}). Ex. de fase: {"kind":"steady","duration_minutes":10,` +
+                            `"intensity_target":{"type":"zone","zone":1},"label":"Aquecimento"}.`,
+                    )
+                }
+            }
+
+            // Progressão precisa caber na duração do programa (mesma regra das
+            // tools) — corretivo ANTES do erro da tool, com o conserto na mão.
+            const progWeeks = (cardio.progression ?? [])
+                .map((o) => o.week)
+                .filter((w): w is number => typeof w === 'number')
+            if (progWeeks.length > 0 && args.duration_weeks != null) {
+                const maxWeek = Math.max(...progWeeks)
+                if (maxWeek > args.duration_weeks) {
+                    errors.push(
+                        `Bloco aeróbio na sessão "${s.name}": a progressão vai até a semana ${maxWeek}, mas ` +
+                            `duration_weeks=${args.duration_weeks}. Envie duration_weeks=${maxWeek} (ou encurte a progressão).`,
+                    )
+                }
+            }
+
+            // Periodização descrita em NOTES ("S1 4km · S2 5km…"): o app não
+            // executa texto — o campo certo é progression. Aviso (não bloqueia).
+            if (progWeeks.length === 0 && typeof cardio.notes === 'string' && /\bS\d{1,2}\b.*\bS\d{1,2}\b|semana\s+\d+.*semana\s+\d+/i.test(cardio.notes)) {
+                warnings.push(
+                    `Bloco aeróbio na sessão "${s.name}": as notes descrevem um plano semana a semana — o aluno não ` +
+                        `executa texto. Use o campo progression ([{week, distance_km/duration_minutes/intensidade…}]) ` +
+                        `para o app mostrar o alvo da semana automaticamente.`,
                 )
             }
         }

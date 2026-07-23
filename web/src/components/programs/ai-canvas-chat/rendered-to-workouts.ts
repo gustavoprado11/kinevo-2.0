@@ -120,6 +120,7 @@ function buildCardioItem(cardio: NonNullable<CanvasItemDTO['cardio']>): WorkoutI
     if (cardio.intensity) config.intensity = cardio.intensity
     if (cardio.intensity_target) config.intensity_target = cardio.intensity_target
     if (cardio.protocol_key) config.protocol_key = cardio.protocol_key
+    if (cardio.progression?.length) config.progression = cardio.progression
     if (cardio.notes) config.notes = cardio.notes
     item.item_config = config
     return item
@@ -202,6 +203,7 @@ export function workoutsToSnapshot(
                             intervals: (cfg.intervals as { work_seconds: number; rest_seconds: number; rounds: number }) ?? null,
                             protocol_key: (cfg.protocol_key as string) ?? null,
                             segments: (cfg.segments as import('@kinevo/shared/types/workout-items').CardioSegment[]) ?? null,
+                            progression: (cfg.progression as import('@kinevo/shared/types/workout-items').CardioWeekOverride[]) ?? null,
                             notes: (cfg.notes as string) ?? null,
                         },
                     })
