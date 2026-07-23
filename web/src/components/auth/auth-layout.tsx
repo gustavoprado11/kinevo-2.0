@@ -1,95 +1,95 @@
 import { type ReactNode } from 'react'
-import { type LucideIcon, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 
 interface AuthLayoutProps {
     children: ReactNode
+    /** Rótulo em mono acima do headline (padrão: "Para personal trainers"). */
+    eyebrow?: string
     tagline: string
+    /** Trecho do headline destacado no acento violeta (sólido, não gradiente). */
     taglineAccent: string
     subtitle: string
-    bottomIcon?: LucideIcon
-    bottomText?: string
-    /** Set to null to hide the back button. Defaults to '/' */
+    /** null esconde o botão voltar. Padrão '/'. */
     backHref?: string | null
     backLabel?: string
-    /** Extra content below the form card (e.g. "Already have an account?" link) */
+    /** Conteúdo abaixo do form (ex.: "Já tem conta? Entrar"). */
     footer?: ReactNode
 }
 
+// Classes compartilhadas dos campos/botão — fonte única pra login e cadastro
+// falarem o mesmo idioma (superfícies quentes do app, acento violeta sólido).
+export const authInputClass =
+    'w-full px-3.5 py-3 text-[15px] bg-white text-[#1C1917] border border-[#DBD8D5] rounded-[9px] placeholder-[#B4AEA8] focus:outline-none focus:border-[#6D28D9] focus:ring-2 focus:ring-[#6D28D9]/15 transition'
+export const authLabelClass = 'block text-[13px] font-semibold text-[#57534E] mb-1.5'
+export const authButtonClass =
+    'w-full py-3.5 bg-[#6D28D9] hover:bg-[#5B21B6] active:bg-[#4C1D95] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[15px] rounded-[9px] transition-colors'
+
+// Semana-modelo mostrada no painel de marca — o vocabulário real de treino como
+// textura tipográfica (índice com hairlines + mono), não um cartão decorativo.
+const WEEK: [string, string, string][] = [
+    ['A', 'Peito & Tríceps', 'seg · 4 ex'],
+    ['B', 'Costas & Bíceps', 'qua · 4 ex'],
+    ['C', 'Pernas', 'sex · 4 ex'],
+]
+
 export function AuthLayout({
     children,
+    eyebrow = 'Para personal trainers',
     tagline,
     taglineAccent,
     subtitle,
-    bottomIcon: BottomIcon = Lock,
-    bottomText = 'Seus dados estão protegidos com criptografia de ponta a ponta',
     backHref = '/',
     backLabel = 'Voltar',
     footer,
 }: AuthLayoutProps) {
     return (
-        <div className="min-h-screen flex bg-white">
-            {/* Left Panel — Branding (Desktop only) */}
-            <div className="hidden lg:flex lg:w-[45%] relative bg-gradient-to-br from-slate-50 via-violet-50/40 to-slate-50 flex-col justify-between p-12 overflow-hidden">
-                {/* Background accents */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(124,58,237,0.07),transparent_60%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(124,58,237,0.05),transparent_50%)]" />
-
-                {/* Logo */}
-                <div className="relative z-sticky flex items-center gap-3">
-                    <Image
-                        src="/logo-icon.png"
-                        alt="Kinevo"
-                        width={40}
-                        height={40}
-                        className="rounded-xl"
-                    />
-                    <span className="font-jakarta text-2xl font-bold text-slate-900 tracking-tight">Kinevo</span>
+        <div className="min-h-screen flex bg-[#FAFAF9]">
+            {/* Painel esquerdo — bloco liso escuro, carregado pela tipografia (desktop) */}
+            <div className="hidden lg:flex lg:w-[44%] bg-[#141013] text-[#F4F1EE] flex-col justify-between p-12 border-r border-white/[0.06]">
+                {/* Marca */}
+                <div className="flex items-center gap-2.5">
+                    <Image src="/logo-icon.png" alt="Kinevo" width={30} height={30} className="rounded-lg" />
+                    <span className="text-lg font-extrabold tracking-tight">Kinevo</span>
                 </div>
 
-                {/* Center content: Tagline + Product mockup */}
-                <div className="relative z-sticky flex flex-col gap-8">
-                    <div className="max-w-md">
-                        <h2 className="font-jakarta text-4xl font-extrabold text-slate-900 leading-tight tracking-tighter">
-                            {tagline}
-                            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-400">
-                                {taglineAccent}
-                            </span>
-                        </h2>
-                        <p className="font-jakarta mt-4 text-slate-500 text-lg leading-relaxed">
-                            {subtitle}
-                        </p>
-                    </div>
+                {/* Bloco central: eyebrow + headline + subtítulo + semana do aluno */}
+                <div className="py-8">
+                    <div className="font-mono text-[11px] tracking-[0.16em] uppercase text-[#8E7FB8]">{eyebrow}</div>
+                    <h2 className="mt-4 text-[clamp(28px,3.1vw,37px)] leading-[1.06] font-extrabold tracking-[-0.03em] text-balance max-w-[16ch]">
+                        {tagline} <span className="text-[#B7A6F7]">{taglineAccent}</span>
+                    </h2>
+                    <p className="mt-4 text-[15px] leading-relaxed text-[#F4F1EE]/60 max-w-[34ch]">{subtitle}</p>
 
-                    {/* Product mockup */}
-                    <div className="relative w-full max-w-md">
-                        <Image
-                            src="/719shots_so.png"
-                            alt="Kinevo Dashboard"
-                            width={1920}
-                            height={1080}
-                            className="w-full h-auto drop-shadow-2xl"
-                            priority
-                        />
+                    <div className="mt-8 max-w-[21rem]">
+                        <div className="font-mono text-[10.5px] tracking-[0.12em] uppercase text-[#F4F1EE]/40 pb-2.5 border-b border-white/[0.12]">
+                            Treinos da semana · Raquel
+                        </div>
+                        {WEEK.map(([k, name, meta]) => (
+                            <div key={k} className="flex items-baseline gap-3.5 py-3 border-b border-white/[0.08]">
+                                <span className="font-mono text-xs text-[#B7A6F7] w-3">{k}</span>
+                                <span className="flex-1 text-[14.5px] font-medium tracking-[-0.01em]">{name}</span>
+                                <span className="font-mono text-[11.5px] text-[#F4F1EE]/40 tabular-nums">{meta}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                {/* Bottom badge */}
-                <div className="relative z-sticky flex items-center gap-2 text-slate-400 text-sm font-jakarta">
-                    <BottomIcon size={14} />
-                    <span>{bottomText}</span>
+                {/* Rodapé: prova honesta, sem badge decorativo */}
+                <div className="pt-4 border-t border-white/10 text-[13px] text-[#F4F1EE]/50 flex items-center gap-2.5">
+                    <span className="font-mono font-bold text-[#F4F1EE]">0%</span>
+                    <span>de comissão — você recebe o que cobra do aluno.</span>
                 </div>
             </div>
 
-            {/* Right Panel — Form */}
+            {/* Painel direito — formulário direto na superfície (sem card flutuante) */}
             <div className="flex-1 flex flex-col min-h-screen">
-                {/* Back button */}
                 {backHref && (
                     <div className="p-6">
                         <Link
                             href={backHref}
-                            className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm"
+                            className="inline-flex items-center gap-2 text-[#8A8580] hover:text-[#57534E] transition-colors text-sm"
                         >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="m12 19-7-7 7-7" />
@@ -100,32 +100,22 @@ export function AuthLayout({
                     </div>
                 )}
 
-                {/* Form container */}
-                <div className="flex-1 flex items-center justify-center px-6 pb-12">
-                    <div className="w-full max-w-md">
-                        {/* Mobile logo */}
-                        <div className="lg:hidden flex items-center justify-center gap-3 mb-10">
-                            <Image
-                                src="/logo-icon.png"
-                                alt="Kinevo"
-                                width={32}
-                                height={32}
-                                className="rounded-lg"
-                            />
-                            <span className="font-jakarta text-xl font-bold text-slate-900 tracking-tight">Kinevo</span>
+                <div className="flex-1 flex items-center px-6 lg:pl-14 lg:pr-8 pb-12">
+                    <div className="w-full max-w-sm mx-auto lg:mx-0">
+                        {/* Marca no mobile */}
+                        <div className="lg:hidden flex items-center gap-2.5 mb-10">
+                            <Image src="/logo-icon.png" alt="Kinevo" width={30} height={30} className="rounded-lg" />
+                            <span className="text-lg font-extrabold text-[#1C1917] tracking-tight">Kinevo</span>
                         </div>
 
-                        {/* Form card */}
                         {children}
-
-                        {/* Footer (e.g. "Already have an account?") */}
                         {footer}
 
-                        {/* Security badge — only on mobile; on desktop the left
-                            branding panel already shows it (avoids duplication). */}
-                        <div className="lg:hidden flex items-center justify-center gap-2 text-slate-400 text-xs mt-6">
+                        {/* Selo de segurança — só no mobile (no desktop o rodapé
+                            do painel esquerdo já ancora a confiança). */}
+                        <div className="lg:hidden flex items-center gap-2 text-[#B4AEA8] text-xs mt-8">
                             <Lock size={12} />
-                            <span>Seus dados estão protegidos com criptografia de ponta a ponta</span>
+                            <span>Criptografia de ponta a ponta</span>
                         </div>
                     </div>
                 </div>

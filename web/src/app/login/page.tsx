@@ -7,7 +7,7 @@ import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
 import { fetchTrainerThemePreference } from '@/lib/theme/seed-theme'
 import { translateAuthError } from '@/lib/translate-auth-error'
-import { AuthLayout } from '@/components/auth/auth-layout'
+import { AuthLayout, authInputClass, authLabelClass, authButtonClass } from '@/components/auth/auth-layout'
 
 // Aceita apenas caminhos internos ("/oauth/authorize?...") para evitar
 // open-redirect. Rejeita URLs absolutas, "//host" e "/\host".
@@ -68,29 +68,27 @@ function LoginForm() {
             backHref="/"
             backLabel="Voltar"
             footer={
-                <p className="text-center text-sm text-slate-500 mt-6">
+                <p className="text-sm text-[#8A8580] mt-6 pt-5 border-t border-[#E7E5E4]">
                     Não tem uma conta?{' '}
-                    <Link href="/signup" className="text-violet-600 hover:text-violet-500 font-medium transition-colors">
+                    <Link href="/signup" className="text-[#6D28D9] hover:text-[#5B21B6] font-semibold transition-colors">
                         Criar conta
                     </Link>
                 </p>
             }
         >
-            <div className="bg-white border border-black/[0.06] rounded-2xl p-8 shadow-apple-elevated">
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-slate-900">Bem-vindo de volta</h1>
-                    <p className="text-slate-500 mt-1.5">Entre na sua conta para continuar</p>
-                </div>
+            <div>
+                <h1 className="text-[26px] font-extrabold tracking-[-0.025em] text-[#1C1917]">Bem-vindo de volta</h1>
+                <p className="text-[#8A8580] text-[14.5px] mt-1.5">Entre na sua conta para continuar</p>
 
-                <form onSubmit={handleLogin} className="space-y-5">
+                <form onSubmit={handleLogin} className="flex flex-col gap-4 mt-7">
                     {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-3.5 py-3 rounded-[9px] text-sm">
                             {error}
                         </div>
                     )}
 
                     <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="email" className={authLabelClass}>
                             Email
                         </label>
                         <input
@@ -99,17 +97,17 @@ function LoginForm() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            className={authInputClass}
                             placeholder="seu@email.com"
                         />
                     </div>
 
                     <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label htmlFor="password" className="block text-[13px] font-semibold text-[#57534E]">
                                 Senha
                             </label>
-                            <Link href="/auth/forgot-password" className="text-sm text-violet-600 hover:text-violet-500 font-medium transition-colors">
+                            <Link href="/auth/forgot-password" className="text-[12.5px] text-[#6D28D9] hover:text-[#5B21B6] font-semibold transition-colors">
                                 Esqueceu a senha?
                             </Link>
                         </div>
@@ -119,16 +117,12 @@ function LoginForm() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            className={authInputClass}
                             placeholder="••••••••"
                         />
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-3 px-4 bg-gradient-to-r from-[#7C3AED] to-[#A855F7] hover:from-[#6D28D9] hover:to-[#9333EA] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-500/15"
-                    >
+                    <button type="submit" disabled={loading} className={`${authButtonClass} mt-1`}>
                         {loading ? 'Entrando...' : 'Entrar'}
                     </button>
                 </form>

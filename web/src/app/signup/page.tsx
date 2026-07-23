@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, Suspense } from 'react'
 import Script from 'next/script'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { AuthLayout } from '@/components/auth/auth-layout'
+import { AuthLayout, authInputClass, authLabelClass, authButtonClass } from '@/components/auth/auth-layout'
 import { signupTrainer } from '@/actions/auth/signup-trainer'
 import { paidTierFromParam, tierDisplay } from '@/lib/billing/tiers'
 
@@ -204,31 +204,29 @@ function SignupPageInner() {
             backHref="/"
             backLabel="Voltar"
             footer={
-                <p className="text-center text-sm text-slate-500 mt-6">
+                <p className="text-sm text-[#8A8580] mt-6 pt-5 border-t border-[#E7E5E4]">
                     Já tem uma conta?{' '}
-                    <Link href="/login" className="text-violet-600 hover:text-violet-500 font-medium transition-colors">
+                    <Link href="/login" className="text-[#6D28D9] hover:text-[#5B21B6] font-semibold transition-colors">
                         Entrar
                     </Link>
                 </p>
             }
         >
-            <div className="bg-white border border-black/[0.06] rounded-2xl p-8 shadow-apple-elevated">
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-slate-900">Crie sua conta</h1>
-                    <p className="text-slate-500 mt-1.5">Comece a transformar sua consultoria hoje</p>
-                    {isStudioIntent ? (
-                        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700">
-                            Kinevo Estúdios · você escolhe a faixa no próximo passo
-                        </div>
-                    ) : selectedPlan && (
-                        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700">
-                            Plano {selectedPlan.name} · {selectedPlan.price}
-                            {selectedPlan.priceSuffix}
-                        </div>
-                    )}
-                </div>
+            <div>
+                <h1 className="text-[26px] font-extrabold tracking-[-0.025em] text-[#1C1917]">Crie sua conta</h1>
+                <p className="text-[#8A8580] text-[14.5px] mt-1.5">Comece a transformar sua consultoria hoje</p>
+                {isStudioIntent ? (
+                    <div className="mt-4 inline-flex items-center gap-2 rounded-[7px] bg-[#F3F0FB] px-3 py-1.5 text-[12.5px] font-semibold text-[#5B21B6]">
+                        Kinevo Estúdios · você escolhe a faixa no próximo passo
+                    </div>
+                ) : selectedPlan && (
+                    <div className="mt-4 inline-flex items-center gap-2 rounded-[7px] bg-[#F3F0FB] px-3 py-1.5 text-[12.5px] font-semibold text-[#5B21B6]">
+                        Plano {selectedPlan.name} · {selectedPlan.price}
+                        {selectedPlan.priceSuffix}
+                    </div>
+                )}
 
-                <form onSubmit={handleSignup} className="space-y-5">
+                <form onSubmit={handleSignup} className="flex flex-col gap-4 mt-7">
                     {/* Honeypot — invisible to humans, auto-filled by naive bots.
                         Triple defense: visually hidden, aria-hidden so screen readers
                         skip it, and tabindex=-1 so keyboard users never land here.
@@ -248,13 +246,13 @@ function SignupPageInner() {
                     </div>
 
                     {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-3.5 py-3 rounded-[9px] text-sm">
                             {error}
                         </div>
                     )}
 
                     <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="name" className={authLabelClass}>
                             Nome completo
                         </label>
                         <input
@@ -263,13 +261,13 @@ function SignupPageInner() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             required
-                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            className={authInputClass}
                             placeholder="Seu nome"
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="email" className={authLabelClass}>
                             Email
                         </label>
                         <input
@@ -278,13 +276,13 @@ function SignupPageInner() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            className={authInputClass}
                             placeholder="seu@email.com"
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="password" className={authLabelClass}>
                             Senha
                         </label>
                         <input
@@ -293,7 +291,7 @@ function SignupPageInner() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            className={authInputClass}
                             placeholder="••••••••"
                         />
                         {/* Password strength indicator */}
@@ -306,7 +304,7 @@ function SignupPageInner() {
                                             className={`h-1 flex-1 rounded-full transition-all duration-300 ${
                                                 i <= strength.level
                                                     ? strengthColors[strength.level]
-                                                    : 'bg-slate-200'
+                                                    : 'bg-[#DBD8D5]'
                                             }`}
                                         />
                                     ))}
@@ -319,7 +317,7 @@ function SignupPageInner() {
                     </div>
 
                     <div>
-                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="confirmPassword" className={authLabelClass}>
                             Confirmar senha
                         </label>
                         <input
@@ -328,7 +326,7 @@ function SignupPageInner() {
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
-                            className="w-full px-4 py-3 bg-[#F9F9FB] border border-black/[0.08] rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/30 transition-all duration-200"
+                            className={authInputClass}
                             placeholder="••••••••"
                         />
                     </div>
@@ -340,11 +338,7 @@ function SignupPageInner() {
                         <div ref={turnstileContainerRef} className="flex justify-center" />
                     )}
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-3 px-4 bg-gradient-to-r from-[#7C3AED] to-[#A855F7] hover:from-[#6D28D9] hover:to-[#9333EA] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-violet-500/15"
-                    >
+                    <button type="submit" disabled={loading} className={`${authButtonClass} mt-1`}>
                         {loading
                             ? 'Criando conta...'
                             : isStudioIntent
@@ -354,7 +348,7 @@ function SignupPageInner() {
                                 : 'Criar conta grátis'}
                     </button>
 
-                    <p className="text-center text-sm text-slate-400">
+                    <p className="text-center text-[12.5px] text-[#B4AEA8]">
                         {isStudioIntent
                             ? 'A partir de R$ 219,90/mês · cancele quando quiser'
                             : selectedPlan
