@@ -2,7 +2,14 @@
 
 import { AlertTriangle, ArrowRight } from 'lucide-react'
 import type { DisplayStatus } from '@/types/financial'
-import { STATUS_CONFIG, INTERVAL_LABELS, formatCurrency } from '@/lib/utils/financial'
+import {
+    STATUS_CONFIG,
+    INTERVAL_LABELS,
+    formatCurrency,
+    getContractKind,
+    CONTRACT_KIND_CONFIG,
+    periodEndLabel,
+} from '@/lib/utils/financial'
 import { formatBrDate } from '@kinevo/shared/utils/format-br-date'
 
 interface FinancialContract {
@@ -52,6 +59,7 @@ export function FinancialSidebarCard({
     onViewHistory,
 }: FinancialSidebarCardProps) {
     const isOverdue = displayStatus === 'overdue' || displayStatus === 'grace_period'
+    const kind = contract ? getContractKind(contract.billing_type) : 'courtesy'
 
     // Empty state — painel hairline com texto quieto + ação
     if (!contract || displayStatus === 'courtesy') {
@@ -86,6 +94,15 @@ export function FinancialSidebarCard({
             </div>
 
             <div className="space-y-2.5">
+                {/* Natureza do contrato: Assinatura (renova) × Plano (prazo fixo).
+                    Deixa claro qual "vencimento" o card mostra logo abaixo. */}
+                <span
+                    title={CONTRACT_KIND_CONFIG[kind].description}
+                    className="inline-flex items-center rounded-md border border-k-border-subtle bg-surface-inset px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-k-text-tertiary"
+                >
+                    {CONTRACT_KIND_CONFIG[kind].label}
+                </span>
+
                 {/* Plan + amount */}
                 {(contract.plan_title || contract.amount != null) && (
                     <p className="text-sm text-k-text-secondary">
@@ -104,14 +121,13 @@ export function FinancialSidebarCard({
                     </p>
                 )}
 
-                {/* Next due date / expiry */}
+                {/* Vigência do PLANO (comercial) — distinta do vencimento do
+                    treino (fim do programa, mostrado no card do programa). O
+                    rótulo se adapta: "Plano válido até" (prazo fixo) ×
+                    "Próx. cobrança" (assinatura). */}
                 {contract.current_period_end && displayStatus !== 'canceled' && (
                     <p className="text-xs text-k-text-tertiary">
-                        {displayStatus === 'expired'
-                            ? 'Expirou em'
-                            : displayStatus === 'canceling'
-                                ? 'Acesso até'
-                                : 'Próx. vencimento'}
+                        {periodEndLabel(kind, displayStatus)}
                         {' '}
                         <span className="font-mono text-k-text-secondary tabular-nums">
                             {formatBrDate(contract.current_period_end)}
