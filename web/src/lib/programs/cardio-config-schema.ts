@@ -4,6 +4,7 @@ import {
   type CardioConfig,
   type CardioIntensityTarget,
   type CardioSegment,
+  type CardioWeekOverride,
 } from "@kinevo/shared/types/workout-items";
 import { cardioTotalSeconds, summarizeSegments } from "@kinevo/shared/lib/cardio/segments";
 import { formatIntensityTarget } from "@kinevo/shared/lib/cardio/zones";
@@ -66,6 +67,71 @@ export const cardioSegmentSchema = z
     }
   });
 
+/**
+ * Override de UMA semana da progressão semanal (CardioWeekOverride).
+ * Semântica canônica em shared/lib/cardio/progression.ts: vale A PARTIR da
+ * semana `week`; com `mode` = substituição estrutural, sem = merge raso.
+ */
+export const cardioWeekOverrideSchema = z
+  .object({
+    week: z.number().int().min(1).max(52),
+    label: z.string().max(60).optional(),
+    mode: z.enum(["continuous", "interval", "phased"]).optional(),
+    objective: z.enum(["time", "distance"]).optional(),
+    duration_minutes: z.number().min(1).max(600).optional(),
+    distance_km: z.number().min(0.1).max(500).optional(),
+    intensity: z.string().max(200).optional(),
+    intensity_target: cardioIntensityTargetSchema.optional(),
+    intervals: cardioIntervalSchema.optional(),
+    protocol_key: z.string().max(40).optional(),
+    segments: z.array(cardioSegmentSchema).max(20).optional(),
+    notes: z.string().max(2000).optional(),
+  })
+  .superRefine((o, ctx) => {
+    // Com mode = substituição estrutural → mesmas exigências do config base.
+    if (o.mode === "interval" && !o.intervals) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Semana ${o.week}: override estrutural 'interval' exige intervals { work_seconds, rest_seconds, rounds }`,
+        path: ["intervals"],
+      });
+    }
+    if (o.mode === "phased" && (!o.segments || o.segments.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Semana ${o.week}: override estrutural 'phased' exige segments`,
+        path: ["segments"],
+      });
+    }
+    if (o.mode === "continuous" && o.objective === "distance" && o.distance_km == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Semana ${o.week}: objetivo de distância exige distance_km`,
+        path: ["distance_km"],
+      });
+    }
+    // Sem mode = merge raso → precisa mudar ao menos UM campo.
+    if (
+      !o.mode &&
+      o.objective == null &&
+      o.duration_minutes == null &&
+      o.distance_km == null &&
+      o.intensity == null &&
+      o.intensity_target == null &&
+      o.intervals == null &&
+      o.protocol_key == null &&
+      o.segments == null &&
+      o.notes == null &&
+      o.label == null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Semana ${o.week}: override vazio — defina ao menos um campo (distance_km, duration_minutes, intensidade, intervals, segments…)`,
+        path: ["week"],
+      });
+    }
+  });
+
 export const cardioConfigSchema = z
   .object({
     mode: z.enum(["continuous", "interval", "phased"]),
@@ -78,6 +144,7 @@ export const cardioConfigSchema = z
     intervals: cardioIntervalSchema.optional(),
     protocol_key: z.string().max(40).optional(),
     segments: z.array(cardioSegmentSchema).max(20).optional(),
+    progression: z.array(cardioWeekOverrideSchema).max(52).optional(),
     notes: z.string().max(2000).optional(),
   })
   .superRefine((cfg, ctx) => {
@@ -101,6 +168,19 @@ export const cardioConfigSchema = z
         message: "Modo por fases exige ao menos 1 segmento em segments",
         path: ["segments"],
       });
+    }
+    if (cfg.progression && cfg.progression.length > 0) {
+      const seen = new Set<number>();
+      for (const o of cfg.progression) {
+        if (seen.has(o.week)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Progressão com semana ${o.week} duplicada — uma entrada por semana`,
+            path: ["progression"],
+          });
+        }
+        seen.add(o.week);
+      }
     }
   });
 
@@ -126,23 +206,54 @@ export function deriveCardioDisplayFields<T extends Record<string, unknown>>(
 ): T {
   const out: Record<string, unknown> = { ...cfg };
   if (out.mode === "phased" && Array.isArray(out.segments)) {
-    const segments = (out.segments as CardioSegment[]).map((seg) => {
-      if (seg.intensity_target && !seg.intensity) {
-        const derived = formatIntensityTarget(seg.intensity_target, maxHrBpm);
-        if (derived) return { ...seg, intensity: derived };
-      }
-      return seg;
-    });
+    const segments = deriveSegmentList(out.segments as CardioSegment[], maxHrBpm);
     out.segments = segments;
     const totalSeconds = cardioTotalSeconds({ mode: "phased", segments } as CardioConfig);
     if (totalSeconds > 0) out.duration_minutes = Math.max(1, Math.round(totalSeconds / 60));
     const summary = summarizeSegments(segments);
     if (summary) out.intensity = summary;
-    return out as T;
-  }
-  if (out.intensity_target && !out.intensity) {
+  } else if (out.intensity_target && !out.intensity) {
     const derived = formatIntensityTarget(out.intensity_target as CardioIntensityTarget, maxHrBpm);
     if (derived) out.intensity = derived;
   }
+  // Progressão semanal: deriva os campos de exibição de CADA override, para a
+  // resolução em runtime (apps) ser merge puro de estrutura, sem precisar da FCmáx.
+  if (Array.isArray(out.progression) && out.progression.length > 0) {
+    out.progression = (out.progression as CardioWeekOverride[]).map((o) =>
+      deriveOverrideDisplayFields(o, maxHrBpm),
+    );
+  }
   return out as T;
+}
+
+/** Deriva a string de intensidade de cada segmento (fases). */
+function deriveSegmentList(segments: CardioSegment[], maxHrBpm: number | null): CardioSegment[] {
+  return segments.map((seg) => {
+    if (seg.intensity_target && !seg.intensity) {
+      const derived = formatIntensityTarget(seg.intensity_target, maxHrBpm);
+      if (derived) return { ...seg, intensity: derived };
+    }
+    return seg;
+  });
+}
+
+/** Espelho da derivação da base para UM override da progressão. */
+function deriveOverrideDisplayFields(
+  o: CardioWeekOverride,
+  maxHrBpm: number | null,
+): CardioWeekOverride {
+  const out: CardioWeekOverride = { ...o };
+  if (Array.isArray(out.segments) && out.segments.length > 0) {
+    out.segments = deriveSegmentList(out.segments, maxHrBpm);
+    const totalSeconds = cardioTotalSeconds({ mode: "phased", segments: out.segments } as CardioConfig);
+    if (totalSeconds > 0) out.duration_minutes = Math.max(1, Math.round(totalSeconds / 60));
+    const summary = summarizeSegments(out.segments);
+    if (summary) out.intensity = summary;
+    return out;
+  }
+  if (out.intensity_target && !out.intensity) {
+    const derived = formatIntensityTarget(out.intensity_target, maxHrBpm);
+    if (derived) out.intensity = derived;
+  }
+  return out;
 }

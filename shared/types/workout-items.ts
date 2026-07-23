@@ -131,6 +131,34 @@ export interface CardioSegment {
     intensity?: string
 }
 
+/**
+ * Override de UMA semana na progressão semanal do bloco aeróbio.
+ * Semântica: o override "vale A PARTIR da semana `week`" — o resolvedor aplica
+ * o override de maior `week` ≤ semana corrente do programa (semanas antes do
+ * primeiro override usam a config base). Dois sabores:
+ *   • SEM `mode` → merge raso sobre a base (só muda km/min/intensidade…).
+ *   • COM `mode` → substituição ESTRUTURAL: a estrutura da semana é só a do
+ *     override (intervals/segments/objective/… da base são descartados;
+ *     equipment e notes são herdados).
+ */
+export interface CardioWeekOverride {
+    /** Semana do programa (1-based) a partir da qual o override vale. */
+    week: number
+    /** Rótulo da semana exibido ao aluno ("Regenerativa", "Semana da prova"). */
+    label?: string
+    /** Presente = substituição estrutural completa (ver doc acima). */
+    mode?: CardioMode
+    objective?: CardioObjective
+    duration_minutes?: number
+    distance_km?: number
+    intensity?: string           // derivada no save, como na base
+    intensity_target?: CardioIntensityTarget
+    intervals?: CardioIntervalConfig
+    protocol_key?: string
+    segments?: CardioSegment[]
+    notes?: string
+}
+
 /** Cardio item configuration */
 export interface CardioConfig {
     mode: CardioMode
@@ -151,6 +179,13 @@ export interface CardioConfig {
     protocol_key?: string
     /** Modo 'phased': a sequência de segmentos. */
     segments?: CardioSegment[]
+    /**
+     * Progressão semanal: overrides por semana do programa (ordenados por
+     * `week`, únicos). Os campos base do config continuam sendo a "semana 1"
+     * (retrocompat: superfícies antigas e o Watch leem só a base). Resolução
+     * em shared/lib/cardio/progression.ts.
+     */
+    progression?: CardioWeekOverride[]
     notes?: string
 }
 
