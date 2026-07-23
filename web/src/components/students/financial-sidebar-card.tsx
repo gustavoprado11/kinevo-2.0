@@ -9,6 +9,9 @@ import {
     getContractKind,
     CONTRACT_KIND_CONFIG,
     periodEndLabel,
+    daysUntilDate,
+    urgencyTone,
+    planDuePhrase,
 } from '@/lib/utils/financial'
 import { formatBrDate } from '@kinevo/shared/utils/format-br-date'
 
@@ -132,6 +135,14 @@ export function FinancialSidebarCard({
                         <span className="font-mono text-k-text-secondary tabular-nums">
                             {formatBrDate(contract.current_period_end)}
                         </span>
+                    </p>
+                )}
+
+                {/* Contagem "vencendo em X dias" — a janelinha de heads-up. Só no
+                    plano vigente (o atraso já tem o alerta vermelho abaixo). */}
+                {contract.current_period_end && displayStatus === 'active' && kind !== 'courtesy' && (
+                    <p className={`text-xs font-medium ${urgencyTone(daysUntilDate(contract.current_period_end))}`}>
+                        {planDuePhrase(kind, daysUntilDate(contract.current_period_end))}
                     </p>
                 )}
 

@@ -15,6 +15,8 @@ import { TourHelpButton } from '@/components/onboarding/widgets/tour-help-button
 import { matchesSearch } from '@kinevo/shared/utils/search-text'
 import { reassignStudent } from '@/actions/organizations/reassign-student'
 import { useToast } from '@/components/ui/toast'
+import { getContractKind, CONTRACT_KIND_CONFIG, daysUntilDate, urgencyTone, planDuePhrase } from '@/lib/utils/financial'
+import { formatBrDate } from '@kinevo/shared/utils/format-br-date'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,6 +49,13 @@ interface Student {
     /** Estúdio: treinador responsável (coach_id) + nome resolvido. */
     responsibleCoachId?: string | null
     responsibleCoachName?: string | null
+    /** Solo: plano/vigência pra coluna "Plano" (null = sem contrato). */
+    plan?: {
+        billing_type: string | null
+        display_status: string | null
+        current_period_end: string | null
+        plan_title: string | null
+    } | null
 }
 
 type AttentionLevel = 'ok' | 'warning' | 'urgent'
@@ -99,6 +108,36 @@ function timeAgo(dateStr: string): string {
     if (diffWeeks < 5) return `há ${diffWeeks}sem`
     const diffMonths = Math.floor(diffDays / 30)
     return `há ${diffMonths}m`
+}
+
+// Célula da coluna "Plano": natureza (Plano/Assinatura) + vigência + contagem
+// colorida. Cortesia/encerrado são estados terminais sem contagem.
+function PlanCell({ plan }: { plan: Student['plan'] }) {
+    if (!plan || !plan.billing_type) {
+        return <span className="text-sm text-k-text-quaternary">—</span>
+    }
+    const kind = getContractKind(plan.billing_type)
+    if (kind === 'courtesy' || plan.display_status === 'courtesy') {
+        return <span className="text-sm text-blue-600 dark:text-blue-400">Cortesia</span>
+    }
+    if (plan.display_status === 'canceled') {
+        return <span className="text-sm text-k-text-quaternary">Encerrado</span>
+    }
+    if (!plan.current_period_end) {
+        return <span className="text-sm text-k-text-quaternary">—</span>
+    }
+    const days = daysUntilDate(plan.current_period_end)
+    return (
+        <div className="flex flex-col gap-0.5">
+            <span className="flex items-center gap-1.5">
+                <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-k-text-quaternary">
+                    {CONTRACT_KIND_CONFIG[kind].label}
+                </span>
+                <span className="text-xs tabular-nums text-k-text-tertiary">{formatBrDate(plan.current_period_end)}</span>
+            </span>
+            <span className={`text-xs font-medium ${urgencyTone(days)}`}>{planDuePhrase(kind, days)}</span>
+        </div>
+    )
 }
 
 function getAttentionLevel(student: Student): AttentionLevel {
@@ -483,6 +522,11 @@ export function StudentsClient({
                                     <th className="px-4 py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
                                         Programa
                                     </th>
+                                    {!isStudioView && (
+                                        <th className="px-4 py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
+                                            Plano
+                                        </th>
+                                    )}
                                     <SortHeader label="Semana" sortKeyValue="weekProgress" />
                                     <SortHeader label="Último Treino" sortKeyValue="lastWorkout" />
                                     <th className="px-4 py-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.09em] text-k-text-tertiary">
@@ -584,6 +628,13 @@ export function StudentsClient({
                                                     <span className="text-sm text-k-text-quaternary">—</span>
                                                 )}
                                             </td>
+
+                                            {/* PLANO (solo) */}
+                                            {!isStudioView && (
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <PlanCell plan={student.plan} />
+                                                </td>
+                                            )}
 
                                             {/* ESTA SEMANA */}
                                             <td className="px-4 py-3 whitespace-nowrap">

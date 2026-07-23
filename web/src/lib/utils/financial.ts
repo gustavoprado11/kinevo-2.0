@@ -113,6 +113,31 @@ export function periodEndLabel(kind: ContractKind, displayStatus: DisplayStatus)
     return displayStatus === 'canceling' ? 'Acesso até' : 'Próx. cobrança'
 }
 
+/** Dias (granularidade de dia, UTC) até uma data ISO. Negativo = já passou. */
+export function daysUntilDate(iso: string): number {
+    const start = new Date()
+    start.setUTCHours(0, 0, 0, 0)
+    return Math.round((new Date(iso).getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+}
+
+/** Cor de urgência da contagem: vermelho (vencido), âmbar (≤3d), neutro (resto). */
+export function urgencyTone(days: number): string {
+    if (days < 0) return 'text-red-600 dark:text-red-400'
+    if (days <= 3) return 'text-amber-600 dark:text-amber-400'
+    return 'text-k-text-tertiary'
+}
+
+/** "vence em N dias" (plano) x "cobra em N dias" (assinatura), com hoje/atraso. */
+export function planDuePhrase(kind: ContractKind, days: number): string {
+    const sub = kind === 'subscription'
+    if (days < 0) {
+        const n = Math.abs(days)
+        return `${sub ? 'atrasada' : 'vencido'} há ${n} dia${n > 1 ? 's' : ''}`
+    }
+    if (days === 0) return sub ? 'cobra hoje' : 'vence hoje'
+    return `${sub ? 'cobra' : 'vence'} em ${days} dia${days > 1 ? 's' : ''}`
+}
+
 // S5: delega para a fonte única web+mobile (a versão Intl daqui produzia
 // espaço não-quebrável e divergia da string-built do mobile).
 export { formatBRL, formatBRL as formatCurrency, parseBRL } from '@kinevo/shared/utils/currency'

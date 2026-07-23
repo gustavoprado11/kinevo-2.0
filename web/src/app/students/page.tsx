@@ -5,6 +5,22 @@ import { getStudentScope } from '@/lib/studio/student-scope'
 import { getOrgMembersDirectory } from '@/lib/studio/org-directory'
 import { StudentsClient } from './students-client'
 
+// Linha da RPC get_financial_students que interessa à coluna "Plano".
+type FinancialStudentRow = {
+    student_id: string | null
+    contract_id: string | null
+    billing_type: string | null
+    display_status: string | null
+    current_period_end: string | null
+    plan_title: string | null
+}
+export type StudentPlanInfo = {
+    billing_type: string | null
+    display_status: string | null
+    current_period_end: string | null
+    plan_title: string | null
+}
+
 export default async function StudentsPage() {
     const { trainer, tier } = await getTrainerWithSubscription()
     const scope = await getStudentScope(trainer.id)
@@ -124,10 +140,33 @@ export default async function StudentsPage() {
         .gte('completed_at', sixtyDaysAgo.toISOString())
         .order('completed_at', { ascending: false })
 
-    const [{ data: activePrograms }, { data: allSessions }] = await Promise.all([
+    // Coluna "Plano" (solo): vigência/status por aluno via a mesma RPC do
+    // Financeiro. Oculto no estúdio (o módulo financeiro não existe p/ estúdio),
+    // então nem busca lá.
+    const financialPromise: PromiseLike<FinancialStudentRow[] | null> = isStudioView
+        ? Promise.resolve(null)
+        : supabase
+              .rpc('get_financial_students', { p_trainer_id: trainer.id })
+              .then(r => (r.data ?? null) as FinancialStudentRow[] | null)
+
+    const [{ data: activePrograms }, { data: allSessions }, financialData] = await Promise.all([
         isStudioView ? programsQuery : programsQuery.eq('trainer_id', trainer.id),
         isStudioView ? sessionsQuery : sessionsQuery.eq('trainer_id', trainer.id),
+        financialPromise,
     ])
+
+    const planByStudent = new Map<string, StudentPlanInfo>()
+    for (const r of financialData ?? []) {
+        // Só alunos com contrato de verdade (sem contrato → coluna mostra "—").
+        if (r.student_id && r.contract_id) {
+            planByStudent.set(r.student_id, {
+                billing_type: r.billing_type,
+                display_status: r.display_status,
+                current_period_end: r.current_period_end,
+                plan_title: r.plan_title,
+            })
+        }
+    }
 
     // Build session stats per student
     const weekRange = getWeekRange(new Date(), 'America/Sao_Paulo')
@@ -174,6 +213,7 @@ export default async function StudentsPage() {
             expectedPerWeek,
             responsibleCoachId: student.coach_id,
             responsibleCoachName: isStudioView ? (coachNameById.get(student.coach_id ?? '') ?? null) : null,
+            plan: planByStudent.get(student.id) ?? null,
         }
     })
 
