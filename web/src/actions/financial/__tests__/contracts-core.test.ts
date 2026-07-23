@@ -113,6 +113,53 @@ describe('markAsPaidCore — idempotência', () => {
         expect(stub.calls('student_contracts', 'update').length).toBe(0)
     })
 
+    it('asaas_auto: rejected (Asaas se liquida sozinha) — nada é gravado', async () => {
+        stub.onQuery((q) => {
+            if (q.table === 'student_contracts' && q.op === 'select') {
+                return { data: contractRow({ billing_type: 'asaas_auto' }) }
+            }
+            return undefined
+        })
+
+        const res = await markAsPaidCore(db(), TRAINER, { contractId: CONTRACT })
+        expect(res.error).toMatch(/cobran[çc]a Asaas/i)
+        expect(stub.calls('financial_transactions', 'insert').length).toBe(0)
+        expect(stub.calls('student_contracts', 'update').length).toBe(0)
+    })
+
+    it('vigência nula: ancora no INÍCIO do contrato, nunca em "hoje"', async () => {
+        // start no FUTURO isola a lógica de âncora (start + intervalo > agora sempre),
+        // deixando o teste determinístico independente de quando roda.
+        const FUTURE_START = '2099-01-01T00:00:00.000Z'
+        stub.onQuery((q) => {
+            if (q.table === 'student_contracts' && q.op === 'select') {
+                return {
+                    data: contractRow({
+                        current_period_end: null,
+                        start_date: FUTURE_START,
+                        trainer_plans: { interval: 'month' },
+                    }),
+                }
+            }
+            return undefined
+        })
+
+        const res = await markAsPaidCore(db(), TRAINER, { contractId: CONTRACT })
+        expect(res.success).toBe(true)
+
+        // Idempotência ancorada no início (start), não em Date.now().
+        const inserts = stub.calls('financial_transactions', 'insert')
+        expect((inserts[0].payload as Record<string, unknown>).stripe_payment_id)
+            .toBe(`manual_${CONTRACT}_${FUTURE_START}`)
+        // A transação agora carrega o contract_id (não fica órfã).
+        expect((inserts[0].payload as Record<string, unknown>).contract_id).toBe(CONTRACT)
+
+        // Vigência resultante = início + 1 ciclo (mês) = 2099-02-01.
+        const updates = stub.calls('student_contracts', 'update')
+        expect((updates[0].payload as Record<string, unknown>).current_period_end)
+            .toBe('2099-02-01T00:00:00.000Z')
+    })
+
     it('rejects (and writes nothing) when the contract belongs to another trainer', async () => {
         stub.onQuery((q) => {
             if (q.table === 'student_contracts' && q.op === 'select') {

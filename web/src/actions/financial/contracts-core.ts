@@ -178,8 +178,10 @@ export async function markAsPaidCore(
     if (!contract) return { error: 'Contrato não encontrado' }
     if (contract.trainer_id !== trainerId) return { error: 'Sem permissão' }
 
-    // Débito automático Asaas: marcar pago aqui só registra receita local —
-    // NÃO pausa a cobrança do cartão na Asaas → o aluno seria cobrado em dobro.
+    // Cobranças Asaas são liquidadas pela própria Asaas: registrar pagamento
+    // manual aqui duplicaria a receita — e, no recorrente, o cartão seria
+    // cobrado de novo. A vigência do plano é preenchida automaticamente quando
+    // o pagamento confirma (webhook). Por isso os dois trilhos Asaas são bloqueados.
     if (contract.billing_type === 'asaas_auto_recurring') {
         return {
             error:
@@ -187,15 +189,39 @@ export async function markAsPaidCore(
                 'Cancele a assinatura Asaas (ou migre para cobrança manual) antes de registrar pagamentos por fora.',
         }
     }
+    if (contract.billing_type === 'asaas_auto') {
+        return {
+            error:
+                'Esta é uma cobrança Asaas: ela é confirmada automaticamente quando o aluno paga, e a vigência do plano é preenchida sozinha. ' +
+                'Registrar um pagamento manual aqui duplicaria a receita.',
+        }
+    }
 
     // one_off NÃO renova período; qualquer outro tipo manual (recurring) renova.
     const isRecurring = contract.billing_type !== 'manual_one_off'
+    const planInterval = (contract.trainer_plans as { interval: string } | null)?.interval || 'month'
 
     // Período sendo liquidado, capturado ANTES de qualquer avanço — é o que
     // amarra a idempotência aos DOIS efeitos (linha duplicada + avanço duplo).
-    const currentEnd = contract.current_period_end
-        ? new Date(contract.current_period_end)
-        : new Date()
+    // Sem vigência (contrato manual que nunca teve current_period_end): NÃO
+    // ancorar em "hoje" — isso empurraria o vencimento pra frente e inflaria o
+    // acesso do aluno (foi a raiz do bug do vencimento divergente). Reconstrói o
+    // ciclo a partir do INÍCIO real do contrato, parando no último vencimento
+    // <= agora (o avanço de +1 ciclo abaixo cai no primeiro vencimento futuro).
+    let currentEnd: Date
+    if (contract.current_period_end) {
+        currentEnd = new Date(contract.current_period_end)
+    } else {
+        const anchor = contract.start_date
+            ? new Date(contract.start_date)
+            : new Date(contract.created_at ?? Date.now())
+        currentEnd = anchor
+        let next = addInterval(anchor, planInterval)
+        while (next.getTime() <= Date.now()) {
+            currentEnd = next
+            next = addInterval(next, planInterval)
+        }
+    }
 
     // Chave de idempotência DETERMINÍSTICA (substitui o `manual_<uuid>` aleatório,
     // que nunca colidia → não dedupava nada):
@@ -220,6 +246,9 @@ export async function markAsPaidCore(
             type: 'subscription',
             status: 'succeeded',
             stripe_payment_id: idemKey,
+            // Amarra a transação ao contrato — sem isto a linha ficava órfã e
+            // não aparecia no histórico/timeline do contrato do aluno.
+            contract_id: contractId,
             description: isRecurring ? 'Pagamento manual registrado' : 'Pagamento avulso registrado',
         })
     if (insertError) {
@@ -232,7 +261,6 @@ export async function markAsPaidCore(
 
     // Só a 1ª chamada (quem ganhou o insert) chega aqui. Ativa e — no recorrente
     // — avança o período a partir do vencimento ANTERIOR (não de hoje).
-    const planInterval = (contract.trainer_plans as { interval: string } | null)?.interval || 'month'
     const { error: updateError } = await supabaseAdmin
         .from('student_contracts')
         .update(

@@ -33,7 +33,11 @@ export function computeDisplayStatus(contract: ContractForStatus | null): Displa
 
     if (
         contract.status === 'active' &&
-        (contract.billing_type === 'manual_recurring' || contract.billing_type === 'manual_one_off') &&
+        (contract.billing_type === 'manual_recurring' ||
+            contract.billing_type === 'manual_one_off' ||
+            // asaas_auto (prazo fixo Asaas) agora ganha vigência na confirmação
+            // → entra na mesma janela de graça/vencido dos manuais.
+            contract.billing_type === 'asaas_auto') &&
         contract.current_period_end
     ) {
         const periodEnd = new Date(contract.current_period_end).getTime()
@@ -64,6 +68,49 @@ export const INTERVAL_LABELS: Record<string, string> = {
     month: '/mês',
     quarter: '/trimestre',
     year: '/ano',
+}
+
+/**
+ * Natureza comercial do contrato — separa o que o gestor precisa distinguir:
+ *   • subscription (Assinatura): renova sozinha a cada ciclo. Interessa a
+ *     "próxima cobrança".
+ *   • fixed_term (Plano): prazo fixo (ex.: "3 meses"), vence e NÃO renova
+ *     sozinho. Interessa a "vigência do plano" (até quando vale).
+ *   • courtesy (Cortesia): acesso liberado, sem cobrança nem vencimento.
+ *
+ * A fonte da verdade é o billing_type. `asaas_auto` = link Asaas pago uma vez
+ * (à vista OU parcelado no cartão) = prazo fixo; `asaas_auto_recurring` = cartão
+ * que recobra todo ciclo = assinatura.
+ */
+export type ContractKind = 'subscription' | 'fixed_term' | 'courtesy'
+
+const FIXED_TERM_BILLING = new Set(['manual_one_off', 'asaas_auto'])
+const SUBSCRIPTION_BILLING = new Set(['manual_recurring', 'stripe_auto', 'asaas_auto_recurring'])
+
+export function getContractKind(billingType: string | null | undefined): ContractKind {
+    if (!billingType || billingType === 'courtesy') return 'courtesy'
+    if (FIXED_TERM_BILLING.has(billingType)) return 'fixed_term'
+    if (SUBSCRIPTION_BILLING.has(billingType)) return 'subscription'
+    return 'subscription'
+}
+
+export const CONTRACT_KIND_CONFIG: Record<ContractKind, { label: string; description: string }> = {
+    subscription: { label: 'Assinatura', description: 'Renova automaticamente a cada ciclo' },
+    fixed_term: { label: 'Plano', description: 'Prazo fixo — vence e não renova sozinho' },
+    courtesy: { label: 'Cortesia', description: 'Acesso liberado, sem cobrança' },
+}
+
+/**
+ * Rótulo da data de vigência conforme a natureza do contrato e o status.
+ * Resolve a confusão "que vencimento é esse?" — deixa explícito que é o do
+ * PLANO (comercial), distinto do vencimento do TREINO (fim do programa).
+ */
+export function periodEndLabel(kind: ContractKind, displayStatus: DisplayStatus): string {
+    if (displayStatus === 'expired') return 'Plano expirou em'
+    // Plano de prazo fixo: sempre "válido até" (a data é o fim da vigência).
+    if (kind === 'fixed_term') return 'Plano válido até'
+    // Assinatura: a data é a próxima cobrança (ou o fim do acesso, se cancelando).
+    return displayStatus === 'canceling' ? 'Acesso até' : 'Próx. cobrança'
 }
 
 // S5: delega para a fonte única web+mobile (a versão Intl daqui produzia

@@ -507,7 +507,7 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
         const contractId = recordContractId
         const { data: contract } = await supabaseAdmin
             .from('student_contracts')
-            .select('trainer_id, student_id, installment_count, billing_type, trainer_plans:plan_id(interval)')
+            .select('trainer_id, student_id, installment_count, billing_type, start_date, current_period_end, trainer_plans:plan_id(interval)')
             .eq('id', contractId)
             .maybeSingle()
         if (contract) {
@@ -560,6 +560,23 @@ async function handlePaymentReceived(event: AsaasWebhookEvent, scopedTrainerId: 
                     await supabaseAdmin
                         .from('student_contracts')
                         .update({ current_period_end: addPlanInterval(base, interval).toISOString() })
+                        .eq('id', contractId)
+                }
+            } else if (contract.billing_type === 'asaas_auto' && !contract.current_period_end) {
+                // Prazo fixo (link Asaas à vista OU parcelado): a vigência é FIXA
+                // = início + 1 ciclo do plano. Sem isto o "Vencimento do plano"
+                // ficava vazio pra sempre e nenhuma lógica de expiração/carência
+                // enxergava o contrato — era a causa do acesso invisível que fez
+                // o vencimento ser "consertado" no dedo (e sair errado). Seta só
+                // quando ainda está nulo → parcelas 2..N não re-estendem.
+                const rel = contract.trainer_plans as { interval: string } | { interval: string }[] | null
+                const interval = (Array.isArray(rel) ? rel[0]?.interval : rel?.interval) ?? 'month'
+                const anchor = contract.start_date ? new Date(contract.start_date) : new Date()
+                if (!Number.isNaN(anchor.getTime())) {
+                    const end = addPlanInterval(anchor, interval).toISOString()
+                    await supabaseAdmin
+                        .from('student_contracts')
+                        .update({ current_period_end: end, end_date: end })
                         .eq('id', contractId)
                 }
             }
