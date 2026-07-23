@@ -46,7 +46,7 @@ export function DraggableTestItem({ entry, onAdd }: DraggableTestItemProps) {
             </div>
             <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium leading-snug text-k-text-primary line-clamp-2">{entry.label}</div>
-                <div className="mt-0.5 text-[11px] leading-snug text-k-text-tertiary line-clamp-1">{entry.description}</div>
+                <div className="mt-0.5 text-[11px] leading-snug text-k-text-tertiary line-clamp-2">{entry.description}</div>
             </div>
             <button
                 type="button"

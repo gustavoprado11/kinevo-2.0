@@ -89,11 +89,15 @@ export function AssessmentBuilderPageClient({
     }
 
     // Wizard chrome state — Step 3 delega ao canvas; Steps 1+2 usam estado local.
-    const wizardTitle = isEditing
-        ? `Editar template${title ? ` — ${title}` : ''}`
-        : title || 'Novo template de avaliação'
+    // No Step 3 o nome/descrição vivem (editáveis) no topo do canvas, então o
+    // header fica genérico pra não duplicar o título na tela.
+    const wizardTitle = step === 3
+        ? (isEditing ? 'Editar avaliação' : 'Nova avaliação')
+        : isEditing
+            ? `Editar template${title ? ` — ${title}` : ''}`
+            : title || 'Novo template de avaliação'
 
-    const wizardSubtitle = isEditing ? 'Editando template' : null
+    const wizardSubtitle = isEditing && step !== 3 ? 'Editando template' : null
 
     const isDirtyForShell = step === 3 ? shellState.isDirty : (title.trim().length > 0 || schemaSeed.sections.length > 0)
     const canSaveForShell = step === 3 ? (shellState.canSave && !saving) : false
@@ -118,6 +122,7 @@ export function AssessmentBuilderPageClient({
                 : step === 2 ? title.trim().length > 0
                 : false
             }
+            hideAdvance={step === 1}
             canSave={canSaveForShell}
             onSave={() => shellState.save()}
             isDirty={isDirtyForShell}
@@ -127,8 +132,8 @@ export function AssessmentBuilderPageClient({
                 STEP 1: TIPO — 2 cards (Em branco / Partir de Kinevo)
             ════════════════════════════════════════════════ */}
             {step === 1 && (
-                <div className="bg-surface-primary p-4 font-sans">
-                    <div className="max-w-3xl mx-auto">
+                <div className="flex min-h-[62vh] items-center justify-center bg-surface-primary p-4 font-sans">
+                    <div className="w-full max-w-3xl mx-auto">
                         <p className="text-center text-lg font-semibold text-k-text-primary mb-2">
                             Como deseja começar sua avaliação?
                         </p>
@@ -178,8 +183,8 @@ export function AssessmentBuilderPageClient({
                 STEP 2: CONFIGURAR — nome + descrição
             ════════════════════════════════════════════════ */}
             {step === 2 && (
-                <div className="bg-surface-primary p-4 font-sans">
-                    <div className="max-w-xl mx-auto">
+                <div className="flex min-h-[62vh] items-center justify-center bg-surface-primary p-4 font-sans">
+                    <div className="w-full max-w-xl mx-auto">
                         <div className="rounded-panel border border-k-border-subtle bg-surface-card p-8 space-y-6">
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-k-text-primary">
