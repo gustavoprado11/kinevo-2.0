@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTheme } from 'next-themes'
 import { createClient } from '@/lib/supabase/client'
@@ -20,7 +20,6 @@ function safeRedirect(raw: string | null): string {
 }
 
 function LoginForm() {
-    const router = useRouter()
     const { setTheme } = useTheme()
     const searchParams = useSearchParams()
     const redirectTo = safeRedirect(searchParams.get('redirect'))
@@ -56,8 +55,13 @@ function LoginForm() {
             if (trainerTheme) setTheme(trainerTheme)
         }
 
-        router.push(redirectTo)
-        router.refresh()
+        // Navegação COMPLETA (não router.push+refresh) igual ao /signup. O destino
+        // pode fazer redirect() no servidor — ex.: /dashboard → /assistente quando
+        // home_style='assistant' — e a navegação client-side do router entrava em
+        // corrida com esse redirect (e era frágil a chunks defasados logo após um
+        // deploy), caindo na tela "This page couldn't load". Um request completo
+        // segue o 302 de forma limpa e ainda estabelece a sessão nova no 1º load.
+        window.location.assign(redirectTo)
     }
 
     return (
