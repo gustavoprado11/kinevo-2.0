@@ -57,10 +57,10 @@ export function SessionListItem({ session, onClick }: SessionListItemProps) {
         <button
             type="button"
             onClick={onClick}
-            className="group flex w-full items-center justify-between px-5 py-2.5 text-left transition-all hover:bg-[#F5F5F7] dark:hover:bg-glass-bg"
+            className="group flex w-full items-center justify-between px-5 py-2.5 text-left transition-colors hover:bg-surface-inset"
         >
             <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#D2D2D7] bg-[#F5F5F7] dark:border-k-border-primary dark:bg-glass-bg">
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-k-border-subtle bg-surface-inset">
                     {session.student_avatar ? (
                         <Image
                             src={session.student_avatar}
@@ -71,27 +71,31 @@ export function SessionListItem({ session, onClick }: SessionListItemProps) {
                             unoptimized
                         />
                     ) : (
-                        <span className="text-[10px] font-semibold text-[#1D1D1F] dark:text-k-text-primary">
+                        <span className="text-[10px] font-semibold text-k-text-secondary">
                             {(session.student_name || '?').charAt(0).toUpperCase()}
                         </span>
                     )}
                 </div>
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-medium text-[#1D1D1F] dark:text-k-text-secondary group-hover:text-[#1D1D1F] dark:group-hover:text-k-text-primary transition-colors">
+                        <p className="truncate text-sm font-medium text-k-text-primary">
                             {session.student_name || 'Aluno'}
                         </p>
                         <AssessmentStatusBadge status={session.status} overdue={isOverdue} />
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-[#86868B] dark:text-k-text-quaternary">
+                    <p className="mt-0.5 truncate text-xs text-k-text-tertiary">
                         {session.template_title || 'Avaliação'}
-                        {dateStr ? ` · ${dateStr}` : ''}
-                        {timeStr ? ` ${timeStr}` : ''}
-                        {summary ? ` · ${summary}` : ''}
+                        {(dateStr || summary) && (
+                            <span className="font-mono tabular-nums">
+                                {dateStr ? ` · ${dateStr}` : ''}
+                                {timeStr ? ` ${timeStr}` : ''}
+                                {summary ? ` · ${summary}` : ''}
+                            </span>
+                        )}
                     </p>
                 </div>
             </div>
-            <ChevronRight className="h-4 w-4 flex-shrink-0 text-k-border-subtle group-hover:text-k-text-tertiary transition-all" />
+            <ChevronRight className="h-4 w-4 flex-shrink-0 text-k-text-quaternary group-hover:text-k-text-tertiary transition-colors" />
         </button>
     )
 }
