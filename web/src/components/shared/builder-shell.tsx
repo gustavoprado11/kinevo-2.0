@@ -87,11 +87,11 @@ export function BuilderShell({
     return (
         <div className="flex min-h-[calc(100vh-8rem)] flex-col">
             {/* Header */}
-            <div className="mb-4 flex items-center gap-3 rounded-2xl border border-k-border-subtle bg-surface-card px-4 py-3">
+            <div className="mb-4 flex items-center gap-3 rounded-panel border border-k-border-subtle bg-surface-card px-4 py-3">
                 <button
                     type="button"
                     onClick={requestExit}
-                    className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-k-text-secondary hover:bg-surface-inset"
+                    className="flex items-center gap-1 rounded-control px-2 py-1 text-sm text-k-text-secondary hover:bg-surface-inset"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Voltar
@@ -116,7 +116,7 @@ export function BuilderShell({
                         type="button"
                         onClick={() => { void onSave() }}
                         disabled={!canSave || isSaving}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold text-white transition-opacity hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="inline-flex items-center gap-1.5 rounded-control bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         {isSaving ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -151,7 +151,7 @@ export function BuilderShell({
                             <button
                                 type="button"
                                 onClick={() => setConfirmExitOpen(false)}
-                                className="rounded-lg border border-k-border-primary bg-transparent px-3 py-1.5 text-sm font-medium text-k-text-secondary hover:bg-surface-inset"
+                                className="rounded-control border border-k-border-primary bg-transparent px-3 py-1.5 text-sm font-medium text-k-text-secondary hover:bg-surface-inset"
                             >
                                 Continuar editando
                             </button>
@@ -161,7 +161,7 @@ export function BuilderShell({
                                     setConfirmExitOpen(false)
                                     onExit()
                                 }}
-                                className="rounded-lg bg-red-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-600"
+                                className="rounded-control bg-red-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-600"
                             >
                                 Sair sem salvar
                             </button>

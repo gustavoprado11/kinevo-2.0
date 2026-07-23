@@ -23,6 +23,12 @@ export interface BuilderWizardShellProps {
     isSaving?: boolean
     /** Habilita botão Próximo (Steps 1 e 2) quando true. */
     canAdvance?: boolean
+    /**
+     * Esconde o botão Próximo (ex.: Step 1, onde os cards de tipo já avançam
+     * sozinhos ao clique — sem um "Próximo" competindo). O footer mostra só
+     * Cancelar/Voltar. Não afeta o botão Salvar do último step.
+     */
+    hideAdvance?: boolean
     /** Habilita botão Salvar (Step 3) quando true. */
     canSave?: boolean
     /** Disparado ao clicar Próximo (Steps 1 e 2). Caller decide o avanço de step. */
@@ -56,6 +62,7 @@ export function BuilderWizardShell({
     isDirty = false,
     isSaving = false,
     canAdvance = true,
+    hideAdvance = false,
     canSave = false,
     onAdvance,
     onBack,
@@ -93,13 +100,13 @@ export function BuilderWizardShell({
             : null
 
     return (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col">
+        <div className="flex h-[calc(100vh-8rem)] flex-col">
             {/* Header */}
-            <div className="mb-4 flex items-center gap-3 rounded-2xl border border-k-border-subtle bg-surface-card px-4 py-3">
+            <div className="mb-4 flex items-center gap-3 rounded-panel border border-k-border-subtle bg-surface-card px-4 py-3">
                 <button
                     type="button"
                     onClick={requestExit}
-                    className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-k-text-secondary hover:bg-surface-inset"
+                    className="flex items-center gap-1 rounded-control px-2 py-1 text-sm text-k-text-secondary hover:bg-surface-inset"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Voltar
@@ -132,25 +139,27 @@ export function BuilderWizardShell({
                         return (
                             <div key={label} className="flex items-center gap-2">
                                 <div
-                                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all duration-300 ${
-                                        isCompleted
-                                            ? 'bg-[#34C759] text-white dark:bg-emerald-500'
-                                            : isActive
-                                                ? 'bg-[#7C3AED] text-white dark:bg-violet-600'
-                                                : 'bg-[#E8E8ED] text-[#AEAEB2] dark:bg-surface-elevated dark:text-k-text-quaternary'
+                                    className={`flex h-6 w-6 items-center justify-center rounded-full border font-mono text-[11px] font-semibold tabular-nums transition-colors ${
+                                        isActive
+                                            ? 'border-transparent bg-primary text-primary-foreground'
+                                            : isCompleted
+                                                ? 'border-k-border-subtle bg-surface-inset text-k-text-secondary'
+                                                : 'border-k-border-subtle bg-surface-card text-k-text-quaternary'
                                     }`}
                                 >
-                                    {isCompleted ? <Check size={12} /> : stepNum}
+                                    {isCompleted ? <Check size={12} strokeWidth={2.5} /> : stepNum}
                                 </div>
-                                <span className={`text-xs font-medium transition-colors ${
-                                    isCompleted || isActive
-                                        ? 'text-[#1D1D1F] dark:text-k-text-primary'
-                                        : 'text-[#AEAEB2] dark:text-k-text-quaternary'
+                                <span className={`font-mono text-[10.5px] uppercase tracking-[0.1em] transition-colors ${
+                                    isActive
+                                        ? 'text-k-text-primary'
+                                        : isCompleted
+                                            ? 'text-k-text-secondary'
+                                            : 'text-k-text-quaternary'
                                 }`}>
                                     {label}
                                 </span>
                                 {i < stepLabels.length - 1 && (
-                                    <div className={`w-8 h-px ml-1 ${isCompleted ? 'bg-[#7C3AED] dark:bg-emerald-500' : 'bg-[#E8E8ED] dark:bg-surface-elevated'}`} />
+                                    <div className={`ml-1 h-px w-8 ${isCompleted ? 'bg-k-border-primary' : 'bg-k-border-subtle'}`} />
                                 )}
                             </div>
                         )
@@ -158,8 +167,10 @@ export function BuilderWizardShell({
                 </div>
             )}
 
-            {/* Content */}
-            <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+            {/* Content — rola por dentro; o footer abaixo fica sempre visível.
+                Steps altos (editor de formulário) rolam aqui; o canvas de avaliação
+                (h-full) preenche a área e rola coluna a coluna internamente. */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
 
             {/* Footer — só aparece se houver onAdvance ou onSave (steps com nav) */}
             {(onAdvance || onSave) && (
@@ -173,7 +184,7 @@ export function BuilderWizardShell({
                                 onBack()
                             }
                         }}
-                        className="rounded-lg border border-k-border-primary bg-transparent px-4 py-2 text-sm font-medium text-k-text-secondary hover:bg-surface-inset"
+                        className="rounded-control border border-k-border-primary bg-transparent px-4 py-2 text-sm font-medium text-k-text-secondary hover:bg-surface-inset"
                     >
                         {currentStep === 1 ? 'Cancelar' : 'Voltar'}
                     </button>
@@ -182,7 +193,7 @@ export function BuilderWizardShell({
                             type="button"
                             onClick={() => { void onSave?.() }}
                             disabled={!canSave || isSaving}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#7C3AED] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-violet-600 dark:hover:bg-violet-500"
+                            className="inline-flex items-center gap-1.5 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             {isSaving ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -191,12 +202,14 @@ export function BuilderWizardShell({
                             )}
                             Salvar
                         </button>
+                    ) : hideAdvance ? (
+                        <span />
                     ) : (
                         <button
                             type="button"
                             onClick={onAdvance}
                             disabled={!canAdvance}
-                            className="rounded-lg bg-[#7C3AED] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-violet-600 dark:hover:bg-violet-500"
+                            className="rounded-control bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             Próximo
                         </button>
@@ -224,7 +237,7 @@ export function BuilderWizardShell({
                             <button
                                 type="button"
                                 onClick={() => setConfirmExitOpen(false)}
-                                className="rounded-lg border border-k-border-primary bg-transparent px-3 py-1.5 text-sm font-medium text-k-text-secondary hover:bg-surface-inset"
+                                className="rounded-control border border-k-border-primary bg-transparent px-3 py-1.5 text-sm font-medium text-k-text-secondary hover:bg-surface-inset"
                             >
                                 Continuar editando
                             </button>
@@ -234,7 +247,7 @@ export function BuilderWizardShell({
                                     setConfirmExitOpen(false)
                                     onExit()
                                 }}
-                                className="rounded-lg bg-red-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-600"
+                                className="rounded-control bg-red-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-600"
                             >
                                 Sair sem salvar
                             </button>
