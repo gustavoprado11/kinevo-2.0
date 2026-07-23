@@ -105,9 +105,9 @@ describe('WidgetPicker', () => {
     fireEvent.click(screen.getByText('Resetar'))
 
     const { widgets } = useDashboardLayoutStore.getState()
-    expect(widgets).toHaveLength(4)
+    expect(widgets).toHaveLength(5)
     expect(widgets.map(w => w.id)).toEqual([
-      'stats', 'insights', 'expiring-programs', 'activity-feed',
+      'stats', 'insights', 'expiring-programs', 'upcoming-renewals', 'activity-feed',
     ])
   })
 })

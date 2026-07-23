@@ -8,6 +8,7 @@ import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { StatCards } from '@/components/dashboard/stat-cards'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { ExpiringPrograms } from '@/components/dashboard/expiring-programs'
+import { UpcomingRenewalsCard } from '@/components/dashboard/upcoming-renewals-card'
 import { UpcomingAppointmentsWidget } from '@/components/dashboard/upcoming-appointments-widget'
 import { WidgetGrid } from '@/components/dashboard/widget-grid'
 import { WidgetPicker } from '@/components/dashboard/widget-picker'
@@ -197,6 +198,7 @@ export function DashboardClient({ trainer, data, initialStudents, selfStudentId,
             </Suspense>
         ),
         'expiring-programs': <ExpiringPrograms programs={data.expiringPrograms} />,
+        'upcoming-renewals': <UpcomingRenewalsCard renewals={data.upcomingRenewals} />,
         'activity-feed': (
             <Suspense fallback={<WidgetSkeleton />}>
                 <DailyActivityFeed activities={data.dailyActivity} scheduledToday={data.scheduledToday} />

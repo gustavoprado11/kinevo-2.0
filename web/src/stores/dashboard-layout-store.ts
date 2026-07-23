@@ -7,6 +7,7 @@ export type WidgetId =
     | 'stats'
     | 'insights'
     | 'expiring-programs'
+    | 'upcoming-renewals'
     | 'activity-feed'
     | 'weekly-goals'
     | 'student-ranking'
@@ -55,6 +56,14 @@ export const WIDGET_REGISTRY: Record<WidgetId, WidgetConfig> = {
         removable: true,
         defaultEnabled: true,
     },
+    'upcoming-renewals': {
+        id: 'upcoming-renewals',
+        label: 'Vencimentos',
+        description: 'Vigência do plano e do treino, quem vence primeiro',
+        size: 'half',
+        removable: true,
+        defaultEnabled: true,
+    },
     'activity-feed': {
         id: 'activity-feed',
         label: 'Treinos de hoje',
@@ -94,7 +103,8 @@ const DEFAULT_LAYOUT: WidgetPlacement[] = [
     { id: 'stats', order: 0 },
     { id: 'insights', order: 1 },
     { id: 'expiring-programs', order: 2 },
-    { id: 'activity-feed', order: 3 },
+    { id: 'upcoming-renewals', order: 3 },
+    { id: 'activity-feed', order: 4 },
 ]
 
 // ── Store ──
@@ -168,10 +178,16 @@ export const useDashboardLayoutStore = create<DashboardLayoutState>()(
                             ? { ...w, id: 'upcoming-appointments' }
                             : w,
                     )
+                    // v2: novo card padrão "Vencimentos". Injeta uma vez nos
+                    // layouts salvos que ainda não o têm (é removível — quem não
+                    // quiser esconde pelo "Personalizar").
+                    if (!s.widgets.some((w) => w.id === 'upcoming-renewals')) {
+                        s.widgets.push({ id: 'upcoming-renewals', order: s.widgets.length })
+                    }
                 }
                 return state as DashboardLayoutState
             },
-            version: 1,
+            version: 2,
         }
     )
 )

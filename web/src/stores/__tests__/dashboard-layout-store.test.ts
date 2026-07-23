@@ -21,13 +21,14 @@ describe('dashboard-layout-store', () => {
   // ── Default State ──
 
   describe('default state', () => {
-    it('has 4 default widgets in order', () => {
+    it('has 5 default widgets in order', () => {
       const { widgets } = getState()
-      expect(widgets).toHaveLength(4)
+      expect(widgets).toHaveLength(5)
       expect(widgets.map(w => w.id)).toEqual([
         'stats',
         'insights',
         'expiring-programs',
+        'upcoming-renewals',
         'activity-feed',
       ])
     })
@@ -47,8 +48,8 @@ describe('dashboard-layout-store', () => {
   // ── WIDGET_REGISTRY ──
 
   describe('WIDGET_REGISTRY', () => {
-    it('has 7 registered widgets', () => {
-      expect(Object.keys(WIDGET_REGISTRY)).toHaveLength(7)
+    it('has 8 registered widgets', () => {
+      expect(Object.keys(WIDGET_REGISTRY)).toHaveLength(8)
     })
 
     it('stats widget is not removable', () => {
@@ -57,7 +58,7 @@ describe('dashboard-layout-store', () => {
 
     it('all other widgets are removable', () => {
       const removableIds: WidgetId[] = [
-        'insights', 'expiring-programs', 'activity-feed',
+        'insights', 'expiring-programs', 'upcoming-renewals', 'activity-feed',
         'weekly-goals', 'student-ranking', 'upcoming-appointments',
       ]
       removableIds.forEach(id => {
@@ -86,9 +87,9 @@ describe('dashboard-layout-store', () => {
       })
 
       const { widgets } = getState()
-      expect(widgets).toHaveLength(5)
-      expect(widgets[4].id).toBe('weekly-goals')
-      expect(widgets[4].order).toBe(4)
+      expect(widgets).toHaveLength(6)
+      expect(widgets[5].id).toBe('weekly-goals')
+      expect(widgets[5].order).toBe(5)
     })
 
     it('does not add a duplicate widget', () => {
@@ -96,7 +97,7 @@ describe('dashboard-layout-store', () => {
         getState().addWidget('stats') // already in default layout
       })
 
-      expect(getState().widgets).toHaveLength(4)
+      expect(getState().widgets).toHaveLength(5)
     })
 
     it('assigns order one higher than current max', () => {
@@ -105,7 +106,7 @@ describe('dashboard-layout-store', () => {
       })
 
       const added = getState().widgets.find(w => w.id === 'student-ranking')
-      expect(added?.order).toBe(4)
+      expect(added?.order).toBe(5)
     })
 
     it('can add multiple widgets sequentially', () => {
@@ -115,7 +116,7 @@ describe('dashboard-layout-store', () => {
         getState().addWidget('upcoming-appointments')
       })
 
-      expect(getState().widgets).toHaveLength(7)
+      expect(getState().widgets).toHaveLength(8)
     })
   })
 
@@ -128,7 +129,7 @@ describe('dashboard-layout-store', () => {
       })
 
       const { widgets } = getState()
-      expect(widgets).toHaveLength(3)
+      expect(widgets).toHaveLength(4)
       expect(widgets.find(w => w.id === 'insights')).toBeUndefined()
     })
 
@@ -137,7 +138,7 @@ describe('dashboard-layout-store', () => {
         getState().removeWidget('stats')
       })
 
-      expect(getState().widgets).toHaveLength(4)
+      expect(getState().widgets).toHaveLength(5)
       expect(getState().widgets.find(w => w.id === 'stats')).toBeDefined()
     })
 
@@ -146,7 +147,7 @@ describe('dashboard-layout-store', () => {
         getState().removeWidget('weekly-goals') // not in default layout
       })
 
-      expect(getState().widgets).toHaveLength(4)
+      expect(getState().widgets).toHaveLength(5)
     })
   })
 
@@ -164,6 +165,7 @@ describe('dashboard-layout-store', () => {
         'activity-feed',
         'insights',
         'expiring-programs',
+        'upcoming-renewals',
       ])
     })
 
@@ -209,7 +211,8 @@ describe('dashboard-layout-store', () => {
         { id: 'stats', order: 0 },
         { id: 'insights', order: 1 },
         { id: 'expiring-programs', order: 2 },
-        { id: 'activity-feed', order: 3 },
+        { id: 'upcoming-renewals', order: 3 },
+        { id: 'activity-feed', order: 4 },
       ])
 
       act(() => {
@@ -220,7 +223,8 @@ describe('dashboard-layout-store', () => {
         { id: 'stats', order: 0 },
         { id: 'insights', order: 1 },
         { id: 'expiring-programs', order: 2 },
-        { id: 'activity-feed', order: 3 },
+        { id: 'upcoming-renewals', order: 3 },
+        { id: 'activity-feed', order: 4 },
       ])
     })
   })

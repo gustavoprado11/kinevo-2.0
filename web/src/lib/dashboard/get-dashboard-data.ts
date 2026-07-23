@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { mapPendingForms as mapPendingFormsHelper } from './map-pending-forms'
 import { getISOWeekRange, getProgramEndDate, getProgramWeek, getScheduledWorkoutsForDate } from '@kinevo/shared/utils/schedule-projection'
 import { getNextOccurrences } from '@kinevo/shared/utils/appointments-projection'
+import { getUpcomingRenewals, type StudentRenewal } from '@/lib/financial/upcoming-renewals'
 import type {
     AppointmentException,
     AppointmentOccurrence,
@@ -137,6 +138,11 @@ export interface DashboardData {
      * `upcomingAppointments`. Lookup O(1) no widget sem nova query.
      */
     upcomingAppointmentStudents: Record<string, UpcomingAppointmentStudent>
+    /**
+     * Vencimentos por aluno (vigência do PLANO + vencimento do TREINO),
+     * ordenados por quem vence primeiro. Alimenta o card "Vencimentos".
+     */
+    upcomingRenewals: StudentRenewal[]
 }
 
 // ── Helpers ──
@@ -683,6 +689,10 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         }
     }
 
+    // Vencimentos (plano + treino) — RPC financeira + programas ativos. Serial
+    // após o bloco paralelo; ~2 roundtrips, aceitável no server component.
+    const upcomingRenewals = await getUpcomingRenewals(trainerId)
+
     return {
         stats: {
             activeStudentsCount,
@@ -707,6 +717,7 @@ async function fetchDashboardData(trainerId: string): Promise<DashboardData> {
         studentRanking,
         upcomingAppointments,
         upcomingAppointmentStudents,
+        upcomingRenewals,
     }
 }
 
