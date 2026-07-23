@@ -224,7 +224,7 @@ export function CaptureClient({
                 <button
                     type="button"
                     onClick={() => router.push(`/students/${studentId}/avaliacoes/${sessionId}`)}
-                    className="mt-4 rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600"
+                    className="mt-4 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                 >
                     Voltar
                 </button>

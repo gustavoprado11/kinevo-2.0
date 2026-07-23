@@ -18,7 +18,7 @@ export interface NumericUnitInputWebProps {
 }
 
 // M10B — single-value numeric input. Big-display visuals (44px font),
-// inputmode=decimal pra teclado numérico em mobile/tablet, focus ring violet,
+// inputmode=decimal pra teclado numérico em mobile/tablet,
 // border amarela quando out-of-range.
 export function NumericUnitInputWeb({
     test_id,
@@ -70,17 +70,17 @@ export function NumericUnitInputWeb({
     const borderClass = form.state.isOutOfRange
         ? 'border-amber-500'
         : form.state.isValid
-            ? 'border-violet-500'
+            ? 'border-k-border-primary'
             : 'border-k-border-subtle'
 
     return (
         <div className="space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-k-text-secondary">
+            <div className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
                 {label}
             </div>
 
             <div
-                className={`flex items-end gap-3 rounded-2xl border bg-surface-card px-5 py-4 ${borderClass}`}
+                className={`flex items-end gap-3 rounded-control border bg-surface-card px-5 py-4 ${borderClass}`}
             >
                 <input
                     type="text"
@@ -95,7 +95,7 @@ export function NumericUnitInputWeb({
                     }}
                     placeholder="0"
                     aria-label={`${label} em ${unit}`}
-                    className="flex-1 bg-transparent text-[44px] font-extrabold leading-tight text-k-text-primary outline-none placeholder:text-k-text-quaternary"
+                    className="flex-1 bg-transparent text-[44px] font-mono font-semibold tabular-nums leading-tight text-k-text-primary outline-none placeholder:text-k-text-quaternary"
                 />
                 <span className="mb-1.5 text-lg font-semibold text-k-text-secondary">
                     {unit}

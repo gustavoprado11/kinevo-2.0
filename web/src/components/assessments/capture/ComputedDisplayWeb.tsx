@@ -26,7 +26,7 @@ export function ComputedDisplayWeb({
 
     return (
         <div
-            className="space-y-2 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5"
+            className="space-y-2 rounded-panel border border-k-border-subtle bg-surface-inset p-5"
             role="text"
             aria-label={
                 hasValue
@@ -35,7 +35,7 @@ export function ComputedDisplayWeb({
             }
         >
             <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
                     {label}
                 </span>
                 {formula_label && (
@@ -45,7 +45,7 @@ export function ComputedDisplayWeb({
 
             {hasValue ? (
                 <div className="flex items-end gap-1.5">
-                    <span className="text-4xl font-extrabold text-k-text-primary">
+                    <span className="text-4xl font-mono font-semibold tabular-nums text-k-text-primary">
                         {(value as number).toFixed(2)}
                     </span>
                     {unit && (
@@ -60,11 +60,12 @@ export function ComputedDisplayWeb({
 
             {classification_label && (
                 <span
-                    className="inline-block rounded-lg px-2.5 py-1 text-xs font-bold"
-                    style={{
-                        backgroundColor: (classification_color ?? '#8b5cf6') + '22',
-                        color: classification_color ?? '#8b5cf6',
-                    }}
+                    className="inline-block rounded-control px-2.5 py-1 text-xs font-bold"
+                    style={
+                        classification_color
+                            ? { backgroundColor: classification_color + '22', color: classification_color }
+                            : { backgroundColor: 'var(--surface-card)', color: 'var(--text-secondary)' }
+                    }
                 >
                     {classification_label}
                 </span>

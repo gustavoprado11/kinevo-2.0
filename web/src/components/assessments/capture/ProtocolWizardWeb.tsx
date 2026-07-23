@@ -128,7 +128,7 @@ export function ProtocolWizardWeb({
 
     const currentRaw = values[currentSite] ?? ''
     const currentParsed = parsed[currentSite]
-    const inputBorderClass = currentParsed !== undefined ? 'border-violet-500' : 'border-k-border-subtle'
+    const inputBorderClass = currentParsed !== undefined ? 'border-k-border-primary' : 'border-k-border-subtle'
 
     return (
         <div className="space-y-4">
@@ -141,7 +141,7 @@ export function ProtocolWizardWeb({
                 >
                     <ChevronLeft className="h-5 w-5" />
                 </button>
-                <span className="text-xs font-bold uppercase tracking-wider text-k-text-tertiary">
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
                     {label} — {stepIdx + 1} / {sites.length}
                 </span>
                 <button
@@ -159,16 +159,14 @@ export function ProtocolWizardWeb({
                 {sites.map((s, i) => (
                     <span
                         key={s}
-                        className="h-1.5 rounded-full transition-all"
-                        style={{
-                            width: i === stepIdx ? 18 : 6,
-                            backgroundColor:
-                                parsed[s] !== undefined
-                                    ? '#7c3aed'
-                                    : i === stepIdx
-                                        ? '#7c3aed88'
-                                        : '#E5E7EB',
-                        }}
+                        className={`h-1.5 rounded-full transition-all ${
+                            parsed[s] !== undefined
+                                ? 'bg-k-text-primary'
+                                : i === stepIdx
+                                    ? 'bg-k-text-tertiary'
+                                    : 'bg-surface-inset'
+                        }`}
+                        style={{ width: i === stepIdx ? 18 : 6 }}
                     />
                 ))}
             </div>
@@ -179,7 +177,7 @@ export function ProtocolWizardWeb({
                 {SITE_LABELS[currentSite]}
             </h3>
 
-            <div className={`flex items-end gap-3 rounded-2xl border bg-surface-card px-5 py-4 ${inputBorderClass}`}>
+            <div className={`flex items-end gap-3 rounded-control border bg-surface-card px-5 py-4 ${inputBorderClass}`}>
                 <input
                     type="text"
                     inputMode="decimal"
@@ -187,7 +185,7 @@ export function ProtocolWizardWeb({
                     onChange={e => updateValue(currentSite, e.target.value)}
                     placeholder="0"
                     aria-label={`${SITE_LABELS[currentSite]} em milímetros`}
-                    className="flex-1 bg-transparent text-[44px] font-extrabold leading-tight text-k-text-primary outline-none placeholder:text-k-text-quaternary"
+                    className="flex-1 bg-transparent text-[44px] font-mono font-semibold tabular-nums leading-tight text-k-text-primary outline-none placeholder:text-k-text-quaternary"
                 />
                 <span className="mb-1.5 text-lg font-semibold text-k-text-secondary">mm</span>
             </div>
@@ -197,9 +195,9 @@ export function ProtocolWizardWeb({
                     type="button"
                     onClick={goNext}
                     disabled={!currentDone}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-colors ${
+                    className={`flex w-full items-center justify-center gap-2 rounded-control py-3 text-sm font-semibold transition-colors ${
                         currentDone
-                            ? 'bg-violet-500 text-white hover:bg-violet-600'
+                            ? 'bg-primary text-primary-foreground hover:opacity-90'
                             : 'bg-surface-inset text-k-text-tertiary cursor-not-allowed'
                     }`}
                 >
@@ -211,9 +209,9 @@ export function ProtocolWizardWeb({
                     type="button"
                     onClick={handleCommit}
                     disabled={!allDone}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-colors ${
+                    className={`flex w-full items-center justify-center gap-2 rounded-control py-3 text-sm font-semibold transition-colors ${
                         allDone
-                            ? 'bg-violet-500 text-white hover:bg-violet-600'
+                            ? 'bg-primary text-primary-foreground hover:opacity-90'
                             : 'bg-surface-inset text-k-text-tertiary cursor-not-allowed'
                     }`}
                 >

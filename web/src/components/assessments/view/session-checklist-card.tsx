@@ -21,7 +21,7 @@ interface SessionChecklistCardProps {
 export function SessionChecklistCard({ schema, measurements, status }: SessionChecklistCardProps) {
     if (!schema || !schema.sections?.length) {
         return (
-            <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-5 text-center">
+            <div className="rounded-panel border border-k-border-subtle bg-surface-card p-5 text-center">
                 <p className="text-sm text-k-text-tertiary">Sem template anexado.</p>
             </div>
         )
@@ -31,7 +31,7 @@ export function SessionChecklistCard({ schema, measurements, status }: SessionCh
     // tem apenas o contexto (sexo/idade) e o checklist mostraria 0% enganoso.
     if (status && status !== 'completed') {
         return (
-            <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-5">
+            <div className="rounded-panel border border-k-border-subtle bg-surface-card p-5">
                 <h3 className="text-sm font-semibold text-k-text-primary">Checklist da avaliação</h3>
                 <p className="mt-2 text-xs text-k-text-tertiary">
                     Disponível quando a avaliação for concluída.
@@ -60,19 +60,19 @@ export function SessionChecklistCard({ schema, measurements, status }: SessionCh
     const pct = totals.total === 0 ? 0 : Math.round((totals.done / totals.total) * 100)
 
     return (
-        <div className="overflow-hidden rounded-2xl border border-k-border-subtle bg-surface-card">
+        <div className="overflow-hidden rounded-panel border border-k-border-subtle bg-surface-card">
             <header className="flex items-center justify-between border-b border-k-border-subtle px-5 py-4">
                 <div>
                     <h3 className="text-sm font-semibold text-k-text-primary">Checklist da avaliação</h3>
-                    <p className="mt-0.5 text-xs text-k-text-tertiary">
+                    <p className="mt-0.5 font-mono tabular-nums text-xs text-k-text-tertiary">
                         {totals.done} de {totals.total} testes capturados
                     </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                    <span className="text-xl font-bold text-violet-500 dark:text-violet-400">{pct}%</span>
+                    <span className="text-xl font-bold font-mono tabular-nums text-k-text-primary">{pct}%</span>
                     <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-inset">
                         <div
-                            className="h-full rounded-full bg-violet-500 transition-all dark:bg-violet-400"
+                            className="h-full rounded-full bg-k-text-primary transition-all"
                             style={{ width: `${pct}%` }}
                         />
                     </div>
@@ -82,7 +82,7 @@ export function SessionChecklistCard({ schema, measurements, status }: SessionCh
             <div className="divide-y divide-k-border-subtle">
                 {schema.sections.map(section => (
                     <div key={section.id} className="px-5 py-4">
-                        <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary">
+                        <h4 className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
                             {section.title}
                         </h4>
                         <ul className="space-y-2">

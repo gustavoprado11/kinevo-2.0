@@ -104,7 +104,7 @@ export function MultiAttemptInputWeb({
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wider text-k-text-secondary">
+                <div className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
                     {label} — {attempts} tentativas
                 </div>
                 <button
@@ -133,11 +133,11 @@ export function MultiAttemptInputWeb({
             </div>
 
             {finalValue !== null && (
-                <div className="flex items-center justify-between rounded-xl bg-violet-500/10 px-4 py-3">
-                    <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
+                <div className="flex items-center justify-between rounded-control bg-surface-inset px-4 py-3">
+                    <span className="text-xs font-medium text-k-text-secondary">
                         Valor final ({strategyLabel(selection_strategy)})
                     </span>
-                    <span className="text-xl font-extrabold text-violet-700 dark:text-violet-300">
+                    <span className="text-xl font-mono font-semibold tabular-nums text-k-text-primary">
                         {finalValue.toFixed(1)} {unit}
                     </span>
                 </div>
@@ -149,9 +149,9 @@ export function MultiAttemptInputWeb({
                 type="button"
                 onClick={handleCommit}
                 disabled={!allFilled}
-                className={`mt-1 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-colors ${
+                className={`mt-1 flex w-full items-center justify-center gap-2 rounded-control py-3 text-sm font-semibold transition-colors ${
                     allFilled
-                        ? 'bg-violet-500 text-white hover:bg-violet-600'
+                        ? 'bg-primary text-primary-foreground hover:opacity-90'
                         : 'bg-surface-inset text-k-text-tertiary cursor-not-allowed'
                 }`}
             >
@@ -170,14 +170,14 @@ function Slot(props: {
     valid: boolean
     isSelected: boolean
 }) {
-    const borderClass = props.isSelected
-        ? 'border-violet-500'
+    const stateClass = props.isSelected
+        ? 'border-k-border-primary bg-surface-inset'
         : props.valid
-            ? 'border-k-border-subtle'
-            : 'border-k-border-subtle/50'
+            ? 'border-k-border-subtle bg-surface-card'
+            : 'border-k-border-subtle/50 bg-surface-card'
     return (
-        <div className={`flex items-center gap-2 rounded-xl border bg-surface-card px-4 py-3 ${borderClass}`}>
-            <span className="w-6 text-xs font-bold text-k-text-tertiary">#{props.index + 1}</span>
+        <div className={`flex items-center gap-2 rounded-control border px-4 py-3 ${stateClass}`}>
+            <span className="w-6 font-mono text-xs font-semibold tabular-nums text-k-text-tertiary">#{props.index + 1}</span>
             <input
                 type="text"
                 inputMode="decimal"
@@ -185,10 +185,10 @@ function Slot(props: {
                 onChange={e => props.onChange(e.target.value)}
                 placeholder="0"
                 aria-label={`Tentativa ${props.index + 1} em ${props.unit}`}
-                className="flex-1 bg-transparent text-2xl font-bold text-k-text-primary outline-none placeholder:text-k-text-quaternary"
+                className="flex-1 bg-transparent text-2xl font-mono font-semibold tabular-nums text-k-text-primary outline-none placeholder:text-k-text-quaternary"
             />
             <span className="text-sm font-semibold text-k-text-tertiary">{props.unit}</span>
-            {props.isSelected && <Check className="ml-1 h-4 w-4 text-violet-500" />}
+            {props.isSelected && <Check className="ml-1 h-4 w-4 text-k-text-primary" />}
         </div>
     )
 }

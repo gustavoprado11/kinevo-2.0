@@ -48,7 +48,7 @@ export function ResultComparisonTable({ sessions, maxColumns = 4 }: ResultCompar
         .sort((a, b) => (b.completed_at ? Date.parse(b.completed_at) : 0) - (a.completed_at ? Date.parse(a.completed_at) : 0))
     if (completed.length < 2) {
         return (
-            <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-5">
+            <div className="rounded-panel border border-k-border-subtle bg-surface-card p-5">
                 <h3 className="text-sm font-semibold text-k-text-primary">Comparativo</h3>
                 <p className="mt-2 text-xs text-k-text-tertiary">
                     {completed.length === 0
@@ -64,7 +64,7 @@ export function ResultComparisonTable({ sessions, maxColumns = 4 }: ResultCompar
     const previous = cols[1]!
 
     return (
-        <div className="overflow-hidden rounded-2xl border border-k-border-subtle bg-surface-card">
+        <div className="overflow-hidden rounded-panel border border-k-border-subtle bg-surface-card">
             <header className="border-b border-k-border-subtle px-5 py-4">
                 <h3 className="text-sm font-semibold text-k-text-primary">Comparativo</h3>
                 <p className="mt-0.5 text-xs text-k-text-tertiary">
@@ -76,13 +76,13 @@ export function ResultComparisonTable({ sessions, maxColumns = 4 }: ResultCompar
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-k-border-subtle bg-surface-inset">
-                            <th className="px-5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary">
+                            <th className="px-5 py-2.5 text-left font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
                                 Métrica
                             </th>
                             {cols.map((c, i) => (
                                 <th
                                     key={c.id}
-                                    className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary"
+                                    className="px-3 py-2.5 text-right font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary"
                                 >
                                     {i === 0 ? 'Atual' : formatDate(c.completed_at)}
                                 </th>
@@ -106,7 +106,7 @@ export function ResultComparisonTable({ sessions, maxColumns = 4 }: ResultCompar
                                         return (
                                             <td
                                                 key={c.id}
-                                                className={`px-3 py-2.5 text-right ${
+                                                className={`px-3 py-2.5 text-right font-mono tabular-nums ${
                                                     i === 0 ? 'font-semibold text-k-text-primary' : 'text-k-text-tertiary'
                                                 }`}
                                             >

@@ -70,7 +70,7 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
             </button>
 
             {/* Header */}
-            <div className="mb-6 flex items-start gap-4 rounded-2xl border border-k-border-subtle bg-surface-card p-5">
+            <div className="mb-6 flex items-start gap-4 rounded-panel border border-k-border-subtle bg-surface-card p-5">
                 <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-k-border-subtle bg-surface-inset">
                     {student.avatar_url ? (
                         <Image
@@ -90,7 +90,7 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
                 <div className="min-w-0 flex-1">
                     <button
                         onClick={() => router.push(`/students/${studentId}`)}
-                        className="text-base font-semibold text-k-text-primary hover:text-violet-500 dark:hover:text-violet-400"
+                        className="text-base font-semibold text-k-text-primary transition-opacity hover:opacity-70"
                     >
                         {student.name}
                     </button>
@@ -118,7 +118,7 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
                     {canCancel && !confirming && (
                         <button
                             onClick={() => setConfirming(true)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-k-border-subtle bg-surface-card px-3 py-1.5 text-xs font-medium text-k-text-secondary hover:border-red-500/40 hover:text-red-500"
+                            className="inline-flex items-center gap-1.5 rounded-control border border-k-border-subtle bg-surface-card px-3 py-1.5 text-xs font-medium text-k-text-secondary transition-colors hover:border-red-500/40 hover:text-red-500"
                         >
                             <XCircle className="h-3.5 w-3.5" />
                             Cancelar
@@ -129,14 +129,14 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
                             <button
                                 onClick={() => setConfirming(false)}
                                 disabled={pending}
-                                className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-k-text-secondary hover:bg-surface-inset"
+                                className="rounded-control px-2.5 py-1.5 text-xs font-medium text-k-text-secondary hover:bg-surface-inset"
                             >
                                 Voltar
                             </button>
                             <button
                                 onClick={() => startTransition(handleCancel)}
                                 disabled={pending}
-                                className="rounded-lg bg-red-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+                                className="rounded-control bg-red-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-50"
                             >
                                 Confirmar cancelamento
                             </button>
@@ -153,12 +153,12 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
                         onClick={() =>
                             router.push(`/students/${studentId}/avaliacoes/${session.id}/capture`)
                         }
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-500 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-violet-600"
+                        className="flex w-full items-center justify-center gap-2 rounded-control bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
                     >
                         <Activity className="h-4 w-4" />
                         Preencher agora
                     </button>
-                    <div className="flex items-start gap-2 rounded-xl border border-k-border-subtle bg-surface-card px-3 py-2">
+                    <div className="flex items-start gap-2 rounded-control border border-k-border-subtle bg-surface-card px-3 py-2">
                         <Smartphone className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-k-text-tertiary" />
                         <p className="text-[11px] text-k-text-tertiary">
                             Ou capture pelo app Kinevo (Avaliações &gt; {student.name}) com checklist guiado.
@@ -175,8 +175,8 @@ export function SessionDetailClient({ detail, studentId }: SessionDetailClientPr
             />
 
             {session.notes && (
-                <div className="mt-5 rounded-2xl border border-k-border-subtle bg-surface-card p-5">
-                    <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary">
+                <div className="mt-5 rounded-panel border border-k-border-subtle bg-surface-card p-5">
+                    <h4 className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
                         Observações
                     </h4>
                     <p className="whitespace-pre-wrap text-sm text-k-text-primary">{session.notes}</p>

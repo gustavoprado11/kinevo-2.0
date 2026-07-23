@@ -49,11 +49,10 @@ export interface AnatomyDiagramWebProps {
     compact?: boolean
 }
 
-const SILHOUETTE_FILL = '#E5E7EB' // colors.background.inset (mobile)
-const PRIMARY = '#7c3aed'
-const PRIMARY_DARK = '#6d28d9'
-const PRIMARY_LIGHT = '#ede9fe'
-const QUATERNARY = '#cbd5e1'
+// Cores dark-safe via CSS vars — funcionam nos 2 temas dentro do SVG.
+const SILHOUETTE_FILL = 'var(--border-subtle)'
+const MARKER_ACTIVE = 'var(--text-primary)'
+const MARKER_INACTIVE = 'var(--text-quaternary)'
 
 export function AnatomyDiagramWeb({ highlight_site, initial_view, compact }: AnatomyDiagramWebProps) {
     const naturalView = useMemo<AnatomyView>(() => {
@@ -96,8 +95,8 @@ export function AnatomyDiagramWeb({ highlight_site, initial_view, compact }: Ana
                             cx={m.cx}
                             cy={m.cy}
                             r={isActive ? 4.5 : 2.2}
-                            fill={isActive ? PRIMARY : QUATERNARY}
-                            stroke={isActive ? PRIMARY_DARK : 'none'}
+                            fill={isActive ? MARKER_ACTIVE : MARKER_INACTIVE}
+                            stroke={isActive ? MARKER_ACTIVE : 'none'}
                             strokeWidth={isActive ? 1.2 : 0}
                         />
                     )
@@ -105,7 +104,7 @@ export function AnatomyDiagramWeb({ highlight_site, initial_view, compact }: Ana
             </svg>
 
             {activeMarker && (
-                <span className="text-xs font-bold" style={{ color: PRIMARY_DARK }}>
+                <span className="text-xs font-semibold text-k-text-primary">
                     {activeMarker.label_pt}
                 </span>
             )}
@@ -135,12 +134,11 @@ function ToggleButton({ label, active, onClick }: { label: string; active: boole
             onClick={onClick}
             aria-label={`Vista ${label}`}
             aria-pressed={active}
-            className="rounded-lg border px-3 py-1 text-xs font-bold transition-colors"
-            style={{
-                backgroundColor: active ? PRIMARY_LIGHT : 'transparent',
-                borderColor: active ? PRIMARY : 'rgba(0,0,0,0.08)',
-                color: active ? PRIMARY_DARK : '#64748b',
-            }}
+            className={`rounded-control border px-3 py-1 text-xs font-semibold transition-colors ${
+                active
+                    ? 'border-k-border-primary bg-surface-inset text-k-text-primary'
+                    : 'border-k-border-subtle bg-transparent text-k-text-tertiary hover:text-k-text-secondary'
+            }`}
         >
             {label}
         </button>

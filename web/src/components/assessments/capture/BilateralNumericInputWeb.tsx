@@ -76,7 +76,7 @@ export function BilateralNumericInputWeb({
 
     return (
         <div className="space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-k-text-secondary">
+            <div className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
                 {label}
             </div>
 
@@ -120,10 +120,10 @@ function SidePad(props: {
     valid: boolean
     unit: MeasurementUnit
 }) {
-    const borderClass = props.valid ? 'border-violet-500' : 'border-k-border-subtle'
+    const borderClass = props.valid ? 'border-k-border-primary' : 'border-k-border-subtle'
     return (
-        <div className={`flex-1 rounded-2xl border bg-surface-card p-4 ${borderClass}`}>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-k-text-tertiary">
+        <div className={`flex-1 rounded-control border bg-surface-card p-4 ${borderClass}`}>
+            <div className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-k-text-tertiary">
                 {props.label}
             </div>
             <div className="mt-1.5 flex items-end gap-1.5">
@@ -140,7 +140,7 @@ function SidePad(props: {
                     }}
                     placeholder="0"
                     aria-label={`${props.label} em ${props.unit}`}
-                    className="flex-1 bg-transparent text-3xl font-extrabold leading-tight text-k-text-primary outline-none placeholder:text-k-text-quaternary"
+                    className="flex-1 bg-transparent text-3xl font-mono font-semibold tabular-nums leading-tight text-k-text-primary outline-none placeholder:text-k-text-quaternary"
                 />
                 <span className="mb-1 text-sm font-semibold text-k-text-secondary">
                     {props.unit}

@@ -62,7 +62,7 @@ export function HistoryMiniChartWeb({
 
     if (points.length === 0) {
         return (
-            <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-5">
+            <div className="rounded-panel border border-k-border-subtle bg-surface-card p-5">
                 <h4 className="text-sm font-semibold text-k-text-primary">{label}</h4>
                 <p className="mt-2 text-xs text-k-text-tertiary">Sem dados.</p>
             </div>
@@ -76,15 +76,15 @@ export function HistoryMiniChartWeb({
         (betterDirection === 'down' && overallDelta < 0) || (betterDirection === 'up' && overallDelta > 0)
     const isWorse =
         (betterDirection === 'down' && overallDelta > 0) || (betterDirection === 'up' && overallDelta < 0)
-    const lineColor = isImprovement ? '#10b981' : isWorse ? '#ef4444' : '#8b5cf6'
+    const lineColor = isImprovement ? '#10b981' : isWorse ? '#ef4444' : '#78716c'
     const gradId = `assess-grad-${metric}`
 
     if (points.length < 2) {
         return (
-            <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-5">
+            <div className="rounded-panel border border-k-border-subtle bg-surface-card p-5">
                 <header className="flex items-baseline justify-between">
                     <h4 className="text-sm font-semibold text-k-text-primary">{label}</h4>
-                    <span className="text-base font-bold text-k-text-primary">{fmt(last, digits, suffix)}</span>
+                    <span className="text-base font-bold font-mono tabular-nums text-k-text-primary">{fmt(last, digits, suffix)}</span>
                 </header>
                 <p className="mt-2 text-xs text-k-text-tertiary">
                     Apenas 1 avaliação — sparkline aparece a partir da segunda.
@@ -120,10 +120,10 @@ export function HistoryMiniChartWeb({
     const hovered = hoveredIdx != null ? svgPoints[hoveredIdx] : null
 
     return (
-        <div className="rounded-2xl border border-k-border-subtle bg-surface-card p-5">
+        <div className="rounded-panel border border-k-border-subtle bg-surface-card p-5">
             <header className="flex items-baseline justify-between">
                 <h4 className="text-sm font-semibold text-k-text-primary">{label}</h4>
-                <span className="text-base font-bold text-k-text-primary">
+                <span className="text-base font-bold font-mono tabular-nums text-k-text-primary">
                     {fmt(hovered?.value ?? last, digits, suffix)}
                 </span>
             </header>
@@ -171,7 +171,7 @@ export function HistoryMiniChartWeb({
                 </svg>
             </div>
 
-            <div className="mt-2 flex justify-between text-[11px] text-k-text-quaternary">
+            <div className="mt-2 flex justify-between font-mono tabular-nums text-[11px] text-k-text-quaternary">
                 <span>{formatDate(points[0]!.completedAt)}</span>
                 <span>{hovered ? formatDate(hovered.completedAt) : formatDate(points[points.length - 1]!.completedAt)}</span>
             </div>

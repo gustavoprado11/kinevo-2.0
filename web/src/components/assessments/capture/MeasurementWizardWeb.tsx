@@ -63,7 +63,7 @@ export function MeasurementWizardWeb(props: MeasurementWizardWebProps) {
     return (
         <div className="mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-2xl flex-col">
             {/* Header */}
-            <div className="rounded-t-2xl border border-k-border-subtle border-b-0 bg-surface-card px-5 py-4">
+            <div className="rounded-t-panel border border-k-border-subtle border-b-0 bg-surface-card px-5 py-4">
                 <div className="flex items-center gap-3">
                     {onPrev && (
                         <button
@@ -85,7 +85,7 @@ export function MeasurementWizardWeb(props: MeasurementWizardWebProps) {
                             </div>
                         )}
                     </div>
-                    <span className="flex-shrink-0 text-xs font-bold text-violet-500 dark:text-violet-400">
+                    <span className="flex-shrink-0 font-mono text-xs tabular-nums text-k-text-secondary">
                         {stepIndex + 1}/{totalSteps}
                     </span>
                 </div>
@@ -93,7 +93,7 @@ export function MeasurementWizardWeb(props: MeasurementWizardWebProps) {
                 {/* Progress bar */}
                 <div className="mt-3 h-1 overflow-hidden rounded-full bg-surface-inset">
                     <div
-                        className="h-1 rounded-full bg-violet-500 transition-all duration-300 dark:bg-violet-400"
+                        className="h-1 rounded-full bg-k-text-primary transition-all duration-300"
                         style={{ width: `${progress * 100}%` }}
                     />
                 </div>
@@ -105,14 +105,14 @@ export function MeasurementWizardWeb(props: MeasurementWizardWebProps) {
             </div>
 
             {/* Footer */}
-            <div className="rounded-b-2xl border border-k-border-subtle border-t bg-surface-card px-5 py-4">
+            <div className="rounded-b-panel border border-k-border-subtle border-t bg-surface-card px-5 py-4">
                 <button
                     type="button"
                     onClick={handleNext}
                     disabled={!canAdvance}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-colors ${
+                    className={`flex w-full items-center justify-center gap-2 rounded-control py-3 text-sm font-semibold transition-colors ${
                         canAdvance
-                            ? 'bg-violet-500 text-white hover:bg-violet-600'
+                            ? 'bg-primary text-primary-foreground hover:opacity-90'
                             : 'bg-surface-inset text-k-text-tertiary cursor-not-allowed'
                     }`}
                 >
@@ -129,7 +129,7 @@ export function MeasurementWizardWeb(props: MeasurementWizardWebProps) {
                     onClick={rangePrompt.onCancel}
                 >
                     <div
-                        className="w-full max-w-md rounded-2xl border border-k-border-subtle bg-surface-card p-5 shadow-xl"
+                        className="w-full max-w-md rounded-panel border border-k-border-subtle bg-surface-card p-5"
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="flex items-center gap-2">
@@ -152,14 +152,14 @@ export function MeasurementWizardWeb(props: MeasurementWizardWebProps) {
                             <button
                                 type="button"
                                 onClick={rangePrompt.onCancel}
-                                className="flex-1 rounded-xl bg-surface-inset px-4 py-2.5 text-sm font-semibold text-k-text-primary hover:bg-surface-elevated"
+                                className="flex-1 rounded-control bg-surface-inset px-4 py-2.5 text-sm font-semibold text-k-text-primary hover:bg-surface-elevated"
                             >
                                 Reescrever
                             </button>
                             <button
                                 type="button"
                                 onClick={rangePrompt.onConfirm}
-                                className="flex-1 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-600"
+                                className="flex-1 rounded-control bg-amber-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-600"
                             >
                                 Confirmar
                             </button>
