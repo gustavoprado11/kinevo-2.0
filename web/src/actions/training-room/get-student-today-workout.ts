@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { hydrateSetPrescriptions } from '@kinevo/shared/lib/hydrate-workout-sets'
+import { hasProgression, programWeekNumber, resolveCardioForWeek } from '@kinevo/shared/lib/cardio/progression'
+import type { CardioConfig } from '@kinevo/shared/types/workout-items'
 import type { WorkoutSet } from '@kinevo/shared/types/prescription'
 import type { ExerciseData, WorkoutSetData, WorkoutNote, PreviousSetData } from '@/stores/training-room-store'
 
@@ -63,14 +65,17 @@ export async function getStudentTodayWorkout(
         return { data: null, error: 'Aluno não encontrado' }
     }
 
-    // Fetch assigned workout
+    // Fetch assigned workout (started_at do programa resolve a progressão
+    // semanal dos blocos aeróbios para a semana CORRENTE — a sala é hoje).
     const { data: workout } = await supabase
         .from('assigned_workouts')
-        .select('id, name, assigned_program_id, workout_type')
+        .select('id, name, assigned_program_id, workout_type, assigned_programs(started_at)')
         .eq('id', assignedWorkoutId)
         .single()
 
     if (!workout) return { data: null, error: 'Treino não encontrado' }
+    const programStartedAt = (workout.assigned_programs as unknown as { started_at: string | null } | null)?.started_at ?? null
+    const currentWeek = programWeekNumber(programStartedAt)
 
     // Fetch ALL workout items (exercises, supersets, notes)
     const { data: items, error: itemsError } = await supabase
@@ -211,6 +216,12 @@ export async function getStudentTodayWorkout(
 
     // Add warmup/cardio items — no set tracking, just config display
     for (const item of warmupCardioItems) {
+        // Progressão semanal: a sala exibe o alvo da semana CORRENTE do programa.
+        let itemConfig = ((item as any).item_config || {}) as Record<string, unknown>
+        const cardioConfig = itemConfig as unknown as CardioConfig
+        if (item.item_type === 'cardio' && hasProgression(cardioConfig)) {
+            itemConfig = resolveCardioForWeek(cardioConfig, currentWeek).config as unknown as Record<string, unknown>
+        }
         exercises.push({
             id: item.id,
             item_type: item.item_type as 'warmup' | 'cardio',
@@ -225,7 +236,7 @@ export async function getStudentTodayWorkout(
             setsData: [],
             order_index: item.order_index,
             exercise_function: item.exercise_function || null,
-            item_config: (item as any).item_config || {},
+            item_config: itemConfig,
         })
     }
 

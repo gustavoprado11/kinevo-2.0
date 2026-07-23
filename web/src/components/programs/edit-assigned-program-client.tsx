@@ -63,7 +63,7 @@ import { useCanvasDnd } from './helpers/use-canvas-dnd'
 import { useBuilderChrome } from './helpers/use-builder-chrome'
 import { useBuilderDraft, buildDraftKey } from './helpers/use-builder-draft'
 import { AddWorkoutButton } from './add-workout-button'
-import { CardioStudentHrContext } from './workout-card/cardio-student-context'
+import { CardioProgramWeeksContext, CardioStudentHrContext } from './workout-card/cardio-student-context'
 
 
 interface AssignedProgramData {
@@ -655,6 +655,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
 
     return (
         <CardioStudentHrContext.Provider value={studentMaxHr ?? null}>
+        <CardioProgramWeeksContext.Provider value={normalizeDurationWeeks(durationWeeks)}>
         <AppLayout
             trainerName={trainer.name}
             trainerEmail={trainer.email}
@@ -1325,6 +1326,7 @@ export function EditAssignedProgramClient({ trainer, program, exercises, student
                 </div>
             )}
         </AppLayout>
+        </CardioProgramWeeksContext.Provider>
         </CardioStudentHrContext.Provider>
     )
 }

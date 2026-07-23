@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, Clock, Gauge, ListChecks, Repeat, Trash2, Zap } from 'lucide-react'
+import { Activity, Clock, Gauge, ListChecks, Plus, Repeat, Trash2, Zap } from 'lucide-react'
 import { useState, type HTMLAttributes } from 'react'
 
 import {
@@ -12,6 +12,7 @@ import {
     type CardioIntensityType,
     type CardioMode,
     type CardioObjective,
+    type CardioWeekOverride,
 } from '@kinevo/shared/types/workout-items'
 import { HR_ZONES, formatIntensityTarget, resolveZoneBpm, zonePctLabel } from '@kinevo/shared/lib/cardio/zones'
 import { CARDIO_PROTOCOLS, protocolMatchesIntervals } from '@kinevo/shared/lib/cardio/interval-protocols'
@@ -20,13 +21,15 @@ import {
     formatShortDuration,
     summarizeSegments,
 } from '@kinevo/shared/lib/cardio/segments'
+import { hasProgression, maxProgressionWeek, resolveCardioForWeek } from '@kinevo/shared/lib/cardio/progression'
 import type { CardioSegment } from '@kinevo/shared/types/workout-items'
 
 import type { WorkoutItem } from '../program-builder-client'
 import { CardioPhasesTable } from './CardioPhasesTable'
+import { CardioWeeklyProgression } from './CardioWeeklyProgression'
 import { TechnicalNote } from './ExerciseMetadataSection'
 import { WorkoutCardShell } from './WorkoutCardShell'
-import { useCardioStudentMaxHr } from './cardio-student-context'
+import { useCardioProgramWeeks, useCardioStudentMaxHr } from './cardio-student-context'
 import {
     FieldCard,
     KeyChip,
@@ -63,6 +66,8 @@ function cardioCompactSummary(config: CardioConfig): string {
         if (total > 0) parts.push(`≈ ${formatShortDuration(total)}`)
         const summary = summarizeSegments(segments)
         if (summary) parts.push(summary)
+        const lastPhasedWeek = maxProgressionWeek(config)
+        if (lastPhasedWeek) parts.push(`Progressão semanal até S${lastPhasedWeek}`)
         return parts.join(' · ')
     }
 
@@ -90,6 +95,9 @@ function cardioCompactSummary(config: CardioConfig): string {
         if (config.distance_km) parts.push(`${config.distance_km} km`)
         if (config.intensity) parts.push(config.intensity)
     }
+
+    const lastWeek = maxProgressionWeek(config)
+    if (lastWeek) parts.push(`Progressão semanal até S${lastWeek}`)
 
     return parts.join(' · ')
 }
@@ -273,13 +281,60 @@ export function CardioItemCard({
     readonly,
 }: CardioItemCardProps) {
     const config = (item.item_config || { mode: 'continuous' }) as CardioConfig
-    const mode: CardioMode = config.mode || 'continuous'
-    const objective: CardioObjective = config.objective || 'time'
     const maxHr = useCardioStudentMaxHr()
+    const programWeeks = useCardioProgramWeeks()
 
     const [isExpanded, setIsExpanded] = useState(() => !isCardioFilled(config))
 
+    // ------------------------------------------------------------------
+    // Progressão semanal — a "lente": null = base (semana 1); um número =
+    // editando aquela semana (view resolvida; writes vão para o override).
+    // ------------------------------------------------------------------
+    const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
+    const [progressionOpen, setProgressionOpen] = useState(false)
+    const progression = config.progression ?? []
+    const showProgression = hasProgression(config) || progressionOpen
+
+    /** O que o editor mostra: base ou a semana resolvida pela lente. */
+    const view: CardioConfig = selectedWeek != null
+        ? resolveCardioForWeek(config, selectedWeek).config
+        : config
+    const mode: CardioMode = view.mode || 'continuous'
+    const objective: CardioObjective = view.objective || 'time'
+
+    /** Upsert de um override de semana (mantém a lista ordenada e única). */
+    const writeOverride = (week: number, patch: Partial<CardioWeekOverride>) => {
+        const existing = progression.find((o) => o.week === week)
+        const merged: CardioWeekOverride = { ...(existing ?? { week }), ...patch, week }
+        const next = [...progression.filter((o) => o.week !== week), merged]
+            .sort((a, b) => a.week - b.week)
+        onUpdate({ item_config: { ...config, progression: next } })
+    }
+
+    const removeOverride = (week: number) => {
+        const next = progression.filter((o) => o.week !== week)
+        onUpdate({ item_config: { ...config, progression: next.length > 0 ? next : undefined } })
+        if (selectedWeek === week) setSelectedWeek(null)
+    }
+
+    const clearProgression = () => {
+        onUpdate({ item_config: { ...config, progression: undefined } })
+        setSelectedWeek(null)
+        setProgressionOpen(false)
+    }
+
+    /** Roteia o patch do editor: base do bloco OU o override da semana da lente. */
     const updateConfig = (patch: Partial<CardioConfig>) => {
+        if (selectedWeek == null) {
+            onUpdate({ item_config: { ...config, ...patch } })
+            return
+        }
+        writeOverride(selectedWeek, patch)
+    }
+
+    /** Campos do BLOCO (iguais em todas as semanas — ex.: equipamento):
+     *  escrevem sempre na base, mesmo com a lente numa semana. */
+    const updateBase = (patch: Partial<CardioConfig>) => {
         onUpdate({ item_config: { ...config, ...patch } })
     }
 
@@ -295,15 +350,16 @@ export function CardioItemCard({
         })
     }
 
-    /** Troca de modo. Entrar em 'phased' semeia as fases do estado atual (não
-     *  perde trabalho); sair mantém `segments` no config (voltar restaura). */
+    /** Troca de modo (na lente de semana vira override ESTRUTURAL). Entrar em
+     *  'phased' semeia as fases do estado atual (não perde trabalho); sair
+     *  mantém `segments` no config (voltar restaura). */
     const changeMode = (nextMode: CardioMode) => {
         if (nextMode === 'phased') {
-            let seed: CardioSegment[] = config.segments ?? []
+            let seed: CardioSegment[] = view.segments ?? []
             if (seed.length === 0) {
-                seed = mode === 'interval' && config.intervals
-                    ? [{ kind: 'interval', intervals: { ...config.intervals }, intensity_target: config.intensity_target, intensity: config.intensity }]
-                    : [{ kind: 'steady', duration_minutes: config.duration_minutes ?? 10, intensity_target: config.intensity_target, intensity: config.intensity }]
+                seed = mode === 'interval' && view.intervals
+                    ? [{ kind: 'interval', intervals: { ...view.intervals }, intensity_target: view.intensity_target, intensity: view.intensity }]
+                    : [{ kind: 'steady', duration_minutes: view.duration_minutes ?? 10, intensity_target: view.intensity_target, intensity: view.intensity }]
             }
             updateSegments(seed, { mode: 'phased', protocol_key: undefined })
             return
@@ -328,26 +384,26 @@ export function CardioItemCard({
     const patchIntervals = (patch: Partial<NonNullable<CardioConfig['intervals']>>) => {
         updateConfig({
             intervals: {
-                work_seconds: config.intervals?.work_seconds || 30,
-                rest_seconds: config.intervals?.rest_seconds || 15,
-                rounds: config.intervals?.rounds || 8,
+                work_seconds: view.intervals?.work_seconds || 30,
+                rest_seconds: view.intervals?.rest_seconds || 15,
+                rounds: view.intervals?.rounds || 8,
                 ...patch,
             },
             protocol_key: undefined,
         })
     }
 
-    const estimatedIntervalDuration = config.intervals
-        ? (config.intervals.work_seconds * config.intervals.rounds +
-            config.intervals.rest_seconds * (config.intervals.rounds - 1))
+    const estimatedIntervalDuration = view.intervals
+        ? (view.intervals.work_seconds * view.intervals.rounds +
+            view.intervals.rest_seconds * (view.intervals.rounds - 1))
         : 0
     const estMin = Math.floor(estimatedIntervalDuration / 60)
     const estSec = estimatedIntervalDuration % 60
 
     // Valor do select de protocolo: o key ativo enquanto os números batem;
     // qualquer edição manual volta pra "Personalizado".
-    const activeProtocolKey = protocolMatchesIntervals(config.protocol_key, config.intervals ?? null)
-        ? (config.protocol_key as string)
+    const activeProtocolKey = protocolMatchesIntervals(view.protocol_key, view.intervals ?? null)
+        ? (view.protocol_key as string)
         : ''
 
     if (readonly) {
@@ -397,6 +453,19 @@ export function CardioItemCard({
             kebab={deleteButton}
         >
             <div className="space-y-1.5">
+                {/* Progressão semanal: a lente que define QUAL semana o editor mostra */}
+                {showProgression && (
+                    <CardioWeeklyProgression
+                        config={config}
+                        durationWeeks={programWeeks}
+                        selectedWeek={selectedWeek}
+                        onSelectWeek={setSelectedWeek}
+                        onPatchOverride={(week, patch) => writeOverride(week, patch)}
+                        onRemoveOverride={removeOverride}
+                        onClearProgression={clearProgression}
+                    />
+                )}
+
                 {/* Trilho 1: modo + equipamento (+ alvo/valor no contínuo, protocolo no intervalado) */}
                 <div className={`grid grid-cols-2 gap-1.5 ${mode === 'continuous' ? 'sm:grid-cols-4' : mode === 'interval' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
                     <FieldCard label="Modo" icon={<Activity className="size-4" />}>
@@ -416,9 +485,9 @@ export function CardioItemCard({
 
                     <FieldCard label="Equipamento" icon={<Zap className="size-4" />}>
                         <select
-                            value={config.equipment || ''}
+                            value={view.equipment || ''}
                             onChange={(e) =>
-                                updateConfig({
+                                updateBase({
                                     equipment: (e.target.value || undefined) as CardioEquipment | undefined,
                                 })
                             }
@@ -460,7 +529,7 @@ export function CardioItemCard({
                                         <input
                                             type="number"
                                             min={1}
-                                            value={config.duration_minutes || ''}
+                                            value={view.duration_minutes || ''}
                                             onChange={(e) =>
                                                 updateConfig({
                                                     duration_minutes: parseInt(e.target.value) || undefined,
@@ -482,7 +551,7 @@ export function CardioItemCard({
                                             type="number"
                                             min={0}
                                             step={0.1}
-                                            value={config.distance_km || ''}
+                                            value={view.distance_km || ''}
                                             onChange={(e) =>
                                                 updateConfig({
                                                     distance_km: parseFloat(e.target.value) || undefined,
@@ -530,7 +599,7 @@ export function CardioItemCard({
                                 <input
                                     type="number"
                                     min={1}
-                                    value={config.intervals?.work_seconds || ''}
+                                    value={view.intervals?.work_seconds || ''}
                                     onChange={(e) => patchIntervals({ work_seconds: parseInt(e.target.value) || 30 })}
                                     onFocus={(e) => e.target.select()}
                                     onClick={(e) => e.stopPropagation()}
@@ -547,7 +616,7 @@ export function CardioItemCard({
                                 <input
                                     type="number"
                                     min={0}
-                                    value={config.intervals?.rest_seconds ?? ''}
+                                    value={view.intervals?.rest_seconds ?? ''}
                                     onChange={(e) => patchIntervals({ rest_seconds: parseInt(e.target.value) || 15 })}
                                     onFocus={(e) => e.target.select()}
                                     onClick={(e) => e.stopPropagation()}
@@ -563,7 +632,7 @@ export function CardioItemCard({
                             <input
                                 type="number"
                                 min={1}
-                                value={config.intervals?.rounds || ''}
+                                value={view.intervals?.rounds || ''}
                                 onChange={(e) => patchIntervals({ rounds: parseInt(e.target.value) || 8 })}
                                 onFocus={(e) => e.target.select()}
                                 onClick={(e) => e.stopPropagation()}
@@ -586,7 +655,7 @@ export function CardioItemCard({
                 {/* Por fases: tabela de segmentos (intensidade vive POR fase) */}
                 {mode === 'phased' && (
                     <CardioPhasesTable
-                        segments={config.segments ?? []}
+                        segments={view.segments ?? []}
                         maxHr={maxHr}
                         onChange={updateSegments}
                     />
@@ -594,14 +663,30 @@ export function CardioItemCard({
 
                 {/* Intensidade do bloco (modos simples; em fases é por segmento) */}
                 {mode !== 'phased' && (
-                    <IntensityTargetControl config={config} maxHr={maxHr} onPatch={updateConfig} />
+                    <IntensityTargetControl config={view} maxHr={maxHr} onPatch={updateConfig} />
                 )}
 
                 <TechnicalNote
-                    value={config.notes || ''}
+                    value={view.notes || ''}
                     onChange={(v) => updateConfig({ notes: v || undefined })}
                     readonly={false}
                 />
+
+                {/* Abrir a progressão semanal quando o bloco ainda é igual toda semana */}
+                {!showProgression && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setProgressionOpen(true)
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[#7C3AED] dark:text-violet-400 hover:text-[#6D28D9] dark:hover:text-violet-300 transition-colors"
+                        title="Personalize o bloco semana a semana (distância, intensidade ou estrutura por semana)"
+                    >
+                        <Plus className="size-3.5" />
+                        Progressão semanal
+                    </button>
+                )}
             </div>
         </WorkoutCardShell>
     )

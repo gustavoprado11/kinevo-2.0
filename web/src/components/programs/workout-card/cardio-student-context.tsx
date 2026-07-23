@@ -13,3 +13,14 @@ export const CardioStudentHrContext = createContext<number | null>(null)
 export function useCardioStudentMaxHr(): number | null {
     return useContext(CardioStudentHrContext)
 }
+
+/**
+ * Duração do programa em semanas (duration_weeks) no builder — dimensiona a
+ * régua da progressão semanal do bloco aeróbio. Null = sem duração definida.
+ * Mesmo racional de contexto do FCmáx (não atravessa o registry de cards).
+ */
+export const CardioProgramWeeksContext = createContext<number | null>(null)
+
+export function useCardioProgramWeeks(): number | null {
+    return useContext(CardioProgramWeeksContext)
+}

@@ -2,6 +2,7 @@
 
 import { Activity, Bike, Footprints, Waves, TrendingUp, Zap, Dumbbell } from 'lucide-react'
 import { cardioTotalSeconds, segmentStructureLabel } from '@kinevo/shared/lib/cardio/segments'
+import { maxProgressionWeek } from '@kinevo/shared/lib/cardio/progression'
 import type { CardioConfig, CardioSegment } from '@kinevo/shared/types/workout-items'
 import type { PreviewWarmupCardio } from './builder-to-preview'
 import { colors, spacing } from './preview-design-tokens'
@@ -91,6 +92,16 @@ export function PreviewCardioCard({ item }: PreviewCardioCardProps) {
                     EquipmentIcon={EquipmentIcon}
                 />
             )}
+
+            {/* Progressão semanal: o preview mostra a semana 1 (base) */}
+            {(() => {
+                const lastWeek = maxProgressionWeek(config as CardioConfig)
+                return lastWeek ? (
+                    <div style={{ marginTop: 4, fontSize: 10, color: colors.textTertiary }}>
+                        Progressão semanal até a semana {lastWeek} · exibindo a semana 1
+                    </div>
+                ) : null
+            })()}
 
             {/* Trainer notes */}
             {config.notes && (

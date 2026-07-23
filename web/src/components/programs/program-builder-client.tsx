@@ -34,7 +34,7 @@ import { consumePrescriptionAnimateFlag, setPrescriptionAnimateFlag } from './he
 import { useBuilderDraft, buildDraftKey } from './helpers/use-builder-draft'
 import { WorkoutCardKebab } from './workout-card/WorkoutCardKebab'
 import { AddWorkoutButton } from './add-workout-button'
-import { CardioStudentHrContext } from './workout-card/cardio-student-context'
+import { CardioProgramWeeksContext, CardioStudentHrContext } from './workout-card/cardio-student-context'
 
 // Code-split the heaviest on-demand panels: each only renders for a specific
 // builder mode (preview / ai_prescribe / compare) or when the AI feature is
@@ -1212,6 +1212,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
 
     return (
         <CardioStudentHrContext.Provider value={studentContext?.maxHeartRateBpm ?? null}>
+        <CardioProgramWeeksContext.Provider value={normalizeDurationWeeks(durationWeeks)}>
         <AppLayout
             trainerName={trainer.name}
             trainerEmail={trainer.email}
@@ -2260,6 +2261,7 @@ export function ProgramBuilderClient({ trainer, program, exercises, studentConte
                 </div>
             )}
         </AppLayout>
+        </CardioProgramWeeksContext.Provider>
         </CardioStudentHrContext.Provider>
     )
 }
